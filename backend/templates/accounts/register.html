@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Register - Canteen Express{% endblock %}
+
+{% block content %}
+<div class="min-h-[85vh] flex items-center justify-center py-8 px-4">
+    <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-lg border border-gray-200">
+        
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <span class="text-4xl">📝</span>
+            <h2 class="text-2xl font-black text-gray-900 mt-2">Create Account</h2>
+            <p class="text-sm text-gray-500 mt-1">Select your account type to continue</p>
+        </div>
+
+        <!-- Global / Non-Field Errors Banner -->
+        {% if form.non_field_errors %}
+            <div class="mb-4 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-xs font-bold space-y-1">
+                {% for error in form.non_field_errors %}
+                    <p class="flex items-center gap-1.5">⚠️ {{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="POST" action="{% url 'accounts:register' %}" class="space-y-4">
+            {% csrf_token %}
+
+            <!-- 1. Role Selector Cards -->
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Select Your Role</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="role" value="STUDENT" {% if form.role.value == 'STUDENT' or not form.role.value %}checked{% endif %} class="peer hidden">
+                        <div class="p-3 text-center rounded-xl border-2 border-gray-200 peer-checked:border-orange-500 peer-checked:bg-orange-50 transition">
+                            <span class="text-xl block mb-1">🎓</span>
+                            <span class="text-xs font-black text-gray-900">Student</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="role" value="FACULTY" {% if form.role.value == 'FACULTY' %}checked{% endif %} class="peer hidden">
+                        <div class="p-3 text-center rounded-xl border-2 border-gray-200 peer-checked:border-black peer-checked:bg-gray-100 transition">
+                            <span class="text-xl block mb-1">👨‍🏫</span>
+                            <span class="text-xs font-black text-gray-900">Faculty / Staff</span>
+                        </div>
+                    </label>
+                </div>
+                {% if form.role.errors %}
+                    <p class="text-red-500 text-xs font-bold mt-1">⚠️ {{ form.role.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- 2. Username / ID -->
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Username / School ID</label>
+                <input type="text" name="username" value="{{ form.username.value|default:'' }}" required placeholder="e.g. 2026-10042"
+                       class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 text-sm font-medium outline-none">
+                {% if form.username.errors %}
+                    <p class="text-red-500 text-xs font-bold mt-1">⚠️ {{ form.username.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- 3. First Name & Last Name Grid -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">First Name</label>
+                    <input type="text" name="first_name" value="{{ form.first_name.value|default:'' }}" required placeholder="Juan"
+                           class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 text-sm font-medium outline-none">
+                    {% if form.first_name.errors %}
+                        <p class="text-red-500 text-xs font-bold mt-1">⚠️ {{ form.first_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Last Name</label>
+                    <input type="text" name="last_name" value="{{ form.last_name.value|default:'' }}" required placeholder="Dela Cruz"
+                           class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 text-sm font-medium outline-none">
+                    {% if form.last_name.errors %}
+                        <p class="text-red-500 text-xs font-bold mt-1">⚠️ {{ form.last_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 4. Email Address -->
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Email Address</label>
+                <input type="email" name="email" value="{{ form.email.value|default:'' }}" required placeholder="student@school.edu.ph"
+                       class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 text-sm font-medium outline-none">
+                {% if form.email.errors %}
+                    <p class="text-red-500 text-xs font-bold mt-1">⚠️ {{ form.email.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- 5. Password 1 -->
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Password</label>
+                <input type="password" name="password1" required placeholder="••••••••"
+                       class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 text-sm font-medium outline-none">
+                {% if form.password1.errors %}
+                    <p class="text-red-500 text-xs font-bold mt-1">⚠️ {{ form.password1.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- 6. Password 2 (Confirm Password) -->
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Confirm Password</label>
+                <input type="password" name="password2" required placeholder="••••••••"
+                       class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 text-sm font-medium outline-none">
+                {% if form.password2.errors %}
+                    <p class="text-red-500 text-xs font-bold mt-1">⚠️ {{ form.password2.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="w-full bg-black hover:bg-gray-800 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-lg transition duration-200 mt-4">
+                Create Account 🚀
+            </button>
+        </form>
+
+        <!-- Footer Link -->
+        <div class="mt-6 text-center border-t border-gray-100 pt-4">
+            <p class="text-sm text-gray-600">
+                Already registered? 
+                <a href="{% url 'accounts:login' %}" class="font-extrabold text-orange-500 hover:underline">Log in here</a>
+            </p>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

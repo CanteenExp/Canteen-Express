@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Header Banner -->
+    <div class="bg-gradient-to-r from-orange-600 to-amber-500 rounded-2xl p-6 text-white mb-8 shadow-lg">
+        <h1 class="text-3xl font-extrabold mb-2">🍔 Canteen Express Menu</h1>
+        <p class="text-orange-100 text-sm">Pumili ng paborito mong pagkain at mag-pre-order agad!</p>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    {% if categories %}
+    <div class="flex items-center gap-2 overflow-x-auto pb-4 mb-6 scrollbar-none">
+        <a href="{% url 'customer_portal:menu' %}" 
+           class="px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap bg-zinc-900 text-white shadow">
+           All Items
+        </a>
+        {% for category in categories %}
+        <a href="?category={{ category.id }}" 
+           class="px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap bg-zinc-100 text-zinc-700 hover:bg-orange-500 hover:text-white transition">
+           {{ category.name }}
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Food Menu Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for item in menu_items %}
+        <div class="bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between">
+            <div class="p-5">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-lg font-bold text-zinc-900">{{ item.name }}</h3>
+                    <span class="bg-orange-100 text-orange-700 font-extrabold text-sm px-2.5 py-1 rounded-lg">
+                        ₱{{ item.price }}
+                    </span>
+                </div>
+                {% if item.description %}
+                <p class="text-zinc-500 text-sm mb-4 line-clamp-2">{{ item.description }}</p>
+                {% endif %}
+            </div>
+
+            <div class="px-5 pb-5 pt-2 border-t border-zinc-100 flex items-center justify-between">
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full {% if item.is_available %}bg-emerald-100 text-emerald-700{% else %}bg-rose-100 text-rose-700{% endif %}">
+                    {% if item.is_available %}● Available{% else %}○ Sold Out{% endif %}
+                </span>
+                
+                <button class="bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow transition">
+                    + Add to Cart
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full text-center py-12 bg-zinc-50 rounded-2xl border border-dashed border-zinc-300">
+            <p class="text-zinc-500 font-medium">Walang kainan o pagkain na maipapakita sa kasalukuyan.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

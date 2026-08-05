@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Onboarding - Step 2: Phone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 sm:p-8">
+        <!-- Progress Bar -->
+        <div class="mb-6">
+            <div class="flex justify-between text-xs font-semibold text-gray-400 mb-2">
+                <span class="text-orange-600">Step 2 of 5</span>
+                <span>Phone Input</span>
+            </div>
+            <div class="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                <div class="bg-orange-500 h-full w-2/5"></div>
+            </div>
+        </div>
+
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-mobile-screen-button text-2xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">Phone Number</h2>
+            <p class="text-xs text-gray-500 mt-1">We will send a 6-digit verification OTP code to your mobile number.</p>
+        </div>
+
+        <form method="POST" class="space-y-4">
+            {% csrf_token %}
+
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">Mobile Number</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 text-sm font-semibold">+63</span>
+                    <input type="tel" name="phone_number" required placeholder="9123456789" maxlength="10"
+                        class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition text-gray-800 font-medium">
+                </div>
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-md transition flex items-center justify-center space-x-2">
+                <span>Send OTP Code</span>
+                <i class="fa-solid fa-paper-plane text-sm"></i>
+            </button>
+        </form>
+
+        <div class="mt-6 text-center">
+            <a href="{% url 'accounts:faculty_location' %}" class="text-xs text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-arrow-left mr-1"></i> Back
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canteen Express - Kiosk Menu</title>
+    <!-- Tailwind CSS CDN para sa mabilis at malinis na styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-orange-600 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-utensils text-2xl"></i>
+                <h1 class="text-xl font-bold tracking-wide">CANTEEN EXPRESS</h1>
+            </div>
+
+            <!-- Role Badge -->
+            <div class="flex items-center space-x-2">
+                {% if user.is_authenticated or request.session.user_role == 'faculty' %}
+                    <span class="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
+                        <i class="fa-solid fa-user-tie mr-1"></i> Faculty / Staff
+                    </span>
+                {% else %}
+                    <span class="bg-blue-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
+                        <i class="fa-solid fa-graduation-cap mr-1"></i> Student Mode
+                    </span>
+                {% endif %}
+                <a href="{% url 'accounts:landing' %}" class="text-xs bg-orange-700 hover:bg-orange-800 px-3 py-1 rounded text-white transition">
+                    Switch Role
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left 2 Columns: Categories & Food Items -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- Fulfillment Method Selection -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Select Order Type</h2>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <button type="button" onclick="setOrderType('Dine-In')" class="order-type-btn border-2 border-orange-500 bg-orange-50 text-orange-600 py-3 rounded-lg font-bold flex flex-col items-center justify-center transition">
+                        <i class="fa-solid fa-chair text-lg mb-1"></i>
+                        <span>Dine-In</span>
+                    </button>
+                    
+                    <button type="button" onclick="setOrderType('Takeout')" class="order-type-btn border-2 border-gray-200 text-gray-600 py-3 rounded-lg font-bold flex flex-col items-center justify-center hover:border-orange-500 transition">
+                        <i class="fa-solid fa-bag-shopping text-lg mb-1"></i>
+                        <span>Takeout / Pickup</span>
+                    </button>
+
+                    <!-- Delivery Option (Lilitaw lang kung Faculty / Staff) -->
+                    {% if can_deliver %}
+                    <button type="button" onclick="setOrderType('Delivery')" class="order-type-btn border-2 border-gray-200 text-gray-600 py-3 rounded-lg font-bold flex flex-col items-center justify-center hover:border-orange-500 transition">
+                        <i class="fa-solid fa-truck-fast text-lg mb-1"></i>
+                        <span>Office Delivery</span>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Category Pills -->
+            <div class="flex space-x-2 overflow-x-auto pb-2 scrollbar-none">
+                <button class="bg-orange-600 text-white px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap shadow-sm">All Items</button>
+                <button class="bg-white text-gray-600 px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap border hover:bg-gray-50">Rice Meals</button>
+                <button class="bg-white text-gray-600 px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap border hover:bg-gray-50">Snacks & Fastfood</button>
+                <button class="bg-white text-gray-600 px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap border hover:bg-gray-50">Drinks & Beverages</button>
+            </div>
+
+            <!-- Food Menu Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Sample Menu Item 1 -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition flex flex-col justify-between">
+                    <div class="p-4 flex space-x-4">
+                        <div class="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 flex-shrink-0">
+                            <i class="fa-solid fa-bowl-rice text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-800">Chicken Adobo with Rice</h3>
+                            <p class="text-xs text-gray-500 mt-1">Savory tender chicken served with steamed white rice.</p>
+                            <p class="text-orange-600 font-extrabold mt-2">₱ 85.00</p>
+                        </div>
+                    </div>
+                    <button onclick="addToCart('Chicken Adobo', 85)" class="w-full bg-orange-100 text-orange-700 hover:bg-orange-600 hover:text-white font-semibold py-2 transition text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Add to Order
+                    </button>
+                </div>
+
+                <!-- Sample Menu Item 2 -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition flex flex-col justify-between">
+                    <div class="p-4 flex space-x-4">
+                        <div class="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 flex-shrink-0">
+                            <i class="fa-solid fa-burger text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-800">Cheeseburger Special</h3>
+                            <p class="text-xs text-gray-500 mt-1">Grilled beef patty with melted cheddar cheese.</p>
+                            <p class="text-orange-600 font-extrabold mt-2">₱ 60.00</p>
+                        </div>
+                    </div>
+                    <button onclick="addToCart('Cheeseburger Special', 60)" class="w-full bg-orange-100 text-orange-700 hover:bg-orange-600 hover:text-white font-semibold py-2 transition text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Add to Order
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right 1 Column: Order Summary / Cart -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col justify-between h-fit sticky top-20">
+            <div>
+                <div class="flex justify-between items-center border-b pb-3 mb-3">
+                    <h2 class="font-bold text-gray-800 text-lg flex items-center gap-2">
+                        <i class="fa-solid fa-cart-shopping text-orange-600"></i> Current Order
+                    </h2>
+                    <span id="selected-type-badge" class="text-xs bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-md font-semibold">
+                        Dine-In
+                    </span>
+                </div>
+
+                <!-- Cart Items List -->
+                <div id="cart-items" class="space-y-3 min-h-[150px] max-h-[300px] overflow-y-auto pr-1">
+                    <p class="text-xs text-gray-400 text-center py-8">Your cart is empty. Select items from the menu.</p>
+                </div>
+            </div>
+
+            <!-- Total & Checkout -->
+            <div class="border-t pt-4 mt-4">
+                <div class="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>Subtotal</span>
+                    <span id="cart-subtotal">₱ 0.00</span>
+                </div>
+                <div class="flex justify-between text-lg font-bold text-gray-900 mb-4">
+                    <span>Total</span>
+                    <span id="cart-total" class="text-orange-600">₱ 0.00</span>
+                </div>
+
+                <form method="post" action="#">
+                    {% csrf_token %}
+                    <input type="hidden" name="order_type" id="input-order-type" value="Dine-In">
+                    <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-lg shadow-lg transition flex justify-center items-center gap-2">
+                        <span>Proceed to Checkout</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let cart = [];
+        let selectedOrderType = 'Dine-In';
+
+        function setOrderType(type) {
+            selectedOrderType = type;
+            document.getElementById('selected-type-badge').innerText = type;
+            document.getElementById('input-order-type').value = type;
+        }
+
+        function addToCart(name, price) {
+            const existing = cart.find(item => item.name === name);
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                cart.push({ name, price, qty: 1 });
+            }
+            renderCart();
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-items');
+            if (cart.length === 0) {
+                container.innerHTML = `<p class="text-xs text-gray-400 text-center py-8">Your cart is empty. Select items from the menu.</p>`;
+                document.getElementById('cart-subtotal').innerText = '₱ 0.00';
+                document.getElementById('cart-total').innerText = '₱ 0.00';
+                return;
+            }
+
+            let total = 0;
+            container.innerHTML = cart.map(item => {
+                const itemTotal = item.price * item.qty;
+                total += itemTotal;
+                return `
+                    <div class="flex justify-between items-center text-sm">
+                        <div>
+                            <p class="font-medium text-gray-800">${item.name}</p>
+                            <p class="text-xs text-gray-500">₱${item.price} x ${item.qty}</p>
+                        </div>
+                        <span class="font-bold text-gray-700">₱${itemTotal.toFixed(2)}</span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('cart-subtotal').innerText = `₱ ${total.toFixed(2)}`;
+            document.getElementById('cart-total').innerText = `₱ ${total.toFixed(2)}`;
+        }
+    </script>
+</body>
+</html>
