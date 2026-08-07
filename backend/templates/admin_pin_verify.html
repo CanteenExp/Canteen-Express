@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Enter Supervisor PIN - Canteen Express{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-12 bg-white rounded-3xl p-8 border border-gray-200 shadow-lg text-center space-y-6">
+    <div class="w-16 h-16 bg-brand-50 text-brand-500 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-sm">
+        <i class="fa-solid fa-lock"></i>
+    </div>
+    
+    <div>
+        <h1 class="text-xl font-black text-dark-900">Restricted Area</h1>
+        <p class="text-xs text-gray-500 mt-1">Enter the 4-digit supervisor PIN to access System Administration controls.</p>
+    </div>
+
+    {% if error %}
+    <div class="p-3 bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" class="space-y-4">
+        {% csrf_token %}
+        <input type="password" name="pin" maxlength="4" placeholder="••••" required autofocus
+            class="w-full text-center tracking-widest text-2xl py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-brand-500 font-black">
+            
+        <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 rounded-2xl text-sm transition shadow-md shadow-brand-500/20">
+            Verify PIN
+        </button>
+    </form>
+
+    <a href="{% url 'kitchen_display:dashboard' %}" class="block text-xs font-bold text-gray-400 hover:text-gray-600">
+        <i class="fa-solid fa-arrow-left mr-1"></i> Back to Staff Dashboard
+    </a>
+</div>
+{% endblock %}

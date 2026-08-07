@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block title %}System Administrator Governance - Canteen Express{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Admin Header & Status -->
+    <div class="bg-dark-900 text-white rounded-3xl p-6 md:p-8 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+        <div class="z-10">
+            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold mb-3">
+                <i class="fa-solid fa-user-shield"></i> Supervisor & Admin Mode
+            </span>
+            <h1 class="text-2xl md:text-3xl font-black tracking-tight">
+                System Administration Dashboard
+            </h1>
+            <p class="text-gray-400 text-sm mt-1">Platform-wide oversight, user account management, and dispute resolution.</p>
+        </div>
+
+        <div class="z-10 flex flex-wrap gap-3">
+            <a href="{% url 'kitchen_display:admin_logout' %}" class="bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2.5 rounded-2xl text-xs transition flex items-center gap-2 border border-white/10">
+                <i class="fa-solid fa-arrow-left"></i> Exit to Staff Portal
+            </a>
+        </div>
+        
+        <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-red-500/10 rounded-full blur-2xl"></div>
+    </div>
+
+    <!-- Admin Tabs / Grid Sections -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Column 1 & 2: User Account Management & Approvals -->
+        <div class="lg:col-span-2 bg-white rounded-3xl border border-gray-200/80 shadow-sm p-6 space-y-4">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-4">
+                <div>
+                    <h2 class="text-lg font-black text-dark-900">User Account Management & Approvals</h2>
+                    <p class="text-xs text-gray-500">Create, verify, manage, or remove user accounts across all roles (including approving/reviewing vendor and delivery staff accounts).</p>
+                </div>
+                <span class="inline-flex items-center gap-1.5 text-xs font-bold bg-brand-50 text-brand-700 px-3 py-1 rounded-full border border-brand-200">
+                    <span>{{ pending_users|length|default:0 }}</span>
+                    <span>Pending</span>
+                </span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                            <th class="py-3 px-4">User / Username</th>
+                            <th class="py-3 px-4">Role</th>
+                            <th class="py-3 px-4">Email</th>
+                            <th class="py-3 px-4 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 text-sm font-medium">
+                        {% for user_acc in pending_users %}
+                        <tr class="hover:bg-gray-50/80 transition">
+                            <td class="py-3.5 px-4 font-black text-dark-900">{{ user_acc.username }}</td>
+                            <td class="py-3.5 px-4">
+                                <span class="bg-gray-100 text-gray-700 text-xs font-bold px-2.5 py-1 rounded-lg">
+                                    {{ user_acc.role|default:"Staff/Vendor" }}
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-4 text-gray-500 text-xs">{{ user_acc.email }}</td>
+                            <td class="py-3.5 px-4 text-right space-x-2">
+                                <button class="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition shadow-sm">
+                                    Approve
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="py-8 text-center text-gray-400 text-sm">
+                                No pending accounts requiring verification at this time.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Column 3: Quick System Controls & Config -->
+        <div class="space-y-6">
+            <div class="bg-white rounded-3xl border border-gray-200/80 shadow-sm p-6 space-y-4">
+                <h2 class="text-base font-black text-dark-900">System Configuration</h2>
+                <p class="text-xs text-gray-500">Manage platform settings and promotions.</p>
+                
+                <div class="space-y-3 pt-2">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                        <span class="text-xs font-bold text-gray-700">Maintenance Mode</span>
+                        <input type="checkbox" class="toggle accent-brand-500">
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                        <span class="text-xs font-bold text-gray-700">Peak Hour Surcharge</span>
+                        <span class="text-xs font-extrabold text-brand-500">Active</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dispute Resolution shortcut -->
+            <div class="bg-brand-500 text-white rounded-3xl p-6 shadow-md space-y-3 relative overflow-hidden">
+                <div class="relative z-10">
+                    <h2 class="text-base font-black">Dispute Resolution & Reviews</h2>
+                    <p class="text-xs text-orange-100 mt-1">Handle customer complaints or delivery issues in real-time.</p>
+                    <button class="mt-4 bg-white text-brand-600 hover:bg-orange-50 font-bold px-4 py-2 rounded-xl text-xs shadow transition">
+                        Open Support Desk
+                    </button>
+                </div>
+                <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- System-Wide Audit Logs & Transaction Oversight -->
+    <div class="bg-white rounded-3xl border border-gray-200/80 shadow-sm p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
+            <div>
+                <h2 class="text-lg font-black text-dark-900">Platform Transaction Audit Logs</h2>
+                <p class="text-xs text-gray-500">System-wide monitoring of recent order states and audit trails.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="#" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-csv text-emerald-600"></i> Export CSV
+                </a>
+                <a href="#" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-pdf text-red-500"></i> Export PDF
+                </a>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                        <th class="py-3 px-4">Order ID</th>
+                        <th class="py-3 px-4">Customer</th>
+                        <th class="py-3 px-4">Status Log</th>
+                        <th class="py-3 px-4">Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-sm font-medium">
+                    {% for order in all_orders %}
+                    <tr class="hover:bg-gray-50/80 transition">
+                        <td class="py-3.5 px-4 font-black text-dark-900">#{{ order.id }}</td>
+                        <td class="py-3.5 px-4 text-gray-800">{{ order.customer.username }}</td>
+                        <td class="py-3.5 px-4 text-xs font-bold text-blue-600">{{ order.status }}</td>
+                        <td class="py-3.5 px-4 text-gray-400 text-xs">{{ order.created_at }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="py-6 text-center text-gray-400 text-sm">
+                            No recent transaction audit logs found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

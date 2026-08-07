@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Canteen Staff Dashboard - Canteen Express{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Welcome Header -->
+    <div class="bg-dark-900 text-white rounded-3xl p-6 md:p-8 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-visible">
+        <div class="z-10">
+            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 border border-brand-500/30 text-brand-500 text-xs font-bold mb-3">
+                <i class="fa-solid fa-shield-halved"></i> Staff Portal
+            </span>
+            <h1 class="text-2xl md:text-3xl font-black tracking-tight">
+                Welcome back, <span class="text-brand-500">{{ staff_name }}</span>! 👋
+            </h1>
+            <p class="text-gray-400 text-sm mt-1">Here is what's happening in the canteen today.</p>
+        </div>
+
+        <div class="z-10 flex flex-wrap items-center gap-3">
+            <a href="{% url 'kitchen_display:kitchen_board' %}" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-5 py-3 rounded-2xl text-sm shadow-lg shadow-brand-500/30 transition flex items-center gap-2">
+                <i class="fa-solid fa-fire-burner"></i> Open Kitchen Board
+            </a>
+            
+            <a href="{% url 'kitchen_display:manage_menu' %}" class="bg-white/10 hover:bg-white/20 text-white font-bold px-5 py-3 rounded-2xl text-sm backdrop-blur-md transition flex items-center gap-2 border border-white/10">
+                <i class="fa-solid fa-utensils text-brand-500"></i> Menu & Stock Management
+            </a>
+
+            <!-- Settings Dropdown Button -->
+            <div class="relative" x-data="{ open: false }">
+                <button @click.stop="open = !open" 
+                    class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition border border-white/10 shadow-sm focus:outline-none">
+                    <i class="fa-solid fa-gear text-base"></i>
+                </button>
+
+                <!-- Dropdown Menu -->
+                <div x-show="open" 
+                     @click.outside="open = false"
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 scale-95 -translate-y-2"
+                     x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 scale-95 -translate-y-2"
+                     class="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-zinc-100 py-2 z-50 text-zinc-800"
+                     style="display: none;">
+                    
+                    <div class="px-4 py-2 border-b border-zinc-100">
+                        <p class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Role Control</p>
+                        <p class="text-xs font-black text-zinc-900 mt-0.5">
+                            {% if request.session.admin_verified %}Admin Mode{% else %}Canteen Staff{% endif %}
+                        </p>
+                    </div>
+
+                    <div class="p-1 space-y-0.5">
+                        {% if request.session.admin_verified %}
+                            <a href="{% url 'kitchen_display:admin_logout' %}" 
+                               class="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition">
+                                <i class="fa-solid fa-user-shield w-4 text-center"></i>
+                                Switch to Staff Mode
+                            </a>
+                        {% else %}
+                            <a href="{% url 'kitchen_display:admin_pin_verify' %}" 
+                               class="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-50 rounded-xl transition">
+                                <i class="fa-solid fa-lock w-4 text-center text-orange-500"></i>
+                                Switch to Admin (PIN)
+                            </a>
+                        {% endif %}
+
+                        <div class="border-t border-zinc-100 my-1"></div>
+
+                        <form method="POST" action="{% url 'accounts:logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" 
+                                class="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-zinc-600 hover:bg-zinc-50 rounded-xl transition text-left">
+                                <i class="fa-solid fa-right-from-bracket w-4 text-center text-zinc-400"></i>
+                                Log Out
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Subtle Background Glow -->
+        <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-brand-500/10 rounded-full blur-2xl"></div>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Today's Total Orders -->
+        <div class="bg-white p-6 rounded-3xl border border-gray-200/80 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Orders Today</p>
+                <h3 class="text-2xl font-black text-dark-900 mt-1">{{ total_orders_today }}</h3>
+            </div>
+            <span class="p-3.5 bg-gray-100 text-dark-900 rounded-2xl text-xl">
+                <i class="fa-solid fa-receipt"></i>
+            </span>
+        </div>
+
+        <!-- Pending Orders -->
+        <div class="bg-white p-6 rounded-3xl border border-brand-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-extrabold text-brand-500 uppercase tracking-wider">Pending</p>
+                <h3 class="text-2xl font-black text-brand-500 mt-1">{{ pending_count }}</h3>
+            </div>
+            <span class="p-3.5 bg-brand-50 text-brand-500 rounded-2xl text-xl">
+                <i class="fa-solid fa-clock"></i>
+            </span>
+        </div>
+
+        <!-- In Cooking -->
+        <div class="bg-white p-6 rounded-3xl border border-blue-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-extrabold text-blue-600 uppercase tracking-wider">In Kitchen</p>
+                <h3 class="text-2xl font-black text-blue-600 mt-1">{{ preparing_count }}</h3>
+            </div>
+            <span class="p-3.5 bg-blue-50 text-blue-600 rounded-2xl text-xl">
+                <i class="fa-solid fa-kitchen-set"></i>
+            </span>
+        </div>
+
+        <!-- Ready for Pickup -->
+        <div class="bg-white p-6 rounded-3xl border border-emerald-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-extrabold text-emerald-600 uppercase tracking-wider">Ready</p>
+                <h3 class="text-2xl font-black text-emerald-600 mt-1">{{ ready_count }}</h3>
+            </div>
+            <span class="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl text-xl">
+                <i class="fa-solid fa-circle-check"></i>
+            </span>
+        </div>
+
+    </div>
+
+    <!-- Live Orders Overview Table -->
+    <div class="bg-white rounded-3xl border border-gray-200/80 shadow-sm p-6 space-y-4">
+        <div class="flex justify-between items-center border-b border-gray-100 pb-4">
+            <div>
+                <h2 class="text-lg font-black text-dark-900">Active Orders Overview</h2>
+                <p class="text-xs text-gray-500">Live order queue waiting for action.</p>
+            </div>
+            <a href="{% url 'kitchen_display:kitchen_board' %}" class="text-xs font-extrabold text-brand-500 hover:text-brand-600 flex items-center gap-1">
+                View Full Kitchen Board <i class="fa-solid fa-arrow-right"></i>
+            </a>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                        <th class="py-3 px-4">Order ID</th>
+                        <th class="py-3 px-4">Customer</th>
+                        <th class="py-3 px-4">Time</th>
+                        <th class="py-3 px-4">Status</th>
+                        <th class="py-3 px-4 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-sm font-medium">
+                    {% for order in recent_orders %}
+                    <tr class="hover:bg-gray-50/80 transition">
+                        <td class="py-3.5 px-4 font-black text-dark-900">#{{ order.id }}</td>
+                        <td class="py-3.5 px-4 text-gray-800">{{ order.customer.get_full_name|default:order.customer.username }}</td>
+                        <td class="py-3.5 px-4 text-gray-400 text-xs">{{ order.created_at|timesince }} ago</td>
+                        <td class="py-3.5 px-4">
+                            {% if order.status == 'PENDING' %}
+                                <span class="bg-brand-50 text-brand-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-brand-200">Pending</span>
+                            {% elif order.status == 'PREPARING' %}
+                                <span class="bg-blue-50 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-blue-200">Preparing</span>
+                            {% elif order.status == 'READY' %}
+                                <span class="bg-emerald-50 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-emerald-200">Ready</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-right">
+                            <a href="{% url 'kitchen_display:kitchen_board' %}" class="text-xs font-bold bg-dark-900 text-white px-3 py-1.5 rounded-xl hover:bg-black transition inline-flex items-center gap-1">
+                                Manage <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-gray-400 text-sm">
+                            No active orders in queue right now.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

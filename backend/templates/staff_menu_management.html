@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Menu & Stock Management - Canteen Express{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white rounded-3xl p-6 border border-gray-200/80 shadow-sm flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-black text-dark-900 tracking-tight">Menu & Stock Management</h1>
+            <p class="text-gray-500 text-sm mt-1">Add items, adjust prices, monitor stock levels, and update nutritional details.</p>
+        </div>
+        <a href="{% url 'kitchen_display:dashboard' %}" class="text-xs font-bold bg-gray-100 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-200 transition">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Add Item Form Section -->
+    <div class="bg-white rounded-3xl p-6 border border-gray-200/80 shadow-sm space-y-4">
+        <h2 class="text-lg font-black text-dark-900">Add New Menu Item</h2>
+        <form method="POST" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-bold text-gray-600 mb-1">Item Name</label>
+                <input type="text" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 mb-1">Price (₱)</label>
+                <input type="number" step="0.01" name="price" required class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 mb-1">Initial Stock</label>
+                <input type="number" name="stock" value="50" required class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 mb-1">Nutritional Details</label>
+                <input type="text" name="nutritional_info" placeholder="e.g. 350 kcal" class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2 px-4 rounded-xl text-sm transition shadow-md shadow-brand-500/20">
+                    <i class="fa-solid fa-plus mr-1"></i> Add Item
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Inventory / Menu Table List -->
+    <div class="bg-white rounded-3xl border border-gray-200/80 shadow-sm p-6 space-y-4">
+        <h2 class="text-lg font-black text-dark-900">Current Inventory & Menu Status</h2>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                        <th class="py-3 px-4">Item Name</th>
+                        <th class="py-3 px-4">Price</th>
+                        <th class="py-3 px-4">Stock Level</th>
+                        <th class="py-3 px-4">Nutritional Info</th>
+                        <th class="py-3 px-4">Availability</th>
+                        <th class="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-sm font-medium">
+                    {% for item in menu_items %}
+                    <tr class="hover:bg-gray-50/80 transition">
+                        <td class="py-3.5 px-4 font-black text-dark-900">{{ item.name }}</td>
+                        <td class="py-3.5 px-4 text-gray-800">₱{{ item.price }}</td>
+                        <td class="py-3.5 px-4">
+                            <span class="font-bold {% if item.stock < 10 %}text-red-500{% else %}text-emerald-600{% endif %}">
+                                {{ item.stock }} units
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 text-gray-500 text-xs">{{ item.nutritional_info|default:"N/A" }}</td>
+                        <td class="py-3.5 px-4">
+                            {% if item.is_available %}
+                                <span class="bg-emerald-50 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-emerald-200">Available</span>
+                            {% else %}
+                                <span class="bg-red-50 text-red-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-red-200">Out of Stock</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-right">
+                            <a href="{% url 'kitchen_display:toggle_availability' item.id %}" class="text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-xl transition">
+                                Toggle Status
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-gray-400 text-sm">
+                            No menu items added yet. Use the form above to add one.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
