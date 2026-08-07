@@ -1,14 +1,12 @@
 from django.shortcuts import render
 
-def kiosk_menu_view(request):
-    # Sinusuri kung faculty/staff (puwedeng delivery) o student (dine-in / pickup lang)
-    can_deliver = request.session.get('can_deliver', False)
+def kiosk_welcome(request):
+    # Added 'customer_portal/' prefix
+    return render(request, 'customer_portal/kiosk_welcome.html') 
 
-    # Kung ang user ay ganap na naka-login bilang Staff/Superuser
-    if request.user.is_authenticated:
-        can_deliver = True
+def kiosk_home(request):
+    # Added 'customer_portal/' prefix
+    return render(request, 'customer_portal/kiosk_home.html')
 
-    context = {
-        'can_deliver': can_deliver,
-    }
-    return render(request, 'customer_portal/kiosk_menu.html', context)
+def kiosk_auth(request):
+    return render(request, 'customer_portal/kiosk_auth.html')

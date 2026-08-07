@@ -1,0 +1,120 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Let's You In</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+        }
+    </style>
+</head>
+<body class="bg-[#F8FAF7] text-gray-800 min-h-screen flex justify-center items-center p-4 select-none">
+
+    <!-- Screen Wrapper Container -->
+    <div class="w-full max-w-sm bg-white rounded-[40px] shadow-xl p-6 flex flex-col justify-between min-h-[780px] border border-gray-100 relative">
+
+        <!-- Top Navigation -->
+        <header class="w-full flex items-center justify-between pt-2">
+            <a href="{% url 'kiosk_welcome' %}" class="text-gray-700 hover:text-black transition active:scale-95 text-lg p-1">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+        </header>
+
+        <!-- Main Center Content -->
+        <main class="w-full my-auto flex flex-col items-center text-center">
+            
+            <!-- Graphic Illustration -->
+            <div class="w-48 h-48 sm:w-56 sm:h-56 mb-6 flex items-center justify-center relative">
+                <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                    <!-- Outer Light Background Circle -->
+                    <circle cx="100" cy="100" r="85" fill="#EAEFE9"/>
+                    
+                    <!-- Background Sun Accent -->
+                    <circle cx="75" cy="50" r="14" fill="#FF6B7A"/>
+                    
+                    <!-- Window Frame -->
+                    <rect x="85" y="45" width="45" height="70" rx="4" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="2"/>
+                    <line x1="107" y1="45" x2="107" y2="115" stroke="#E5E7EB" stroke-width="2"/>
+                    <line x1="85" y1="80" x2="130" y2="80" stroke="#E5E7EB" stroke-width="2"/>
+
+                    <!-- Green Bush / Tree Element -->
+                    <path d="M115 75C110 65 125 45 145 50C160 35 185 50 180 70C190 85 175 110 155 105C140 115 120 100 115 75Z" fill="#10B981"/>
+                    <path d="M140 95L150 135" stroke="#374151" stroke-width="12" stroke-linecap="round"/>
+
+                    <!-- Seated Person Character -->
+                    <circle cx="95" cy="80" r="8" fill="#1F2937"/> <!-- Hair -->
+                    <circle cx="95" cy="82" r="6" fill="#FCA5A5"/> <!-- Face -->
+                    <path d="M88 90 C88 90, 95 88, 102 90 L100 108 L90 108 Z" fill="#10B981"/> <!-- Green Shirt -->
+                    <path d="M90 108 L110 118 L105 135 L95 130 Z" fill="#1F2937"/> <!-- Pants -->
+                </svg>
+            </div>
+
+            <!-- Page Title -->
+            <h1 class="text-3xl font-black text-gray-900 mb-6 tracking-tight">Let’s you in</h1>
+
+            <!-- Social Login Buttons -->
+            <div class="w-full space-y-3.5 mb-6">
+                
+                <!-- Facebook -->
+                <button type="button" class="w-full bg-white hover:bg-gray-50 text-gray-800 font-bold py-3.5 px-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-center gap-3 transition active:scale-[0.98]">
+                    <i class="fa-brands fa-facebook text-xl text-[#1877F2]"></i>
+                    <span class="text-xs sm:text-sm">Continue with Facebook</span>
+                </button>
+
+                <!-- Google -->
+                <button type="button" class="w-full bg-white hover:bg-gray-50 text-gray-800 font-bold py-3.5 px-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-center gap-3 transition active:scale-[0.98]">
+                    <!-- Google Multi-color Icon -->
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    <span class="text-xs sm:text-sm">Continue with Google</span>
+                </button>
+
+                <!-- Apple -->
+                <button type="button" class="w-full bg-white hover:bg-gray-50 text-gray-800 font-bold py-3.5 px-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-center gap-3 transition active:scale-[0.98]">
+                    <i class="fa-brands fa-apple text-xl text-black"></i>
+                    <span class="text-xs sm:text-sm">Continue with Apple</span>
+                </button>
+
+            </div>
+
+            <!-- "or" Divider -->
+            <div class="w-full flex items-center justify-center gap-4 mb-6">
+                <div class="h-[1px] flex-1 bg-gray-200"></div>
+                <span class="text-xs text-gray-400 font-medium">or</span>
+                <div class="h-[1px] flex-1 bg-gray-200"></div>
+            </div>
+
+            <!-- Green Primary Button -->
+            <a href="{% url 'kiosk_home' %}" 
+               class="w-full bg-[#10B981] hover:bg-[#059669] active:scale-95 text-white font-bold text-xs sm:text-sm py-4 rounded-full shadow-lg shadow-emerald-500/20 transition-all text-center block">
+                Sign in with Phone Number
+            </a>
+
+        </main>
+
+        <!-- Footer Sign-up Link -->
+        <footer class="w-full text-center pb-2 pt-4">
+            <p class="text-xs text-gray-400 font-medium">
+                Don't have an account? 
+                <a href="#" class="text-[#10B981] font-bold hover:underline ml-1">Sign up</a>
+            </p>
+        </footer>
+
+    </div>
+
+</body>
+</html>
