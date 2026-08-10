@@ -1,13 +1,20 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.shortcuts import redirect  # <--- Added this import
+from django.shortcuts import redirect
 
 urlpatterns = [
-    # 1. Automatically redirect root URL (127.0.0.1:8000/) to /kiosk/
+    # Redirect root URL to kiosk
     path('', lambda request: redirect('kiosk/')),
 
-    # 2. Your existing app paths
+    # Admin
     path('admin/', admin.site.urls),
+
+    # Accounts
     path('accounts/', include('accounts.urls')),
+
+    # Customer / Kiosk
     path('kiosk/', include('customer_portal.urls')),
+
+    # Kitchen / Canteen Staff
+    path('kitchen/', include('kitchen_display.urls')),
 ]

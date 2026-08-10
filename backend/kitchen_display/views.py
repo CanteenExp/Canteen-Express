@@ -1,6 +1,143 @@
-from django.shortcuts import render
+import json
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.utils import timezone
+from django.contrib.auth import get_user_model
 from accounts.decorators import role_required
 
+from order_management.models import Order 
+from canteen_menu.models import MenuItem 
+
+User = get_user_model()
+
 @role_required(allowed_roles=['STAFF'])
-def kitchen_dashboard(request):
-    return render(request, 'kitchen_dashboard.html')
+def staff_dashboard(request):
+    """Main Canteen Staff Dashboard with daily stats & quick links."""
+    today = timezone.now().date()
+    today_orders = Order.objects.filter(created_at__date=today)
+    
+    total_orders_today = today_orders.count()
+    pending_count = Order.objects.filter(status='PENDING').count()
+    preparing_count = Order.objects.filter(status='PREPARING').count()
+    ready_count = Order.objects.filter(status='READY').count()
+    
+    recent_orders = Order.objects.exclude(status='COMPLETED').order_by('-created_at')[:5]
+
+    context = {
+        'total_orders_today': total_orders_today,
+        'pending_count': pending_count,
+        'preparing_count': preparing_count,
+        'ready_count': ready_count,
+        'recent_orders': recent_orders,
+        'staff_name': request.user.first_name or request.user.username,
+    }
+    return render(request, 'staff_dashboard.html', context)
+
+
+@role_required(allowed_roles=['STAFF'])
+def kitchen_display(request):
+    """Kanban-style Order Board for real-time order processing."""
+    pending_orders = Order.objects.filter(status='PENDING').order_by('created_at')
+    preparing_orders = Order.objects.filter(status='PREPARING').order_by('updated_at')
+    ready_orders = Order.objects.filter(status='READY').order_by('updated_at')
+
+    context = {
+        'pending_orders': pending_orders,
+        'preparing_orders': preparing_orders,
+        'ready_orders': ready_orders,
+        'staff_name': request.user.first_name or request.user.username,
+    }
+    return render(request, 'kitchen_dashboard.html', context)
+
+
+@role_required(allowed_roles=['STAFF'])
+@require_POST
+def update_order_status(request, order_id):
+    """API endpoint to update order status via AJAX."""
+    try:
+        data = json.loads(request.body)
+        new_status = data.get('status')
+
+        order = Order.objects.get(id=order_id)
+        order.status = new_status
+        order.save()
+
+        return JsonResponse({'success': True, 'message': 'Status updated successfully'})
+    except Order.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Order not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@role_required(allowed_roles=['STAFF'])
+def manage_menu(request):
+    """View, add, edit, or delete menu items and monitor stock levels."""
+    menu_items = MenuItem.objects.all().order_by('name')
+    
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        price = request.POST.get('price')
+        stock = request.POST.get('stock', 0)
+        nutritional_info = request.POST.get('nutritional_info', '')
+        is_available = request.POST.get('is_available') == 'on'
+        
+        MenuItem.objects.create(
+            name=name,
+            price=price,
+            stock=stock,
+            nutritional_info=nutritional_info,
+            is_available=is_available
+        )
+        return redirect('kitchen_display:manage_menu')
+
+    context = {'menu_items': menu_items}
+    return render(request, 'staff_menu_management.html', context)
+
+
+@role_required(allowed_roles=['STAFF'])
+def toggle_item_availability(request, item_id):
+    """Quickly update item availability or stock."""
+    item = get_object_or_404(MenuItem, id=item_id)
+    item.is_available = not item.is_available
+    item.save()
+    return redirect('kitchen_display:manage_menu')
+
+
+@role_required(allowed_roles=['STAFF'])
+def admin_pin_verify(request):
+    """Prompt staff for a PIN code to access Admin/System governance controls."""
+    if request.method == 'POST':
+        entered_pin = request.POST.get('pin')
+        CORRECT_PIN = '1234'
+        
+        if entered_pin == CORRECT_PIN:
+            request.session['admin_verified'] = True
+            return redirect('kitchen_display:admin_governance')
+        else:
+            return render(request, 'admin_pin_verify.html', {'error': 'Invalid PIN Code. Please try again.'})
+            
+    return render(request, 'admin_pin_verify.html')
+
+
+@role_required(allowed_roles=['STAFF'])
+def admin_governance(request):
+    """Central Governance, User Approvals, and Analytics Dashboard (PIN Protected)."""
+    if not request.session.get('admin_verified'):
+        return redirect('kitchen_display:admin_pin_verify')
+        
+    pending_users = User.objects.filter(is_active=False) if hasattr(User, 'is_active') else []
+    all_orders = Order.objects.all().order_by('-created_at')[:20]
+
+    context = {
+        'pending_users': pending_users,
+        'all_orders': all_orders,
+    }
+    return render(request, 'admin_dashboard.html', context)
+
+@role_required(allowed_roles=['STAFF'])
+def admin_logout(request):
+    """Exit Admin mode and clear session protection."""
+    if 'admin_verified' in request.session:
+        del request.session['admin_verified']
+    return redirect('kitchen_display:dashboard')
