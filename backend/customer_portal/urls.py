@@ -9,4 +9,6 @@ urlpatterns = [
     path('home/', views.kiosk_home, name='kiosk_home'),
 
     path('auth/', views.kiosk_auth, name='kiosk_auth'),
+
+    path('kiosk/menu/', views.kiosk_menu, name='kiosk_menu'),
 ]

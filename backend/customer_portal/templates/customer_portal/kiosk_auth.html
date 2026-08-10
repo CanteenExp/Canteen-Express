@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Let's You In</title>
+    <title>Log In & Onboarding - Canteen Express</title>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -12,109 +12,228 @@
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
+    <!-- Tailwind Native Color Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            orange: '#FF6117',
+                            dark: '#1E1E1E',
+                            card: '#292929',
+                            light: '#EAEAEA',
+                            slate: '#8E8E93',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
         }
+
+        /* Smooth Slide Transition */
+        .slide-item {
+            transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+        }
     </style>
 </head>
-<body class="bg-[#F8FAF7] text-gray-800 min-h-screen flex justify-center items-center p-4 select-none">
+<body class="bg-[#121212] text-brand-light min-h-screen overflow-y-auto relative select-none flex items-center justify-center p-4 md:p-8">
 
-    <!-- Screen Wrapper Container -->
-    <div class="w-full max-w-sm bg-white rounded-[40px] shadow-xl p-6 flex flex-col justify-between min-h-[780px] border border-gray-100 relative">
+    <!-- MAIN SPLIT CONTAINER CARD -->
+    <div class="w-full max-w-5xl bg-brand-card/95 backdrop-blur-xl rounded-[36px] shadow-2xl border border-white/10 relative z-10 overflow-hidden flex flex-col lg:flex-row my-auto">
 
-        <!-- Top Navigation -->
-        <header class="w-full flex items-center justify-between pt-2">
-            <a href="{% url 'kiosk_welcome' %}" class="text-gray-700 hover:text-black transition active:scale-95 text-lg p-1">
-                <i class="fa-solid fa-arrow-left"></i>
-            </a>
-        </header>
-
-        <!-- Main Center Content -->
-        <main class="w-full my-auto flex flex-col items-center text-center">
+        <!-- ================= LEFT PANEL: INTERACTIVE ONBOARDING CAROUSEL ================= -->
+        <div class="w-full lg:w-1/2 bg-[#1A1A1A] p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/10 relative min-h-[580px]">
             
-            <!-- Graphic Illustration -->
-            <div class="w-48 h-48 sm:w-56 sm:h-56 mb-6 flex items-center justify-center relative">
-                <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
-                    <!-- Outer Light Background Circle -->
-                    <circle cx="100" cy="100" r="85" fill="#EAEFE9"/>
-                    
-                    <!-- Background Sun Accent -->
-                    <circle cx="75" cy="50" r="14" fill="#FF6B7A"/>
-                    
-                    <!-- Window Frame -->
-                    <rect x="85" y="45" width="45" height="70" rx="4" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="2"/>
-                    <line x1="107" y1="45" x2="107" y2="115" stroke="#E5E7EB" stroke-width="2"/>
-                    <line x1="85" y1="80" x2="130" y2="80" stroke="#E5E7EB" stroke-width="2"/>
+            <!-- Top Controls (Back, Home, Badge, Skip) -->
+            <div class="flex items-center justify-between w-full mb-4">
+                <div class="flex items-center gap-2">
+                    <a href="{% url 'kiosk_welcome' %}" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition active:scale-95 border border-white/10">
+                        <i class="fa-solid fa-arrow-left text-xs"></i>
+                    </a>
+                    <a href="{% url 'kiosk_welcome' %}" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition active:scale-95 border border-white/10">
+                        <i class="fa-solid fa-house text-xs"></i>
+                    </a>
+                </div>
 
-                    <!-- Green Bush / Tree Element -->
-                    <path d="M115 75C110 65 125 45 145 50C160 35 185 50 180 70C190 85 175 110 155 105C140 115 120 100 115 75Z" fill="#10B981"/>
-                    <path d="M140 95L150 135" stroke="#374151" stroke-width="12" stroke-linecap="round"/>
-
-                    <!-- Seated Person Character -->
-                    <circle cx="95" cy="80" r="8" fill="#1F2937"/> <!-- Hair -->
-                    <circle cx="95" cy="82" r="6" fill="#FCA5A5"/> <!-- Face -->
-                    <path d="M88 90 C88 90, 95 88, 102 90 L100 108 L90 108 Z" fill="#10B981"/> <!-- Green Shirt -->
-                    <path d="M90 108 L110 118 L105 135 L95 130 Z" fill="#1F2937"/> <!-- Pants -->
-                </svg>
+                <div class="px-3 py-1 rounded-full bg-brand-orange/15 border border-brand-orange/30 flex items-center gap-1.5">
+                    <i class="fa-solid fa-bolt text-brand-orange text-xs"></i>
+                    <span class="text-[11px] font-bold text-brand-orange uppercase tracking-wide">Student & Faculty Kiosk</span>
+                </div>
             </div>
 
-            <!-- Page Title -->
-            <h1 class="text-3xl font-black text-gray-900 mb-6 tracking-tight">Let’s you in</h1>
-
-            <!-- Social Login Buttons -->
-            <div class="w-full space-y-3.5 mb-6">
+            <!-- CAROUSEL CONTENT WRAPPER -->
+            <div class="w-full my-auto text-center flex flex-col items-center">
                 
-                <!-- Facebook -->
-                <button type="button" class="w-full bg-white hover:bg-gray-50 text-gray-800 font-bold py-3.5 px-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-center gap-3 transition active:scale-[0.98]">
-                    <i class="fa-brands fa-facebook text-xl text-[#1877F2]"></i>
-                    <span class="text-xs sm:text-sm">Continue with Facebook</span>
-                </button>
+                <!-- SLIDE 1 -->
+                <div id="slide-0" class="slide-item w-full flex flex-col items-center">
+                    <div class="w-full h-56 sm:h-64 rounded-3xl overflow-hidden shadow-2xl relative mb-6 border border-white/10">
+                        <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80" 
+                             class="w-full h-full object-cover" alt="Order Ahead">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-2">Order Ahead</h2>
+                    <p class="text-xs sm:text-sm text-brand-slate max-w-xs leading-relaxed">
+                        Browse our daily menu, customize your favorite meals, and send orders straight to the canteen.
+                    </p>
+                </div>
 
-                <!-- Google -->
-                <button type="button" class="w-full bg-white hover:bg-gray-50 text-gray-800 font-bold py-3.5 px-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-center gap-3 transition active:scale-[0.98]">
-                    <!-- Google Multi-color Icon -->
-                    <svg class="w-5 h-5" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                    </svg>
-                    <span class="text-xs sm:text-sm">Continue with Google</span>
-                </button>
+                <!-- SLIDE 2 -->
+                <div id="slide-1" class="slide-item w-full flex flex-col items-center hidden">
+                    <div class="w-full h-56 sm:h-64 rounded-3xl overflow-hidden shadow-2xl relative mb-6 border border-white/10">
+                        <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80" 
+                             class="w-full h-full object-cover" alt="Skip the Line">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-2">Skip the Line</h2>
+                    <p class="text-xs sm:text-sm text-brand-slate max-w-xs leading-relaxed">
+                        Pay quickly at the kiosk or via your phone, then pick up your warm meal when ready.
+                    </p>
+                </div>
 
-                <!-- Apple -->
-                <button type="button" class="w-full bg-white hover:bg-gray-50 text-gray-800 font-bold py-3.5 px-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-center gap-3 transition active:scale-[0.98]">
-                    <i class="fa-brands fa-apple text-xl text-black"></i>
-                    <span class="text-xs sm:text-sm">Continue with Apple</span>
-                </button>
+                <!-- SLIDE 3 -->
+                <div id="slide-2" class="slide-item w-full flex flex-col items-center hidden">
+                    <div class="w-full h-56 sm:h-64 rounded-3xl overflow-hidden shadow-2xl relative mb-6 border border-white/10">
+                        <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80" 
+                             class="w-full h-full object-cover" alt="Fresh & Hot">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-2">Fresh & Delicious</h2>
+                    <p class="text-xs sm:text-sm text-brand-slate max-w-xs leading-relaxed">
+                        Enjoy hot food prepared daily with top quality ingredients right inside your campus.
+                    </p>
+                </div>
 
             </div>
 
-            <!-- "or" Divider -->
-            <div class="w-full flex items-center justify-center gap-4 mb-6">
-                <div class="h-[1px] flex-1 bg-gray-200"></div>
-                <span class="text-xs text-gray-400 font-medium">or</span>
-                <div class="h-[1px] flex-1 bg-gray-200"></div>
+            <!-- Bottom Carousel Controls (Dots & Next Button) -->
+            <div class="w-full flex flex-col items-center gap-4 mt-4">
+                
+                <!-- Pagination Dots -->
+                <div class="flex items-center gap-2">
+                    <button onclick="goToSlide(0)" id="dot-0" class="h-2 w-7 rounded-full bg-brand-orange transition-all duration-300"></button>
+                    <button onclick="goToSlide(1)" id="dot-1" class="h-2 w-2 rounded-full bg-white/20 transition-all duration-300"></button>
+                    <button onclick="goToSlide(2)" id="dot-2" class="h-2 w-2 rounded-full bg-white/20 transition-all duration-300"></button>
+                </div>
+
+                <!-- Next Button -->
+                <button onclick="nextSlide()" 
+                        class="w-full bg-[#2B2B2B] hover:bg-[#353535] text-white font-bold text-xs sm:text-sm py-3.5 rounded-2xl border border-white/10 flex items-center justify-center gap-2 transition active:scale-98">
+                    <span>Next</span>
+                    <i class="fa-solid fa-arrow-right text-brand-orange"></i>
+                </button>
             </div>
 
-            <!-- Green Primary Button -->
-            <a href="{% url 'kiosk_home' %}" 
-               class="w-full bg-[#10B981] hover:bg-[#059669] active:scale-95 text-white font-bold text-xs sm:text-sm py-4 rounded-full shadow-lg shadow-emerald-500/20 transition-all text-center block">
-                Sign in with Phone Number
-            </a>
+        </div>
 
-        </main>
+        <!-- ================= RIGHT PANEL: LOGIN FORM ================= -->
+        <div class="w-full lg:w-1/2 p-6 sm:p-10 flex flex-col justify-between my-auto">
 
-        <!-- Footer Sign-up Link -->
-        <footer class="w-full text-center pb-2 pt-4">
-            <p class="text-xs text-gray-400 font-medium">
-                Don't have an account? 
-                <a href="#" class="text-[#10B981] font-bold hover:underline ml-1">Sign up</a>
-            </p>
-        </footer>
+            <!-- Right Header -->
+            <div class="mb-6">
+                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-1">Login to Account</h1>
+                <p class="text-xs text-brand-slate">Please enter your credentials to continue</p>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <form action="{% url 'kiosk_home' %}" method="GET" class="w-full space-y-3.5">
+                
+                <!-- Username Input -->
+                <div>
+                    <label class="block text-xs font-semibold text-brand-slate mb-1 ml-1 uppercase tracking-wider">Username</label>
+                    <div class="relative flex items-center">
+                        <i class="fa-solid fa-user absolute left-4 text-brand-slate text-sm"></i>
+                        <input type="text" name="username" required placeholder="Enter username" 
+                               class="w-full bg-[#1C1C1C] text-white text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-white/10 focus:border-brand-orange focus:outline-none transition placeholder-gray-500">
+                    </div>
+                </div>
+
+                <!-- Email Input -->
+                <div>
+                    <label class="block text-xs font-semibold text-brand-slate mb-1 ml-1 uppercase tracking-wider">Email</label>
+                    <div class="relative flex items-center">
+                        <i class="fa-solid fa-envelope absolute left-4 text-brand-slate text-sm"></i>
+                        <input type="email" name="email" required placeholder="Enter email address" 
+                               class="w-full bg-[#1C1C1C] text-white text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-white/10 focus:border-brand-orange focus:outline-none transition placeholder-gray-500">
+                    </div>
+                </div>
+
+                <!-- Password Input -->
+                <div>
+                    <label class="block text-xs font-semibold text-brand-slate mb-1 ml-1 uppercase tracking-wider">Password</label>
+                    <div class="relative flex items-center">
+                        <i class="fa-solid fa-lock absolute left-4 text-brand-slate text-sm"></i>
+                        <input type="password" name="password" required placeholder="Enter password" 
+                               class="w-full bg-[#1C1C1C] text-white text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-white/10 focus:border-brand-orange focus:outline-none transition placeholder-gray-500">
+                    </div>
+                </div>
+
+                <!-- Remember Me & Forgot Password -->
+                <div class="flex items-center justify-between text-xs pt-1 px-1">
+                    <label class="flex items-center text-brand-slate cursor-pointer">
+                        <input type="checkbox" class="accent-brand-orange rounded mr-2">
+                        Remember me
+                    </label>
+                    <a href="#" class="text-brand-orange hover:underline font-semibold">Forgot password?</a>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" 
+                        class="w-full bg-brand-orange hover:bg-orange-600 active:scale-95 text-white font-extrabold text-xs sm:text-sm py-4 rounded-2xl shadow-xl shadow-brand-orange/20 transition-all text-center uppercase tracking-wider border border-orange-400/30 mt-2">
+                    Sign In
+                </button>
+
+            </form>
+
+            <!-- Footer Sign-up Link -->
+            <footer class="w-full text-center mt-6 pt-2">
+                <p class="text-xs text-brand-slate font-medium">
+                    Don't have an account? 
+                    <a href="#" class="text-brand-orange font-bold hover:underline ml-1">Sign up</a>
+                </p>
+            </footer>
+
+        </div>
 
     </div>
+
+    <!-- CAROUSEL SCRIPT -->
+    <script>
+        let currentSlide = 0;
+        const totalSlides = 3;
+
+        function goToSlide(index) {
+            // Hide all slides
+            for (let i = 0; i < totalSlides; i++) {
+                document.getElementById(`slide-${i}`).classList.add('hidden');
+                
+                // Reset dots
+                const dot = document.getElementById(`dot-${i}`);
+                dot.classList.remove('w-7', 'bg-brand-orange');
+                dot.classList.add('w-2', 'bg-white/20');
+            }
+
+            // Show selected slide
+            document.getElementById(`slide-${index}`).classList.remove('hidden');
+
+            // Highlight active dot
+            const activeDot = document.getElementById(`dot-${index}`);
+            activeDot.classList.remove('w-2', 'bg-white/20');
+            activeDot.classList.add('w-7', 'bg-brand-orange');
+
+            currentSlide = index;
+        }
+
+        function nextSlide() {
+            let nextIndex = (currentSlide + 1) % totalSlides;
+            goToSlide(nextIndex);
+        }
+    </script>
 
 </body>
 </html>
