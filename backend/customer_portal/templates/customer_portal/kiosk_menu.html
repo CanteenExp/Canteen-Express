@@ -1,206 +1,482 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canteen Express - Kiosk Menu</title>
-    <!-- Tailwind CSS CDN para sa mabilis at malinis na styling -->
+    <title>Today's Menu - Canteen Express</title>
+
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            orange: '#FF6117',
+                            dark: '#121212',
+                            card: '#242424',
+                            light: '#EAEAEA',
+                            amber: '#FFB800',
+                            peach: '#FFECD9',
+                            slate: '#8E8E93',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-brand-dark text-brand-light min-h-screen flex flex-col justify-between selection:bg-brand-orange selection:text-white">
 
-    <!-- Top Navigation Bar -->
-    <header class="bg-orange-600 text-white shadow-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <i class="fa-solid fa-utensils text-2xl"></i>
-                <h1 class="text-xl font-bold tracking-wide">CANTEEN EXPRESS</h1>
-            </div>
-
-            <!-- Role Badge -->
-            <div class="flex items-center space-x-2">
-                {% if user.is_authenticated or request.session.user_role == 'faculty' %}
-                    <span class="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
-                        <i class="fa-solid fa-user-tie mr-1"></i> Faculty / Staff
-                    </span>
-                {% else %}
-                    <span class="bg-blue-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
-                        <i class="fa-solid fa-graduation-cap mr-1"></i> Student Mode
-                    </span>
-                {% endif %}
-                <a href="{% url 'accounts:landing' %}" class="text-xs bg-orange-700 hover:bg-orange-800 px-3 py-1 rounded text-white transition">
-                    Switch Role
+    <!-- ================= HEADER / TOP BAR ================= -->
+    <header class="sticky top-0 z-30 bg-brand-dark/95 backdrop-blur-md border-b border-white/10 px-3 py-3 sm:px-8 sm:py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+            
+            <!-- Left: Back Button & Logo -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="{% url 'kiosk_welcome' %}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95 text-xs sm:text-base">
+                    <i class="fa-solid fa-arrow-left"></i>
                 </a>
+                <div class="flex items-center gap-2">
+                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto object-contain hidden sm:block">
+                    <div>
+                        <h1 class="text-xs sm:text-lg font-black text-white leading-tight">Today's Menu</h1>
+                        <p class="text-[9px] sm:text-xs text-brand-orange font-bold uppercase tracking-wider">
+                            Mode: {{ request.GET.role|default:"Student / Walk-in"|title }}
+                        </p>
+                    </div>
+                </div>
             </div>
+
+            <!-- Right: Search Bar -->
+            <div class="relative flex-1 max-w-xs ml-auto">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-brand-slate text-xs sm:text-sm"></i>
+                <input type="text" id="search-input" onkeyup="filterItems()" placeholder="Search..." class="w-full bg-brand-card border border-white/10 rounded-xl pl-8 sm:pl-9 pr-3 sm:pr-4 py-1.5 sm:py-2 text-xs sm:text-sm text-white placeholder-brand-slate focus:outline-none focus:border-brand-orange transition">
+            </div>
+
         </div>
     </header>
 
-    <div class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <!-- Left 2 Columns: Categories & Food Items -->
-        <div class="lg:col-span-2 space-y-6">
+    <!-- ================= MAIN CONTENT LAYOUT ================= -->
+    <div class="max-w-7xl w-full mx-auto flex-1 flex flex-col lg:flex-row items-start gap-4 sm:gap-6 p-3 sm:p-6 lg:p-8 pb-28 lg:pb-8">
 
-            <!-- Fulfillment Method Selection -->
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Select Order Type</h2>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    <button type="button" onclick="setOrderType('Dine-In')" class="order-type-btn border-2 border-orange-500 bg-orange-50 text-orange-600 py-3 rounded-lg font-bold flex flex-col items-center justify-center transition">
-                        <i class="fa-solid fa-chair text-lg mb-1"></i>
-                        <span>Dine-In</span>
-                    </button>
-                    
-                    <button type="button" onclick="setOrderType('Takeout')" class="order-type-btn border-2 border-gray-200 text-gray-600 py-3 rounded-lg font-bold flex flex-col items-center justify-center hover:border-orange-500 transition">
-                        <i class="fa-solid fa-bag-shopping text-lg mb-1"></i>
-                        <span>Takeout / Pickup</span>
-                    </button>
-
-                    <!-- Delivery Option (Lilitaw lang kung Faculty / Staff) -->
-                    {% if can_deliver %}
-                    <button type="button" onclick="setOrderType('Delivery')" class="order-type-btn border-2 border-gray-200 text-gray-600 py-3 rounded-lg font-bold flex flex-col items-center justify-center hover:border-orange-500 transition">
-                        <i class="fa-solid fa-truck-fast text-lg mb-1"></i>
-                        <span>Office Delivery</span>
-                    </button>
-                    {% endif %}
-                </div>
-            </div>
+        <!-- LEFT COLUMN: Categories & Items -->
+        <main class="flex-1 flex flex-col gap-4 sm:gap-6 min-w-0 w-full">
 
             <!-- Category Pills -->
-            <div class="flex space-x-2 overflow-x-auto pb-2 scrollbar-none">
-                <button class="bg-orange-600 text-white px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap shadow-sm">All Items</button>
-                <button class="bg-white text-gray-600 px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap border hover:bg-gray-50">Rice Meals</button>
-                <button class="bg-white text-gray-600 px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap border hover:bg-gray-50">Snacks & Fastfood</button>
-                <button class="bg-white text-gray-600 px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap border hover:bg-gray-50">Drinks & Beverages</button>
+            <nav class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-3 px-3 sm:mx-0 sm:px-0" id="category-filters">
+                <button onclick="selectCategory('all', this)" class="category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-orange text-white text-xs sm:text-sm font-extrabold whitespace-nowrap shadow-lg shadow-brand-orange/20 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-utensils"></i> All Items
+                </button>
+                <button onclick="selectCategory('biscuits', this)" class="category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-card hover:bg-white/10 text-brand-slate hover:text-white border border-white/10 text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-cookie"></i> Biscuits
+                </button>
+                <button onclick="selectCategory('rice', this)" class="category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-card hover:bg-white/10 text-brand-slate hover:text-white border border-white/10 text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-bowl-rice"></i> Rice Meals
+                </button>
+                <button onclick="selectCategory('beverages', this)" class="category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-card hover:bg-white/10 text-brand-slate hover:text-white border border-white/10 text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-bottle-water"></i> Beverages
+                </button>
+                <button onclick="selectCategory('meryenda', this)" class="category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-card hover:bg-white/10 text-brand-slate hover:text-white border border-white/10 text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-burger"></i> Meryenda
+                </button>
+                <button onclick="selectCategory('dietary', this)" class="category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-card hover:bg-white/10 text-brand-slate hover:text-white border border-white/10 text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-heart-pulse"></i> Dietary
+                </button>
+            </nav>
+
+            <!-- Food Items Grid Container (STRICT 3-COLUMN GRID ON MOBILE & UP) -->
+            <section id="menu-grid" class="grid grid-cols-3 gap-2 sm:gap-4 lg:gap-6">
+                <!-- Dynamic Items Injected Here via JavaScript -->
+            </section>
+        </main>
+
+
+        <!-- RIGHT COLUMN / FIXED HEIGHT STICKY CART -->
+        <aside id="cart-drawer" class="fixed inset-x-0 bottom-0 z-40 lg:sticky lg:top-24 lg:w-80 bg-brand-card/95 lg:bg-brand-card backdrop-blur-xl lg:backdrop-blur-none border-t lg:border border-white/10 rounded-t-[32px] lg:rounded-3xl p-4 sm:p-5 shadow-2xl transition-transform transform translate-y-full lg:translate-y-0 h-auto self-start">
+            
+            <!-- Mobile Drawer Handle -->
+            <div onclick="toggleMobileCart()" class="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3 lg:hidden cursor-pointer"></div>
+
+            <!-- Cart Header -->
+            <div class="flex items-center justify-between border-b border-white/10 pb-3 sm:pb-4">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-cart-shopping text-brand-orange text-base sm:text-lg"></i>
+                    <h2 class="text-base sm:text-lg font-black text-white">Your Order</h2>
+                </div>
+                <button onclick="toggleMobileCart()" class="lg:hidden text-brand-slate hover:text-white text-sm">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
 
-            <!-- Food Menu Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <!-- Sample Menu Item 1 -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition flex flex-col justify-between">
-                    <div class="p-4 flex space-x-4">
-                        <div class="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 flex-shrink-0">
-                            <i class="fa-solid fa-bowl-rice text-3xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-gray-800">Chicken Adobo with Rice</h3>
-                            <p class="text-xs text-gray-500 mt-1">Savory tender chicken served with steamed white rice.</p>
-                            <p class="text-orange-600 font-extrabold mt-2">₱ 85.00</p>
-                        </div>
-                    </div>
-                    <button onclick="addToCart('Chicken Adobo', 85)" class="w-full bg-orange-100 text-orange-700 hover:bg-orange-600 hover:text-white font-semibold py-2 transition text-sm flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-plus"></i> Add to Order
-                    </button>
-                </div>
-
-                <!-- Sample Menu Item 2 -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition flex flex-col justify-between">
-                    <div class="p-4 flex space-x-4">
-                        <div class="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 flex-shrink-0">
-                            <i class="fa-solid fa-burger text-3xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-gray-800">Cheeseburger Special</h3>
-                            <p class="text-xs text-gray-500 mt-1">Grilled beef patty with melted cheddar cheese.</p>
-                            <p class="text-orange-600 font-extrabold mt-2">₱ 60.00</p>
-                        </div>
-                    </div>
-                    <button onclick="addToCart('Cheeseburger Special', 60)" class="w-full bg-orange-100 text-orange-700 hover:bg-orange-600 hover:text-white font-semibold py-2 transition text-sm flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-plus"></i> Add to Order
-                    </button>
-                </div>
+            <!-- Cart Items List Container (Bounded Height & Scrollable) -->
+            <div id="cart-items-container" class="my-3 sm:my-4 min-h-[130px] max-h-[250px] overflow-y-auto space-y-2 sm:space-y-3 no-scrollbar pr-1 flex flex-col justify-start">
+                <!-- Cart Items Injected Here -->
             </div>
 
-        </div>
-
-        <!-- Right 1 Column: Order Summary / Cart -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col justify-between h-fit sticky top-20">
-            <div>
-                <div class="flex justify-between items-center border-b pb-3 mb-3">
-                    <h2 class="font-bold text-gray-800 text-lg flex items-center gap-2">
-                        <i class="fa-solid fa-cart-shopping text-orange-600"></i> Current Order
-                    </h2>
-                    <span id="selected-type-badge" class="text-xs bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-md font-semibold">
-                        Dine-In
-                    </span>
-                </div>
-
-                <!-- Cart Items List -->
-                <div id="cart-items" class="space-y-3 min-h-[150px] max-h-[300px] overflow-y-auto pr-1">
-                    <p class="text-xs text-gray-400 text-center py-8">Your cart is empty. Select items from the menu.</p>
-                </div>
-            </div>
-
-            <!-- Total & Checkout -->
-            <div class="border-t pt-4 mt-4">
-                <div class="flex justify-between text-sm text-gray-600 mb-1">
+            <!-- Cart Total & Checkout -->
+            <div class="border-t border-white/10 pt-3 sm:pt-4 space-y-2 sm:space-y-3">
+                <div class="flex justify-between items-center text-xs text-brand-slate font-medium">
                     <span>Subtotal</span>
-                    <span id="cart-subtotal">₱ 0.00</span>
+                    <span id="cart-subtotal" class="text-white font-bold">₱0.00</span>
                 </div>
-                <div class="flex justify-between text-lg font-bold text-gray-900 mb-4">
+                <div class="flex justify-between items-center text-sm sm:text-base font-black text-white">
                     <span>Total</span>
-                    <span id="cart-total" class="text-orange-600">₱ 0.00</span>
+                    <span id="cart-total" class="text-brand-orange text-lg sm:text-xl">₱0.00</span>
                 </div>
-
-                <form method="post" action="#">
-                    {% csrf_token %}
-                    <input type="hidden" name="order_type" id="input-order-type" value="Dine-In">
-                    <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-lg shadow-lg transition flex justify-center items-center gap-2">
-                        <span>Proceed to Checkout</span>
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </button>
-                </form>
+                <button onclick="checkoutOrder()" id="checkout-btn" disabled class="w-full bg-brand-orange disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-600 active:scale-95 text-white font-extrabold text-xs sm:text-sm py-3 rounded-xl sm:rounded-2xl shadow-lg shadow-brand-orange/20 uppercase tracking-wider transition">
+                    Proceed to Checkout <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
             </div>
-        </div>
+        </aside>
 
     </div>
 
+
+    <!-- ================= MOBILE BOTTOM FLOATING CART BAR ================= -->
+    <div class="fixed bottom-0 inset-x-0 z-30 lg:hidden bg-brand-dark/95 border-t border-white/10 p-3 backdrop-blur-md">
+        <button onclick="toggleMobileCart()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-between shadow-lg shadow-brand-orange/25 active:scale-95 transition">
+            <div class="flex items-center gap-2">
+                <span id="mobile-cart-badge" class="w-5 h-5 rounded-full bg-white text-brand-orange text-[10px] font-black flex items-center justify-center">0</span>
+                <span class="text-xs font-black uppercase tracking-wider">View Cart</span>
+            </div>
+            <span id="mobile-cart-total" class="text-xs font-black">₱0.00 <i class="fa-solid fa-chevron-up ml-1 text-[10px]"></i></span>
+        </button>
+    </div>
+
+
+    <!-- ================= SIOMAI RICE CUSTOMIZATION MODAL ================= -->
+    <div id="siomai-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-brand-card border border-white/10 rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 sm:space-y-5 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 class="text-base sm:text-lg font-extrabold text-white">Customize Siomai Rice</h3>
+                <button onclick="closeSiomaiModal()" class="text-brand-slate hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="space-y-3 sm:space-y-4">
+                <!-- Siomai Quantity Selector -->
+                <div class="flex items-center justify-between bg-white/5 p-3 rounded-2xl border border-white/5">
+                    <div>
+                        <h4 class="text-xs font-bold text-white">Siomai Pieces</h4>
+                        <p class="text-[10px] text-brand-slate">₱10.00 per piece</p>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                        <button onclick="adjustSiomaiModal('siomai', -1)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/10 text-white font-bold text-xs sm:text-sm">-</button>
+                        <span id="modal-siomai-count" class="text-xs sm:text-sm font-black text-white">4</span>
+                        <button onclick="adjustSiomaiModal('siomai', 1)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-brand-orange text-white font-bold text-xs sm:text-sm">+</button>
+                    </div>
+                </div>
+
+                <!-- Rice Quantity Selector -->
+                <div class="flex items-center justify-between bg-white/5 p-3 rounded-2xl border border-white/5">
+                    <div>
+                        <h4 class="text-xs font-bold text-white">Rice Scoops</h4>
+                        <p class="text-[10px] text-brand-slate">₱12.00 per scoop</p>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                        <button onclick="adjustSiomaiModal('rice', -1)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/10 text-white font-bold text-xs sm:text-sm">-</button>
+                        <span id="modal-rice-count" class="text-xs sm:text-sm font-black text-white">1</span>
+                        <button onclick="adjustSiomaiModal('rice', 1)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-brand-orange text-white font-bold text-xs sm:text-sm">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-white/10 flex items-center justify-between">
+                <div>
+                    <span class="text-[9px] sm:text-[10px] text-brand-slate uppercase font-bold block">Total</span>
+                    <span id="modal-siomai-total" class="text-base sm:text-lg font-black text-brand-orange">₱52.00</span>
+                </div>
+                <button onclick="confirmSiomaiCustomization()" class="bg-brand-orange hover:bg-orange-600 text-white text-xs font-extrabold px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl uppercase tracking-wider">
+                    Add to Cart
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================= CHECKOUT CONFIRMATION MODAL ================= -->
+    <div id="checkout-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-brand-card border border-white/10 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
+            <div class="w-14 h-14 sm:w-16 sm:h-16 bg-brand-orange/20 text-brand-orange border border-brand-orange/30 rounded-full flex items-center justify-center mx-auto text-2xl sm:text-3xl">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h3 class="text-xl sm:text-2xl font-black text-white">Order Placed!</h3>
+            <p class="text-xs text-brand-slate">Your order has been sent to the canteen kitchen. Please claim it at the counter.</p>
+            <div class="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4">
+                <span class="text-[9px] sm:text-[10px] text-brand-slate font-bold uppercase tracking-wider block">Order Number</span>
+                <span id="order-id" class="text-2xl sm:text-3xl font-black text-brand-orange">#CE-0000</span>
+            </div>
+            <button onclick="resetMenu()" class="w-full bg-brand-orange text-white font-bold py-3 rounded-xl uppercase tracking-wider text-xs">
+                Back to Menu
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ================= JAVASCRIPT CONTROLLER ================= -->
     <script>
-        let cart = [];
-        let selectedOrderType = 'Dine-In';
+        const menuData = [
+            // --- BISCUITS ---
+            { id: 101, name: "SkyFlakes", category: "biscuits", price: 15.00, desc: "Classic salty crackers.", badge: "", img: "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=600&q=80" },
+            { id: 102, name: "Fita", category: "biscuits", price: 15.00, desc: "Sweet & salty crackers.", badge: "", img: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=600&q=80" },
+            { id: 103, name: "Hansel", category: "biscuits", price: 18.00, desc: "Mocha cream sandwich.", badge: "Popular", img: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80" },
+            { id: 104, name: "Presto Creams", category: "biscuits", price: 18.00, desc: "Chocolate cream cookies.", badge: "", img: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=600&q=80" },
+            { id: 105, name: "Rebisco", category: "biscuits", price: 15.00, desc: "Rich cream crackers.", badge: "", img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80" },
 
-        function setOrderType(type) {
-            selectedOrderType = type;
-            document.getElementById('selected-type-badge').innerText = type;
-            document.getElementById('input-order-type').value = type;
-        }
+            // --- RICE MEALS ---
+            { id: 201, name: "Siomai Rice", category: "rice", price: 52.00, desc: "Pork siomai & rice.", badge: "Custom", isSiomai: true, img: "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&w=600&q=80" },
+            { id: 202, name: "Chicken Adobo", category: "rice", price: 80.00, desc: "Savory chicken with rice.", badge: "Bestseller", img: "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=600&q=80" },
+            { id: 203, name: "Pork Sinigang", category: "rice", price: 85.00, desc: "Sour tamarind pork soup.", badge: "", img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80" },
+            { id: 204, name: "Chicken Curry", category: "rice", price: 80.00, desc: "Coconut curry chicken.", badge: "", img: "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&w=600&q=80" },
+            { id: 205, name: "Tortang Talong", category: "rice", price: 55.00, desc: "Eggplant omelette & rice.", badge: "Budget", img: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80" },
+            { id: 206, name: "Fried Chicken", category: "rice", price: 75.00, desc: "Crispy chicken with gravy.", badge: "", img: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?auto=format&fit=crop&w=600&q=80" },
 
-        function addToCart(name, price) {
-            const existing = cart.find(item => item.name === name);
-            if (existing) {
-                existing.qty += 1;
-            } else {
-                cart.push({ name, price, qty: 1 });
-            }
-            renderCart();
-        }
+            // --- BEVERAGES ---
+            { id: 301, name: "C2 Apple", category: "beverages", price: 20.00, desc: "Green tea apple drink.", badge: "", img: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80" },
+            { id: 302, name: "Water 350ml", category: "beverages", price: 15.00, desc: "Purified water (Small).", badge: "", img: "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&w=600&q=80" },
+            { id: 303, name: "Water 500ml", category: "beverages", price: 20.00, desc: "Purified water (Med).", badge: "", img: "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&w=600&q=80" },
+            { id: 304, name: "Water 1L", category: "beverages", price: 35.00, desc: "Purified water (Large).", badge: "", img: "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&w=600&q=80" },
+            { id: 305, name: "Coke 330ml", category: "beverages", price: 25.00, desc: "Classic cola soda.", badge: "", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80" },
+            { id: 306, name: "Sprite 330ml", category: "beverages", price: 25.00, desc: "Lemon-lime soda.", badge: "", img: "https://images.unsplash.com/photo-1625772299848-391b6a87d7b3?auto=format&fit=crop&w=600&q=80" },
+            { id: 307, name: "Royal Orange", category: "beverages", price: 25.00, desc: "Orange soda drink.", badge: "", img: "https://images.unsplash.com/photo-1581006852262-e4307cf6283a?auto=format&fit=crop&w=600&q=80" },
 
-        function renderCart() {
-            const container = document.getElementById('cart-items');
-            if (cart.length === 0) {
-                container.innerHTML = `<p class="text-xs text-gray-400 text-center py-8">Your cart is empty. Select items from the menu.</p>`;
-                document.getElementById('cart-subtotal').innerText = '₱ 0.00';
-                document.getElementById('cart-total').innerText = '₱ 0.00';
+            // --- MERYENDA ---
+            { id: 401, name: "Bananaque", category: "meryenda", price: 20.00, desc: "Caramelized banana.", badge: "Fresh", img: "https://images.unsplash.com/photo-1528825871115-3581a5387919?auto=format&fit=crop&w=600&q=80" },
+            { id: 402, name: "Karyoka", category: "meryenda", price: 20.00, desc: "Glutinous rice balls.", badge: "", img: "https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=600&q=80" },
+            { id: 403, name: "Maruya", category: "meryenda", price: 20.00, desc: "Crispy banana fritter.", badge: "", img: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80" },
+
+            // --- DIETARY PLANS ---
+            { id: 501, name: "Diabetic Rice Bowl", category: "dietary", price: 90.00, desc: "Brown rice & steamed chicken.", badge: "Diabetic", img: "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?auto=format&fit=crop&w=600&q=80" },
+            { id: 502, name: "Low-Cal Veggie Wrap", category: "dietary", price: 70.00, desc: "Fresh salad wrap (<250 kcal).", badge: "Low Cal", img: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80" },
+            { id: 503, name: "Keto Pork Plate", category: "dietary", price: 95.00, desc: "Roasted pork & egg.", badge: "Keto", img: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80" },
+            { id: 504, name: "Low-Sodium Fish", category: "dietary", price: 85.00, desc: "Steamed fish fillet.", badge: "Healthy", img: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=80" }
+        ];
+
+        let cart = {};
+        let activeCategory = 'all';
+
+        let tempSiomaiCount = 4;
+        let tempRiceCount = 1;
+
+        // Render Menu Items
+        function renderMenu() {
+            const grid = document.getElementById('menu-grid');
+            const searchQuery = document.getElementById('search-input').value.toLowerCase();
+            grid.innerHTML = '';
+
+            const filteredItems = menuData.filter(item => {
+                const matchesCategory = (activeCategory === 'all' || item.category === activeCategory);
+                const matchesSearch = item.name.toLowerCase().includes(searchQuery) || item.desc.toLowerCase().includes(searchQuery);
+                return matchesCategory && matchesSearch;
+            });
+
+            if (filteredItems.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-10 text-brand-slate">
+                        <i class="fa-solid fa-utensils text-3xl mb-2 opacity-50"></i>
+                        <p class="text-xs font-semibold">No food items found.</p>
+                    </div>`;
                 return;
             }
 
-            let total = 0;
-            container.innerHTML = cart.map(item => {
-                const itemTotal = item.price * item.qty;
-                total += itemTotal;
-                return `
-                    <div class="flex justify-between items-center text-sm">
+            filteredItems.forEach(item => {
+                const badgeHTML = item.badge ? `<span class="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 bg-brand-dark/80 backdrop-blur-md border border-white/10 text-brand-amber text-[8px] sm:text-[10px] font-black uppercase px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg">${item.badge}</span>` : '';
+                
+                const actionBtn = item.isSiomai ? 
+                    `<button onclick="openSiomaiModal()" class="w-full sm:w-auto bg-brand-orange hover:bg-orange-600 text-white font-bold text-[10px] sm:text-xs px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl active:scale-95 transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-sliders text-[9px] sm:text-xs"></i> Add
+                    </button>` : 
+                    `<button onclick="addToCart(${item.id})" class="w-full sm:w-auto bg-brand-orange hover:bg-orange-600 text-white font-bold text-[10px] sm:text-xs px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl active:scale-95 transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-plus text-[9px] sm:text-xs"></i> Add
+                    </button>`;
+
+                const card = document.createElement('div');
+                card.className = "bg-brand-card rounded-xl sm:rounded-2xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group";
+                card.innerHTML = `
+                    <div class="relative h-24 sm:h-40 lg:h-48 overflow-hidden bg-white/5">
+                        <img src="${item.img}" alt="${item.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                        ${badgeHTML}
+                    </div>
+                    <div class="p-2 sm:p-4 flex-1 flex flex-col justify-between gap-1.5 sm:gap-3">
                         <div>
-                            <p class="font-medium text-gray-800">${item.name}</p>
-                            <p class="text-xs text-gray-500">₱${item.price} x ${item.qty}</p>
+                            <h3 class="text-xs sm:text-base font-extrabold text-white group-hover:text-brand-orange transition line-clamp-1 sm:line-clamp-none">${item.name}</h3>
+                            <p class="text-[10px] sm:text-xs text-brand-slate line-clamp-1 sm:line-clamp-2 mt-0.5 sm:mt-1">${item.desc}</p>
                         </div>
-                        <span class="font-bold text-gray-700">₱${itemTotal.toFixed(2)}</span>
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 sm:gap-0 pt-1.5 sm:pt-2 border-t border-white/5">
+                            <span class="text-xs sm:text-lg font-black text-white text-center sm:text-left">₱${item.price.toFixed(2)}</span>
+                            ${actionBtn}
+                        </div>
                     </div>
                 `;
-            }).join('');
-
-            document.getElementById('cart-subtotal').innerText = `₱ ${total.toFixed(2)}`;
-            document.getElementById('cart-total').innerText = `₱ ${total.toFixed(2)}`;
+                grid.appendChild(card);
+            });
         }
+
+        // Category Filter
+        function selectCategory(category, element) {
+            activeCategory = category;
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.className = "category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-card hover:bg-white/10 text-brand-slate hover:text-white border border-white/10 text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5";
+            });
+            element.className = "category-btn active-cat px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-orange text-white text-xs sm:text-sm font-extrabold whitespace-nowrap shadow-lg shadow-brand-orange/20 transition flex items-center gap-1.5";
+            renderMenu();
+        }
+
+        function filterItems() {
+            renderMenu();
+        }
+
+        // Siomai Rice Modal Handlers
+        function openSiomaiModal() {
+            tempSiomaiCount = 4;
+            tempRiceCount = 1;
+            updateSiomaiModalUI();
+            document.getElementById('siomai-modal').classList.remove('hidden');
+        }
+
+        function closeSiomaiModal() {
+            document.getElementById('siomai-modal').classList.add('hidden');
+        }
+
+        function adjustSiomaiModal(type, change) {
+            if (type === 'siomai') {
+                tempSiomaiCount = Math.max(1, tempSiomaiCount + change);
+            } else if (type === 'rice') {
+                tempRiceCount = Math.max(1, tempRiceCount + change);
+            }
+            updateSiomaiModalUI();
+        }
+
+        function updateSiomaiModalUI() {
+            document.getElementById('modal-siomai-count').innerText = tempSiomaiCount;
+            document.getElementById('modal-rice-count').innerText = tempRiceCount;
+            const calculatedPrice = (tempSiomaiCount * 10) + (tempRiceCount * 12);
+            document.getElementById('modal-siomai-total').innerText = `₱${calculatedPrice.toFixed(2)}`;
+        }
+
+        function confirmSiomaiCustomization() {
+            const calculatedPrice = (tempSiomaiCount * 10) + (tempRiceCount * 12);
+            const customKey = `siomai_${tempSiomaiCount}_${tempRiceCount}`;
+            
+            if (cart[customKey]) {
+                cart[customKey].qty += 1;
+            } else {
+                cart[customKey] = {
+                    id: customKey,
+                    name: `Siomai Rice (${tempSiomaiCount} Pcs + ${tempRiceCount} Rice)`,
+                    price: calculatedPrice,
+                    qty: 1
+                };
+            }
+            closeSiomaiModal();
+            updateCartUI();
+        }
+
+        // Standard Cart Logic
+        function addToCart(itemId) {
+            if (cart[itemId]) {
+                cart[itemId].qty += 1;
+            } else {
+                const item = menuData.find(i => i.id === itemId);
+                cart[itemId] = { ...item, qty: 1 };
+            }
+            updateCartUI();
+        }
+
+        function updateQuantity(itemId, change) {
+            if (cart[itemId]) {
+                cart[itemId].qty += change;
+                if (cart[itemId].qty <= 0) {
+                    delete cart[itemId];
+                }
+            }
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const container = document.getElementById('cart-items-container');
+            container.innerHTML = '';
+
+            let total = 0;
+            let itemCount = 0;
+            const cartKeys = Object.keys(cart);
+
+            if (cartKeys.length === 0) {
+                container.innerHTML = `
+                    <div class="my-auto text-center py-6 text-brand-slate">
+                        <i class="fa-solid fa-basket-shopping text-2xl mb-1 opacity-40"></i>
+                        <p class="text-xs font-medium">Your cart is currently empty.</p>
+                    </div>`;
+                document.getElementById('checkout-btn').disabled = true;
+            } else {
+                document.getElementById('checkout-btn').disabled = false;
+                cartKeys.forEach(key => {
+                    const item = cart[key];
+                    const itemSubtotal = item.price * item.qty;
+                    total += itemSubtotal;
+                    itemCount += item.qty;
+
+                    const cartItemEl = document.createElement('div');
+                    cartItemEl.className = "flex items-center justify-between gap-2 bg-white/5 p-2.5 rounded-xl border border-white/5 shrink-0";
+                    cartItemEl.innerHTML = `
+                        <div class="min-w-0 flex-1">
+                            <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
+                            <p class="text-[10px] text-brand-slate">₱${item.price.toFixed(2)}</p>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="updateQuantity('${item.id}', -1)" class="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 text-white font-bold text-xs active:scale-95">-</button>
+                            <span class="text-xs font-black text-white px-1">${item.qty}</span>
+                            <button onclick="updateQuantity('${item.id}', 1)" class="w-6 h-6 rounded-md bg-brand-orange text-white font-bold text-xs active:scale-95">+</button>
+                        </div>
+                    `;
+                    container.appendChild(cartItemEl);
+                });
+            }
+
+            const formattedTotal = `₱${total.toFixed(2)}`;
+            document.getElementById('cart-subtotal').innerText = formattedTotal;
+            document.getElementById('cart-total').innerText = formattedTotal;
+            document.getElementById('mobile-cart-total').innerText = `${formattedTotal} `;
+            document.getElementById('mobile-cart-badge').innerText = itemCount;
+        }
+
+        function toggleMobileCart() {
+            const drawer = document.getElementById('cart-drawer');
+            drawer.classList.toggle('translate-y-full');
+        }
+
+        function checkoutOrder() {
+            const randomOrderNum = '#' + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('order-id').innerText = randomOrderNum;
+            document.getElementById('checkout-modal').classList.remove('hidden');
+        }
+
+        function resetMenu() {
+            cart = {};
+            updateCartUI();
+            document.getElementById('checkout-modal').classList.add('hidden');
+            if (!document.getElementById('cart-drawer').classList.contains('translate-y-full')) {
+                toggleMobileCart();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderMenu();
+            updateCartUI();
+        });
     </script>
 </body>
 </html>
