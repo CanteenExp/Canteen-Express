@@ -1,0 +1,185 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Signup - Canteen Express</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        poppins: ['Poppins', 'sans-serif'],
+                        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            orange: '#FF6117',
+                            dark: '#0A0A0C',
+                            card: '#141416',
+                            slate: '#8E8E93',
+                            blue: '#3B82F6',
+                            navy: '#1E3A8A',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        /* Infinite Diagonal Carousel Animations */
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        @keyframes scroll-right {
+            0% { transform: translateX(-50%); }
+            100% { transform: translateX(0); }
+        }
+
+        .animate-scroll-1 {
+            display: flex;
+            width: 200%;
+            animation: scroll-left 35s linear infinite;
+        }
+
+        .animate-scroll-2 {
+            display: flex;
+            width: 200%;
+            animation: scroll-right 40s linear infinite;
+        }
+
+        .diagonal-wrapper {
+            transform: rotate(-12deg) scale(1.3);
+        }
+    </style>
+</head>
+<body class="bg-brand-dark text-white min-h-screen flex items-center justify-center p-4 relative overflow-hidden select-none">
+
+    <!-- ================= DIAGONAL BACKGROUND FOOD CAROUSEL ================= -->
+    <div class="absolute inset-0 z-0 pointer-events-none opacity-20 overflow-hidden flex flex-col justify-center gap-6 diagonal-wrapper">
+        
+        <!-- Row 1 (Moving Left) -->
+        <div class="animate-scroll-1 flex gap-4">
+            <div class="flex gap-4 shrink-0">
+                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+            </div>
+            <div class="flex gap-4 shrink-0">
+                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+            </div>
+        </div>
+
+        <!-- Row 2 (Moving Right) -->
+        <div class="animate-scroll-2 flex gap-4">
+            <div class="flex gap-4 shrink-0">
+                <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+                <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+            </div>
+            <div class="flex gap-4 shrink-0">
+                <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+                <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=400&q=80" class="w-56 h-36 object-cover rounded-2xl">
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Dark Gradient Overlay -->
+    <div class="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/90 to-brand-dark/80 z-0"></div>
+
+    <!-- Glow Accent Circles -->
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-80 h-80 bg-brand-blue/20 rounded-full blur-[100px] pointer-events-none z-0"></div>
+
+    <!-- ================= MAIN CARD CONTAINER ================= -->
+    <div class="relative z-10 max-w-md w-full bg-[#121215]/90 border border-white/10 rounded-[36px] p-6 sm:p-8 backdrop-blur-2xl shadow-[0_30px_70px_rgba(0,0,0,0.8)] ring-1 ring-white/10 space-y-6 my-auto">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+            <a href="{% url 'faculty_login' %}" class="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-brand-slate hover:text-white hover:bg-white/10 transition">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="flex items-center gap-2">
+                <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-7 w-auto">
+                <span class="font-poppins text-xs font-bold uppercase tracking-widest text-white/90">Canteen Express</span>
+            </div>
+            <div class="w-10"></div>
+        </div>
+
+        <!-- Title -->
+        <div class="text-center space-y-1 pt-1">
+            <h1 class="font-poppins text-2xl sm:text-3xl font-black text-white">Create Account</h1>
+            <p class="text-xs text-brand-slate">Register to enable priority staff ordering</p>
+        </div>
+
+        <!-- Form -->
+        <form method="POST" action="{% url 'faculty_otp' %}" class="space-y-3.5">
+            {% csrf_token %}
+
+            <!-- Email -->
+            <div class="space-y-1 text-left">
+                <label class="text-[11px] font-extrabold text-white/80 uppercase tracking-wider">Institutional Email</label>
+                <div class="relative flex items-center">
+                    <i class="fa-solid fa-envelope absolute left-4 text-brand-slate text-sm"></i>
+                    <input type="email" name="email" required placeholder="faculty@university.edu" 
+                        class="w-full bg-white/[0.04] border border-white/10 focus:border-brand-blue focus:bg-brand-blue/5 rounded-2xl py-3 pl-11 pr-4 text-sm text-white placeholder-brand-slate outline-none transition duration-200">
+                </div>
+            </div>
+
+            <!-- Password -->
+            <div class="space-y-1 text-left">
+                <label class="text-[11px] font-extrabold text-white/80 uppercase tracking-wider">Create Password</label>
+                <div class="relative flex items-center">
+                    <i class="fa-solid fa-lock absolute left-4 text-brand-slate text-sm"></i>
+                    <input type="password" name="password" required placeholder="At least 8 characters" 
+                        class="w-full bg-white/[0.04] border border-white/10 focus:border-brand-blue focus:bg-brand-blue/5 rounded-2xl py-3 pl-11 pr-4 text-sm text-white placeholder-brand-slate outline-none transition duration-200">
+                </div>
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="space-y-1 text-left">
+                <label class="text-[11px] font-extrabold text-white/80 uppercase tracking-wider">Confirm Password</label>
+                <div class="relative flex items-center">
+                    <i class="fa-solid fa-shield-check absolute left-4 text-brand-slate text-sm"></i>
+                    <input type="password" name="confirm_password" required placeholder="Re-enter password" 
+                        class="w-full bg-white/[0.04] border border-white/10 focus:border-brand-blue focus:bg-brand-blue/5 rounded-2xl py-3 pl-11 pr-4 text-sm text-white placeholder-brand-slate outline-none transition duration-200">
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="w-full bg-brand-blue hover:bg-blue-600 active:scale-95 text-white font-poppins font-extrabold text-sm py-4 rounded-2xl shadow-lg shadow-brand-blue/30 flex items-center justify-center gap-2 transition uppercase tracking-wider pt-2">
+                Send OTP Verification <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </form>
+
+        <!-- Redirect Link -->
+        <div class="text-center">
+            <p class="text-xs text-brand-slate">
+                Already registered? 
+                <a href="{% url 'faculty_login' %}" class="text-brand-blue font-extrabold hover:underline">Log In Here</a>
+            </p>
+        </div>
+
+    </div>
+
+</body>
+</html>

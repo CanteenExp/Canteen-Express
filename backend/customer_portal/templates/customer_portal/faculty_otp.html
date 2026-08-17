@@ -1,0 +1,115 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Verification - Canteen Express</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        poppins: ['Poppins', 'sans-serif'],
+                        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            orange: '#FF6117',
+                            dark: '#121212',
+                            card: '#1E1E1E',
+                            slate: '#8E8E93',
+                            blue: '#3B82F6',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-brand-dark text-white font-jakarta min-h-screen flex flex-col justify-between p-6 sm:p-10 relative overflow-hidden select-none">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between max-w-md mx-auto w-full z-10">
+        <a href="{% url 'faculty_signup' %}" class="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-brand-slate hover:text-white transition">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div class="flex items-center gap-2">
+            <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-7 w-auto">
+            <span class="font-poppins text-xs font-bold uppercase tracking-widest text-white/90">Canteen Express</span>
+        </div>
+        <div class="w-10"></div>
+    </header>
+
+    <!-- OTP Form Container -->
+    <main class="my-auto max-w-md w-full mx-auto py-8 z-10 space-y-8 text-center">
+        
+        <!-- Header Icon & Text -->
+        <div class="space-y-3">
+            <div class="w-16 h-16 rounded-3xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-2xl mx-auto shadow-lg shadow-blue-500/5">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h1 class="font-poppins text-2xl sm:text-3xl font-black text-white">Enter Security Code</h1>
+            <p class="text-xs text-brand-slate max-w-xs mx-auto">
+                We sent a 6-digit OTP code to your institutional email address.
+            </p>
+        </div>
+
+        <form method="POST" action="" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- 6-Digit Code Input Box Container -->
+            <div class="flex justify-center gap-2 sm:gap-3" id="otp-container">
+                <input type="text" maxlength="1" class="otp-input w-11 h-14 sm:w-12 sm:h-16 text-center text-xl font-bold font-poppins bg-white/[0.04] border border-white/10 rounded-2xl focus:border-blue-500 focus:bg-blue-500/10 text-white outline-none transition" required>
+                <input type="text" maxlength="1" class="otp-input w-11 h-14 sm:w-12 sm:h-16 text-center text-xl font-bold font-poppins bg-white/[0.04] border border-white/10 rounded-2xl focus:border-blue-500 focus:bg-blue-500/10 text-white outline-none transition" required>
+                <input type="text" maxlength="1" class="otp-input w-11 h-14 sm:w-12 sm:h-16 text-center text-xl font-bold font-poppins bg-white/[0.04] border border-white/10 rounded-2xl focus:border-blue-500 focus:bg-blue-500/10 text-white outline-none transition" required>
+                <input type="text" maxlength="1" class="otp-input w-11 h-14 sm:w-12 sm:h-16 text-center text-xl font-bold font-poppins bg-white/[0.04] border border-white/10 rounded-2xl focus:border-blue-500 focus:bg-blue-500/10 text-white outline-none transition" required>
+                <input type="text" maxlength="1" class="otp-input w-11 h-14 sm:w-12 sm:h-16 text-center text-xl font-bold font-poppins bg-white/[0.04] border border-white/10 rounded-2xl focus:border-blue-500 focus:bg-blue-500/10 text-white outline-none transition" required>
+                <input type="text" maxlength="1" class="otp-input w-11 h-14 sm:w-12 sm:h-16 text-center text-xl font-bold font-poppins bg-white/[0.04] border border-white/10 rounded-2xl focus:border-blue-500 focus:bg-blue-500/10 text-white outline-none transition" required>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-poppins font-extrabold text-sm py-4 rounded-2xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition uppercase tracking-wider">
+                Verify & Proceed <i class="fa-solid fa-circle-check"></i>
+            </button>
+        </form>
+
+        <!-- Resend OTP Timer -->
+        <div class="text-xs text-brand-slate space-y-1">
+            <p>Didn't receive the email?</p>
+            <button class="text-blue-400 font-bold hover:underline" id="resend-btn">Resend OTP</button>
+        </div>
+
+    </main>
+
+    <footer class="text-center text-[10px] text-brand-slate">
+        &copy; Canteen Express Faculty Portal
+    </footer>
+
+    <!-- Auto-focus Next Input Script -->
+    <script>
+        const inputs = document.querySelectorAll('.otp-input');
+        
+        inputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                if (e.target.value.length === 1 && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            });
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

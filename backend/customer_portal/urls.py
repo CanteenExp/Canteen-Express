@@ -11,4 +11,9 @@ urlpatterns = [
     path('auth/', views.kiosk_auth, name='kiosk_auth'),
 
     path('kiosk/menu/', views.kiosk_menu, name='kiosk_menu'),
+
+    # Faculty & Staff Authentication Routes
+    path('faculty/login/', views.faculty_login, name='faculty_login'),
+    path('faculty/signup/', views.faculty_signup, name='faculty_signup'),
+    path('faculty/verify-otp/', views.faculty_otp, name='faculty_otp'),
 ]

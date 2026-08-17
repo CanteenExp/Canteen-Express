@@ -44,13 +44,14 @@
     <header class="sticky top-0 z-30 bg-brand-dark/95 backdrop-blur-md border-b border-white/10 px-3 py-3 sm:px-8 sm:py-4">
         <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
             
-            <!-- Left: Back Button & Logo -->
+            <!-- Left: Back Button, Logo, Title & EXIT KIOSK BUTTON -->
             <div class="flex items-center gap-2 sm:gap-3">
-                <a href="{% url 'kiosk_welcome' %}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95 text-xs sm:text-base">
+                <a href="{% url 'kiosk_welcome' %}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95 text-xs sm:text-base" title="Back to Welcome">
                     <i class="fa-solid fa-arrow-left"></i>
                 </a>
-                <div class="flex items-center gap-2">
-                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto object-contain hidden sm:block">
+
+                <div class="flex items-center gap-2 ml-1">
+                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto object-contain hidden md:block">
                     <div>
                         <h1 class="text-xs sm:text-lg font-black text-white leading-tight">Today's Menu</h1>
                         <p class="text-[9px] sm:text-xs text-brand-orange font-bold uppercase tracking-wider">
@@ -65,6 +66,11 @@
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-brand-slate text-xs sm:text-sm"></i>
                 <input type="text" id="search-input" onkeyup="filterItems()" placeholder="Search..." class="w-full bg-brand-card border border-white/10 rounded-xl pl-8 sm:pl-9 pr-3 sm:pr-4 py-1.5 sm:py-2 text-xs sm:text-sm text-white placeholder-brand-slate focus:outline-none focus:border-brand-orange transition">
             </div>
+            <!-- Exit Kiosk Mode Button -->
+                <button onclick="openExitModal()" class="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 transition active:scale-95 text-xs font-bold" title="Exit Kiosk Mode">
+                    <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                    <span class="hidden sm:inline">Exit Kiosk</span>
+                </button>
 
         </div>
     </header>
@@ -158,6 +164,26 @@
     </div>
 
 
+    <!-- ================= EXIT KIOSK CONFIRMATION MODAL ================= -->
+    <div id="exit-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-brand-card border border-white/10 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl">
+            <div class="w-14 h-14 bg-red-500/10 text-red-400 border border-red-500/20 rounded-full flex items-center justify-center mx-auto text-2xl">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </div>
+            <h3 class="text-xl font-black text-white">Exit Kiosk Mode?</h3>
+            <p class="text-xs text-brand-slate">Exiting will clear your current selections and return to the main kiosk welcome screen.</p>
+            <div class="flex gap-3 pt-2">
+                <button onclick="closeExitModal()" class="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider transition">
+                    Cancel
+                </button>
+                <a href="{% url 'kiosk_welcome' %}" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-wider transition flex items-center justify-center">
+                    Exit Now
+                </a>
+            </div>
+        </div>
+    </div>
+
+
     <!-- ================= SIOMAI RICE CUSTOMIZATION MODAL ================= -->
     <div id="siomai-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
         <div class="bg-brand-card border border-white/10 rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 sm:space-y-5 shadow-2xl">
@@ -230,7 +256,7 @@
     <script>
         const menuData = [
             // --- BISCUITS ---
-            { id: 101, name: "SkyFlakes", category: "biscuits", price: 15.00, desc: "Classic salty crackers.", badge: "", img: "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=600&q=80" },
+            { id: 101, name: "SkyFlakes", category: "biscuits", price: 15.00, desc: "Classic salty crackers.", badge: "", img: "/static/customer_portal/images/skyflakes.jpg" },
             { id: 102, name: "Fita", category: "biscuits", price: 15.00, desc: "Sweet & salty crackers.", badge: "", img: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=600&q=80" },
             { id: 103, name: "Hansel", category: "biscuits", price: 18.00, desc: "Mocha cream sandwich.", badge: "Popular", img: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80" },
             { id: 104, name: "Presto Creams", category: "biscuits", price: 18.00, desc: "Chocolate cream cookies.", badge: "", img: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=600&q=80" },
@@ -270,6 +296,15 @@
 
         let tempSiomaiCount = 4;
         let tempRiceCount = 1;
+
+        // Exit Kiosk Modal Handlers
+        function openExitModal() {
+            document.getElementById('exit-modal').classList.remove('hidden');
+        }
+
+        function closeExitModal() {
+            document.getElementById('exit-modal').classList.add('hidden');
+        }
 
         // Render Menu Items
         function renderMenu() {
