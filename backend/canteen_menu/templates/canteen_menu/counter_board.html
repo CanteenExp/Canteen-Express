@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Counter Board - Canteen Express Staff</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        /* Custom scrollbar para sa malinis na board columns */
+        .custom-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-[#f5f0eb] text-gray-800 font-sans antialiased min-h-screen flex">
+
+    <!-- ================= SIDEBAR ================= -->
+    <aside class="w-64 bg-[#0d0d12] text-white flex flex-col justify-between shrink-0 min-h-screen p-4 hidden md:flex">
+        <div class="space-y-8">
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-3 px-2 pt-2">
+                <div class="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-orange-500/30">
+                    <i class="fa-solid fa-utensils"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-sm tracking-wide text-white">Canteen Express</h1>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Staff View</p>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="space-y-6 text-xs font-semibold">
+                <!-- Operations -->
+                <div>
+                    <p class="text-[10px] uppercase text-gray-500 px-3 mb-2 font-bold tracking-wider">Operations</p>
+                    <a href="{% url 'canteen_menu:counter_board' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl bg-orange-500 text-white font-bold shadow-md shadow-orange-500/20 transition">
+                        <i class="fa-solid fa-clipboard-list text-base w-5 text-center"></i>
+                        <span>Counter Board</span>
+                    </a>
+                </div>
+
+                <!-- Management -->
+                <div>
+                    <p class="text-[10px] uppercase text-gray-500 px-3 mb-2 font-bold tracking-wider">Management</p>
+                    <a href="{% url 'canteen_menu:staff_menu_list' %}" class="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition">
+                        <i class="fa-solid fa-plus-square text-base w-5 text-center"></i>
+                        <span>Menu Management</span>
+                    </a>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Staff Profile Card -->
+        <div class="bg-[#16161e] p-3 rounded-2xl flex items-center gap-3 border border-white/5">
+            <div class="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center font-bold text-white text-sm shadow-sm">
+                S
+            </div>
+            <div class="text-xs">
+                <p class="font-bold text-white">Staff Member</p>
+                <p class="text-[10px] text-gray-400">Canteen Staff</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ================= MAIN CONTENT AREA ================= -->
+    <main class="flex-1 flex flex-col min-w-0 min-h-screen">
+        
+        <!-- Top Navigation Bar -->
+        <header class="bg-[#0d0d12] text-white px-6 py-3.5 flex items-center justify-between border-b border-white/5">
+            <div class="flex items-center gap-3">
+                <span class="text-base">🍔</span>
+                <h2 class="font-bold text-sm text-gray-200">Counter Board</h2>
+            </div>
+            
+            <div class="flex items-center gap-4 text-xs font-semibold">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> LIVE
+                </span>
+                <span class="text-gray-400 font-mono" id="live-clock">00:00:00 PM</span>
+            </div>
+        </header>
+
+        <!-- Main Body Content -->
+        <div class="p-4 sm:p-8 max-w-[1600px] w-full mx-auto space-y-6">
+
+            <!-- Title & Top Info Pills -->
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-black text-gray-900 tracking-tight">Kitchen Counter Board</h1>
+                    <p class="text-xs text-gray-500 font-medium mt-0.5">Fast view of incoming, preparing, and ready orders</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 text-xs font-medium">
+                    <span class="bg-orange-100/70 text-orange-700 px-3 py-1.5 rounded-full border border-orange-200/60">
+                        Tap action buttons to move status
+                    </span>
+                    <span class="bg-amber-100/70 text-amber-800 px-3 py-1.5 rounded-full border border-amber-200/60">
+                        Ready orders glow for pickup
+                    </span>
+                    <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-200/80 shadow-sm ml-auto">
+                        <span class="text-gray-400 uppercase text-[10px] font-bold">SORT</span>
+                        <select class="bg-transparent font-bold text-gray-800 outline-none cursor-pointer text-xs">
+                            <option>Newest</option>
+                            <option>Oldest</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Summary Stats Grid -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Pending Stat -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60 flex flex-col justify-between">
+                    <span class="text-3xl font-black text-gray-900">{{ incoming_orders|length|default:"4" }}</span>
+                    <span class="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase mt-3">PENDING</span>
+                </div>
+                <!-- Preparing Stat -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60 flex flex-col justify-between">
+                    <span class="text-3xl font-black text-orange-500">{{ preparing_orders|length|default:"2" }}</span>
+                    <span class="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase mt-3">PREPARING</span>
+                </div>
+                <!-- Ready Stat -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60 flex flex-col justify-between">
+                    <span class="text-3xl font-black text-emerald-500">{{ ready_orders|length|default:"3" }}</span>
+                    <span class="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase mt-3">READY</span>
+                </div>
+                <!-- Done Today Stat -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60 flex flex-col justify-between">
+                    <span class="text-3xl font-black text-gray-800">{{ done_today_count|default:"5" }}</span>
+                    <span class="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase mt-3">DONE TODAY</span>
+                </div>
+            </div>
+
+            <!-- ================= KANBAN BOARD COLUMNS ================= -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+                <!-- ---------------- COLUMN 1: INCOMING ORDERS ---------------- -->
+                <div class="space-y-4">
+                    <!-- Column Header -->
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-xs font-black tracking-wider uppercase text-gray-600">INCOMING</span>
+                        <span class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 font-bold text-xs flex items-center justify-center">
+                            {{ incoming_orders|length|default:"2" }}
+                        </span>
+                    </div>
+
+                    <!-- Column Cards Container -->
+                    <div class="space-y-4 custom-scroll max-h-[75vh] overflow-y-auto pr-1">
+                        
+                        <!-- Sample Incoming Order 1 (Delivery - Faculty/Staff) -->
+                        <div class="bg-white rounded-3xl p-5 border-2 border-gray-200/80 shadow-sm space-y-4">
+                            <!-- Header Info -->
+                            <div class="flex items-start justify-between border-b border-dashed border-gray-200 pb-3">
+                                <div>
+                                    <h3 class="text-xl font-black text-orange-500">#CE-0249</h3>
+                                    <p class="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
+                                        <i class="fa-regular fa-clock"></i> 05:45 PM
+                                    </p>
+                                </div>
+                                <div class="flex flex-col items-end gap-1.5">
+                                    <span class="bg-slate-100 text-slate-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-slate-200">
+                                        • Pending
+                                    </span>
+                                    <span class="bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                        <i class="fa-solid fa-motorcycle text-[9px]"></i> Delivery
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Customer & Rider Info -->
+                            <div class="space-y-2">
+                                <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-xl bg-orange-400 text-white font-bold flex items-center justify-center text-xs">S</div>
+                                    <div>
+                                        <p class="font-extrabold text-xs text-gray-800">Sofia Reyes</p>
+                                        <p class="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                                            <i class="fa-solid fa-user text-[9px]"></i> Faculty / Customer
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="bg-purple-50/70 p-2.5 rounded-2xl flex items-center gap-3 border border-purple-100">
+                                    <div class="w-8 h-8 rounded-xl bg-purple-500 text-white font-bold flex items-center justify-center text-xs">?</div>
+                                    <div>
+                                        <p class="font-extrabold text-xs text-purple-900">Awaiting Rider</p>
+                                        <p class="text-[10px] text-purple-600 font-medium flex items-center gap-1">
+                                            <i class="fa-solid fa-motorcycle text-[9px]"></i> Delivery Staff
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Order Items List -->
+                            <div class="text-xs space-y-1.5 font-semibold text-gray-700 py-1">
+                                <div class="flex justify-between"><span class="text-orange-500 font-bold">x1</span> <span>Tapsilog</span></div>
+                                <div class="flex justify-between"><span class="text-orange-500 font-bold">x1</span> <span>Orange Juice</span></div>
+                            </div>
+
+                            <!-- Card Footer Action -->
+                            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                                <span class="text-lg font-black text-orange-500">₱165</span>
+                                <form method="POST" action="#">
+                                    {% csrf_token %}
+                                    <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-orange-500/20 active:scale-95 transition">
+                                        Start Preparing
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Sample Incoming Order 2 (Pickup - Payment Slip counter) -->
+                        <div class="bg-white rounded-3xl p-5 border-2 border-gray-200/80 shadow-sm space-y-4">
+                            <!-- Header Info -->
+                            <div class="flex items-start justify-between border-b border-dashed border-gray-200 pb-3">
+                                <div>
+                                    <h3 class="text-xl font-black text-orange-500">#CE-0248</h3>
+                                    <p class="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
+                                        <i class="fa-regular fa-clock"></i> 11:42 AM
+                                    </p>
+                                </div>
+                                <div class="flex flex-col items-end gap-1.5">
+                                    <span class="bg-slate-100 text-slate-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-slate-200">
+                                        • Pending
+                                    </span>
+                                    <span class="bg-sky-50 text-sky-600 border border-sky-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                        <i class="fa-solid fa-basket-shopping text-[9px]"></i> Pickup
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Customer Info -->
+                            <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-amber-500 text-white font-bold flex items-center justify-center text-xs">M</div>
+                                <div>
+                                    <p class="font-extrabold text-xs text-gray-800">Maria Santos</p>
+                                    <p class="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                                        <i class="fa-solid fa-receipt text-[9px]"></i> Paid via Counter Slip
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Order Items List -->
+                            <div class="text-xs space-y-1.5 font-semibold text-gray-700 py-1">
+                                <div class="flex justify-between"><span class="text-orange-500 font-bold">x1</span> <span>Chicken Adobo</span></div>
+                            </div>
+
+                            <!-- Card Footer Action -->
+                            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                                <span class="text-lg font-black text-orange-500">₱85</span>
+                                <form method="POST" action="#">
+                                    {% csrf_token %}
+                                    <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-orange-500/20 active:scale-95 transition">
+                                        Start Preparing
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ---------------- COLUMN 2: IN THE KITCHEN ---------------- -->
+                <div class="space-y-4">
+                    <!-- Column Header -->
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-xs font-black tracking-wider uppercase text-gray-600">IN THE KITCHEN</span>
+                        <span class="w-6 h-6 rounded-full bg-orange-500 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+                            {{ preparing_orders|length|default:"2" }}
+                        </span>
+                    </div>
+
+                    <!-- Column Cards Container -->
+                    <div class="space-y-4 custom-scroll max-h-[75vh] overflow-y-auto pr-1">
+                        
+                        <!-- Sample Kitchen Order 1 -->
+                        <div class="bg-white rounded-3xl p-5 border-2 border-orange-200/80 shadow-md space-y-4 relative">
+                            <!-- Header Info -->
+                            <div class="flex items-start justify-between border-b border-dashed border-gray-200 pb-3">
+                                <div>
+                                    <h3 class="text-xl font-black text-orange-500">#CE-0247</h3>
+                                    <p class="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
+                                        <i class="fa-regular fa-clock"></i> 11:38 AM
+                                    </p>
+                                </div>
+                                <div class="flex flex-col items-end gap-1.5">
+                                    <span class="bg-amber-50 text-amber-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-200">
+                                        • Preparing
+                                    </span>
+                                    <span class="bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                        <i class="fa-solid fa-motorcycle text-[9px]"></i> Delivery
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Customer & Rider Info -->
+                            <div class="space-y-2">
+                                <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-xl bg-orange-500 text-white font-bold flex items-center justify-center text-xs">J</div>
+                                    <div>
+                                        <p class="font-extrabold text-xs text-gray-800">Juan Dela Cruz</p>
+                                        <p class="text-[10px] text-gray-500 font-medium">Customer</p>
+                                    </div>
+                                </div>
+                                <div class="bg-purple-50/70 p-2.5 rounded-2xl flex items-center gap-3 border border-purple-100">
+                                    <div class="w-8 h-8 rounded-xl bg-purple-500 text-white font-bold flex items-center justify-center text-xs">?</div>
+                                    <div>
+                                        <p class="font-extrabold text-xs text-purple-900">Awaiting Rider</p>
+                                        <p class="text-[10px] text-purple-600 font-medium">Delivery Staff</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Order Items List -->
+                            <div class="text-xs space-y-1.5 font-semibold text-gray-700 py-1">
+                                <div class="flex justify-between"><span class="text-orange-500 font-bold">x1</span> <span>Pork Sinigang</span></div>
+                                <div class="flex justify-between"><span class="text-orange-500 font-bold">x2</span> <span>Rice</span></div>
+                            </div>
+
+                            <!-- Card Footer Action -->
+                            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                                <span class="text-lg font-black text-orange-500">₱220</span>
+                                <form method="POST" action="#">
+                                    {% csrf_token %}
+                                    <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-emerald-500/20 active:scale-95 transition">
+                                        Order Ready
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ---------------- COLUMN 3: READY TO SERVE ---------------- -->
+                <div class="space-y-4">
+                    <!-- Column Header -->
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-xs font-black tracking-wider uppercase text-gray-600">READY TO SERVE</span>
+                        <span class="w-6 h-6 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+                            {{ ready_orders|length|default:"3" }}
+                        </span>
+                    </div>
+
+                    <!-- Column Cards Container -->
+                    <div class="space-y-4 custom-scroll max-h-[75vh] overflow-y-auto pr-1">
+                        
+                        <!-- Sample Ready Order (Delivery Rider assigned) -->
+                        <div class="bg-white rounded-3xl overflow-hidden border-2 border-emerald-400 shadow-lg space-y-4">
+                            
+                            <!-- Green Top Banner -->
+                            <div class="bg-emerald-500 text-white px-4 py-2.5 flex items-center justify-between font-bold text-xs">
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> Order Ready</span>
+                                <span class="bg-emerald-600/80 px-2.5 py-0.5 rounded-full text-[10px] flex items-center gap-1">
+                                    <i class="fa-solid fa-hourglass-half text-[9px]"></i> Waiting for Rider
+                                </span>
+                            </div>
+
+                            <div class="p-5 space-y-4 pt-1">
+                                <!-- Header Info -->
+                                <div class="flex items-start justify-between border-b border-dashed border-gray-200 pb-3">
+                                    <div>
+                                        <h3 class="text-xl font-black text-orange-500">#CE-0246</h3>
+                                        <p class="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
+                                            <i class="fa-regular fa-clock"></i> 11:30 AM
+                                        </p>
+                                    </div>
+                                    <div class="flex flex-col items-end gap-1.5">
+                                        <span class="bg-emerald-50 text-emerald-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                            • Ready
+                                        </span>
+                                        <span class="bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                            <i class="fa-solid fa-motorcycle text-[9px]"></i> Delivery
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Customer & Assigned Rider Info -->
+                                <div class="space-y-2">
+                                    <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-xl bg-amber-500 text-white font-bold flex items-center justify-center text-xs">A</div>
+                                        <div>
+                                            <p class="font-extrabold text-xs text-gray-800">Ana Reyes</p>
+                                            <p class="text-[10px] text-gray-500 font-medium">Customer</p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-purple-100/60 p-2.5 rounded-2xl flex items-center gap-3 border border-purple-200/60">
+                                        <div class="w-8 h-8 rounded-xl bg-purple-600 text-white font-bold flex items-center justify-center text-xs">R</div>
+                                        <div>
+                                            <p class="font-extrabold text-xs text-purple-950">Rico Reyes</p>
+                                            <p class="text-[10px] text-purple-700 font-medium flex items-center gap-1">
+                                                <i class="fa-solid fa-motorcycle text-[9px]"></i> Delivery Staff
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Order Items List -->
+                                <div class="text-xs space-y-1.5 font-semibold text-gray-700 py-1">
+                                    <div class="flex justify-between"><span class="text-orange-500 font-bold">x1</span> <span>Pancit Canton</span></div>
+                                    <div class="flex justify-between"><span class="text-orange-500 font-bold">x3</span> <span>Lumpia</span></div>
+                                    <div class="flex justify-between"><span class="text-orange-500 font-bold">x1</span> <span>Juice</span></div>
+                                </div>
+
+                                <!-- Card Footer Action -->
+                                <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                                    <span class="text-lg font-black text-orange-500">₱290</span>
+                                    <form method="POST" action="#">
+                                        {% csrf_token %}
+                                        <button type="submit" class="bg-slate-900 hover:bg-black text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md active:scale-95 transition">
+                                            Picked Up by Rider
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Live Clock Script -->
+    <script>
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            const strTime = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+            document.getElementById('live-clock').textContent = strTime;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html>

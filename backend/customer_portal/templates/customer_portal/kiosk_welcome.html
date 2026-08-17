@@ -67,11 +67,10 @@
 
     <!-- ================= 1. ULTRA-SMOOTH SLOW FADE-IN SPLASH SCREEN ================= -->
     <div id="splash-screen" class="fixed inset-0 z-50 bg-brand-dark flex flex-col items-center justify-center p-6 transition-opacity duration-1000 ease-in-out">
-        <!-- Gap reduced to gap-1.5 to pull text closer upwards -->
         <div class="flex flex-col items-center gap-1.5 animate-slow-fade">
             <!-- Enlarged Logo -->
             <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Canteen Express Logo" class="h-32 sm:h-36 w-auto object-contain drop-shadow-[0_10px_25px_rgba(255,97,23,0.25)]">
-            <!-- Poppins Styled Name: Regular/Medium Weight, Moved Up -->
+            <!-- Poppins Styled Name -->
             <h2 class="font-poppins text-xs sm:text-sm font-medium uppercase tracking-[0.25em] text-brand-orange">Canteen Express</h2>
         </div>
     </div>
@@ -148,12 +147,20 @@
         </main>
 
 
-        <!-- ================= 3. GET STARTED ACTION ================= -->
+        <!-- ================= 3. GET STARTED & ROLE SELECTION ACTIONS ================= -->
         <footer class="pb-6 space-y-3 text-center">
-            <a href="{% url 'kiosk_menu' %}" class="w-full bg-brand-orange hover:bg-orange-600 active:scale-95 text-white font-poppins font-extrabold text-sm sm:text-base py-4 rounded-2xl shadow-lg shadow-brand-orange/25 flex items-center justify-center gap-2 transition uppercase tracking-wider">
+            
+            <!-- Primary Action: Get Started -->
+            <a href="{% url 'customer_portal:kiosk_menu' %}" class="w-full bg-brand-orange hover:bg-orange-600 active:scale-95 text-white font-poppins font-extrabold text-sm sm:text-base py-4 rounded-2xl shadow-lg shadow-brand-orange/25 flex items-center justify-center gap-2 transition uppercase tracking-wider">
                 Get Started <i class="fa-solid fa-arrow-right"></i>
             </a>
-            <p class="text-[10px] text-brand-slate uppercase font-bold tracking-widest">
+
+            <!-- Secondary Action: Change Role / Back to Landing Page -->
+            <a href="{% url 'accounts:landing' %}" class="w-full bg-brand-card hover:bg-white/10 border border-white/10 active:scale-95 text-white/90 font-poppins font-semibold text-xs sm:text-sm py-3.5 rounded-2xl flex items-center justify-center gap-2 transition uppercase tracking-wider">
+                <i class="fa-solid fa-user-gear text-brand-orange"></i> Change Role / Select Account
+            </a>
+
+            <p class="text-[10px] text-brand-slate uppercase font-bold tracking-widest pt-1">
                 Touch anywhere or click to proceed
             </p>
         </footer>

@@ -1,10 +1,12 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
+from django.conf import settings             # <-- IDAGDAG ITO
+from django.conf.urls.static import static   # <-- IDAGDAG ITO
 
 urlpatterns = [
-    # Redirect root URL to kiosk
-    path('', lambda request: redirect('/kiosk/')),
+    # Redirect root URL to Accounts Landing (Role Selection)
+    path('', lambda request: redirect('accounts:landing')),
 
     # Admin
     path('admin/', admin.site.urls),
@@ -12,9 +14,16 @@ urlpatterns = [
     # Accounts
     path('accounts/', include('accounts.urls')),
 
-    # Customer / Kiosk (Inilagay ang namespace para gumana ang 'customer_portal:kiosk_menu')
-    path('kiosk/', include(('customer_portal.urls', 'customer_portal'), namespace='customer_portal')),
+    # Customer / Kiosk Portal
+    path('kiosk/', include('customer_portal.urls')),
 
-    # Kitchen / Canteen Staff (Inilagay din ang namespace para sa kitchen)
+    # Kitchen / Canteen Staff
     path('kitchen/', include(('kitchen_display.urls', 'kitchen'), namespace='kitchen')),
+
+    # Canteen Menu
+    path('canteen/', include(('canteen_menu.urls', 'canteen_menu'), namespace='canteen_menu')),
 ]
+
+# <-- IDAGDAG ITO SA PINAKABABA PARA LUMABAS ANG MGA PICTURES -->
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

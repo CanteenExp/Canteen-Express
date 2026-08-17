@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ action_title }} - Staff Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-dark': '#0d0d12',
+                        'brand-card': '#16161e',
+                        'brand-orange': '#f97316',
+                        'brand-slate': '#94a3b8',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Styling para sa automatic inputs ng Django form */
+        input[type="text"], input[type="number"], input[type="url"], textarea, select {
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            padding: 0.625rem 0.875rem;
+            color: #ffffff;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        input[type="text"]:focus, input[type="number"]:focus, input[type="url"]:focus, textarea:focus, select:focus {
+            border-color: #f97316;
+            background-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.2);
+        }
+        select option {
+            background-color: #16161e;
+            color: white;
+        }
+        input[type="checkbox"] {
+            width: 1.1rem;
+            height: 1.1rem;
+            accent-color: #f97316;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-brand-dark text-white min-h-screen p-4 sm:p-8 flex items-center justify-center font-sans antialiased">
+    
+    <div class="max-w-lg w-full bg-brand-card/90 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-white/10 shadow-2xl space-y-6">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-white/10 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange">
+                    <i class="fa-solid fa-utensils"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-extrabold text-white">{{ action_title }}</h2>
+                    <p class="text-[11px] text-brand-slate">Staff Portal - Menu Management</p>
+                </div>
+            </div>
+            <a href="{% url 'canteen_menu:staff_menu_list' %}" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-brand-slate hover:text-white transition">
+                <i class="fa-solid fa-xmark text-base"></i>
+            </a>
+        </div>
+
+        <!-- Global Form Errors Prompt -->
+        {% if form.non_field_errors %}
+            <div class="p-3.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl space-y-1">
+                {% for error in form.non_field_errors %}
+                    <p class="flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> {{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="POST" enctype="multipart/form-data" class="space-y-4 text-xs font-bold">
+            {% csrf_token %}
+            
+            <!-- Item Name -->
+            <div>
+                <label class="block mb-1.5 text-brand-slate">Item Name *</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                    <p class="text-red-400 text-[10px] mt-1 font-normal">{{ form.name.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Category & Price -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block mb-1.5 text-brand-slate">Category *</label>
+                    {{ form.category }}
+                    {% if form.category.errors %}
+                        <p class="text-red-400 text-[10px] mt-1 font-normal">{{ form.category.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label class="block mb-1.5 text-brand-slate">Price (₱) *</label>
+                    {{ form.price }}
+                    {% if form.price.errors %}
+                        <p class="text-red-400 text-[10px] mt-1 font-normal">{{ form.price.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block mb-1.5 text-brand-slate">Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                    <p class="text-red-400 text-[10px] mt-1 font-normal">{{ form.description.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Badge -->
+            {% if form.badge %}
+            <div>
+                <label class="block mb-1.5 text-brand-slate">Badge (Optional)</label>
+                {{ form.badge }}
+                <p class="text-[10px] text-brand-slate/60 mt-1 font-normal">Halimbawa: Bestseller, Popular, Budget</p>
+                {% if form.badge.errors %}
+                    <p class="text-red-400 text-[10px] mt-1 font-normal">{{ form.badge.errors.0 }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Image Online URL -->
+            {% if form.image_url %}
+            <div>
+                <label class="block mb-1.5 text-brand-slate">Image Online URL</label>
+                {{ form.image_url }}
+                <p class="text-[10px] text-brand-slate/60 mt-1 font-normal">Link ng litrato galing sa Unsplash o internet</p>
+                {% if form.image_url.errors %}
+                    <p class="text-red-400 text-[10px] mt-1 font-normal">{{ form.image_url.errors.0 }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Upload Image File -->
+            <div>
+                <label class="block mb-1.5 text-brand-slate">Or Upload Image File</label>
+                <div class="p-2 bg-white/5 border border-white/10 rounded-xl">
+                    {{ form.image }}
+                </div>
+                {% if form.image.errors %}
+                    <p class="text-red-400 text-[10px] mt-1 font-normal">{{ form.image.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Checkboxes Section -->
+            <div class="pt-3 border-t border-white/10 space-y-3">
+                {% if form.is_siomai %}
+                <label class="flex items-center gap-2.5 cursor-pointer select-none group">
+                    {{ form.is_siomai }}
+                    <span class="text-zinc-300 group-hover:text-white transition">Is Siomai Customizer? <span class="text-brand-slate font-normal">(Opens Siomai Rice modal)</span></span>
+                </label>
+                {% endif %}
+
+                <label class="flex items-center gap-2.5 cursor-pointer select-none group">
+                    {{ form.is_available }}
+                    <span class="text-zinc-300 group-hover:text-white transition">Available in Kiosk?</span>
+                </label>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-3 pt-4 border-t border-white/5">
+                <a href="{% url 'canteen_menu:staff_menu_list' %}" class="w-1/2 text-center bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl uppercase tracking-wider text-xs border border-white/10 active:scale-95 transition">Cancel</a>
+                <button type="submit" class="w-1/2 bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 rounded-xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/20 active:scale-95 transition">Save Item</button>
+            </div>
+        </form>
+
+    </div>
+</body>
+</html>

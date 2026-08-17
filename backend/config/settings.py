@@ -20,7 +20,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-local-dev-key")
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '*']
+ALLOWED_HOSTS = ['*']
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
@@ -81,17 +81,25 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Database
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.getenv('DB_NAME', 'neondb'),
+#         'USER': os.getenv('DB_USER', 'neondb_owner'),
+#         'PASSWORD': os.getenv('DB_PASSWORD'),
+#         'HOST': os.getenv('DB_HOST', 'ep-shy-heart-ayghwl06-pooler.c-5.us-east-2.aws.neon.tech'),
+#         'PORT': os.getenv('DB_PORT', '5432'),
+#         'OPTIONS': {
+#             'sslmode': 'require',
+#         },
+#     }
+# }
+
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'neondb'),
-        'USER': os.getenv('DB_USER', 'neondb_owner'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST', 'ep-shy-heart-ayghwl06-pooler.c-5.us-east-2.aws.neon.tech'),
-        'PORT': os.getenv('DB_PORT', '5432'),
-        'OPTIONS': {
-            'sslmode': 'require',
-        },
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -132,3 +140,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Print emails to the console for testing during development
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'Canteen Express <no-reply@canteenexpress.com>'
+
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://tiny-boats-win.loca.lt',
+    # O kaya para mas madali habang nagte-test ka:
+    'https://*.loca.lt', 
+]

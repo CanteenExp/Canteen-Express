@@ -1,14 +1,12 @@
+# customer_portal/urls.py
 from django.urls import path
 from . import views
 
+app_name = 'customer_portal'
+
 urlpatterns = [
-    # Changed from 'kiosk/' to ''
     path('', views.kiosk_welcome, name='kiosk_welcome'),
-    
-    # Changed from 'kiosk/home/' to 'home/'
-    path('home/', views.kiosk_home, name='kiosk_home'),
-
-    path('auth/', views.kiosk_auth, name='kiosk_auth'),
-
-    path('kiosk/menu/', views.kiosk_menu, name='kiosk_menu'),
+    path('menu/', views.kiosk_menu, name='kiosk_menu'),
+    path('api/menu/', views.get_kiosk_menu_api, name='get_kiosk_menu_api'),
+    path('api/checkout/', views.process_checkout, name='process_checkout'),
 ]

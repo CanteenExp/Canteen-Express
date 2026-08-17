@@ -4,13 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Today's Menu - Canteen Express</title>
+    <title>Today's Menu - Canteen Express Kiosk</title>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- JsBarcode CDN (For Barcode Generation) -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <!-- html2canvas CDN (For Downloading Queue Slip as Image) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script>
         tailwind.config = {
@@ -38,286 +43,367 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-brand-dark text-brand-light min-h-screen flex flex-col justify-between selection:bg-brand-orange selection:text-white">
+<body class="bg-brand-dark text-brand-light h-screen flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative">
 
-    <!-- ================= HEADER / TOP BAR ================= -->
-    <header class="sticky top-0 z-30 bg-brand-dark/95 backdrop-blur-md border-b border-white/10 px-3 py-3 sm:px-8 sm:py-4">
-        <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
-            
-            <!-- Left: Back Button & Logo -->
-            <div class="flex items-center gap-2 sm:gap-3">
-                <a href="{% url 'kiosk_welcome' %}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95 text-xs sm:text-base">
+    <!-- ================= FLOATING TOAST NOTIFICATION (AUTO-DISMISSING) ================= -->
+    <div id="pending-order-banner" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-black px-5 py-3 rounded-2xl shadow-2xl border border-amber-300 text-xs font-bold transition-all duration-300 transform -translate-y-4 opacity-0 max-w-xl w-[90%] sm:w-auto flex items-center justify-between gap-4">
+        <div class="flex items-center gap-2.5">
+            <i class="fa-solid fa-triangle-exclamation text-base shrink-0"></i>
+            <span class="leading-tight">You have an active unpaid order! Settle it at the counter or edit it before placing a new one.</span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0 border-l border-black/20 pl-3">
+            <button onclick="openQueueSlipModal()" class="bg-black text-amber-400 hover:bg-black/80 px-3 py-1.5 rounded-xl font-black transition active:scale-95 text-[11px] uppercase tracking-wider">
+                View
+            </button>
+            <button onclick="hidePendingBanner()" class="text-black/60 hover:text-black p-1 transition">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= 1. DINE-IN / TAKE-OUT SELECTION POPUP MODAL ================= -->
+    <div id="dining-option-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4">
+        <div class="bg-brand-card border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-6 shadow-2xl animate-fade-in">
+            <div class="space-y-2">
+                <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-12 w-auto mx-auto mb-2 object-contain">
+                <h2 class="text-2xl sm:text-3xl font-black text-white">How will you be eating today?</h2>
+                <p class="text-xs sm:text-sm text-brand-slate">Please select your dining option to start ordering</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 pt-2">
+                <button onclick="setDiningOption('Dine-In')" class="group p-5 rounded-2xl bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange transition active:scale-95 flex flex-col items-center justify-center gap-3">
+                    <div class="w-16 h-16 rounded-2xl bg-brand-orange/10 text-brand-orange flex items-center justify-center text-3xl group-hover:bg-brand-orange group-hover:text-white transition">
+                        <i class="fa-solid fa-utensils"></i>
+                    </div>
+                    <span class="font-black text-sm sm:text-base text-white group-hover:text-brand-orange transition uppercase tracking-wider">Dine-In</span>
+                </button>
+
+                <button onclick="setDiningOption('Take-Out')" class="group p-5 rounded-2xl bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange transition active:scale-95 flex flex-col items-center justify-center gap-3">
+                    <div class="w-16 h-16 rounded-2xl bg-brand-orange/10 text-brand-orange flex items-center justify-center text-3xl group-hover:bg-brand-orange group-hover:text-white transition">
+                        <i class="fa-solid fa-bag-shopping"></i>
+                    </div>
+                    <span class="font-black text-sm sm:text-base text-white group-hover:text-brand-orange transition uppercase tracking-wider">Take-Out</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================= HEADER ================= -->
+    <header class="bg-brand-dark border-b border-white/10 shrink-0 space-y-3 pb-3">
+        <div class="max-w-7xl mx-auto px-4 pt-3">
+            <div class="relative w-full h-20 sm:h-24 rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-r from-brand-orange/30 via-brand-dark to-black p-3 sm:p-4 flex items-center justify-between shadow-xl">
+                <div class="space-y-0.5 max-w-sm z-10">
+                    <span class="bg-brand-orange text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider">Today's Special</span>
+                    <h2 class="text-sm sm:text-lg font-black text-white leading-tight">Freshly Cooked Meals Daily!</h2>
+                    <p class="text-[10px] sm:text-xs text-brand-slate line-clamp-1">Order your favorite campus snacks & meals in seconds.</p>
+                </div>
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80" alt="Promo Dish" class="absolute right-0 top-0 bottom-0 w-1/2 sm:w-1/3 object-cover opacity-80 mix-blend-lighten">
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <a href="{% url 'customer_portal:kiosk_welcome' %}" class="w-10 h-10 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95">
                     <i class="fa-solid fa-arrow-left"></i>
                 </a>
-                <div class="flex items-center gap-2">
-                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto object-contain hidden sm:block">
+                <div class="flex items-center gap-3">
+                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto object-contain">
                     <div>
-                        <h1 class="text-xs sm:text-lg font-black text-white leading-tight">Today's Menu</h1>
-                        <p class="text-[9px] sm:text-xs text-brand-orange font-bold uppercase tracking-wider">
-                            Mode: {{ request.GET.role|default:"Student / Walk-in"|title }}
+                        <h1 class="text-xs sm:text-base font-black text-white leading-tight">Canteen Express</h1>
+                        <p class="text-[8px] sm:text-xs text-brand-orange font-bold uppercase tracking-wider flex items-center gap-1.5">
+                            <span id="dining-mode-badge" class="bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded-md border border-brand-orange/30">Dine-In</span>
                         </p>
                     </div>
                 </div>
             </div>
 
-            <!-- Right: Search Bar -->
             <div class="relative flex-1 max-w-xs ml-auto">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-brand-slate text-xs sm:text-sm"></i>
-                <input type="text" id="search-input" onkeyup="filterItems()" placeholder="Search..." class="w-full bg-brand-card border border-white/10 rounded-xl pl-8 sm:pl-9 pr-3 sm:pr-4 py-1.5 sm:py-2 text-xs sm:text-sm text-white placeholder-brand-slate focus:outline-none focus:border-brand-orange transition">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-slate text-xs sm:text-sm"></i>
+                <input type="text" id="search-input" oninput="filterItems()" placeholder="Search menu items..." class="w-full bg-brand-card border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-white placeholder-brand-slate focus:outline-none focus:border-brand-orange transition">
             </div>
-
         </div>
     </header>
 
 
-    <!-- ================= MAIN CONTENT LAYOUT ================= -->
-    <div class="max-w-7xl w-full mx-auto flex-1 flex flex-col lg:flex-row items-start gap-4 sm:gap-6 p-3 sm:p-6 lg:p-8 pb-28 lg:pb-8">
+    <!-- ================= MAIN LAYOUT ================= -->
+    <div class="flex-1 max-w-7xl w-full mx-auto flex overflow-hidden p-3 sm:p-4 gap-4">
 
-        <!-- LEFT COLUMN: Categories & Items -->
-        <main class="flex-1 flex flex-col gap-4 sm:gap-6 min-w-0 w-full">
+        <aside class="w-24 sm:w-28 flex-shrink-0 flex flex-col gap-2.5 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
+            <button onclick="selectCategory('all', this)" class="category-btn active-cat flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-orange text-white text-center font-black text-xs gap-1.5 transition shadow-lg shadow-brand-orange/20">
+                <i class="fa-solid fa-utensils text-lg sm:text-xl"></i>
+                <span class="text-[11px] leading-tight">All Items</span>
+            </button>
 
-            <!-- Category Pills -->
-            <nav class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-3 px-3 sm:mx-0 sm:px-0" id="category-filters">
-                <button onclick="selectCategory('all', this)" class="category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-orange text-white text-xs sm:text-sm font-extrabold whitespace-nowrap shadow-lg shadow-brand-orange/20 transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-utensils"></i> All Items
-                </button>
-                <button onclick="selectCategory('biscuits', this)" class="category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-card hover:bg-white/10 text-brand-slate hover:text-white border border-white/10 text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-cookie"></i> Biscuits
-                </button>
-                <button onclick="selectCategory('rice', this)" class="category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-card hover:bg-white/10 text-brand-slate hover:text-white border border-white/10 text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-bowl-rice"></i> Rice Meals
-                </button>
-                <button onclick="selectCategory('beverages', this)" class="category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-card hover:bg-white/10 text-brand-slate hover:text-white border border-white/10 text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-bottle-water"></i> Beverages
-                </button>
-                <button onclick="selectCategory('meryenda', this)" class="category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-card hover:bg-white/10 text-brand-slate hover:text-white border border-white/10 text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-burger"></i> Meryenda
-                </button>
-                <button onclick="selectCategory('dietary', this)" class="category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-card hover:bg-white/10 text-brand-slate hover:text-white border border-white/10 text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-heart-pulse"></i> Dietary
-                </button>
-            </nav>
+            <button onclick="selectCategory('biscuits', this)" class="category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition">
+                <i class="fa-solid fa-cookie text-lg sm:text-xl"></i>
+                <span class="text-[11px] leading-tight">Biscuits</span>
+            </button>
 
-            <!-- Food Items Grid Container (STRICT 3-COLUMN GRID ON MOBILE & UP) -->
-            <section id="menu-grid" class="grid grid-cols-3 gap-2 sm:gap-4 lg:gap-6">
-                <!-- Dynamic Items Injected Here via JavaScript -->
+            <button onclick="selectCategory('rice', this)" class="category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition">
+                <i class="fa-solid fa-bowl-rice text-lg sm:text-xl"></i>
+                <span class="text-[11px] leading-tight">Rice Meals</span>
+            </button>
+
+            <button onclick="selectCategory('beverages', this)" class="category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition">
+                <i class="fa-solid fa-bottle-water text-lg sm:text-xl"></i>
+                <span class="text-[11px] leading-tight">Beverages</span>
+            </button>
+
+            <button onclick="selectCategory('meryenda', this)" class="category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition">
+                <i class="fa-solid fa-burger text-lg sm:text-xl"></i>
+                <span class="text-[11px] leading-tight">Meryenda</span>
+            </button>
+
+            <button onclick="selectCategory('dietary', this)" class="category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition">
+                <i class="fa-solid fa-heart-pulse text-lg sm:text-xl"></i>
+                <span class="text-[11px] leading-tight">Dietary</span>
+            </button>
+        </aside>
+
+        <main class="flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar space-y-4 pr-1">
+            <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                <h2 id="category-heading" class="text-sm sm:text-lg font-black text-white uppercase tracking-wider">All Items</h2>
+                <span id="items-count-indicator" class="text-xs text-brand-slate font-bold">Showing items</span>
+            </div>
+
+            <section id="menu-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 pb-4">
             </section>
         </main>
 
+    </div>
 
-        <!-- RIGHT COLUMN / FIXED HEIGHT STICKY CART -->
-        <aside id="cart-drawer" class="fixed inset-x-0 bottom-0 z-40 lg:sticky lg:top-24 lg:w-80 bg-brand-card/95 lg:bg-brand-card backdrop-blur-xl lg:backdrop-blur-none border-t lg:border border-white/10 rounded-t-[32px] lg:rounded-3xl p-4 sm:p-5 shadow-2xl transition-transform transform translate-y-full lg:translate-y-0 h-auto self-start">
+
+    <!-- ================= FOOTER BAR ================= -->
+    <footer class="bg-brand-card border-t border-white/10 p-3 sm:p-4 shrink-0 shadow-2xl z-20">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
-            <!-- Mobile Drawer Handle -->
-            <div onclick="toggleMobileCart()" class="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3 lg:hidden cursor-pointer"></div>
+            <div class="text-left">
+                <span class="text-[10px] sm:text-xs text-brand-slate uppercase font-bold block">Total Amount</span>
+                <span id="cart-total" class="text-xl sm:text-3xl font-black text-brand-orange">₱0.00</span>
+            </div>
 
-            <!-- Cart Header -->
-            <div class="flex items-center justify-between border-b border-white/10 pb-3 sm:pb-4">
+            <div class="flex items-center gap-2.5">
+                {% csrf_token %}
+                <button onclick="clearCart()" class="px-4 py-2.5 sm:py-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-brand-slate hover:text-red-400 font-bold text-xs sm:text-sm uppercase tracking-wider transition border border-white/10 active:scale-95">
+                    Clear
+                </button>
+
+                <button onclick="openCartDrawer()" id="next-btn" disabled class="bg-brand-orange disabled:opacity-40 disabled:cursor-not-allowed hover:bg-orange-600 active:scale-95 text-white font-extrabold text-xs sm:text-sm px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl shadow-lg shadow-brand-orange/25 uppercase tracking-wider transition flex items-center gap-2">
+                    <span>Next</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+
+        </div>
+    </footer>
+
+
+    <!-- ================= COLLAPSIBLE CART DRAWER ================= -->
+    <div id="cart-drawer-backdrop" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden transition-opacity">
+        <div class="absolute right-0 top-0 bottom-0 max-w-md w-full bg-brand-card border-l border-white/10 p-5 flex flex-col justify-between shadow-2xl">
+            
+            <div class="flex items-center justify-between border-b border-white/10 pb-4">
                 <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-cart-shopping text-brand-orange text-base sm:text-lg"></i>
-                    <h2 class="text-base sm:text-lg font-black text-white">Your Order</h2>
+                    <i class="fa-solid fa-cart-shopping text-brand-orange text-xl"></i>
+                    <h3 class="text-lg font-black text-white uppercase tracking-wider">Your Cart</h3>
                 </div>
-                <button onclick="toggleMobileCart()" class="lg:hidden text-brand-slate hover:text-white text-sm">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+                <button onclick="closeCartDrawer()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
 
-            <!-- Cart Items List Container (Bounded Height & Scrollable) -->
-            <div id="cart-items-container" class="my-3 sm:my-4 min-h-[130px] max-h-[250px] overflow-y-auto space-y-2 sm:space-y-3 no-scrollbar pr-1 flex flex-col justify-start">
-                <!-- Cart Items Injected Here -->
+            <div id="drawer-cart-list" class="flex-1 overflow-y-auto no-scrollbar py-4 space-y-3">
             </div>
 
-            <!-- Cart Total & Checkout -->
-            <div class="border-t border-white/10 pt-3 sm:pt-4 space-y-2 sm:space-y-3">
-                <div class="flex justify-between items-center text-xs text-brand-slate font-medium">
-                    <span>Subtotal</span>
-                    <span id="cart-subtotal" class="text-white font-bold">₱0.00</span>
-                </div>
-                <div class="flex justify-between items-center text-sm sm:text-base font-black text-white">
-                    <span>Total</span>
-                    <span id="cart-total" class="text-brand-orange text-lg sm:text-xl">₱0.00</span>
-                </div>
-                <button onclick="checkoutOrder()" id="checkout-btn" disabled class="w-full bg-brand-orange disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-600 active:scale-95 text-white font-extrabold text-xs sm:text-sm py-3 rounded-xl sm:rounded-2xl shadow-lg shadow-brand-orange/20 uppercase tracking-wider transition">
-                    Proceed to Checkout <i class="fa-solid fa-arrow-right ml-1"></i>
-                </button>
-            </div>
-        </aside>
-
-    </div>
-
-
-    <!-- ================= MOBILE BOTTOM FLOATING CART BAR ================= -->
-    <div class="fixed bottom-0 inset-x-0 z-30 lg:hidden bg-brand-dark/95 border-t border-white/10 p-3 backdrop-blur-md">
-        <button onclick="toggleMobileCart()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-between shadow-lg shadow-brand-orange/25 active:scale-95 transition">
-            <div class="flex items-center gap-2">
-                <span id="mobile-cart-badge" class="w-5 h-5 rounded-full bg-white text-brand-orange text-[10px] font-black flex items-center justify-center">0</span>
-                <span class="text-xs font-black uppercase tracking-wider">View Cart</span>
-            </div>
-            <span id="mobile-cart-total" class="text-xs font-black">₱0.00 <i class="fa-solid fa-chevron-up ml-1 text-[10px]"></i></span>
-        </button>
-    </div>
-
-
-    <!-- ================= SIOMAI RICE CUSTOMIZATION MODAL ================= -->
-    <div id="siomai-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="bg-brand-card border border-white/10 rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 sm:space-y-5 shadow-2xl">
-            <div class="flex items-center justify-between border-b border-white/10 pb-3">
-                <h3 class="text-base sm:text-lg font-extrabold text-white">Customize Siomai Rice</h3>
-                <button onclick="closeSiomaiModal()" class="text-brand-slate hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-
-            <div class="space-y-3 sm:space-y-4">
-                <!-- Siomai Quantity Selector -->
-                <div class="flex items-center justify-between bg-white/5 p-3 rounded-2xl border border-white/5">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">Siomai Pieces</h4>
-                        <p class="text-[10px] text-brand-slate">₱10.00 per piece</p>
+            <div class="border-t border-white/10 pt-4 space-y-4 shrink-0">
+                <div class="space-y-1.5 text-xs text-brand-slate">
+                    <div class="flex justify-between">
+                        <span>Dining Mode:</span>
+                        <span id="drawer-dining-mode" class="text-white font-bold">Dine-In</span>
                     </div>
-                    <div class="flex items-center gap-2.5">
-                        <button onclick="adjustSiomaiModal('siomai', -1)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/10 text-white font-bold text-xs sm:text-sm">-</button>
-                        <span id="modal-siomai-count" class="text-xs sm:text-sm font-black text-white">4</span>
-                        <button onclick="adjustSiomaiModal('siomai', 1)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-brand-orange text-white font-bold text-xs sm:text-sm">+</button>
+                    <div class="flex justify-between text-base font-black text-white pt-2 border-t border-white/5">
+                        <span>Total Amount:</span>
+                        <span id="drawer-total-amount" class="text-brand-orange">₱0.00</span>
                     </div>
                 </div>
 
-                <!-- Rice Quantity Selector -->
-                <div class="flex items-center justify-between bg-white/5 p-3 rounded-2xl border border-white/5">
-                    <div>
-                        <h4 class="text-xs font-bold text-white">Rice Scoops</h4>
-                        <p class="text-[10px] text-brand-slate">₱12.00 per scoop</p>
-                    </div>
-                    <div class="flex items-center gap-2.5">
-                        <button onclick="adjustSiomaiModal('rice', -1)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/10 text-white font-bold text-xs sm:text-sm">-</button>
-                        <span id="modal-rice-count" class="text-xs sm:text-sm font-black text-white">1</span>
-                        <button onclick="adjustSiomaiModal('rice', 1)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-brand-orange text-white font-bold text-xs sm:text-sm">+</button>
-                    </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="closeCartDrawer()" class="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl uppercase tracking-wider text-xs border border-white/10 transition">
+                        + Add More
+                    </button>
+                    <button onclick="checkoutOrder()" id="drawer-pay-btn" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3 rounded-xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/20 transition flex items-center justify-center gap-2">
+                        <span>Done / Pay</span>
+                        <i class="fa-solid fa-circle-check"></i>
+                    </button>
                 </div>
             </div>
 
-            <div class="pt-2 border-t border-white/10 flex items-center justify-between">
-                <div>
-                    <span class="text-[9px] sm:text-[10px] text-brand-slate uppercase font-bold block">Total</span>
-                    <span id="modal-siomai-total" class="text-base sm:text-lg font-black text-brand-orange">₱52.00</span>
-                </div>
-                <button onclick="confirmSiomaiCustomization()" class="bg-brand-orange hover:bg-orange-600 text-white text-xs font-extrabold px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl uppercase tracking-wider">
-                    Add to Cart
-                </button>
-            </div>
         </div>
     </div>
 
 
-    <!-- ================= CHECKOUT CONFIRMATION MODAL ================= -->
-    <div id="checkout-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="bg-brand-card border border-white/10 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
-            <div class="w-14 h-14 sm:w-16 sm:h-16 bg-brand-orange/20 text-brand-orange border border-brand-orange/30 rounded-full flex items-center justify-center mx-auto text-2xl sm:text-3xl">
-                <i class="fa-solid fa-circle-check"></i>
+    <!-- ================= QUEUE SLIP MODAL (DOWNLOADABLE & WITH BARCODE) ================= -->
+    <div id="queue-slip-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="max-w-sm w-full space-y-4 my-auto">
+            
+            <!-- Target Printable Queue Slip Container -->
+            <div id="queue-slip-card" class="bg-white text-gray-900 rounded-3xl p-6 shadow-2xl space-y-4 text-center border-2 border-gray-100">
+                
+                <!-- Slip Header -->
+                <div class="border-b border-dashed border-gray-300 pb-3 space-y-1">
+                    <h3 class="text-lg font-black text-gray-900 uppercase tracking-wider">CANTEEN EXPRESS</h3>
+                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Official Kiosk Queue Slip</p>
+                </div>
+
+                <!-- Queue Number & Mode -->
+                <div class="bg-orange-50 rounded-2xl p-4 border border-orange-100 space-y-1">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-orange-600 block">Queue Number</span>
+                    <span id="slip-queue-number" class="text-4xl font-black text-orange-600 tracking-tight">#CE-0000</span>
+                    <div class="pt-1">
+                        <span id="slip-dining-mode" class="inline-block bg-orange-600 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider">DINE-IN</span>
+                    </div>
+                </div>
+
+                <!-- Order Summary Items List -->
+                <div class="text-left space-y-2 text-xs">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block border-b border-gray-100 pb-1">Order List</span>
+                    <div id="slip-items-list" class="space-y-1 max-h-40 overflow-y-auto pr-1">
+                        <!-- Dynamic Item Lines -->
+                    </div>
+                    <div class="border-t border-dashed border-gray-300 pt-2 flex justify-between items-center text-sm font-black text-gray-900">
+                        <span>TOTAL AMOUNT:</span>
+                        <span id="slip-total-amount" class="text-orange-600 text-base">₱0.00</span>
+                    </div>
+                </div>
+
+                <!-- Barcode Container -->
+                <div class="border-t border-dashed border-gray-300 pt-3 flex flex-col items-center justify-center">
+                    <svg id="slip-barcode" class="w-full h-16"></svg>
+                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">Scan at Counter to Process Payment</span>
+                </div>
+
             </div>
-            <h3 class="text-xl sm:text-2xl font-black text-white">Order Placed!</h3>
-            <p class="text-xs text-brand-slate">Your order has been sent to the canteen kitchen. Please claim it at the counter.</p>
-            <div class="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4">
-                <span class="text-[9px] sm:text-[10px] text-brand-slate font-bold uppercase tracking-wider block">Order Number</span>
-                <span id="order-id" class="text-2xl sm:text-3xl font-black text-brand-orange">#CE-0000</span>
+
+            <!-- Action Buttons Below Queue Slip -->
+            <div class="space-y-2">
+                <button onclick="downloadQueueSlip()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Download Slip as Image</span>
+                </button>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="editPendingOrder()" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider text-[11px] transition border border-white/10 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        <span>Edit Order</span>
+                    </button>
+                    <button onclick="cancelPendingOrder()" class="w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold py-2.5 rounded-xl uppercase tracking-wider text-[11px] transition border border-red-500/30 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span>Cancel Order</span>
+                    </button>
+                </div>
             </div>
-            <button onclick="resetMenu()" class="w-full bg-brand-orange text-white font-bold py-3 rounded-xl uppercase tracking-wider text-xs">
-                Back to Menu
-            </button>
+
         </div>
     </div>
 
 
-    <!-- ================= JAVASCRIPT CONTROLLER ================= -->
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
-        const menuData = [
-            // --- BISCUITS ---
-            { id: 101, name: "SkyFlakes", category: "biscuits", price: 15.00, desc: "Classic salty crackers.", badge: "", img: "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=600&q=80" },
-            { id: 102, name: "Fita", category: "biscuits", price: 15.00, desc: "Sweet & salty crackers.", badge: "", img: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=600&q=80" },
-            { id: 103, name: "Hansel", category: "biscuits", price: 18.00, desc: "Mocha cream sandwich.", badge: "Popular", img: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80" },
-            { id: 104, name: "Presto Creams", category: "biscuits", price: 18.00, desc: "Chocolate cream cookies.", badge: "", img: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=600&q=80" },
-            { id: 105, name: "Rebisco", category: "biscuits", price: 15.00, desc: "Rich cream crackers.", badge: "", img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80" },
+        const rawMenuData = JSON.parse('{{ menu_data_json|escapejs }}');
 
-            // --- RICE MEALS ---
-            { id: 201, name: "Siomai Rice", category: "rice", price: 52.00, desc: "Pork siomai & rice.", badge: "Custom", isSiomai: true, img: "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&w=600&q=80" },
-            { id: 202, name: "Chicken Adobo", category: "rice", price: 80.00, desc: "Savory chicken with rice.", badge: "Bestseller", img: "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=600&q=80" },
-            { id: 203, name: "Pork Sinigang", category: "rice", price: 85.00, desc: "Sour tamarind pork soup.", badge: "", img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80" },
-            { id: 204, name: "Chicken Curry", category: "rice", price: 80.00, desc: "Coconut curry chicken.", badge: "", img: "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&w=600&q=80" },
-            { id: 205, name: "Tortang Talong", category: "rice", price: 55.00, desc: "Eggplant omelette & rice.", badge: "Budget", img: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80" },
-            { id: 206, name: "Fried Chicken", category: "rice", price: 75.00, desc: "Crispy chicken with gravy.", badge: "", img: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?auto=format&fit=crop&w=600&q=80" },
-
-            // --- BEVERAGES ---
-            { id: 301, name: "C2 Apple", category: "beverages", price: 20.00, desc: "Green tea apple drink.", badge: "", img: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80" },
-            { id: 302, name: "Water 350ml", category: "beverages", price: 15.00, desc: "Purified water (Small).", badge: "", img: "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&w=600&q=80" },
-            { id: 303, name: "Water 500ml", category: "beverages", price: 20.00, desc: "Purified water (Med).", badge: "", img: "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&w=600&q=80" },
-            { id: 304, name: "Water 1L", category: "beverages", price: 35.00, desc: "Purified water (Large).", badge: "", img: "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&w=600&q=80" },
-            { id: 305, name: "Coke 330ml", category: "beverages", price: 25.00, desc: "Classic cola soda.", badge: "", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80" },
-            { id: 306, name: "Sprite 330ml", category: "beverages", price: 25.00, desc: "Lemon-lime soda.", badge: "", img: "https://images.unsplash.com/photo-1625772299848-391b6a87d7b3?auto=format&fit=crop&w=600&q=80" },
-            { id: 307, name: "Royal Orange", category: "beverages", price: 25.00, desc: "Orange soda drink.", badge: "", img: "https://images.unsplash.com/photo-1581006852262-e4307cf6283a?auto=format&fit=crop&w=600&q=80" },
-
-            // --- MERYENDA ---
-            { id: 401, name: "Bananaque", category: "meryenda", price: 20.00, desc: "Caramelized banana.", badge: "Fresh", img: "https://images.unsplash.com/photo-1528825871115-3581a5387919?auto=format&fit=crop&w=600&q=80" },
-            { id: 402, name: "Karyoka", category: "meryenda", price: 20.00, desc: "Glutinous rice balls.", badge: "", img: "https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=600&q=80" },
-            { id: 403, name: "Maruya", category: "meryenda", price: 20.00, desc: "Crispy banana fritter.", badge: "", img: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80" },
-
-            // --- DIETARY PLANS ---
-            { id: 501, name: "Diabetic Rice Bowl", category: "dietary", price: 90.00, desc: "Brown rice & steamed chicken.", badge: "Diabetic", img: "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?auto=format&fit=crop&w=600&q=80" },
-            { id: 502, name: "Low-Cal Veggie Wrap", category: "dietary", price: 70.00, desc: "Fresh salad wrap (<250 kcal).", badge: "Low Cal", img: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80" },
-            { id: 503, name: "Keto Pork Plate", category: "dietary", price: 95.00, desc: "Roasted pork & egg.", badge: "Keto", img: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80" },
-            { id: 504, name: "Low-Sodium Fish", category: "dietary", price: 85.00, desc: "Steamed fish fillet.", badge: "Healthy", img: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=80" }
-        ];
+        let menuData = rawMenuData.map(item => ({
+            id: item.id,
+            name: item.name,
+            category: item.category ? String(item.category) : '',
+            price: parseFloat(item.price || 0),
+            desc: item.desc || item.description || '',
+            badge: item.badge || '',
+            img: item.img || item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
+        }));
 
         let cart = {};
         let activeCategory = 'all';
+        let diningOption = 'Dine-In';
+        let currentPendingOrder = null;
+        let pendingBannerTimer = null; // Auto-dismiss timer reference
 
-        let tempSiomaiCount = 4;
-        let tempRiceCount = 1;
+        function setDiningOption(option) {
+            diningOption = option;
+            document.getElementById('dining-mode-badge').innerText = option;
+            document.getElementById('drawer-dining-mode').innerText = option;
+            document.getElementById('dining-option-modal').classList.add('hidden');
+        }
 
-        // Render Menu Items
+        async function fetchLatestMenu() {
+            try {
+                const response = await fetch("{% url 'customer_portal:get_kiosk_menu_api' %}");
+                const data = await response.json();
+                if (data.status === 'success') {
+                    menuData = data.menu.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        category: item.category ? String(item.category) : '',
+                        price: parseFloat(item.price || 0),
+                        desc: item.desc || item.description || '',
+                        badge: item.badge || '',
+                        img: item.img || item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
+                    }));
+                    renderMenu();
+                }
+            } catch (err) {
+                console.error("Error fetching live menu updates:", err);
+            }
+        }
+
         function renderMenu() {
             const grid = document.getElementById('menu-grid');
-            const searchQuery = document.getElementById('search-input').value.toLowerCase();
+            if (!grid) return;
+            
+            const searchInput = document.getElementById('search-input');
+            const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
             grid.innerHTML = '';
 
             const filteredItems = menuData.filter(item => {
-                const matchesCategory = (activeCategory === 'all' || item.category === activeCategory);
+                const itemCat = String(item.category || '').toLowerCase();
+                const activeCat = String(activeCategory).toLowerCase();
+                
+                const matchesCategory = (activeCat === 'all' || itemCat.includes(activeCat) || activeCat.includes(itemCat) || !itemCat);
                 const matchesSearch = item.name.toLowerCase().includes(searchQuery) || item.desc.toLowerCase().includes(searchQuery);
                 return matchesCategory && matchesSearch;
             });
 
+            document.getElementById('items-count-indicator').innerText = `Showing ${filteredItems.length} items`;
+
             if (filteredItems.length === 0) {
                 grid.innerHTML = `
-                    <div class="col-span-full text-center py-10 text-brand-slate">
-                        <i class="fa-solid fa-utensils text-3xl mb-2 opacity-50"></i>
-                        <p class="text-xs font-semibold">No food items found.</p>
+                    <div class="col-span-full text-center py-12 text-brand-slate">
+                        <i class="fa-solid fa-utensils text-4xl mb-2 opacity-40"></i>
+                        <p class="text-sm font-semibold">No food items found in this category.</p>
                     </div>`;
                 return;
             }
 
             filteredItems.forEach(item => {
-                const badgeHTML = item.badge ? `<span class="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 bg-brand-dark/80 backdrop-blur-md border border-white/10 text-brand-amber text-[8px] sm:text-[10px] font-black uppercase px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg">${item.badge}</span>` : '';
-                
-                const actionBtn = item.isSiomai ? 
-                    `<button onclick="openSiomaiModal()" class="w-full sm:w-auto bg-brand-orange hover:bg-orange-600 text-white font-bold text-[10px] sm:text-xs px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl active:scale-95 transition flex items-center justify-center gap-1">
-                        <i class="fa-solid fa-sliders text-[9px] sm:text-xs"></i> Add
-                    </button>` : 
-                    `<button onclick="addToCart(${item.id})" class="w-full sm:w-auto bg-brand-orange hover:bg-orange-600 text-white font-bold text-[10px] sm:text-xs px-2 sm:px-4 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl active:scale-95 transition flex items-center justify-center gap-1">
-                        <i class="fa-solid fa-plus text-[9px] sm:text-xs"></i> Add
-                    </button>`;
+                const badgeHTML = item.badge ? `<span class="absolute top-2 right-2 bg-brand-dark/90 backdrop-blur-md border border-white/10 text-brand-amber text-[9px] font-black uppercase px-2 py-0.5 rounded-md">${item.badge}</span>` : '';
 
                 const card = document.createElement('div');
-                card.className = "bg-brand-card rounded-xl sm:rounded-2xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group";
+                card.className = "bg-brand-card rounded-2xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group";
                 card.innerHTML = `
-                    <div class="relative h-24 sm:h-40 lg:h-48 overflow-hidden bg-white/5">
+                    <div class="relative h-28 sm:h-36 overflow-hidden bg-white/5">
                         <img src="${item.img}" alt="${item.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                         ${badgeHTML}
                     </div>
-                    <div class="p-2 sm:p-4 flex-1 flex flex-col justify-between gap-1.5 sm:gap-3">
+                    <div class="p-3 flex-1 flex flex-col justify-between gap-2">
                         <div>
-                            <h3 class="text-xs sm:text-base font-extrabold text-white group-hover:text-brand-orange transition line-clamp-1 sm:line-clamp-none">${item.name}</h3>
-                            <p class="text-[10px] sm:text-xs text-brand-slate line-clamp-1 sm:line-clamp-2 mt-0.5 sm:mt-1">${item.desc}</p>
+                            <h3 class="text-xs sm:text-sm font-extrabold text-white group-hover:text-brand-orange transition line-clamp-1">${item.name}</h3>
+                            <p class="text-[10px] text-brand-slate line-clamp-2 mt-0.5">${item.desc}</p>
                         </div>
-                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 sm:gap-0 pt-1.5 sm:pt-2 border-t border-white/5">
-                            <span class="text-xs sm:text-lg font-black text-white text-center sm:text-left">₱${item.price.toFixed(2)}</span>
-                            ${actionBtn}
+                        <div class="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
+                            <span class="text-sm sm:text-base font-black text-white">₱${item.price.toFixed(2)}</span>
+                            <button onclick="addToCart(${item.id})" class="w-8 h-8 bg-brand-orange hover:bg-orange-600 text-white font-bold text-xs rounded-xl active:scale-95 transition flex items-center justify-center shadow-md shadow-brand-orange/20">
+                                <i class="fa-solid fa-plus text-xs"></i>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -325,13 +411,24 @@
             });
         }
 
-        // Category Filter
         function selectCategory(category, element) {
             activeCategory = category;
-            document.querySelectorAll('.category-btn').forEach(btn => {
-                btn.className = "category-btn px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-card hover:bg-white/10 text-brand-slate hover:text-white border border-white/10 text-xs sm:text-sm font-bold whitespace-nowrap transition flex items-center gap-1.5";
+            
+            const titleMap = {
+                'all': 'All Items',
+                'biscuits': 'Biscuits',
+                'rice': 'Rice Meals',
+                'beverages': 'Beverages',
+                'meryenda': 'Meryenda',
+                'dietary': 'Dietary'
+            };
+            document.getElementById('category-heading').innerText = titleMap[category] || 'Menu Items';
+
+            document.querySelectorAll('#category-sidebar .category-btn').forEach(btn => {
+                btn.className = "category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition";
             });
-            element.className = "category-btn active-cat px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-brand-orange text-white text-xs sm:text-sm font-extrabold whitespace-nowrap shadow-lg shadow-brand-orange/20 transition flex items-center gap-1.5";
+            element.className = "category-btn active-cat flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-orange text-white text-center font-black text-xs gap-1.5 transition shadow-lg shadow-brand-orange/20";
+            
             renderMenu();
         }
 
@@ -339,59 +436,29 @@
             renderMenu();
         }
 
-        // Siomai Rice Modal Handlers
-        function openSiomaiModal() {
-            tempSiomaiCount = 4;
-            tempRiceCount = 1;
-            updateSiomaiModalUI();
-            document.getElementById('siomai-modal').classList.remove('hidden');
+        // CART DRAWER TOGGLE
+        function openCartDrawer() {
+            document.getElementById('cart-drawer-backdrop').classList.remove('hidden');
         }
 
-        function closeSiomaiModal() {
-            document.getElementById('siomai-modal').classList.add('hidden');
+        function closeCartDrawer() {
+            document.getElementById('cart-drawer-backdrop').classList.add('hidden');
         }
 
-        function adjustSiomaiModal(type, change) {
-            if (type === 'siomai') {
-                tempSiomaiCount = Math.max(1, tempSiomaiCount + change);
-            } else if (type === 'rice') {
-                tempRiceCount = Math.max(1, tempRiceCount + change);
-            }
-            updateSiomaiModalUI();
-        }
-
-        function updateSiomaiModalUI() {
-            document.getElementById('modal-siomai-count').innerText = tempSiomaiCount;
-            document.getElementById('modal-rice-count').innerText = tempRiceCount;
-            const calculatedPrice = (tempSiomaiCount * 10) + (tempRiceCount * 12);
-            document.getElementById('modal-siomai-total').innerText = `₱${calculatedPrice.toFixed(2)}`;
-        }
-
-        function confirmSiomaiCustomization() {
-            const calculatedPrice = (tempSiomaiCount * 10) + (tempRiceCount * 12);
-            const customKey = `siomai_${tempSiomaiCount}_${tempRiceCount}`;
-            
-            if (cart[customKey]) {
-                cart[customKey].qty += 1;
-            } else {
-                cart[customKey] = {
-                    id: customKey,
-                    name: `Siomai Rice (${tempSiomaiCount} Pcs + ${tempRiceCount} Rice)`,
-                    price: calculatedPrice,
-                    qty: 1
-                };
-            }
-            closeSiomaiModal();
-            updateCartUI();
-        }
-
-        // Standard Cart Logic
         function addToCart(itemId) {
+            // Anti-Spam check: Trigger floating toast notice if a pending order already exists
+            if (currentPendingOrder && Object.keys(cart).length === 0) {
+                showPendingBanner();
+                return;
+            }
+
             if (cart[itemId]) {
                 cart[itemId].qty += 1;
             } else {
                 const item = menuData.find(i => i.id === itemId);
-                cart[itemId] = { ...item, qty: 1 };
+                if (item) {
+                    cart[itemId] = { ...item, qty: 1 };
+                }
             }
             updateCartUI();
         }
@@ -406,76 +473,270 @@
             updateCartUI();
         }
 
+        function clearCart() {
+            cart = {};
+            updateCartUI();
+        }
+
         function updateCartUI() {
-            const container = document.getElementById('cart-items-container');
-            container.innerHTML = '';
+            const drawerList = document.getElementById('drawer-cart-list');
+            if (!drawerList) return;
+            
+            drawerList.innerHTML = '';
 
             let total = 0;
-            let itemCount = 0;
             const cartKeys = Object.keys(cart);
+            const nextBtn = document.getElementById('next-btn');
 
             if (cartKeys.length === 0) {
-                container.innerHTML = `
-                    <div class="my-auto text-center py-6 text-brand-slate">
-                        <i class="fa-solid fa-basket-shopping text-2xl mb-1 opacity-40"></i>
-                        <p class="text-xs font-medium">Your cart is currently empty.</p>
+                drawerList.innerHTML = `
+                    <div class="text-center py-12 text-brand-slate">
+                        <i class="fa-solid fa-basket-shopping text-4xl mb-3 opacity-30"></i>
+                        <p class="text-xs font-bold">Your cart is empty.</p>
+                        <p class="text-[10px] mt-1">Select items from the menu to add.</p>
                     </div>`;
-                document.getElementById('checkout-btn').disabled = true;
+                if (nextBtn) nextBtn.disabled = true;
+                closeCartDrawer();
             } else {
-                document.getElementById('checkout-btn').disabled = false;
+                if (nextBtn) nextBtn.disabled = false;
+
                 cartKeys.forEach(key => {
                     const item = cart[key];
                     const itemSubtotal = item.price * item.qty;
                     total += itemSubtotal;
-                    itemCount += item.qty;
 
-                    const cartItemEl = document.createElement('div');
-                    cartItemEl.className = "flex items-center justify-between gap-2 bg-white/5 p-2.5 rounded-xl border border-white/5 shrink-0";
-                    cartItemEl.innerHTML = `
-                        <div class="min-w-0 flex-1">
-                            <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
-                            <p class="text-[10px] text-brand-slate">₱${item.price.toFixed(2)}</p>
+                    const cartRow = document.createElement('div');
+                    cartRow.className = "flex items-center justify-between bg-white/5 border border-white/10 p-3 rounded-2xl gap-3";
+                    cartRow.innerHTML = `
+                        <div class="flex items-center gap-3 min-w-0">
+                            <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" class="w-12 h-12 rounded-xl object-cover shrink-0">
+                            <div class="min-w-0">
+                                <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
+                                <span class="text-xs font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-1.5">
-                            <button onclick="updateQuantity('${item.id}', -1)" class="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 text-white font-bold text-xs active:scale-95">-</button>
-                            <span class="text-xs font-black text-white px-1">${item.qty}</span>
-                            <button onclick="updateQuantity('${item.id}', 1)" class="w-6 h-6 rounded-md bg-brand-orange text-white font-bold text-xs active:scale-95">+</button>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <div class="flex items-center gap-2 bg-black/40 rounded-xl px-2 py-1 border border-white/10">
+                                <button onclick="updateQuantity('${item.id}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">-</button>
+                                <span class="text-xs font-black text-white px-1">${item.qty}</span>
+                                <button onclick="updateQuantity('${item.id}', 1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">+</button>
+                            </div>
+                            <button onclick="updateQuantity('${item.id}', -${item.qty})" class="text-brand-slate hover:text-red-400 p-1.5 text-xs transition">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
                         </div>
                     `;
-                    container.appendChild(cartItemEl);
+                    drawerList.appendChild(cartRow);
                 });
             }
 
             const formattedTotal = `₱${total.toFixed(2)}`;
-            document.getElementById('cart-subtotal').innerText = formattedTotal;
             document.getElementById('cart-total').innerText = formattedTotal;
-            document.getElementById('mobile-cart-total').innerText = `${formattedTotal} `;
-            document.getElementById('mobile-cart-badge').innerText = itemCount;
+            document.getElementById('drawer-total-amount').innerText = formattedTotal;
         }
 
-        function toggleMobileCart() {
-            const drawer = document.getElementById('cart-drawer');
-            drawer.classList.toggle('translate-y-full');
-        }
+        // CHECKOUT & QUEUE SLIP GENERATION
+        async function checkoutOrder() {
+            const cartKeys = Object.keys(cart);
+            if (cartKeys.length === 0) return;
 
-        function checkoutOrder() {
-            const randomOrderNum = '#' + Math.floor(1000 + Math.random() * 9000);
-            document.getElementById('order-id').innerText = randomOrderNum;
-            document.getElementById('checkout-modal').classList.remove('hidden');
-        }
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 
-        function resetMenu() {
-            cart = {};
-            updateCartUI();
-            document.getElementById('checkout-modal').classList.add('hidden');
-            if (!document.getElementById('cart-drawer').classList.contains('translate-y-full')) {
-                toggleMobileCart();
+            const cartArray = cartKeys.map(key => ({
+                id: cart[key].id,
+                name: cart[key].name,
+                price: cart[key].price,
+                qty: cart[key].qty
+            }));
+
+            const totalAmount = cartArray.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+            const drawerPayBtn = document.getElementById('drawer-pay-btn');
+            if (drawerPayBtn) {
+                drawerPayBtn.disabled = true;
+                drawerPayBtn.innerText = "Generating Slip...";
+            }
+
+            try {
+                const response = await fetch("{% url 'customer_portal:process_checkout' %}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken
+                    },
+                    body: JSON.stringify({
+                        cart: cartArray,
+                        total_amount: totalAmount,
+                        dining_option: diningOption
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    closeCartDrawer();
+                    
+                    currentPendingOrder = {
+                        order_number: data.order_number,
+                        cart: cart,
+                        cart_array: cartArray,
+                        total_amount: totalAmount,
+                        dining_option: diningOption
+                    };
+
+                    localStorage.setItem('canteen_pending_order', JSON.stringify(currentPendingOrder));
+
+                    cart = {};
+                    updateCartUI();
+
+                    renderQueueSlipUI(currentPendingOrder);
+                    openQueueSlipModal();
+                    showPendingBanner(); // Displays auto-dismissing toast notice
+                } else {
+                    alert("Error: " + data.message);
+                }
+            } catch (error) {
+                console.error("Checkout error:", error);
+                alert("Failed to process queue slip. Please check server.");
+            } finally {
+                if (drawerPayBtn) {
+                    drawerPayBtn.disabled = false;
+                    drawerPayBtn.innerHTML = `<span>Done / Pay</span><i class="fa-solid fa-circle-check"></i>`;
+                }
             }
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            renderMenu();
+        // RENDER QUEUE SLIP CONTENT
+        function renderQueueSlipUI(order) {
+            document.getElementById('slip-queue-number').innerText = order.order_number;
+            document.getElementById('slip-dining-mode').innerText = order.dining_option;
+            document.getElementById('slip-total-amount').innerText = `₱${order.total_amount.toFixed(2)}`;
+
+            const itemsContainer = document.getElementById('slip-items-list');
+            itemsContainer.innerHTML = '';
+            
+            order.cart_array.forEach(item => {
+                const row = document.createElement('div');
+                row.className = "flex justify-between items-center text-gray-700";
+                row.innerHTML = `
+                    <span>${item.qty}x ${item.name}</span>
+                    <span class="font-bold">₱${(item.price * item.qty).toFixed(2)}</span>
+                `;
+                itemsContainer.appendChild(row);
+            });
+
+            JsBarcode("#slip-barcode", order.order_number, {
+                format: "CODE128",
+                lineColor: "#111827",
+                width: 2,
+                height: 50,
+                displayValue: true,
+                fontSize: 12,
+                margin: 0
+            });
+        }
+
+        // DOWNLOAD QUEUE SLIP AS PNG IMAGE
+        function downloadQueueSlip() {
+            const slipCard = document.getElementById('queue-slip-card');
+            if (!slipCard) return;
+
+            html2canvas(slipCard, { scale: 3 }).then(canvas => {
+                const image = canvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                link.href = image;
+                link.download = `Queue_Slip_${currentPendingOrder.order_number}.png`;
+                link.click();
+            });
+        }
+
+        // EDIT PENDING ORDER LOGIC
+        function editPendingOrder() {
+            if (!currentPendingOrder) return;
+
+            cart = { ...currentPendingOrder.cart };
+            diningOption = currentPendingOrder.dining_option;
+            setDiningOption(diningOption);
+
             updateCartUI();
+            closeQueueSlipModal();
+            openCartDrawer();
+        }
+
+        // CANCEL PENDING ORDER
+        function cancelPendingOrder() {
+            if (confirm("Are you sure you want to cancel your queue slip?")) {
+                currentPendingOrder = null;
+                localStorage.removeItem('canteen_pending_order');
+                cart = {};
+                updateCartUI();
+                closeQueueSlipModal();
+                hidePendingBanner();
+            }
+        }
+
+        function openQueueSlipModal() {
+            if (currentPendingOrder) {
+                renderQueueSlipUI(currentPendingOrder);
+                document.getElementById('queue-slip-modal').classList.remove('hidden');
+            }
+        }
+
+        function closeQueueSlipModal() {
+            document.getElementById('queue-slip-modal').classList.add('hidden');
+        }
+
+        // ================= FLOATING TOAST NOTIFICATION HELPERS =================
+        function showPendingBanner() {
+            if (!currentPendingOrder) return;
+            
+            const banner = document.getElementById('pending-order-banner');
+            banner.classList.remove('hidden');
+
+            // Trigger CSS animation frame for smooth slide down & fade in
+            setTimeout(() => {
+                banner.classList.remove('-translate-y-4', 'opacity-0');
+                banner.classList.add('translate-y-0', 'opacity-100');
+            }, 10);
+
+            // Clear any previous running timeout
+            if (pendingBannerTimer) clearTimeout(pendingBannerTimer);
+
+            // AUTO-DISMISS: Automatically hide after 5 seconds (5000 ms)
+            pendingBannerTimer = setTimeout(() => {
+                hidePendingBanner();
+            }, 5000);
+        }
+
+        function hidePendingBanner() {
+            const banner = document.getElementById('pending-order-banner');
+            banner.classList.remove('translate-y-0', 'opacity-100');
+            banner.classList.add('-translate-y-4', 'opacity-0');
+
+            setTimeout(() => {
+                banner.classList.add('hidden');
+            }, 300); // Waits for fade transition to end
+        }
+
+        function checkPendingOrderOnLoad() {
+            const saved = localStorage.getItem('canteen_pending_order');
+            if (saved) {
+                try {
+                    currentPendingOrder = JSON.parse(saved);
+                    showPendingBanner();
+                    openQueueSlipModal();
+                } catch (e) {
+                    localStorage.removeItem('canteen_pending_order');
+                }
+            } else {
+                document.getElementById('dining-option-modal').classList.remove('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMenu();
+            checkPendingOrderOnLoad();
+            setInterval(fetchLatestMenu, 3000);
         });
     </script>
 </body>
