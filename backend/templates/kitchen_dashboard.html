@@ -145,7 +145,7 @@
 
                 <div class="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
                     <span class="text-gray-400 font-medium">
-                        <i class="fa-regular fa-clock mr-1"></i> {{ order.updated_at|timesince }} ago
+                        <i class="fa-regular fa-clock mr-1"></i> {{ order.created_at|timesince }} ago
                     </span>
                     <button data-order-id="{{ order.id }}" data-status="READY" class="status-btn bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5">
                         <i class="fa-solid fa-check"></i> Mark Ready
@@ -190,7 +190,7 @@
 
                 <div class="pt-3 border-t border-gray-200 flex items-center justify-between text-xs">
                     <span class="text-gray-400 font-medium">
-                        <i class="fa-regular fa-clock mr-1"></i> {{ order.updated_at|timesince }} ago
+                        <i class="fa-regular fa-clock mr-1"></i> {{ order.created_at|timesince }} ago
                     </span>
                     <button data-order-id="{{ order.id }}" data-status="COMPLETED" class="status-btn bg-dark-900 hover:bg-black text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5">
                         <i class="fa-solid fa-box-archive"></i> Complete
@@ -247,6 +247,13 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .catch(error => console.error('Error:', error));
         });
+    });
+
+    // Real-time auto-refresh every 5 seconds
+    setInterval(() => {
+        window.location.reload();
+    }, 5000);
+});
     });
 });
 </script>

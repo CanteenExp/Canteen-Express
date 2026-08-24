@@ -38,19 +38,29 @@ class MenuItem(models.Model):
 
 class Order(models.Model):
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
+        ('unpaid', 'Unpaid'),
+        ('pending', 'Pending (Paid)'),
         ('preparing', 'Preparing'),
+        ('ready', 'Ready'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     ]
 
     order_number = models.CharField(max_length=20, unique=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unpaid')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Order {self.order_number} - ₱{self.total_amount}"
+
+    @property
+    def customer(self):
+        class DummyCustomer:
+            def __init__(self):
+                self.username = "Kiosk Customer"
+                self.get_full_name = lambda: "Kiosk Customer"
+        return DummyCustomer()
 
 
 class OrderItem(models.Model):
@@ -61,3 +71,14 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity}x {self.item_name}"
+
+    @property
+    def total_price(self):
+        return self.price * self.quantity
+
+    @property
+    def product(self):
+        class DummyProduct:
+            def __init__(self, name):
+                self.name = name
+        return DummyProduct(self.item_name)

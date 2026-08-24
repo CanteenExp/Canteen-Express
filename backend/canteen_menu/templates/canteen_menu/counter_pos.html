@@ -64,7 +64,7 @@
                     <div id="reader" class="w-full"></div>
                     <div id="camera-placeholder" class="text-center p-6 space-y-2">
                         <i class="fa-solid fa-barcode text-5xl text-stone-600"></i>
-                        <p class="text-xs text-stone-400 font-semibold">I-click ang "Start Camera" para i-scan ang pahabang barcode ng Queue Slip</p>
+                        <p class="text-xs text-stone-400 font-semibold">Click "Start Camera" to scan the barcode of the Queue Slip</p>
                     </div>
                 </div>
 
@@ -110,7 +110,7 @@
                     <i class="fa-solid fa-receipt"></i>
                 </div>
                 <h3 class="font-bold text-gray-700 text-base">Awaiting Barcode Scan</h3>
-                <p class="text-xs text-gray-400 max-w-sm mx-auto">I-scan ang barcode sa queue slip o i-type ang code (hal. CE-1149) para lumabas ang order breakdown.</p>
+                <p class="text-xs text-gray-400 max-w-sm mx-auto">Scan the barcode on the queue slip or type the code (e.g., CE-1149) to view the order details.</p>
             </div>
 
             <!-- Active Order Card -->
@@ -207,19 +207,6 @@
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
-        // Sample Queue Datatugma sa Queue #CE-1149
-        const dummyKioskOrders = {
-            "CE-1149": {
-                orderId: "CE-1149",
-                type: "DINE-IN",
-                items: [
-                    { name: "Porksilong with Egg", qty: 1, price: 50 },
-                    { name: "Tinapay with bread", qty: 1, price: 15 }
-                ],
-                total: 65
-            }
-        };
-
         let currentOrder = null;
         let html5QrcodeScanner = null;
 
@@ -291,38 +278,46 @@
         }
 
         // 2. FETCH & DISPLAY QUEUE SLIP SUMMARY
-        function fetchOrderDetails(rawOrderNum) {
-            let cleanId = rawOrderNum.toUpperCase().trim();
-            if (!cleanId.startsWith("CE-")) {
-                cleanId = "CE-" + cleanId.replace("#", "");
-            } else {
-                cleanId = cleanId.replace("#", "");
-            }
+        async function fetchOrderDetails(rawOrderNum) {
+            if (!rawOrderNum) return;
+            try {
+                const response = await fetch("{% url 'canteen_menu:process_barcode_api' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'fetch',
+                        order_id: rawOrderNum
+                    })
+                });
+                const data = await response.json();
+                if (data.status === 'success' && data.order) {
+                    const order = data.order;
+                    currentOrder = order;
+                    document.getElementById('no-order-placeholder').classList.add('hidden');
+                    document.getElementById('active-order-card').classList.remove('hidden');
 
-            const order = dummyKioskOrders[cleanId];
+                    document.getElementById('order-number-display').textContent = "#" + order.orderId;
+                    document.getElementById('order-type-badge').textContent = order.type;
+                    document.getElementById('total-price-display').textContent = "₱" + order.total.toFixed(2);
 
-            if (order) {
-                currentOrder = order;
-                document.getElementById('no-order-placeholder').classList.add('hidden');
-                document.getElementById('active-order-card').classList.remove('hidden');
-
-                document.getElementById('order-number-display').textContent = "#" + order.orderId;
-                document.getElementById('order-type-badge').textContent = order.type;
-                document.getElementById('total-price-display').textContent = "₱" + order.total.toFixed(2);
-
-                const itemsContainer = document.getElementById('items-list-container');
-                itemsContainer.innerHTML = order.items.map(item => `
-                    <div class="p-3.5 bg-stone-50 flex justify-between items-center">
-                        <div>
-                            <p class="font-bold text-gray-800 text-sm">${item.qty}x ${item.name}</p>
-                            <p class="text-[10px] text-gray-400">₱${item.price.toFixed(2)} each</p>
+                    const itemsContainer = document.getElementById('items-list-container');
+                    itemsContainer.innerHTML = order.items.map(item => `
+                        <div class="p-3.5 bg-stone-50 flex justify-between items-center">
+                            <div>
+                                <p class="font-bold text-gray-800 text-sm">${item.qty}x ${item.name}</p>
+                                <p class="text-[10px] text-gray-400">₱${item.price.toFixed(2)} each</p>
+                            </div>
+                            <span class="font-black text-gray-900 text-sm">₱${(item.qty * item.price).toFixed(2)}</span>
                         </div>
-                        <span class="font-black text-gray-900 text-sm">₱${(item.qty * item.price).toFixed(2)}</span>
-                    </div>
-                `).join('');
-
-            } else {
-                alert(`Queue Slip #${cleanId} not found or already processed!`);
+                    `).join('');
+                } else {
+                    alert(data.message || `Queue Slip #${rawOrderNum} not found!`);
+                }
+            } catch (err) {
+                console.error("Error fetching order details:", err);
+                alert("Server connection error while scanning barcode.");
             }
         }
 
@@ -333,10 +328,30 @@
         }
 
         // 3. CONFIRM PAYMENT & GENERATE RECEIPT
-        function confirmPaymentAndSendToKitchen() {
+        async function confirmPaymentAndSendToKitchen() {
             if (!currentOrder) return;
-            openReceiptModal(currentOrder);
-            cancelScan();
+            try {
+                const response = await fetch("{% url 'canteen_menu:process_barcode_api' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'confirm_payment',
+                        order_id: currentOrder.orderId
+                    })
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    openReceiptModal(currentOrder);
+                    cancelScan();
+                } else {
+                    alert(data.message || "Could not confirm payment.");
+                }
+            } catch (err) {
+                console.error("Error confirming payment:", err);
+                alert("Server error when confirming payment.");
+            }
         }
 
         // 4. RECEIPT MODAL LOGIC

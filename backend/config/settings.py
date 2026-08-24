@@ -10,9 +10,9 @@ env_file = BASE_DIR / ".env"
 dotenv_loaded = load_dotenv(env_file)
 
 print("\n" + "="*40)
-print(f"📍 Checking .env path: {env_file}")
-print(f"📄 File exists: {env_file.exists()}")
-print(f"🔑 DB_PASSWORD Loaded: {'YES' if os.getenv('DB_PASSWORD') else 'NO (Empty/None)'}")
+print(f"Checking .env path: {env_file}")
+print(f"File exists: {env_file.exists()}")
+print(f"DB_PASSWORD Loaded: {'YES' if os.getenv('DB_PASSWORD') else 'NO (Empty/None)'}")
 print("="*40 + "\n")
 
 # Quick-start development settings - unsuitable for production
@@ -81,25 +81,17 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Database
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.getenv('DB_NAME', 'neondb'),
-#         'USER': os.getenv('DB_USER', 'neondb_owner'),
-#         'PASSWORD': os.getenv('DB_PASSWORD'),
-#         'HOST': os.getenv('DB_HOST', 'ep-shy-heart-ayghwl06-pooler.c-5.us-east-2.aws.neon.tech'),
-#         'PORT': os.getenv('DB_PORT', '5432'),
-#         'OPTIONS': {
-#             'sslmode': 'require',
-#         },
-#     }
-# }
-
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME', 'neondb'),
+        'USER': os.getenv('DB_USER', 'neondb_owner'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST', 'ep-shy-heart-ayghwl06-pooler.c-5.us-east-2.aws.neon.tech'),
+        'PORT': os.getenv('DB_PORT', '5432'),
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
     }
 }
 

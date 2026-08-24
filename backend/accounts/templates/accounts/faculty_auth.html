@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Portal - Login & Sign Up</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-zinc-900 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 relative z-10" x-data="{ mode: '{{ mode|default:"login" }}' }">
+        <!-- Progress Bar / Header -->
+        <div class="space-y-2">
+            <div class="flex justify-between text-xs font-extrabold text-zinc-400 uppercase tracking-wider">
+                <span class="text-orange-600">Faculty Verification</span>
+                <span x-text="mode === 'login' ? 'Existing Account' : 'New Account'"></span>
+            </div>
+            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
+                <div class="bg-orange-500 h-full w-full"></div>
+            </div>
+        </div>
+
+        <div class="text-center space-y-2">
+            <div class="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                <i class="fa-solid fa-graduation-cap text-2xl"></i>
+            </div>
+            <h2 class="text-2xl font-black text-zinc-900" x-text="mode === 'login' ? 'Faculty Sign In' : 'Faculty Sign Up'"></h2>
+            <p class="text-xs text-zinc-500 leading-relaxed">Use your official institutional email ending in @psu.palawan.edu.ph.</p>
+        </div>
+
+        {% if error %}
+        <div class="p-3 bg-red-50 border border-red-200 text-red-600 rounded-2xl text-xs font-bold flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <!-- Tab Toggle Buttons -->
+        <div class="grid grid-cols-2 gap-2 bg-zinc-100 p-1.5 rounded-2xl">
+            <button type="button" @click="mode = 'login'" :class="mode === 'login' ? 'bg-orange-500 text-white font-black shadow-md' : 'text-zinc-500 font-bold'" class="py-2.5 rounded-xl text-xs transition uppercase tracking-wider cursor-pointer">
+                Sign In
+            </button>
+            <button type="button" @click="mode = 'signup'" :class="mode === 'signup' ? 'bg-orange-500 text-white font-black shadow-md' : 'text-zinc-500 font-bold'" class="py-2.5 rounded-xl text-xs transition uppercase tracking-wider cursor-pointer">
+                Sign Up
+            </button>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <form method="POST" class="space-y-4" x-show="mode === 'login'">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="login">
+
+            <div>
+                <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Institutional Email</label>
+                <input type="email" name="email" required placeholder="faculty@psu.palawan.edu.ph"
+                    class="w-full px-4 py-3 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
+            </div>
+
+            <div>
+                <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Password</label>
+                <input type="password" name="password" required placeholder="••••••••"
+                    class="w-full px-4 py-3 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
+            </div>
+
+            <button type="submit" class="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl shadow-lg shadow-orange-500/25 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20">
+                <span>Sign In to Dashboard</span>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+        </form>
+
+        <!-- SIGNUP FORM -->
+        <form method="POST" class="space-y-4" x-show="mode === 'signup'" style="display: none;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="signup">
+
+            <div>
+                <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Full Name</label>
+                <input type="text" name="name" required placeholder="Prof. Juan Dela Cruz"
+                    class="w-full px-4 py-3 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
+            </div>
+
+            <div>
+                <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Institutional Email (@psu.palawan.edu.ph)</label>
+                <input type="email" name="email" required placeholder="juan.delacruz@psu.palawan.edu.ph"
+                    class="w-full px-4 py-3 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
+            </div>
+
+            <div>
+                <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Password</label>
+                <input type="password" name="password" required placeholder="••••••••"
+                    class="w-full px-4 py-3 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
+            </div>
+
+            <button type="submit" class="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl shadow-lg shadow-orange-500/25 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20">
+                <span>Register & Continue</span>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+        </form>
+
+        <div class="text-center pt-2 border-t border-zinc-100">
+            <a href="{% url 'accounts:faculty_location' %}" class="text-xs font-bold text-zinc-400 hover:text-zinc-700 transition">
+                <i class="fa-solid fa-arrow-left mr-1"></i> Back to Location Check
+            </a>
+        </div>
+    </div>
+
+    <!-- AlpineJS -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</body>
+</html>

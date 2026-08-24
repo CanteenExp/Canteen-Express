@@ -6,23 +6,48 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from accounts.decorators import role_required
 
-from order_management.models import Order 
+from customer_portal.models import Order 
 from canteen_menu.models import MenuItem 
+from deliveries.models import DeliveryRequest
 
 User = get_user_model()
 
 @role_required(allowed_roles=['STAFF'])
 def staff_dashboard(request):
-    """Main Canteen Staff Dashboard with daily stats & quick links."""
+    """Unified Canteen Staff Dashboard with all management modules."""
     today = timezone.now().date()
     today_orders = Order.objects.filter(created_at__date=today)
     
     total_orders_today = today_orders.count()
-    pending_count = Order.objects.filter(status='PENDING').count()
-    preparing_count = Order.objects.filter(status='PREPARING').count()
-    ready_count = Order.objects.filter(status='READY').count()
+    pending_count = Order.objects.filter(status='pending').count()
+    preparing_count = Order.objects.filter(status='preparing').count()
+    ready_count = Order.objects.filter(status='ready').count()
     
-    recent_orders = Order.objects.exclude(status='COMPLETED').order_by('-created_at')[:5]
+    recent_orders = Order.objects.exclude(status='completed').order_by('-created_at')[:5]
+    menu_items = MenuItem.objects.all().order_by('name')
+    users_list = User.objects.all().order_by('-date_joined')[:30] if hasattr(User, 'date_joined') else User.objects.all()[:30]
+    
+    try:
+        delivery_requests = DeliveryRequest.objects.all().order_by('-requested_at')[:20]
+    except Exception:
+        delivery_requests = []
+
+    if request.method == 'POST' and 'add_menu_item' in request.POST:
+        name = request.POST.get('name')
+        price = request.POST.get('price')
+        stock = request.POST.get('stock', 50)
+        nutritional_info = request.POST.get('nutritional_info', '')
+        
+        MenuItem.objects.create(
+            name=name,
+            price=price,
+            stock=stock,
+            nutritional_info=nutritional_info,
+            is_available=True
+        )
+        return redirect('kitchen_display:dashboard')
+
+    staff_name = request.user.first_name if request.user.is_authenticated and request.user.first_name else (request.user.username if request.user.is_authenticated else 'Staff')
 
     context = {
         'total_orders_today': total_orders_today,
@@ -30,7 +55,10 @@ def staff_dashboard(request):
         'preparing_count': preparing_count,
         'ready_count': ready_count,
         'recent_orders': recent_orders,
-        'staff_name': request.user.first_name or request.user.username,
+        'menu_items': menu_items,
+        'users_list': users_list,
+        'delivery_requests': delivery_requests,
+        'staff_name': staff_name,
     }
     return render(request, 'staff_dashboard.html', context)
 
@@ -38,9 +66,9 @@ def staff_dashboard(request):
 @role_required(allowed_roles=['STAFF'])
 def kitchen_display(request):
     """Kanban-style Order Board for real-time order processing."""
-    pending_orders = Order.objects.filter(status='PENDING').order_by('created_at')
-    preparing_orders = Order.objects.filter(status='PREPARING').order_by('updated_at')
-    ready_orders = Order.objects.filter(status='READY').order_by('updated_at')
+    pending_orders = Order.objects.filter(status='pending').order_by('created_at')
+    preparing_orders = Order.objects.filter(status='preparing').order_by('created_at')
+    ready_orders = Order.objects.filter(status='ready').order_by('created_at')
 
     context = {
         'pending_orders': pending_orders,
@@ -57,7 +85,7 @@ def update_order_status(request, order_id):
     """API endpoint to update order status via AJAX."""
     try:
         data = json.loads(request.body)
-        new_status = data.get('status')
+        new_status = data.get('status', '').lower()
 
         order = Order.objects.get(id=order_id)
         order.status = new_status

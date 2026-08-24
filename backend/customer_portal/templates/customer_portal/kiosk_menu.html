@@ -41,6 +41,69 @@
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        body.light-mode {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+        }
+        body.light-mode .bg-brand-dark,
+        body.light-mode .bg-brand-card {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #e2e8f0 !important;
+        }
+        body.light-mode header,
+        body.light-mode footer {
+            background-color: #ffffff !important;
+            border-color: #e2e8f0 !important;
+            color: #0f172a !important;
+        }
+        body.light-mode h1, body.light-mode h2, body.light-mode h3, body.light-mode h4, body.light-mode p, body.light-mode span, body.light-mode label {
+            color: #000000 !important;
+        }
+        body.light-mode .text-brand-slate {
+            color: #475569 !important;
+        }
+        body.light-mode aside button {
+            background-color: #ffffff !important;
+            color: #334155 !important;
+            border-color: #e2e8f0 !important;
+        }
+        body.light-mode aside button.active-cat {
+            background-color: #f97316 !important;
+            color: #ffffff !important;
+        }
+        body.light-mode aside button.active-cat * {
+            color: #ffffff !important;
+        }
+        body.light-mode input,
+        body.light-mode select {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+        body.light-mode input::placeholder {
+            color: #64748b !important;
+        }
+        body.light-mode #search-wrapper,
+        body.light-mode #theme-toggle-btn,
+        body.light-mode #search-toggle-btn,
+        body.light-mode .category-btn {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+        }
+        body.light-mode #cart-drawer-backdrop > div,
+        body.light-mode #item-details-modal > div {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #e2e8f0 !important;
+        }
+        body.light-mode .bg-white\/5,
+        body.light-mode .bg-white\/10 {
+            background-color: #f1f5f9 !important;
+            border-color: #e2e8f0 !important;
+        }
     </style>
 </head>
 <body class="bg-brand-dark text-brand-light h-screen flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative">
@@ -104,12 +167,12 @@
 
         <div class="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <a href="{% url 'customer_portal:kiosk_welcome' %}" class="w-10 h-10 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95">
+                <a href="{% url 'customer_portal:kiosk_welcome' %}" class="w-10 h-10 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95 shrink-0">
                     <i class="fa-solid fa-arrow-left"></i>
                 </a>
                 <div class="flex items-center gap-3">
-                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto object-contain">
-                    <div>
+                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto object-contain shrink-0">
+                    <div id="brand-text-container" class="transition-all duration-300">
                         <h1 class="text-xs sm:text-base font-black text-white leading-tight">Canteen Express</h1>
                         <p class="text-[8px] sm:text-xs text-brand-orange font-bold uppercase tracking-wider flex items-center gap-1.5">
                             <span id="dining-mode-badge" class="bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded-md border border-brand-orange/30">Dine-In</span>
@@ -118,9 +181,25 @@
                 </div>
             </div>
 
-            <div class="relative flex-1 max-w-xs ml-auto">
-                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-slate text-xs sm:text-sm"></i>
-                <input type="text" id="search-input" oninput="filterItems()" placeholder="Search menu items..." class="w-full bg-brand-card border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-white placeholder-brand-slate focus:outline-none focus:border-brand-orange transition">
+            <div class="flex items-center gap-2" id="search-container">
+                <!-- Expanding Search Wrapper (Expands Left) -->
+                <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10 shadow-lg">
+                    <button onclick="toggleSearch(event)" id="search-toggle-btn" type="button" class="w-10 h-10 shrink-0 flex items-center justify-center text-white transition active:scale-95">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                    </button>
+                    <input 
+                        type="text" 
+                        id="search-input" 
+                        oninput="filterItems()" 
+                        placeholder="Search menu..." 
+                        class="w-full bg-transparent border-0 pl-1 pr-3 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
+                    >
+                </div>
+
+                <!-- Light / Dark Mode Toggle Button -->
+                <button onclick="toggleTheme()" id="theme-toggle-btn" class="w-10 h-10 shrink-0 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95" title="Toggle Light/Dark Mode">
+                    <i class="fa-solid fa-sun text-xs" id="theme-icon"></i>
+                </button>
             </div>
         </div>
     </header>
@@ -155,10 +234,7 @@
                 <span class="text-[11px] leading-tight">Meryenda</span>
             </button>
 
-            <button onclick="selectCategory('dietary', this)" class="category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition">
-                <i class="fa-solid fa-heart-pulse text-lg sm:text-xl"></i>
-                <span class="text-[11px] leading-tight">Dietary</span>
-            </button>
+
         </aside>
 
         <main class="flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar space-y-4 pr-1">
@@ -308,436 +384,704 @@
     </div>
 
 
+    <!-- ================= ITEM EXPAND / DETAILS MODAL ================= -->
+    <div id="item-details-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl space-y-4 relative animate-fade-in my-8">
+            <button onclick="closeItemModal()" class="absolute right-4 top-4 z-10 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="relative h-48 sm:h-56 bg-white/5">
+                <img id="modal-item-img" src="" alt="Item Image" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="w-full h-full object-cover">
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <span id="modal-item-category" class="bg-brand-orange/20 text-brand-orange px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider">Category</span>
+                    <h3 id="modal-item-name" class="text-xl font-black text-white mt-1">Item Name</h3>
+                    <p id="modal-item-desc" class="text-xs text-brand-slate mt-2 leading-relaxed">Description goes here...</p>
+                    
+                    <!-- Dietary & Health Tags Below Description -->
+                    <div id="modal-dietary-tags" class="flex flex-wrap gap-1.5 mt-3">
+                        <!-- Dynamic Badges -->
+                    </div>
+                </div>
+
+                <!-- ADD-ONS / CUSTOMIZERS -->
+                <div class="space-y-4 pt-3 border-t border-white/10" id="modal-addons-container">
+                    
+                    <!-- Rice Counter (- / +) -->
+                    <div class="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
+                        <div>
+                            <span class="text-xs font-bold text-white block">Steamed Rice Portions</span>
+                            <span class="text-[10px] text-brand-orange font-bold">₱15.00 per serving</span>
+                        </div>
+                        <div class="flex items-center gap-3 bg-brand-dark px-3 py-1.5 rounded-xl border border-white/10">
+                            <button type="button" onclick="changeRiceQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition"><i class="fa-solid fa-minus text-xs"></i></button>
+                            <span id="modal-rice-count" class="text-xs font-black text-white w-4 text-center">0</span>
+                            <button type="button" onclick="changeRiceQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition"><i class="fa-solid fa-plus text-xs"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] font-bold text-brand-slate uppercase tracking-wider block">Optional Beverage Pairing</label>
+                        <select id="modal-beverage-select" onchange="updateModalTotal()" class="w-full bg-brand-dark border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange">
+                            <option value="">-- No Beverage --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-3 border-t border-white/10">
+                    <div>
+                        <span class="text-[10px] text-brand-slate uppercase font-bold block">Total Amount</span>
+                        <span id="modal-item-price" class="text-2xl font-black text-brand-orange">₱0.00</span>
+                    </div>
+                    <button id="modal-add-btn" onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-6 py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-cart-plus"></i> Add to Cart
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
-        const rawMenuData = JSON.parse('{{ menu_data_json|escapejs }}');
+/**
+ * Canteen Express - Kiosk Core Logic & Django API Synchronization
+ */
 
-        let menuData = rawMenuData.map(item => ({
-            id: item.id,
-            name: item.name,
-            category: item.category ? String(item.category) : '',
-            price: parseFloat(item.price || 0),
-            desc: item.desc || item.description || '',
-            badge: item.badge || '',
-            img: item.img || item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
-        }));
+// ================= STATE & INITIALIZATION =================
+const rawMenuData = JSON.parse('{{ menu_data_json|escapejs }}');
 
-        let cart = {};
-        let activeCategory = 'all';
-        let diningOption = 'Dine-In';
-        let currentPendingOrder = null;
-        let pendingBannerTimer = null; // Auto-dismiss timer reference
+let menuData = rawMenuData.map(item => ({
+    id: item.id,
+    name: item.name,
+    category: item.category ? String(item.category) : '',
+    price: parseFloat(item.price || 0),
+    desc: item.desc || item.description || '',
+    badge: item.badge || '',
+    img: item.img || item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
+}));
 
-        function setDiningOption(option) {
-            diningOption = option;
-            document.getElementById('dining-mode-badge').innerText = option;
-            document.getElementById('drawer-dining-mode').innerText = option;
-            document.getElementById('dining-option-modal').classList.add('hidden');
+let cart = {};
+let activeCategory = 'all';
+let diningOption = 'Dine-In';
+let currentPendingOrder = null;
+let pendingBannerTimer = null;
+
+// ================= DINING OPTION CONTROLLER =================
+function setDiningOption(option) {
+    diningOption = option;
+    document.getElementById('dining-mode-badge').innerText = option;
+    document.getElementById('drawer-dining-mode').innerText = option;
+    document.getElementById('dining-option-modal').classList.add('hidden');
+}
+
+// ================= LIVE MENU SYNC & RENDERING =================
+async function fetchLatestMenu() {
+    try {
+        const response = await fetch("{% url 'customer_portal:get_kiosk_menu_api' %}");
+        const data = await response.json();
+        if (data.status === 'success') {
+            menuData = data.menu.map(item => ({
+                id: item.id,
+                name: item.name,
+                category: item.category ? String(item.category) : '',
+                price: parseFloat(item.price || 0),
+                desc: item.desc || item.description || '',
+                badge: item.badge || '',
+                img: item.img || item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
+            }));
+            renderMenu();
         }
+    } catch (err) {
+        console.error("Error fetching live menu updates:", err);
+    }
+}
 
-        async function fetchLatestMenu() {
-            try {
-                const response = await fetch("{% url 'customer_portal:get_kiosk_menu_api' %}");
-                const data = await response.json();
-                if (data.status === 'success') {
-                    menuData = data.menu.map(item => ({
-                        id: item.id,
-                        name: item.name,
-                        category: item.category ? String(item.category) : '',
-                        price: parseFloat(item.price || 0),
-                        desc: item.desc || item.description || '',
-                        badge: item.badge || '',
-                        img: item.img || item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
-                    }));
-                    renderMenu();
-                }
-            } catch (err) {
-                console.error("Error fetching live menu updates:", err);
-            }
+function renderMenu() {
+    const grid = document.getElementById('menu-grid');
+    if (!grid) return;
+    
+    const searchInput = document.getElementById('search-input');
+    const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    grid.innerHTML = '';
+
+    const filteredItems = menuData.filter(item => {
+        const itemCat = String(item.category || '').toLowerCase();
+        const activeCat = String(activeCategory).toLowerCase();
+        
+        const matchesCategory = (activeCat === 'all' || itemCat.includes(activeCat) || activeCat.includes(itemCat) || !itemCat);
+        const matchesSearch = item.name.toLowerCase().includes(searchQuery) || item.desc.toLowerCase().includes(searchQuery);
+        return matchesCategory && matchesSearch;
+    });
+
+    document.getElementById('items-count-indicator').innerText = `Showing ${filteredItems.length} items`;
+
+    if (filteredItems.length === 0) {
+        grid.innerHTML = `
+            <div class="col-span-full text-center py-12 text-brand-slate">
+                <i class="fa-solid fa-utensils text-4xl mb-2 opacity-40"></i>
+                <p class="text-sm font-semibold">No food items found in this category.</p>
+            </div>`;
+        return;
+    }
+
+    filteredItems.forEach(item => {
+        const badgeHTML = item.badge 
+            ? `<span class="absolute top-2 right-2 bg-brand-dark/90 backdrop-blur-md border border-white/10 text-brand-amber text-[9px] font-black uppercase px-2 py-0.5 rounded-md">${item.badge}</span>` 
+            : '';
+
+        const card = document.createElement('div');
+        card.className = "bg-brand-card rounded-2xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group cursor-pointer";
+        card.onclick = () => openItemModal(item.id);
+        card.innerHTML = `
+            <div class="relative h-28 sm:h-36 overflow-hidden bg-white/5">
+                <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                ${badgeHTML}
+            </div>
+            <div class="p-3 flex-1 flex flex-col justify-between gap-2">
+                <div>
+                    <h3 class="text-xs sm:text-sm font-extrabold text-white group-hover:text-brand-orange transition line-clamp-1">${item.name}</h3>
+                    <p class="text-[10px] text-brand-slate line-clamp-2 mt-0.5">${item.desc || 'Freshly prepared daily.'}</p>
+                </div>
+                <div class="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
+                    <span class="text-sm sm:text-base font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
+                    <span class="w-7 h-7 rounded-xl bg-white/5 group-hover:bg-brand-orange/25 group-hover:text-brand-orange text-brand-slate flex items-center justify-center transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg></span>
+                </div>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function selectCategory(category, element) {
+    activeCategory = category;
+    
+    const titleMap = {
+        'all': 'All Items',
+        'biscuits': 'Biscuits',
+        'rice': 'Rice Meals',
+        'beverages': 'Beverages',
+        'meryenda': 'Meryenda',
+        'dietary': 'Dietary'
+    };
+    document.getElementById('category-heading').innerText = titleMap[category] || 'Menu Items';
+
+    document.querySelectorAll('#category-sidebar .category-btn').forEach(btn => {
+        btn.className = "category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition";
+    });
+    element.className = "category-btn active-cat flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-orange text-white text-center font-black text-xs gap-1.5 transition shadow-lg shadow-brand-orange/20";
+    
+    renderMenu();
+}
+
+function filterItems() {
+    renderMenu();
+}
+
+// ================= CART DRAWER MANAGEMENT =================
+function openCartDrawer() {
+    document.getElementById('cart-drawer-backdrop').classList.remove('hidden');
+}
+
+function closeCartDrawer() {
+    document.getElementById('cart-drawer-backdrop').classList.add('hidden');
+}
+
+function addToCart(itemId) {
+    if (currentPendingOrder && Object.keys(cart).length === 0) {
+        showPendingBanner();
+        return;
+    }
+
+    if (cart[itemId]) {
+        cart[itemId].qty += 1;
+    } else {
+        const item = menuData.find(i => i.id === itemId);
+        if (item) {
+            cart[itemId] = { ...item, qty: 1 };
         }
+    }
+    updateCartUI();
+}
 
-        function renderMenu() {
-            const grid = document.getElementById('menu-grid');
-            if (!grid) return;
-            
-            const searchInput = document.getElementById('search-input');
-            const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
-            grid.innerHTML = '';
+function updateQuantity(itemId, change) {
+    if (cart[itemId]) {
+        cart[itemId].qty += change;
+        if (cart[itemId].qty <= 0) {
+            delete cart[itemId];
+        }
+    }
+    updateCartUI();
+}
 
-            const filteredItems = menuData.filter(item => {
-                const itemCat = String(item.category || '').toLowerCase();
-                const activeCat = String(activeCategory).toLowerCase();
-                
-                const matchesCategory = (activeCat === 'all' || itemCat.includes(activeCat) || activeCat.includes(itemCat) || !itemCat);
-                const matchesSearch = item.name.toLowerCase().includes(searchQuery) || item.desc.toLowerCase().includes(searchQuery);
-                return matchesCategory && matchesSearch;
-            });
+function clearCart() {
+    cart = {};
+    updateCartUI();
+}
 
-            document.getElementById('items-count-indicator').innerText = `Showing ${filteredItems.length} items`;
+function updateCartUI() {
+    const drawerList = document.getElementById('drawer-cart-list');
+    if (!drawerList) return;
+    
+    drawerList.innerHTML = '';
 
-            if (filteredItems.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full text-center py-12 text-brand-slate">
-                        <i class="fa-solid fa-utensils text-4xl mb-2 opacity-40"></i>
-                        <p class="text-sm font-semibold">No food items found in this category.</p>
-                    </div>`;
-                return;
-            }
+    let total = 0;
+    const cartKeys = Object.keys(cart);
+    const nextBtn = document.getElementById('next-btn');
 
-            filteredItems.forEach(item => {
-                const badgeHTML = item.badge ? `<span class="absolute top-2 right-2 bg-brand-dark/90 backdrop-blur-md border border-white/10 text-brand-amber text-[9px] font-black uppercase px-2 py-0.5 rounded-md">${item.badge}</span>` : '';
+    if (cartKeys.length === 0) {
+        drawerList.innerHTML = `
+            <div class="text-center py-12 text-brand-slate">
+                <i class="fa-solid fa-basket-shopping text-4xl mb-3 opacity-30"></i>
+                <p class="text-xs font-bold">Your cart is empty.</p>
+                <p class="text-[10px] mt-1">Select items from the menu to add.</p>
+            </div>`;
+        if (nextBtn) nextBtn.disabled = true;
+        closeCartDrawer();
+    } else {
+        if (nextBtn) nextBtn.disabled = false;
 
-                const card = document.createElement('div');
-                card.className = "bg-brand-card rounded-2xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group";
-                card.innerHTML = `
-                    <div class="relative h-28 sm:h-36 overflow-hidden bg-white/5">
-                        <img src="${item.img}" alt="${item.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                        ${badgeHTML}
+        cartKeys.forEach(key => {
+            const item = cart[key];
+            const itemSubtotal = item.price * item.qty;
+            total += itemSubtotal;
+
+            const cartRow = document.createElement('div');
+            cartRow.className = "flex items-center justify-between bg-white/5 border border-white/10 p-3 rounded-2xl gap-3";
+            cartRow.innerHTML = `
+                <div class="flex items-center gap-3 min-w-0">
+                    <img src="${item.img}" class="w-12 h-12 rounded-xl object-cover shrink-0">
+                    <div class="min-w-0">
+                        <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
+                        <span class="text-xs font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
                     </div>
-                    <div class="p-3 flex-1 flex flex-col justify-between gap-2">
-                        <div>
-                            <h3 class="text-xs sm:text-sm font-extrabold text-white group-hover:text-brand-orange transition line-clamp-1">${item.name}</h3>
-                            <p class="text-[10px] text-brand-slate line-clamp-2 mt-0.5">${item.desc}</p>
-                        </div>
-                        <div class="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
-                            <span class="text-sm sm:text-base font-black text-white">₱${item.price.toFixed(2)}</span>
-                            <button onclick="addToCart(${item.id})" class="w-8 h-8 bg-brand-orange hover:bg-orange-600 text-white font-bold text-xs rounded-xl active:scale-95 transition flex items-center justify-center shadow-md shadow-brand-orange/20">
-                                <i class="fa-solid fa-plus text-xs"></i>
-                            </button>
-                        </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <div class="flex items-center gap-2 bg-black/40 rounded-xl px-2 py-1 border border-white/10">
+                        <button onclick="updateQuantity('${item.id}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">-</button>
+                        <span class="text-xs font-black text-white px-1">${item.qty}</span>
+                        <button onclick="updateQuantity('${item.id}', 1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">+</button>
                     </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
+                    <button onclick="updateQuantity('${item.id}', -${item.qty})" class="text-brand-slate hover:text-red-400 p-1.5 text-xs transition">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+            drawerList.appendChild(cartRow);
+        });
+    }
 
-        function selectCategory(category, element) {
-            activeCategory = category;
+    const formattedTotal = `₱${total.toFixed(2)}`;
+    document.getElementById('cart-total').innerText = formattedTotal;
+    document.getElementById('drawer-total-amount').innerText = formattedTotal;
+}
+
+// ================= CHECKOUT & BACKEND INTEGRATION =================
+async function checkoutOrder() {
+    const cartKeys = Object.keys(cart);
+    if (cartKeys.length === 0) return;
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+    const cartArray = cartKeys.map(key => ({
+        id: cart[key].id,
+        name: cart[key].name,
+        price: cart[key].price,
+        qty: cart[key].qty
+    }));
+
+    const totalAmount = cartArray.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+    const drawerPayBtn = document.getElementById('drawer-pay-btn');
+    if (drawerPayBtn) {
+        drawerPayBtn.disabled = true;
+        drawerPayBtn.innerText = "Generating Slip...";
+    }
+
+    try {
+        const response = await fetch("{% url 'customer_portal:process_checkout' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify({
+                cart: cartArray,
+                total_amount: totalAmount,
+                dining_option: diningOption
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            closeCartDrawer();
             
-            const titleMap = {
-                'all': 'All Items',
-                'biscuits': 'Biscuits',
-                'rice': 'Rice Meals',
-                'beverages': 'Beverages',
-                'meryenda': 'Meryenda',
-                'dietary': 'Dietary'
+            currentPendingOrder = {
+                order_number: data.order_number,
+                cart: cart,
+                cart_array: cartArray,
+                total_amount: totalAmount,
+                dining_option: diningOption
             };
-            document.getElementById('category-heading').innerText = titleMap[category] || 'Menu Items';
 
-            document.querySelectorAll('#category-sidebar .category-btn').forEach(btn => {
-                btn.className = "category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition";
-            });
-            element.className = "category-btn active-cat flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-orange text-white text-center font-black text-xs gap-1.5 transition shadow-lg shadow-brand-orange/20";
-            
-            renderMenu();
-        }
+            localStorage.setItem('canteen_pending_order', JSON.stringify(currentPendingOrder));
 
-        function filterItems() {
-            renderMenu();
-        }
-
-        // CART DRAWER TOGGLE
-        function openCartDrawer() {
-            document.getElementById('cart-drawer-backdrop').classList.remove('hidden');
-        }
-
-        function closeCartDrawer() {
-            document.getElementById('cart-drawer-backdrop').classList.add('hidden');
-        }
-
-        function addToCart(itemId) {
-            // Anti-Spam check: Trigger floating toast notice if a pending order already exists
-            if (currentPendingOrder && Object.keys(cart).length === 0) {
-                showPendingBanner();
-                return;
-            }
-
-            if (cart[itemId]) {
-                cart[itemId].qty += 1;
-            } else {
-                const item = menuData.find(i => i.id === itemId);
-                if (item) {
-                    cart[itemId] = { ...item, qty: 1 };
-                }
-            }
-            updateCartUI();
-        }
-
-        function updateQuantity(itemId, change) {
-            if (cart[itemId]) {
-                cart[itemId].qty += change;
-                if (cart[itemId].qty <= 0) {
-                    delete cart[itemId];
-                }
-            }
-            updateCartUI();
-        }
-
-        function clearCart() {
             cart = {};
             updateCartUI();
+
+            renderQueueSlipUI(currentPendingOrder);
+            openQueueSlipModal();
+            showPendingBanner();
+        } else {
+            alert("Error: " + data.message);
         }
+    } catch (error) {
+        console.error("Checkout error:", error);
+        alert("Failed to process queue slip. Please check server.");
+    } finally {
+        if (drawerPayBtn) {
+            drawerPayBtn.disabled = false;
+            drawerPayBtn.innerHTML = `<span>Done / Pay</span><i class="fa-solid fa-circle-check"></i>`;
+        }
+    }
+}
 
-        function updateCartUI() {
-            const drawerList = document.getElementById('drawer-cart-list');
-            if (!drawerList) return;
-            
-            drawerList.innerHTML = '';
+// ================= QUEUE SLIP & BARCODE RENDERER =================
+// 1. RENDER FUNCTION (Pinalitan ng float/table layout ang flexbox para hindi i-cut ng html2canvas ang text)
+function renderQueueSlipUI(order) {
+    document.getElementById('slip-queue-number').innerText = order.order_number;
+    document.getElementById('slip-dining-mode').innerText = order.dining_option;
+    document.getElementById('slip-total-amount').innerText = `₱${order.total_amount.toFixed(2)}`;
 
-            let total = 0;
-            const cartKeys = Object.keys(cart);
-            const nextBtn = document.getElementById('next-btn');
+    const itemsContainer = document.getElementById('slip-items-list');
+    itemsContainer.innerHTML = '';
+    
+    order.cart_array.forEach(item => {
+        const row = document.createElement('div');
+        row.className = "py-2 border-b border-gray-100/80 last:border-0";
+        row.style.cssText = "display: block; clear: both; line-height: 1.5; overflow: visible;";
+        row.innerHTML = `
+            <span style="float: left; font-weight: 600; color: #374151; font-size: 13px;">${item.qty}x ${item.name}</span>
+            <span style="float: right; font-weight: 700; color: #111827; font-size: 13px;">₱${(item.price * item.qty).toFixed(2)}</span>
+            <div style="clear: both;"></div>
+        `;
+        itemsContainer.appendChild(row);
+    });
 
-            if (cartKeys.length === 0) {
-                drawerList.innerHTML = `
-                    <div class="text-center py-12 text-brand-slate">
-                        <i class="fa-solid fa-basket-shopping text-4xl mb-3 opacity-30"></i>
-                        <p class="text-xs font-bold">Your cart is empty.</p>
-                        <p class="text-[10px] mt-1">Select items from the menu to add.</p>
-                    </div>`;
-                if (nextBtn) nextBtn.disabled = true;
-                closeCartDrawer();
-            } else {
-                if (nextBtn) nextBtn.disabled = false;
+    JsBarcode("#slip-barcode", order.order_number, {
+        format: "CODE128",
+        lineColor: "#111827",
+        width: 2,
+        height: 50,
+        displayValue: true,
+        fontSize: 12,
+        margin: 0
+    });
+}
 
-                cartKeys.forEach(key => {
-                    const item = cart[key];
-                    const itemSubtotal = item.price * item.qty;
-                    total += itemSubtotal;
+// 2. DOWNLOAD FUNCTION (Hihintayin munang ma-load ang custom fonts + explicit line-height reset bago i-capture)
+async function downloadQueueSlip() {
+    const slipCard = document.getElementById('queue-slip-card');
+    if (!slipCard) return;
 
-                    const cartRow = document.createElement('div');
-                    cartRow.className = "flex items-center justify-between bg-white/5 border border-white/10 p-3 rounded-2xl gap-3";
-                    cartRow.innerHTML = `
-                        <div class="flex items-center gap-3 min-w-0">
-                            <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" class="w-12 h-12 rounded-xl object-cover shrink-0">
-                            <div class="min-w-0">
-                                <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
-                                <span class="text-xs font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            <div class="flex items-center gap-2 bg-black/40 rounded-xl px-2 py-1 border border-white/10">
-                                <button onclick="updateQuantity('${item.id}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">-</button>
-                                <span class="text-xs font-black text-white px-1">${item.qty}</span>
-                                <button onclick="updateQuantity('${item.id}', 1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">+</button>
-                            </div>
-                            <button onclick="updateQuantity('${item.id}', -${item.qty})" class="text-brand-slate hover:text-red-400 p-1.5 text-xs transition">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                        </div>
-                    `;
-                    drawerList.appendChild(cartRow);
+    // Hintayin matapos mag-load ang fonts para tama ang baseline height
+    if (document.fonts) {
+        await document.fonts.ready;
+    }
+
+    html2canvas(slipCard, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        onclone: (clonedDoc) => {
+            const clonedCard = clonedDoc.getElementById('queue-slip-card');
+            if (clonedCard) {
+                clonedCard.style.transform = "none";
+                clonedCard.style.overflow = "visible";
+                
+                // Tanggalin ang vertical clipping sa lahat ng text elements sa loob ng card
+                const allElements = clonedCard.querySelectorAll('*');
+                allElements.forEach(el => {
+                    el.style.overflow = "visible";
+                    if (window.getComputedStyle(el).display === 'inline' || window.getComputedStyle(el).display === 'inline-block') {
+                        el.style.lineHeight = "normal";
+                    }
                 });
             }
-
-            const formattedTotal = `₱${total.toFixed(2)}`;
-            document.getElementById('cart-total').innerText = formattedTotal;
-            document.getElementById('drawer-total-amount').innerText = formattedTotal;
         }
+    }).then(canvas => {
+        const image = canvas.toDataURL("image/png");
+        const link = document.createElement('a');
+        link.href = image;
+        link.download = `Queue_Slip_${currentPendingOrder ? currentPendingOrder.order_number : 'Slip'}.png`;
+        link.click();
+    });
+}
 
-        // CHECKOUT & QUEUE SLIP GENERATION
-        async function checkoutOrder() {
-            const cartKeys = Object.keys(cart);
-            if (cartKeys.length === 0) return;
+// ================= PENDING ORDER ACTIONS =================
+function editPendingOrder() {
+    if (!currentPendingOrder) return;
 
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    cart = { ...currentPendingOrder.cart };
+    diningOption = currentPendingOrder.dining_option;
+    setDiningOption(diningOption);
 
-            const cartArray = cartKeys.map(key => ({
-                id: cart[key].id,
-                name: cart[key].name,
-                price: cart[key].price,
-                qty: cart[key].qty
-            }));
+    updateCartUI();
+    closeQueueSlipModal();
+    openCartDrawer();
+}
 
-            const totalAmount = cartArray.reduce((sum, item) => sum + (item.price * item.qty), 0);
+function cancelPendingOrder() {
+    if (confirm("Are you sure you want to cancel your queue slip?")) {
+        currentPendingOrder = null;
+        localStorage.removeItem('canteen_pending_order');
+        cart = {};
+        updateCartUI();
+        closeQueueSlipModal();
+        hidePendingBanner();
+    }
+}
 
-            const drawerPayBtn = document.getElementById('drawer-pay-btn');
-            if (drawerPayBtn) {
-                drawerPayBtn.disabled = true;
-                drawerPayBtn.innerText = "Generating Slip...";
-            }
+function openQueueSlipModal() {
+    if (currentPendingOrder) {
+        renderQueueSlipUI(currentPendingOrder);
+        document.getElementById('queue-slip-modal').classList.remove('hidden');
+    }
+}
 
-            try {
-                const response = await fetch("{% url 'customer_portal:process_checkout' %}", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRFToken": csrfToken
-                    },
-                    body: JSON.stringify({
-                        cart: cartArray,
-                        total_amount: totalAmount,
-                        dining_option: diningOption
-                    })
-                });
+function closeQueueSlipModal() {
+    document.getElementById('queue-slip-modal').classList.add('hidden');
+}
 
-                const data = await response.json();
+// ================= FLOATING TOAST NOTIFICATION HELPERS =================
+function showPendingBanner() {
+    if (!currentPendingOrder) return;
+    
+    const banner = document.getElementById('pending-order-banner');
+    banner.classList.remove('hidden');
 
-                if (data.success) {
-                    closeCartDrawer();
-                    
-                    currentPendingOrder = {
-                        order_number: data.order_number,
-                        cart: cart,
-                        cart_array: cartArray,
-                        total_amount: totalAmount,
-                        dining_option: diningOption
-                    };
+    setTimeout(() => {
+        banner.classList.remove('-translate-y-4', 'opacity-0');
+        banner.classList.add('translate-y-0', 'opacity-100');
+    }, 10);
 
-                    localStorage.setItem('canteen_pending_order', JSON.stringify(currentPendingOrder));
+    if (pendingBannerTimer) clearTimeout(pendingBannerTimer);
 
-                    cart = {};
-                    updateCartUI();
+    pendingBannerTimer = setTimeout(() => {
+        hidePendingBanner();
+    }, 5000);
+}
 
-                    renderQueueSlipUI(currentPendingOrder);
-                    openQueueSlipModal();
-                    showPendingBanner(); // Displays auto-dismissing toast notice
-                } else {
-                    alert("Error: " + data.message);
-                }
-            } catch (error) {
-                console.error("Checkout error:", error);
-                alert("Failed to process queue slip. Please check server.");
-            } finally {
-                if (drawerPayBtn) {
-                    drawerPayBtn.disabled = false;
-                    drawerPayBtn.innerHTML = `<span>Done / Pay</span><i class="fa-solid fa-circle-check"></i>`;
-                }
-            }
+function hidePendingBanner() {
+    const banner = document.getElementById('pending-order-banner');
+    banner.classList.remove('translate-y-0', 'opacity-100');
+    banner.classList.add('-translate-y-4', 'opacity-0');
+
+    setTimeout(() => {
+        banner.classList.add('hidden');
+    }, 300);
+}
+
+function checkPendingOrderOnLoad() {
+    const saved = localStorage.getItem('canteen_pending_order');
+    if (saved) {
+        try {
+            currentPendingOrder = JSON.parse(saved);
+            showPendingBanner();
+            openQueueSlipModal();
+        } catch (e) {
+            localStorage.removeItem('canteen_pending_order');
         }
+    } else {
+        document.getElementById('dining-option-modal').classList.remove('hidden');
+    }
+}
 
-        // RENDER QUEUE SLIP CONTENT
-        function renderQueueSlipUI(order) {
-            document.getElementById('slip-queue-number').innerText = order.order_number;
-            document.getElementById('slip-dining-mode').innerText = order.dining_option;
-            document.getElementById('slip-total-amount').innerText = `₱${order.total_amount.toFixed(2)}`;
+let currentModalItem = null;
+let modalRiceQty = 0;
 
-            const itemsContainer = document.getElementById('slip-items-list');
-            itemsContainer.innerHTML = '';
-            
-            order.cart_array.forEach(item => {
-                const row = document.createElement('div');
-                row.className = "flex justify-between items-center text-gray-700";
-                row.innerHTML = `
-                    <span>${item.qty}x ${item.name}</span>
-                    <span class="font-bold">₱${(item.price * item.qty).toFixed(2)}</span>
-                `;
-                itemsContainer.appendChild(row);
-            });
+function openItemModal(itemId) {
+    const item = menuData.find(i => i.id === itemId);
+    if (!item) return;
+    currentModalItem = item;
+    modalRiceQty = 0; // default 0 rice for ulam
 
-            JsBarcode("#slip-barcode", order.order_number, {
-                format: "CODE128",
-                lineColor: "#111827",
-                width: 2,
-                height: 50,
-                displayValue: true,
-                fontSize: 12,
-                margin: 0
-            });
-        }
+    document.getElementById('modal-item-img').src = item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';
+    document.getElementById('modal-item-category').textContent = item.category || 'General';
+    document.getElementById('modal-item-name').textContent = item.name;
+    document.getElementById('modal-item-desc').textContent = item.desc || 'Freshly prepared daily with quality ingredients.';
+    
+    // Multiple Smart Dietary & Health/Religious Warnings with FontAwesome Icons
+    let dietaryTags = ['<i class="fa-solid fa-check mr-1"></i> Halal Friendly', '<i class="fa-solid fa-dumbbell mr-1"></i> High Protein', '<i class="fa-solid fa-fire mr-1"></i> Warm Meal'];
+    const nameL = item.name.toLowerCase();
+    const catL = String(item.category).toLowerCase();
+    
+    if (nameL.includes('pork')) {
+        dietaryTags = ['<i class="fa-solid fa-triangle-exclamation mr-1"></i> Contains Pork', '<i class="fa-solid fa-ban mr-1"></i> Not Halal', '<i class="fa-solid fa-dumbbell mr-1"></i> High Protein'];
+    } else if (nameL.includes('turon') || nameL.includes('banana') || nameL.includes('sweet') || nameL.includes('biscuit') || nameL.includes('cake') || nameL.includes('donut') || catL.includes('biscuits')) {
+        dietaryTags = ['<i class="fa-solid fa-triangle-exclamation mr-1"></i> High Sugar Content', '<i class="fa-solid fa-heart-pulse mr-1"></i> Caution for Diabetics', '<i class="fa-solid fa-cookie mr-1"></i> Sweet Snack'];
+    } else if (nameL.includes('chicken') || nameL.includes('beef')) {
+        dietaryTags = ['<i class="fa-solid fa-check mr-1"></i> Halal Friendly', '<i class="fa-solid fa-dumbbell mr-1"></i> High Protein', '<i class="fa-solid fa-fire mr-1"></i> Warm Meal'];
+    } else if (catL.includes('beverage')) {
+        dietaryTags = ['<i class="fa-solid fa-glass-water mr-1"></i> Refreshing', '<i class="fa-solid fa-snowflake mr-1"></i> Cold Drink'];
+    }
+    
+    const tagsContainer = document.getElementById('modal-dietary-tags');
+    if (tagsContainer) {
+        tagsContainer.innerHTML = dietaryTags.map(tag => {
+            const isWarning = tag.includes('triangle-exclamation') || tag.includes('ban');
+            const bgClass = isWarning ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+            return `<span class="${bgClass} px-2.5 py-1 rounded-md text-[10px] font-bold inline-flex items-center">${tag}</span>`;
+        }).join('');
+    }
 
-        // DOWNLOAD QUEUE SLIP AS PNG IMAGE
-        function downloadQueueSlip() {
-            const slipCard = document.getElementById('queue-slip-card');
-            if (!slipCard) return;
+    const riceCountEl = document.getElementById('modal-rice-count');
+    if (riceCountEl) riceCountEl.textContent = modalRiceQty;
 
-            html2canvas(slipCard, { scale: 3 }).then(canvas => {
-                const image = canvas.toDataURL("image/png");
-                const link = document.createElement('a');
-                link.href = image;
-                link.download = `Queue_Slip_${currentPendingOrder.order_number}.png`;
-                link.click();
-            });
-        }
-
-        // EDIT PENDING ORDER LOGIC
-        function editPendingOrder() {
-            if (!currentPendingOrder) return;
-
-            cart = { ...currentPendingOrder.cart };
-            diningOption = currentPendingOrder.dining_option;
-            setDiningOption(diningOption);
-
-            updateCartUI();
-            closeQueueSlipModal();
-            openCartDrawer();
-        }
-
-        // CANCEL PENDING ORDER
-        function cancelPendingOrder() {
-            if (confirm("Are you sure you want to cancel your queue slip?")) {
-                currentPendingOrder = null;
-                localStorage.removeItem('canteen_pending_order');
-                cart = {};
-                updateCartUI();
-                closeQueueSlipModal();
-                hidePendingBanner();
-            }
-        }
-
-        function openQueueSlipModal() {
-            if (currentPendingOrder) {
-                renderQueueSlipUI(currentPendingOrder);
-                document.getElementById('queue-slip-modal').classList.remove('hidden');
-            }
-        }
-
-        function closeQueueSlipModal() {
-            document.getElementById('queue-slip-modal').classList.add('hidden');
-        }
-
-        // ================= FLOATING TOAST NOTIFICATION HELPERS =================
-        function showPendingBanner() {
-            if (!currentPendingOrder) return;
-            
-            const banner = document.getElementById('pending-order-banner');
-            banner.classList.remove('hidden');
-
-            // Trigger CSS animation frame for smooth slide down & fade in
-            setTimeout(() => {
-                banner.classList.remove('-translate-y-4', 'opacity-0');
-                banner.classList.add('translate-y-0', 'opacity-100');
-            }, 10);
-
-            // Clear any previous running timeout
-            if (pendingBannerTimer) clearTimeout(pendingBannerTimer);
-
-            // AUTO-DISMISS: Automatically hide after 5 seconds (5000 ms)
-            pendingBannerTimer = setTimeout(() => {
-                hidePendingBanner();
-            }, 5000);
-        }
-
-        function hidePendingBanner() {
-            const banner = document.getElementById('pending-order-banner');
-            banner.classList.remove('translate-y-0', 'opacity-100');
-            banner.classList.add('-translate-y-4', 'opacity-0');
-
-            setTimeout(() => {
-                banner.classList.add('hidden');
-            }, 300); // Waits for fade transition to end
-        }
-
-        function checkPendingOrderOnLoad() {
-            const saved = localStorage.getItem('canteen_pending_order');
-            if (saved) {
-                try {
-                    currentPendingOrder = JSON.parse(saved);
-                    showPendingBanner();
-                    openQueueSlipModal();
-                } catch (e) {
-                    localStorage.removeItem('canteen_pending_order');
-                }
-            } else {
-                document.getElementById('dining-option-modal').classList.remove('hidden');
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            renderMenu();
-            checkPendingOrderOnLoad();
-            setInterval(fetchLatestMenu, 3000);
+    // Populate beverage options
+    const bevSelect = document.getElementById('modal-beverage-select');
+    if (bevSelect) {
+        bevSelect.innerHTML = '<option value="">-- No Beverage --</option>';
+        const beverages = menuData.filter(i => String(i.category).toLowerCase().includes('beverage') || i.name.toLowerCase().includes('coke') || i.name.toLowerCase().includes('sprite') || i.name.toLowerCase().includes('water') || i.name.toLowerCase().includes('juice'));
+        beverages.forEach(b => {
+            bevSelect.innerHTML += `<option value="${b.id}" data-price="${b.price}">${b.name} (+₱${b.price.toFixed(2)})</option>`;
         });
+    }
+
+    updateModalTotal();
+
+    document.getElementById('item-details-modal').classList.remove('hidden');
+    document.getElementById('item-details-modal').classList.add('flex');
+}
+
+function changeRiceQty(delta) {
+    modalRiceQty = Math.max(0, modalRiceQty + delta);
+    const riceCountEl = document.getElementById('modal-rice-count');
+    if (riceCountEl) riceCountEl.textContent = modalRiceQty;
+    updateModalTotal();
+}
+
+function updateModalTotal() {
+    if (!currentModalItem) return;
+    let total = currentModalItem.price;
+
+    total += (modalRiceQty * 15.00);
+
+    const bevSelect = document.getElementById('modal-beverage-select');
+    if (bevSelect) {
+        const selectedOpt = bevSelect.options[bevSelect.selectedIndex];
+        if (selectedOpt && selectedOpt.value) {
+            total += parseFloat(selectedOpt.getAttribute('data-price') || 0);
+        }
+    }
+
+    document.getElementById('modal-item-price').textContent = '₱' + total.toFixed(2);
+}
+
+function addCustomizedItemToCart() {
+    if (!currentModalItem) return;
+    
+    // Add main item
+    addToCart(currentModalItem.id);
+
+    // Add rice portions if > 0
+    if (modalRiceQty > 0) {
+        let riceItem = menuData.find(i => i.name.toLowerCase().includes('extra rice') || i.name.toLowerCase().includes('rice') || i.name.toLowerCase().includes('steamed rice'));
+        const virtualRiceId = 99999;
+        if (!riceItem && !menuData.some(i => i.id === virtualRiceId)) {
+            menuData.push({ id: virtualRiceId, name: 'Steamed Rice', price: 15.00, category: 'Rice', desc: 'Portion of steamed rice' });
+        }
+        for (let i = 0; i < modalRiceQty; i++) {
+            addToCart(riceItem ? riceItem.id : virtualRiceId);
+        }
+    }
+
+    // Add selected beverage if any
+    const bevSelect = document.getElementById('modal-beverage-select');
+    if (bevSelect && bevSelect.value) {
+        addToCart(parseInt(bevSelect.value));
+    }
+
+    closeItemModal();
+}
+
+function closeItemModal() {
+    document.getElementById('item-details-modal').classList.add('hidden');
+    document.getElementById('item-details-modal').classList.remove('flex');
+    currentModalItem = null;
+    modalRiceQty = 0;
+}
+
+let isSearchOpen = false;
+
+function toggleSearch(e) {
+    if (e) e.stopPropagation();
+    isSearchOpen = !isSearchOpen;
+    const wrapper = document.getElementById('search-wrapper');
+    const input = document.getElementById('search-input');
+    const brandText = document.getElementById('brand-text-container');
+
+    if (isSearchOpen) {
+        wrapper.classList.remove('w-10');
+        wrapper.classList.add('w-48', 'sm:w-64');
+        if (brandText) brandText.classList.add('hidden');
+        setTimeout(() => input.focus(), 150);
+    } else {
+        closeSearch();
+    }
+}
+
+function closeSearch() {
+    isSearchOpen = false;
+    const wrapper = document.getElementById('search-wrapper');
+    const input = document.getElementById('search-input');
+    const brandText = document.getElementById('brand-text-container');
+
+    if (wrapper) {
+        wrapper.classList.remove('w-48', 'sm:w-64');
+        wrapper.classList.add('w-10');
+    }
+    if (brandText) {
+        brandText.classList.remove('hidden');
+    }
+    if (input) {
+        input.value = '';
+        filterItems();
+    }
+}
+
+// Click outside to collapse search bar
+document.addEventListener('click', (e) => {
+    const searchContainer = document.getElementById('search-container');
+    if (isSearchOpen && searchContainer && !searchContainer.contains(e.target)) {
+        closeSearch();
+    }
+});
+
+let isDarkMode = true;
+function toggleTheme() {
+    isDarkMode = !isDarkMode;
+    const body = document.body;
+    const themeIcon = document.getElementById('theme-icon');
+    
+    if (isDarkMode) {
+        body.classList.remove('light-mode');
+        themeIcon.className = "fa-solid fa-sun text-xs";
+    } else {
+        body.classList.add('light-mode');
+        themeIcon.className = "fa-solid fa-moon text-xs text-brand-orange";
+    }
+}
+
+// ================= EVENT LISTENERS & POLLING =================
+document.addEventListener('DOMContentLoaded', () => {
+    renderMenu();
+    checkPendingOrderOnLoad();
+    setInterval(fetchLatestMenu, 3000);
+}); 
     </script>
 </body>
 </html>

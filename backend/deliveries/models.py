@@ -6,6 +6,7 @@ class DeliveryRequest(models.Model):
     class RequestStatus(models.TextChoices):
         SEARCHING = 'SEARCHING', 'Searching for Rider'
         ACCEPTED = 'ACCEPTED', 'Rider Accepted'
+        DELIVERED = 'DELIVERED', 'Delivered'
         REJECTED = 'REJECTED', 'Rejected'
         TIMEOUT = 'TIMEOUT', 'No Rider Available (5-Min Timeout)'
 
@@ -14,10 +15,19 @@ class DeliveryRequest(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True, blank=True,
-        limit_choices_to={'role': 'RIDER'},
         related_name='deliveries'
     )
     delivery_location = models.CharField(max_length=255, help_text="Building & Room Number")
     status = models.CharField(max_length=20, choices=RequestStatus.choices, default=RequestStatus.SEARCHING)
     requested_at = models.DateTimeField(auto_now_add=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
+class DeliveryMessage(models.Model):
+    delivery = models.ForeignKey(DeliveryRequest, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.sender.username}: {self.message[:30]}"

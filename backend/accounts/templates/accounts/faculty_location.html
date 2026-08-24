@@ -5,29 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Faculty Onboarding - Step 1: Location</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+<body class="bg-zinc-900 min-h-screen flex items-center justify-center p-4">
 
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 sm:p-8">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 relative z-10">
         <!-- Step Progress Indicator -->
-        <div class="mb-6">
-            <div class="flex justify-between text-xs font-semibold text-gray-400 mb-2">
+        <div class="space-y-2">
+            <div class="flex justify-between text-xs font-extrabold text-zinc-400 uppercase tracking-wider">
                 <span class="text-orange-600">Step 1 of 5</span>
                 <span>Location Check</span>
             </div>
-            <div class="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
                 <div class="bg-orange-500 h-full w-1/5"></div>
             </div>
         </div>
 
         <!-- Header -->
-        <div class="text-center mb-6">
-            <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-3">
+        <div class="text-center space-y-2">
+            <div class="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
                 <i class="fa-solid fa-location-crosshairs text-2xl"></i>
             </div>
-            <h2 class="text-2xl font-bold text-gray-800">Delivery Location Check</h2>
-            <p class="text-xs text-gray-500 mt-1">We need your current location to verify if your office is within our delivery coverage zone.</p>
+            <h2 class="text-2xl font-black text-zinc-900">Delivery Location Check</h2>
+            <p class="text-xs text-zinc-500 leading-relaxed">We need your current location to verify if your office is within our delivery coverage zone.</p>
         </div>
 
         <!-- Form -->
@@ -38,26 +38,26 @@
             <input type="hidden" name="longitude" id="longitude">
 
             <!-- Status Box -->
-            <div id="status-box" class="p-4 bg-gray-50 border border-gray-200 rounded-xl text-center">
-                <i id="status-icon" class="fa-solid fa-map-pin text-3xl text-gray-400 mb-2"></i>
-                <p id="status-text" class="text-sm font-medium text-gray-600">Click the button below to allow location access.</p>
+            <div id="status-box" class="p-4 bg-zinc-50 border border-zinc-200 rounded-2xl text-center">
+                <i id="status-icon" class="fa-solid fa-map-pin text-3xl text-zinc-400 mb-2"></i>
+                <p id="status-text" class="text-xs font-semibold text-zinc-600">Click the button below to allow location access.</p>
             </div>
 
             <!-- Action Button -->
-            <button type="button" id="detect-btn" onclick="getLocation()" class="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center space-x-2">
+            <button type="button" id="detect-btn" onclick="getLocation()" class="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl shadow-lg shadow-orange-500/25 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20">
                 <i class="fa-solid fa-crosshairs"></i>
                 <span>Detect My Location</span>
             </button>
 
             <!-- Submit Button (Hidden initially until location is obtained) -->
-            <button type="submit" id="next-btn" class="hidden w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition items-center justify-center space-x-2">
+            <button type="submit" id="next-btn" class="hidden w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-600/25 transition text-xs uppercase tracking-wider items-center justify-center gap-2 cursor-pointer relative z-20">
                 <span>Continue to Phone Verification</span>
                 <i class="fa-solid fa-arrow-right"></i>
             </button>
         </form>
 
-        <div class="mt-6 text-center">
-            <a href="{% url 'accounts:landing' %}" class="text-xs text-gray-400 hover:text-gray-600">
+        <div class="text-center pt-2 border-t border-zinc-100">
+            <a href="{% url 'accounts:landing' %}" class="text-xs font-bold text-zinc-400 hover:text-zinc-700 transition">
                 <i class="fa-solid fa-arrow-left mr-1"></i> Back to Role Selection
             </a>
         </div>
@@ -83,21 +83,21 @@
                         document.getElementById('latitude').value = lat;
                         document.getElementById('longitude').value = lng;
 
-                        statusBox.className = "p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center";
+                        statusBox.className = "p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center";
                         statusIcon.className = "fa-solid fa-circle-check text-3xl text-emerald-500 mb-2";
-                        statusText.innerHTML = `<span class="text-emerald-700 font-bold">Location Verified!</span><br><span class="text-xs text-emerald-600">Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}</span>`;
+                        statusText.innerHTML = `<span class="text-emerald-700 font-bold">Location Verified!</span><br><span class="text-[11px] text-emerald-600">Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}</span>`;
 
                         detectBtn.classList.add('hidden');
                         nextBtn.classList.remove('hidden');
                         nextBtn.classList.add('flex');
                     },
                     (error) => {
-                        statusBox.className = "p-4 bg-red-50 border border-red-200 rounded-xl text-center";
+                        statusBox.className = "p-4 bg-red-50 border border-red-200 rounded-2xl text-center";
                         statusIcon.className = "fa-solid fa-triangle-exclamation text-3xl text-red-500 mb-2";
                         
                         switch(error.code) {
                             case error.PERMISSION_DENIED:
-                                statusText.innerText = "Location access denied. Please enable location permissions in your browser.";
+                                statusText.innerText = "Location access denied. Please enable location permissions.";
                                 break;
                             case error.POSITION_UNAVAILABLE:
                                 statusText.innerText = "Location information unavailable. Try again.";

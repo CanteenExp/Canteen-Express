@@ -68,16 +68,19 @@ def process_checkout(request):
         data = json.loads(request.body)
         cart_items = data.get('cart', [])
         total_amount = data.get('total_amount', 0)
+        is_delivery = data.get('is_delivery', False)
+        delivery_location = data.get('delivery_location', 'Faculty Office Building')
 
         if not cart_items:
             return JsonResponse({'success': False, 'message': 'Walang laman ang cart.'}, status=400)
 
         order_number = f"#CE-{random.randint(1000, 9999)}"
+        initial_status = 'pending_rider' if is_delivery else 'unpaid'
 
         order = Order.objects.create(
             order_number=order_number,
             total_amount=total_amount,
-            status='pending'
+            status=initial_status
         )
 
         for item in cart_items:
@@ -88,10 +91,19 @@ def process_checkout(request):
                 quantity=item.get('qty', 1)
             )
 
+        if is_delivery:
+            from deliveries.models import DeliveryRequest
+            DeliveryRequest.objects.create(
+                order=order,
+                delivery_location=delivery_location,
+                status=DeliveryRequest.RequestStatus.SEARCHING
+            )
+
         return JsonResponse({
             'success': True,
             'order_number': order.order_number,
-            'order_id': order.id
+            'order_id': order.id,
+            'is_delivery': is_delivery
         })
 
     except Exception as e:

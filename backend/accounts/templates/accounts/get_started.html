@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Onboarding - Step 4: Get Started</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-orange-500 to-black min-h-screen flex items-center justify-center p-4 text-white">
+
+    <div class="w-full max-w-md bg-white text-zinc-900 rounded-3xl shadow-2xl p-8 text-center space-y-6 relative z-10">
+        <div class="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-inner">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+
+        <div class="space-y-2">
+            <span class="bg-orange-100 text-orange-700 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider">Verification Complete</span>
+            <h1 class="text-2xl sm:text-3xl font-black tracking-tight">You're All Set!</h1>
+            <p class="text-xs text-zinc-500 leading-relaxed max-w-xs mx-auto">Your faculty credentials and location have been successfully verified. Enjoy priority campus office deliveries.</p>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            <button type="submit" class="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl shadow-xl shadow-orange-500/30 transition uppercase tracking-wider text-xs flex items-center justify-center gap-2 cursor-pointer relative z-20">
+                <span>Get Started to Dashboard</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </form>
+    </div>
+
+</body>
+</html>

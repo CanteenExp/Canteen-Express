@@ -1,34 +1,228 @@
 {% extends 'base.html' %}
 
+{% block title %}Delivery Rider Hub - Canteen Express{% endblock %}
+
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 py-6">
-    <!-- Delivery Header -->
-    <div class="bg-zinc-900 text-white p-6 rounded-2xl mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-l-8 border-emerald-500 shadow-xl">
-        <div>
-            <h1 class="text-2xl font-black tracking-wide">🛵 Delivery Express Hub</h1>
-            <p class="text-zinc-400 text-sm mt-1">Delivery Personnel Portal — Active Drop-offs</p>
+<div class="max-w-7xl mx-auto px-4 py-6 space-y-8" x-data="riderHub()">
+    <!-- Delivery Header & Earnings Card -->
+    <div class="bg-zinc-900 text-white p-6 sm:p-8 rounded-3xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-l-8 border-emerald-500 shadow-2xl relative overflow-hidden">
+        <div class="space-y-1 z-10">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold mb-2">
+                <i class="fa-solid fa-motorcycle"></i> Delivery Rider Hub
+            </span>
+            <h1 class="text-2xl sm:text-3xl font-black tracking-tight">Welcome, Rider <span class="text-emerald-400">{{ request.user.get_full_name|default:request.user.username }}</span>! 🛵</h1>
+            <p class="text-zinc-400 text-xs sm:text-sm">Accept campus office deliveries, chat with faculty customers, and track your daily earnings.</p>
         </div>
-        <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold px-3 py-1.5 rounded-full text-xs tracking-wider uppercase">
-            RIDER POV
-        </span>
+
+        <!-- Earnings Badge -->
+        <div class="bg-white/10 backdrop-blur-md border border-white/10 p-5 rounded-3xl flex items-center gap-4 z-10 shadow-lg">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center text-xl shadow-md">
+                <i class="fa-solid fa-wallet"></i>
+            </div>
+            <div>
+                <span class="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider block">Total Earnings</span>
+                <span class="text-2xl font-black text-emerald-400">₱{{ total_earnings|floatformat:2 }}</span>
+                <span class="text-[10px] text-zinc-400 block">({{ completed_count }} completed deliveries)</span>
+            </div>
+        </div>
+        <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl"></div>
     </div>
 
-    <!-- Active Deliveries List -->
+    <!-- Pending Delivery Requests (Searching for Rider) -->
     <div class="space-y-4">
-        <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="text-xs font-extrabold text-emerald-600 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded">Ready for Pickup</span>
-                    <span class="text-xs font-bold text-zinc-400">#1002</span>
+        <h2 class="text-sm font-black text-zinc-800 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-bell text-orange-500"></i> Incoming Delivery Requests (Pending Acceptance)
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for d in pending_deliveries %}
+            <div class="bg-white border-2 border-orange-300 rounded-3xl p-6 shadow-xl space-y-4">
+                <div class="flex justify-between items-start border-b border-zinc-100 pb-3">
+                    <div>
+                        <span class="text-xs font-black text-orange-600 uppercase tracking-wider">Order {{ d.order.order_number }}</span>
+                        <h3 class="text-base font-black text-zinc-900 mt-0.5"><i class="fa-solid fa-location-dot text-orange-500 mr-1"></i> {{ d.delivery_location }}</h3>
+                    </div>
+                    <span class="bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase">
+                        Searching Rider
+                    </span>
                 </div>
-                <h3 class="text-lg font-bold text-zinc-900">Faculty Building — Room 302</h3>
-                <p class="text-sm text-zinc-500">Customer: Prof. Santos | 1x Chicken Sandwich, 1x Coffee</p>
+
+                <div class="text-xs space-y-1 font-medium text-zinc-700">
+                    <p class="text-zinc-400 font-bold uppercase tracking-wider text-[10px]">Items Ordered:</p>
+                    {% for item in d.order.items.all %}
+                        <p>• {{ item.quantity }}x {{ item.item_name }}</p>
+                    {% endfor %}
+                </div>
+
+                <div class="pt-3 border-t border-zinc-100 flex justify-between items-center">
+                    <span class="text-lg font-black text-orange-600">₱{{ d.order.total_amount }}</span>
+                    <a href="{% url 'deliveries:accept_delivery' d.id %}" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 py-2.5 rounded-2xl text-xs shadow-lg shadow-emerald-600/20 transition flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Accept Delivery
+                    </a>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full bg-white border border-zinc-200 rounded-3xl p-12 text-center text-zinc-400 text-xs font-bold">
+                <i class="fa-solid fa-motorcycle text-3xl mb-2 text-zinc-300 block"></i>
+                No pending delivery requests at the moment.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- My Active Deliveries -->
+    <div class="space-y-4 pt-4">
+        <h2 class="text-sm font-black text-zinc-800 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-person-biking text-emerald-600"></i> My Active Deliveries & Live Chat
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for d in my_deliveries %}
+            <div class="bg-white border-2 border-emerald-500/30 rounded-3xl p-6 shadow-xl space-y-4">
+                <div class="flex justify-between items-start border-b border-zinc-100 pb-3">
+                    <div>
+                        <span class="text-xs font-black text-emerald-600 uppercase tracking-wider">Order {{ d.order.order_number }}</span>
+                        <h3 class="text-base font-black text-zinc-900 mt-0.5"><i class="fa-solid fa-building text-emerald-600 mr-1"></i> {{ d.delivery_location }}</h3>
+                    </div>
+                    <span class="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase">
+                        {{ d.status }}
+                    </span>
+                </div>
+
+                <div class="text-xs space-y-1 font-medium text-zinc-700">
+                    <p class="text-zinc-400 font-bold uppercase tracking-wider text-[10px]">Items:</p>
+                    {% for item in d.order.items.all %}
+                        <p>• {{ item.quantity }}x {{ item.item_name }}</p>
+                    {% endfor %}
+                </div>
+
+                <!-- Chat & Complete Actions -->
+                <div class="pt-3 border-t border-zinc-100 flex items-center justify-between gap-2">
+                    <button @click="openChat({{ d.id }}, '{{ d.order.order_number }}')" class="bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-2 shadow">
+                        <i class="fa-solid fa-comments text-emerald-400"></i> Chat with Customer
+                    </button>
+
+                    {% if d.status == 'ACCEPTED' %}
+                    <a href="{% url 'deliveries:complete_delivery' d.id %}" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-600/20 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-check-circle"></i> Mark as Delivered
+                    </a>
+                    {% else %}
+                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl">Delivered Successfully ✓</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full bg-white border border-zinc-200 rounded-3xl p-12 text-center text-zinc-400 text-xs font-bold">
+                <i class="fa-solid fa-box-open text-3xl mb-2 text-zinc-300 block"></i>
+                You have not accepted any deliveries yet.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ================= LIVE CHAT MODAL ================= -->
+    <div x-show="chatOpen" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" style="display: none;">
+        <div @click.away="chatOpen = false" class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col h-[500px] border border-zinc-200 animate-fade-in">
+            <!-- Chat Header -->
+            <div class="bg-zinc-900 text-white p-4 flex items-center justify-between">
+                <div>
+                    <h3 class="font-black text-sm" x-text="'Chat - Order ' + currentOrderNo"></h3>
+                    <p class="text-[10px] text-emerald-400 font-bold">Real-time messaging with faculty customer</p>
+                </div>
+                <button @click="chatOpen = false" class="text-zinc-400 hover:text-white p-1.5"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
 
-            <button class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm shadow transition whitespace-nowrap">
-                Accept Delivery 🛵
-            </button>
+            <!-- Messages Box -->
+            <div id="chat-messages-box" class="flex-1 p-4 overflow-y-auto space-y-3 bg-zinc-50">
+                <template x-for="msg in messages" :key="msg.id">
+                    <div :class="msg.is_me ? 'flex justify-end' : 'flex justify-start'">
+                        <div :class="msg.is_me ? 'bg-emerald-600 text-white rounded-2xl rounded-tr-none px-4 py-2 text-xs max-w-[80%] shadow' : 'bg-white text-zinc-800 border border-zinc-200 rounded-2xl rounded-tl-none px-4 py-2 text-xs max-w-[80%] shadow-sm'">
+                            <p x-text="msg.message"></p>
+                            <span class="text-[9px] opacity-70 block text-right mt-1" x-text="msg.time"></span>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="messages.length === 0" class="text-center py-20 text-zinc-400 text-xs">
+                    <i class="fa-solid fa-comments text-3xl mb-2 text-zinc-300 block"></i>
+                    No messages yet. Send a message to coordinate delivery!
+                </div>
+            </div>
+
+            <!-- Send Message Input -->
+            <div class="p-3 bg-white border-t border-zinc-200 flex items-center gap-2">
+                <input type="text" x-model="newMessage" @keyup.enter="sendMessage()" placeholder="Type your message..."
+                    class="flex-1 px-4 py-3 bg-zinc-100 border border-zinc-200 rounded-xl text-xs text-zinc-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium">
+                <button @click="sendMessage()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl text-xs font-black shadow transition">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- AlpineJS -->
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script>
+function riderHub() {
+    return {
+        chatOpen: false,
+        currentDeliveryId: null,
+        currentOrderNo: '',
+        messages: [],
+        newMessage: '',
+        pollInterval: null,
+
+        openChat(deliveryId, orderNo) {
+            this.currentDeliveryId = deliveryId;
+            this.currentOrderNo = orderNo;
+            this.chatOpen = true;
+            this.fetchMessages();
+
+            if (this.pollInterval) clearInterval(this.pollInterval);
+            this.pollInterval = setInterval(() => {
+                if (this.chatOpen) this.fetchMessages();
+            }, 3000);
+        },
+
+        fetchMessages() {
+            if (!this.currentDeliveryId) return;
+            fetch(`/deliveries/messages/${this.currentDeliveryId}/get/`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        this.messages = data.messages;
+                        this.scrollToBottom();
+                    }
+                });
+        },
+
+        sendMessage() {
+            if (!this.newMessage.trim() || !this.currentDeliveryId) return;
+            let text = this.newMessage;
+            this.newMessage = '';
+
+            fetch(`/deliveries/messages/${this.currentDeliveryId}/send/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ message: text })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.fetchMessages();
+                }
+            });
+        },
+
+        scrollToBottom() {
+            setTimeout(() => {
+                const box = document.getElementById('chat-messages-box');
+                if (box) box.scrollTop = box.scrollHeight;
+            }, 50);
+        }
+    }
+}
+</script>
 {% endblock %}

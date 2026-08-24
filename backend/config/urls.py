@@ -22,6 +22,9 @@ urlpatterns = [
 
     # Canteen Menu
     path('canteen/', include(('canteen_menu.urls', 'canteen_menu'), namespace='canteen_menu')),
+
+    # Deliveries
+    path('deliveries/', include(('deliveries.urls', 'deliveries'), namespace='deliveries')),
 ]
 
 # <-- IDAGDAG ITO SA PINAKABABA PARA LUMABAS ANG MGA PICTURES -->

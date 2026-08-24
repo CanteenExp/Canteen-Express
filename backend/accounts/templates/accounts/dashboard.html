@@ -1,0 +1,752 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty & Staff Portal - Canteen Express</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            orange: '#FF6117',
+                            dark: '#121212',
+                            card: '#242424',
+                            light: '#EAEAEA',
+                            amber: '#FFB800',
+                            peach: '#FFECD9',
+                            slate: '#8E8E93',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-brand-dark text-brand-light h-screen flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative" x-data="facultyPortal()">
+
+    <!-- ================= HEADER ================= -->
+    <header class="bg-brand-dark border-b border-white/10 shrink-0 space-y-3 pb-3">
+        <div class="max-w-7xl mx-auto px-4 pt-3">
+            <div class="relative w-full h-16 sm:h-20 rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-r from-brand-orange/30 via-brand-dark to-black p-3 flex items-center justify-between shadow-xl">
+                <div class="space-y-0.5 max-w-sm z-10">
+                    <span class="bg-brand-orange text-white text-[9px] font-black uppercase px-2 py-2 rounded-md tracking-wider">Hello, {{ faculty_display_name }}!</span>
+                </div>
+                <div class="flex items-center gap-2 z-10">
+                    <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-black px-3 py-1 rounded-xl flex items-center gap-1.5 shadow">
+                        <i class="fa-solid fa-coins"></i> <span x-text="userPoints">45</span> Pts
+                    </span>
+                    <a href="{% url 'accounts:logout' %}" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-orange text-white flex items-center justify-center font-black text-lg">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                </div>
+                <div>
+                    <h1 class="text-xs sm:text-base font-black text-white leading-tight">Faculty & Staff Portal</h1>
+                    <p class="text-[10px] text-brand-orange font-bold uppercase tracking-wider flex items-center gap-1">
+                        <i class="fa-solid fa-user-tie"></i> Campus Delivery Active
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Search Wrapper -->
+                <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10 shadow-lg">
+                    <button onclick="toggleSearch(event)" id="search-toggle-btn" type="button" class="w-10 h-10 shrink-0 flex items-center justify-center text-white transition active:scale-95">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                    </button>
+                    <input 
+                        type="text" 
+                        id="search-input" 
+                        oninput="renderMenu()" 
+                        placeholder="Search menu..." 
+                        class="w-full bg-transparent border-0 pl-1 pr-3 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
+                    >
+                </div>
+            </div>
+        </div>
+    </header>
+
+
+    <!-- ================= MAIN LAYOUT ================= -->
+    <div class="flex-1 max-w-7xl w-full mx-auto flex overflow-hidden p-3 sm:p-4 gap-4">
+
+        <!-- Left: Category Sidebar (Includes Dietary) -->
+        <aside class="w-24 sm:w-28 flex-shrink-0 flex flex-col gap-2.5 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
+            <button onclick="selectCategory('all', this)" class="category-btn active-cat flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-orange text-white text-center font-black text-xs gap-1.5 transition shadow-lg shadow-brand-orange/20">
+                <i class="fa-solid fa-utensils text-lg sm:text-xl"></i>
+                <span class="text-[11px] leading-tight">All Items</span>
+            </button>
+
+            {% for cat in categories %}
+            <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition">
+                <i class="fa-solid {% if 'rice' in cat.name|lower %}fa-bowl-rice{% elif 'biscuit' in cat.name|lower %}fa-cookie{% elif 'beverage' in cat.name|lower %}fa-bottle-water{% elif 'meryenda' in cat.name|lower %}fa-burger{% elif 'diet' in cat.name|lower %}fa-heart-pulse{% else %}fa-bowl-food{% endif %} text-lg sm:text-xl"></i>
+                <span class="text-[11px] leading-tight line-clamp-1">{{ cat.name }}</span>
+            </button>
+            {% endfor %}
+        </aside>
+
+        <!-- Center: Menu Grid -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar space-y-4 pr-1">
+            <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                <h2 id="category-heading" class="text-sm sm:text-lg font-black text-white uppercase tracking-wider">All Items</h2>
+                <span id="items-count-indicator" class="text-xs text-brand-slate font-bold">Showing items</span>
+            </div>
+
+            <section id="menu-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 pb-12">
+            </section>
+        </main>
+
+    </div>
+
+
+    <!-- ================= FOOTER BAR ================= -->
+    <footer class="bg-brand-card border-t border-white/10 p-3 sm:p-4 shrink-0 shadow-2xl z-20">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            
+            <div class="text-left">
+                <span class="text-[10px] sm:text-xs text-brand-slate uppercase font-bold block">Total Amount</span>
+                <span id="cart-total" class="text-xl sm:text-3xl font-black text-brand-orange">₱0.00</span>
+            </div>
+
+            <div class="flex items-center gap-2.5">
+                <button onclick="clearCart()" class="px-4 py-2.5 sm:py-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-brand-slate hover:text-red-400 font-bold text-xs sm:text-sm uppercase tracking-wider transition border border-white/10 active:scale-95">
+                    Clear
+                </button>
+
+                <button onclick="openCartDrawer()" id="next-btn" disabled class="bg-brand-orange disabled:opacity-40 disabled:cursor-not-allowed hover:bg-orange-600 active:scale-95 text-white font-extrabold text-xs sm:text-sm px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl shadow-lg shadow-brand-orange/25 uppercase tracking-wider transition flex items-center gap-2">
+                    <span id="next-btn-text">View Cart (0)</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+
+        </div>
+    </footer>
+
+
+    <!-- ================= COLLAPSIBLE CART DRAWER ================= -->
+    <div id="cart-drawer-backdrop" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden transition-opacity flex justify-end">
+        <div class="max-w-md w-full bg-brand-card border-l border-white/10 p-5 flex flex-col justify-between shadow-2xl h-full animate-slide-left">
+            
+            <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-cart-shopping text-brand-orange text-xl"></i>
+                    <h3 class="text-lg font-black text-white uppercase tracking-wider">Your Order Cart</h3>
+                </div>
+                <button onclick="closeCartDrawer()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div id="drawer-cart-list" class="flex-1 overflow-y-auto no-scrollbar py-4 space-y-3">
+            </div>
+
+            <div class="border-t border-white/10 pt-4 space-y-4 shrink-0">
+                <div class="space-y-1.5 text-xs text-brand-slate">
+                    <div class="flex justify-between">
+                        <span>Items Subtotal</span>
+                        <span id="drawer-subtotal" class="font-bold text-white">₱0.00</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Convenience Fee (Delivery)</span>
+                        <span id="drawer-convenience-fee" class="font-bold text-white">₱0.00</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center text-white font-black text-base pt-2 border-t border-white/10">
+                    <span>Total Amount</span>
+                    <span id="drawer-total-amount" class="text-brand-orange text-xl">₱0.00</span>
+                </div>
+
+                <button onclick="closeCartDrawer(); openCheckoutModal()" class="w-full py-3.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check"></i> Proceed to Delivery Checkout
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- ================= ITEM EXPAND / DETAILS MODAL (Kiosk Style + Dietary Tags + Beverage Pairing) ================= -->
+    <div id="item-details-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl space-y-4 relative animate-fade-in my-8">
+            <button onclick="closeItemModal()" class="absolute right-4 top-4 z-10 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="relative h-48 sm:h-56 bg-white/5">
+                <img id="modal-item-img" src="" alt="Item Image" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="w-full h-full object-cover">
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <span id="modal-item-category" class="bg-brand-orange/20 text-brand-orange px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider">Category</span>
+                    <h3 id="modal-item-name" class="text-xl font-black text-white mt-1">Item Name</h3>
+                    <p id="modal-item-desc" class="text-xs text-brand-slate mt-2 leading-relaxed">Description goes here...</p>
+                    
+                    <!-- Smart Dietary & Health Tags -->
+                    <div id="modal-dietary-tags" class="flex flex-wrap gap-1.5 mt-3">
+                    </div>
+                </div>
+
+                <!-- ADD-ONS / CUSTOMIZERS -->
+                <div class="space-y-4 pt-3 border-t border-white/10">
+                    <div class="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
+                        <div>
+                            <span class="text-xs font-bold text-white block">Steamed Rice Portions</span>
+                            <span class="text-[10px] text-brand-orange font-bold">₱15.00 per serving</span>
+                        </div>
+                        <div class="flex items-center gap-3 bg-brand-dark px-3 py-1.5 rounded-xl border border-white/10">
+                            <button type="button" onclick="changeRiceQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition"><i class="fa-solid fa-minus text-xs"></i></button>
+                            <span id="modal-rice-count" class="text-xs font-black text-white w-4 text-center">0</span>
+                            <button type="button" onclick="changeRiceQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition"><i class="fa-solid fa-plus text-xs"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] font-bold text-brand-slate uppercase tracking-wider block">Optional Beverage Pairing</label>
+                        <select id="modal-beverage-select" onchange="updateModalTotal()" class="w-full bg-brand-dark border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange">
+                            <option value="">-- No Beverage --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-3 border-t border-white/10">
+                    <div>
+                        <span class="text-[10px] text-brand-slate uppercase font-bold block">Total Amount</span>
+                        <span id="modal-item-price" class="text-2xl font-black text-brand-orange">₱0.00</span>
+                    </div>
+                    <button onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-6 py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-cart-plus"></i> Add to Cart
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================= CHECKOUT MODAL (Delivery Only, Points & Payment) ================= -->
+    <div id="checkout-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-brand-card border border-white/10 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl my-auto animate-fade-in">
+            <div class="flex justify-between items-center border-b border-white/10 pb-4">
+                <h2 class="text-lg font-black text-white">Campus Delivery Checkout</h2>
+                <button onclick="closeCheckoutModal()" class="text-brand-slate hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="space-y-4 text-xs">
+                <!-- Fulfillment Notice -->
+                <div class="p-3.5 rounded-2xl bg-brand-orange/10 border border-brand-orange/30 text-brand-orange font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-motorcycle text-base"></i>
+                    <span>Mode: Campus Delivery (Convenience Fee Applies)</span>
+                </div>
+
+                <!-- Delivery Location Input -->
+                <div class="space-y-1.5">
+                    <label class="block font-bold text-white uppercase tracking-wider">Office Building & Room</label>
+                    <input type="text" id="delivery-location-input" value="Faculty Office Bldg, Room 204" placeholder="e.g., Faculty Office Bldg, Room 204"
+                        class="w-full px-3.5 py-3 bg-black/40 border border-white/10 rounded-2xl text-xs text-white focus:ring-2 focus:ring-brand-orange outline-none">
+                </div>
+
+                <!-- Loyalty Points Redemption -->
+                <div class="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-2.5">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-coins text-amber-400"></i> Points Available: <span class="text-amber-400" id="user-points-lbl">45</span>
+                        </span>
+                        <span class="text-[10px] text-brand-slate">1 Pt = ₱1 Off</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="points-redeem-input" min="0" value="0" oninput="updateCheckoutSummary()" placeholder="Points to use"
+                            class="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-xl text-xs text-white focus:ring-2 focus:ring-brand-orange outline-none">
+                        <button type="button" onclick="setMaxPoints()" class="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl text-xs font-bold transition">Max</button>
+                    </div>
+                    <p class="text-[11px] text-emerald-400 font-bold" id="points-earned-lbl">+ You will earn 0 loyalty points with this order!</p>
+                </div>
+
+                <!-- Payment Method -->
+                <div class="space-y-2">
+                    <label class="block font-bold text-white uppercase tracking-wider">Payment Method</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="p-3.5 rounded-2xl border font-black transition flex flex-col items-center gap-1.5 bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-600/30">
+                            <i class="fa-solid fa-money-bill-wave text-base"></i>
+                            <span>Cash on Delivery (COD)</span>
+                        </div>
+                        <div class="p-3.5 rounded-2xl border border-white/5 bg-white/5 opacity-50 cursor-not-allowed flex flex-col items-center justify-center gap-1.5 relative">
+                            <span class="absolute -top-2 bg-amber-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full">Coming Soon</span>
+                            <i class="fa-solid fa-wallet text-base text-brand-slate"></i>
+                            <span class="font-bold text-brand-slate">E-Payments</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Breakdown -->
+                <div class="bg-white/5 p-4 rounded-2xl space-y-2 border border-white/5">
+                    <div class="flex justify-between text-brand-slate">
+                        <span>Items Subtotal</span>
+                        <span id="summary-subtotal" class="font-bold text-white">₱0.00</span>
+                    </div>
+                    <div class="flex justify-between text-brand-slate">
+                        <span>Convenience Fee (₱15 per ₱300 block)</span>
+                        <span id="summary-convenience-fee" class="font-bold text-white">₱0.00</span>
+                    </div>
+                    <div class="flex justify-between text-amber-400" id="summary-discount-row" style="display: none;">
+                        <span>Loyalty Points Discount</span>
+                        <span id="summary-discount" class="font-bold">-₱0.00</span>
+                    </div>
+                    <div class="flex justify-between text-white font-black text-sm pt-2 border-t border-white/10">
+                        <span>Total Payable</span>
+                        <span id="summary-total" class="text-brand-orange text-base">₱0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button onclick="submitFacultyOrder()" id="checkout-submit-btn"
+                class="w-full py-4 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+    const rawMenuData = JSON.parse('{{ menu_data_json|escapejs }}');
+    let menuData = rawMenuData.map(item => ({
+        id: item.id,
+        name: item.name,
+        category: item.category ? String(item.category) : 'General',
+        price: parseFloat(item.price || 0),
+        desc: item.desc || '',
+        badge: item.badge || '',
+        img: item.img || ''
+    }));
+
+    let cart = {};
+    let activeCategory = 'all';
+    let selectedItemForModal = null;
+    let modalRiceQty = 0;
+    let userPoints = 45;
+
+    // Search Toggle
+    function toggleSearch(e) {
+        e.stopPropagation();
+        const wrapper = document.getElementById('search-wrapper');
+        const input = document.getElementById('search-input');
+        if (wrapper.style.width === '200px' || wrapper.style.width === '100%') {
+            wrapper.style.width = '40px';
+            input.value = '';
+            renderMenu();
+        } else {
+            wrapper.style.width = window.innerWidth < 640 ? '160px' : '200px';
+            input.focus();
+        }
+    }
+
+    document.addEventListener('click', (e) => {
+        const wrapper = document.getElementById('search-wrapper');
+        if (wrapper && !wrapper.contains(e.target)) {
+            const input = document.getElementById('search-input');
+            if (input && !input.value.trim()) {
+                wrapper.style.width = '40px';
+            }
+        }
+    });
+
+    // Render Menu (Strict Dietary & Category Matching)
+    function renderMenu() {
+        const grid = document.getElementById('menu-grid');
+        if (!grid) return;
+        
+        const searchInput = document.getElementById('search-input');
+        const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        grid.innerHTML = '';
+
+        const filtered = menuData.filter(item => {
+            const itemCat = String(item.category || '').toLowerCase();
+            const activeCat = String(activeCategory).toLowerCase();
+            const itemName = String(item.name || '').toLowerCase();
+            const itemDesc = String(item.desc || '').toLowerCase();
+            const itemBadge = String(item.badge || '').toLowerCase();
+            
+            let matchesCat = false;
+            if (activeCat === 'all') {
+                matchesCat = true;
+            } else if (activeCat === 'dietary') {
+                matchesCat = itemCat.includes('diet') || itemCat.includes('health') || itemCat.includes('salad') || itemCat.includes('vegetable') || itemBadge.includes('diet') || itemName.includes('salad') || itemName.includes('veggie') || itemName.includes('fruit');
+            } else {
+                matchesCat = itemCat === activeCat || itemCat.includes(activeCat) || activeCat.includes(itemCat);
+            }
+
+            const matchesSearch = itemName.includes(searchQuery) || itemDesc.includes(searchQuery);
+            return matchesCat && matchesSearch;
+        });
+
+        document.getElementById('items-count-indicator').innerText = `Showing ${filtered.length} items`;
+
+        if (filtered.length === 0) {
+            grid.innerHTML = `
+                <div class="col-span-full text-center py-16 text-brand-slate">
+                    <i class="fa-solid fa-utensils text-4xl mb-2 opacity-40"></i>
+                    <p class="text-xs font-bold">No items found in this category.</p>
+                </div>`;
+            return;
+        }
+
+        filtered.forEach(item => {
+            const badgeHTML = item.badge ? `<span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-brand-amber text-[9px] font-black uppercase px-2.5 py-1 rounded-xl">${item.badge}</span>` : '';
+            const card = document.createElement('div');
+            card.className = "bg-brand-card rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group cursor-pointer shadow-lg";
+            card.onclick = () => openItemModal(item.id);
+            card.innerHTML = `
+                <div class="relative h-28 sm:h-36 overflow-hidden bg-white/5">
+                    <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                    ${badgeHTML}
+                </div>
+                <div class="p-3.5 flex-1 flex flex-col justify-between gap-2">
+                    <div>
+                        <span class="text-[9px] font-extrabold text-brand-orange uppercase tracking-wider">${item.category}</span>
+                        <h3 class="text-xs sm:text-sm font-black text-white group-hover:text-brand-orange transition line-clamp-1 mt-0.5">${item.name}</h3>
+                        <p class="text-[10px] text-brand-slate line-clamp-1 mt-0.5">${item.desc || 'Freshly prepared daily.'}</p>
+                    </div>
+                    <div class="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
+                        <span class="text-sm font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
+                        <span class="w-7 h-7 rounded-xl bg-white/5 group-hover:bg-brand-orange/25 group-hover:text-brand-orange text-brand-slate flex items-center justify-center transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg></span>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function selectCategory(category, element) {
+        activeCategory = category;
+        const titleMap = { 'all': 'All Items', 'dietary': 'Dietary & Health' };
+        document.getElementById('category-heading').innerText = titleMap[category] || category;
+
+        document.querySelectorAll('#category-sidebar .category-btn').forEach(btn => {
+            btn.className = "category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition";
+        });
+        element.className = "category-btn active-cat flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-orange text-white text-center font-black text-xs gap-1.5 transition shadow-lg shadow-brand-orange/20";
+        renderMenu();
+    }
+
+    // Item Details Modal (With Smart Dietary Tags & Beverage Pairing)
+    function openItemModal(itemId) {
+        const item = menuData.find(i => i.id === itemId);
+        if (!item) return;
+        selectedItemForModal = item;
+        modalRiceQty = 0;
+
+        document.getElementById('modal-item-img').src = item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';
+        document.getElementById('modal-item-category').innerText = item.category;
+        document.getElementById('modal-item-name').innerText = item.name;
+        document.getElementById('modal-item-desc').innerText = item.desc || 'Freshly prepared daily with quality ingredients.';
+        
+        // Smart Dietary Tags
+        let dietaryTags = ['<i class="fa-solid fa-check mr-1"></i> Halal Friendly', '<i class="fa-solid fa-dumbbell mr-1"></i> High Protein', '<i class="fa-solid fa-fire mr-1"></i> Warm Meal'];
+        const nameL = item.name.toLowerCase();
+        const catL = String(item.category).toLowerCase();
+        
+        if (nameL.includes('pork')) {
+            dietaryTags = ['<i class="fa-solid fa-triangle-exclamation mr-1"></i> Contains Pork', '<i class="fa-solid fa-ban mr-1"></i> Not Halal', '<i class="fa-solid fa-dumbbell mr-1"></i> High Protein'];
+        } else if (nameL.includes('turon') || nameL.includes('banana') || nameL.includes('sweet') || nameL.includes('biscuit') || nameL.includes('cake') || nameL.includes('donut') || catL.includes('biscuits')) {
+            dietaryTags = ['<i class="fa-solid fa-triangle-exclamation mr-1"></i> High Sugar Content', '<i class="fa-solid fa-heart-pulse mr-1"></i> Caution for Diabetics', '<i class="fa-solid fa-cookie mr-1"></i> Sweet Snack'];
+        } else if (nameL.includes('salad') || nameL.includes('veggie') || catL.includes('diet')) {
+            dietaryTags = ['<i class="fa-solid fa-leaf mr-1"></i> Organic / Veggie', '<i class="fa-solid fa-heart-pulse mr-1"></i> Heart Healthy', '<i class="fa-solid fa-check mr-1"></i> Low Calorie'];
+        } else if (nameL.includes('chicken') || nameL.includes('beef')) {
+            dietaryTags = ['<i class="fa-solid fa-check mr-1"></i> Halal Friendly', '<i class="fa-solid fa-dumbbell mr-1"></i> High Protein', '<i class="fa-solid fa-fire mr-1"></i> Warm Meal'];
+        } else if (catL.includes('beverage')) {
+            dietaryTags = ['<i class="fa-solid fa-glass-water mr-1"></i> Refreshing', '<i class="fa-solid fa-snowflake mr-1"></i> Cold Drink'];
+        }
+
+        const tagsContainer = document.getElementById('modal-dietary-tags');
+        if (tagsContainer) {
+            tagsContainer.innerHTML = dietaryTags.map(tag => {
+                const isWarning = tag.includes('triangle-exclamation') || tag.includes('ban');
+                const bgClass = isWarning ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                return `<span class="${bgClass} px-2.5 py-1 rounded-md text-[10px] font-bold inline-flex items-center">${tag}</span>`;
+            }).join('');
+        }
+
+        document.getElementById('modal-rice-count').innerText = modalRiceQty;
+
+        // Populate beverage options
+        const bevSelect = document.getElementById('modal-beverage-select');
+        if (bevSelect) {
+            bevSelect.innerHTML = '<option value="">-- No Beverage --</option>';
+            const beverages = menuData.filter(i => String(i.category).toLowerCase().includes('beverage') || i.name.toLowerCase().includes('coke') || i.name.toLowerCase().includes('sprite') || i.name.toLowerCase().includes('water') || i.name.toLowerCase().includes('juice'));
+            beverages.forEach(b => {
+                bevSelect.innerHTML += `<option value="${b.id}" data-price="${b.price}">${b.name} (+₱${b.price.toFixed(2)})</option>`;
+            });
+        }
+
+        updateModalTotal();
+        document.getElementById('item-details-modal').classList.remove('hidden');
+    }
+
+    function closeItemModal() {
+        document.getElementById('item-details-modal').classList.add('hidden');
+        selectedItemForModal = null;
+    }
+
+    function changeRiceQty(change) {
+        modalRiceQty = Math.max(0, modalRiceQty + change);
+        document.getElementById('modal-rice-count').innerText = modalRiceQty;
+        updateModalTotal();
+    }
+
+    function updateModalTotal() {
+        if (!selectedItemForModal) return;
+        let total = selectedItemForModal.price + (modalRiceQty * 15);
+        const bevSelect = document.getElementById('modal-beverage-select');
+        if (bevSelect && bevSelect.value) {
+            const selectedOpt = bevSelect.options[bevSelect.selectedIndex];
+            total += parseFloat(selectedOpt.getAttribute('data-price') || 0);
+        }
+        document.getElementById('modal-item-price').innerText = `₱${total.toFixed(2)}`;
+    }
+
+    function addCustomizedItemToCart() {
+        if (!selectedItemForModal) return;
+        let basePrice = selectedItemForModal.price + (modalRiceQty * 15);
+        let displayName = selectedItemForModal.name;
+        let additions = [];
+        if (modalRiceQty > 0) additions.push(`+${modalRiceQty} Rice`);
+
+        const bevSelect = document.getElementById('modal-beverage-select');
+        if (bevSelect && bevSelect.value) {
+            const selectedOpt = bevSelect.options[bevSelect.selectedIndex];
+            basePrice += parseFloat(selectedOpt.getAttribute('data-price') || 0);
+            additions.push(`+ ${selectedOpt.text.split(' (+')[0]}`);
+        }
+
+        if (additions.length > 0) {
+            displayName += ` (${additions.join(', ')})`;
+        }
+
+        const cartKey = `${selectedItemForModal.id}_${modalRiceQty}_${bevSelect ? bevSelect.value : ''}`;
+        if (cart[cartKey]) {
+            cart[cartKey].qty += 1;
+        } else {
+            cart[cartKey] = {
+                id: selectedItemForModal.id,
+                name: displayName,
+                price: basePrice,
+                qty: 1
+            };
+        }
+        closeItemModal();
+        updateCartUI();
+    }
+
+    // Cart Management
+    function openCartDrawer() {
+        if (Object.keys(cart).length === 0) return;
+        document.getElementById('cart-drawer-backdrop').classList.remove('hidden');
+    }
+
+    function closeCartDrawer() {
+        document.getElementById('cart-drawer-backdrop').classList.add('hidden');
+    }
+
+    function updateQty(key, change) {
+        if (cart[key]) {
+            cart[key].qty += change;
+            if (cart[key].qty <= 0) {
+                delete cart[key];
+            }
+        }
+        updateCartUI();
+    }
+
+    function clearCart() {
+        cart = {};
+        updateCartUI();
+        closeCartDrawer();
+    }
+
+    function getCartSubtotal() {
+        return Object.keys(cart).reduce((sum, k) => sum + (cart[k].price * cart[k].qty), 0);
+    }
+
+    function getConvenienceFee(subtotal) {
+        if (subtotal <= 0) return 0;
+        let blocks = Math.ceil(subtotal / 300);
+        return blocks * 15;
+    }
+
+    function updateCartUI() {
+        const drawerList = document.getElementById('drawer-cart-list');
+        if (!drawerList) return;
+        drawerList.innerHTML = '';
+
+        const keys = Object.keys(cart);
+        let count = 0;
+        let subtotal = 0;
+
+        keys.forEach(k => {
+            const item = cart[k];
+            count += item.qty;
+            subtotal += item.price * item.qty;
+
+            const row = document.createElement('div');
+            row.className = "flex items-center justify-between bg-white/5 border border-white/10 p-3 rounded-2xl gap-3";
+            row.innerHTML = `
+                <div class="min-w-0">
+                    <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
+                    <span class="text-xs font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <div class="flex items-center gap-2 bg-black/40 rounded-xl px-2 py-1 border border-white/10">
+                        <button onclick="updateQty('${k}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">-</button>
+                        <span class="text-xs font-black text-white px-1">${item.qty}</span>
+                        <button onclick="updateQty('${k}', 1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">+</button>
+                    </div>
+                </div>
+            `;
+            drawerList.appendChild(row);
+        });
+
+        if (keys.length === 0) {
+            drawerList.innerHTML = `<div class="text-center py-20 text-brand-slate text-xs font-bold">Your cart is empty.</div>`;
+        }
+
+        let fee = getConvenienceFee(subtotal);
+        let total = subtotal + fee;
+
+        document.getElementById('cart-total').innerText = `₱${total.toFixed(2)}`;
+        document.getElementById('drawer-subtotal').innerText = `₱${subtotal.toFixed(2)}`;
+        document.getElementById('drawer-convenience-fee').innerText = `₱${fee.toFixed(2)}`;
+        document.getElementById('drawer-total-amount').innerText = `₱${total.toFixed(2)}`;
+
+        const nextBtn = document.getElementById('next-btn');
+        const nextText = document.getElementById('next-btn-text');
+        if (keys.length > 0) {
+            nextBtn.disabled = false;
+            nextText.innerText = `View Cart (${count})`;
+        } else {
+            nextBtn.disabled = true;
+            nextText.innerText = `View Cart (0)`;
+        }
+    }
+
+    // Checkout Modal (Delivery Only)
+    function openCheckoutModal() {
+        if (Object.keys(cart).length === 0) return;
+        updateCheckoutSummary();
+        document.getElementById('checkout-modal').classList.remove('hidden');
+    }
+
+    function closeCheckoutModal() {
+        document.getElementById('checkout-modal').classList.add('hidden');
+    }
+
+    function setMaxPoints() {
+        let subtotal = getCartSubtotal();
+        document.getElementById('points-redeem-input').value = Math.min(userPoints, Math.floor(subtotal));
+        updateCheckoutSummary();
+    }
+
+    function updateCheckoutSummary() {
+        let subtotal = getCartSubtotal();
+        let fee = getConvenienceFee(subtotal);
+        let pointsEarned = Math.floor(subtotal / 100);
+
+        let pointsInput = document.getElementById('points-redeem-input');
+        let pointsToUse = parseInt(pointsInput.value) || 0;
+        pointsToUse = Math.max(0, Math.min(userPoints, Math.floor(subtotal), pointsToUse));
+        pointsInput.value = pointsToUse;
+
+        let finalPayable = subtotal + fee - pointsToUse;
+
+        document.getElementById('user-points-lbl').innerText = userPoints;
+        document.getElementById('points-earned-lbl').innerText = `+ You will earn ${pointsEarned} loyalty points with this order!`;
+        document.getElementById('summary-subtotal').innerText = `₱${subtotal.toFixed(2)}`;
+        document.getElementById('summary-convenience-fee').innerText = `₱${fee.toFixed(2)}`;
+
+        const discountRow = document.getElementById('summary-discount-row');
+        if (pointsToUse > 0) {
+            discountRow.style.display = 'flex';
+            document.getElementById('summary-discount').innerText = `-₱${pointsToUse.toFixed(2)}`;
+        } else {
+            discountRow.style.display = 'none';
+        }
+
+        document.getElementById('summary-total').innerText = `₱${Math.max(0, finalPayable).toFixed(2)}`;
+    }
+
+    function submitFacultyOrder() {
+        let subtotal = getCartSubtotal();
+        let fee = getConvenienceFee(subtotal);
+        let pointsToUse = parseInt(document.getElementById('points-redeem-input').value) || 0;
+        let finalPayable = Math.max(0, subtotal + fee - pointsToUse);
+        let pointsEarned = Math.floor(subtotal / 100);
+        let deliveryLoc = document.getElementById('delivery-location-input').value;
+
+        const cartArray = Object.keys(cart).map(k => ({
+            id: cart[k].id,
+            name: cart[k].name,
+            price: cart[k].price,
+            qty: cart[k].qty
+        }));
+
+        const submitBtn = document.getElementById('checkout-submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processing Order...`;
+
+        fetch('/kiosk/api/checkout/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                cart: cartArray,
+                total_amount: finalPayable,
+                is_delivery: true,
+                delivery_location: deliveryLoc,
+                payment_method: 'COD',
+                points_redeemed: pointsToUse,
+                points_earned: pointsEarned
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Delivery order successfully placed! Order Number: ${data.order_number}\nYou earned ${pointsEarned} loyalty points!`);
+                window.location.reload();
+            } else {
+                alert('Checkout error: ' + (data.message || 'Unknown error'));
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
+            }
+        })
+        .catch(err => {
+            alert('An error occurred during checkout.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
+        });
+    }
+
+    // Initialize
+    renderMenu();
+    </script>
+</body>
+</html>

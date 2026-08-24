@@ -5,26 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Select Role - Canteen Express</title>
-
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Fonts: Poppins & Plus Jakarta Sans -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- FontAwesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: {
-                        poppins: ['Poppins', 'sans-serif'],
-                        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
-                    },
                     colors: {
                         brand: {
                             orange: '#FF6117',
@@ -37,135 +25,80 @@
             }
         }
     </script>
-
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .font-poppins { font-family: 'Poppins', sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Keyframes for ultra-smooth slow fade-in and subtle scaling */
-        @keyframes slowSmoothFadeIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.92);
-                filter: blur(4px);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-                filter: blur(0px);
-            }
-        }
-
-        .animate-slow-fade {
-            animation: slowSmoothFadeIn 1.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-        }
     </style>
 </head>
-<body class="bg-brand-dark text-white min-h-screen flex flex-col justify-between relative overflow-hidden select-none">
+<body class="bg-brand-dark text-white min-h-screen flex flex-col justify-between p-6 sm:p-8 max-w-md mx-auto w-full select-none relative">
 
-    <!-- ================= 1. ULTRA-SMOOTH SLOW FADE-IN SPLASH SCREEN ================= -->
-    <div id="splash-screen" class="fixed inset-0 z-50 bg-brand-dark flex flex-col items-center justify-center p-6 transition-opacity duration-1000 ease-in-out">
-        <div class="flex flex-col items-center gap-1.5 animate-slow-fade">
-            <!-- Enlarged Logo -->
-            <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Canteen Express Logo" class="h-32 sm:h-36 w-auto object-contain drop-shadow-[0_10px_25px_rgba(255,97,23,0.25)]">
-            <!-- Poppins Styled Name -->
-            <h2 class="font-poppins text-xs sm:text-sm font-medium uppercase tracking-[0.25em] text-brand-orange">Canteen Express</h2>
+    <!-- Header Brand -->
+    <header class="flex justify-center pt-2">
+        <div class="flex items-center gap-2">
+            <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-7 w-auto object-contain">
+            <span class="text-xs font-bold uppercase tracking-[0.2em] text-white/90">CANTEEN EXPRESS</span>
         </div>
-    </div>
+    </header>
 
-
-    <!-- ================= MAIN APP CONTAINER ================= -->
-    <div class="relative z-10 min-h-screen flex flex-col justify-between p-6 sm:p-10 max-w-md mx-auto w-full">
+    <!-- Main Content -->
+    <main class="my-auto py-6 space-y-6 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange text-2xl mx-auto shadow-lg shadow-brand-orange/10">
+            <i class="fa-solid fa-users"></i>
+        </div>
         
-        <!-- Header Brand -->
-        <header class="flex justify-center pt-4">
-            <div class="flex items-center gap-2">
-                <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto">
-                <span class="font-poppins text-xs font-medium uppercase tracking-widest text-white/90">Canteen Express</span>
-            </div>
-        </header>
+        <div class="space-y-2">
+            <h1 class="text-2xl sm:text-3xl font-black leading-tight text-white">
+                Welcome to <br><span class="text-brand-orange">Canteen Express!</span>
+            </h1>
+            <p class="text-xs sm:text-sm text-brand-slate max-w-xs mx-auto leading-relaxed">
+                Please select your account role to continue to the ordering portal
+            </p>
+        </div>
 
-
-        <!-- ================= 2. ROLE SELECTION MAIN CONTENT ================= -->
-        <main class="my-auto py-6 space-y-6">
-            
-            <!-- Header Text -->
-            <div class="text-center space-y-2">
-                <div class="w-16 h-16 rounded-2xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange text-2xl mx-auto mb-3 shadow-lg shadow-brand-orange/5">
-                    <i class="fa-solid fa-users-gear"></i>
+        <!-- Role Cards -->
+        <div class="space-y-3.5 pt-2">
+            <!-- Student / Walk-in -->
+            <a href="{% url 'customer_portal:kiosk_welcome' %}" class="group block w-full bg-brand-card hover:bg-white/5 border border-white/10 hover:border-brand-orange/60 active:scale-[0.98] rounded-2xl p-4 transition-all duration-200 shadow-xl cursor-pointer relative z-20">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange group-hover:bg-brand-orange group-hover:text-white transition duration-200 shrink-0">
+                        <i class="fa-solid fa-graduation-cap text-xl"></i>
+                    </div>
+                    <div class="text-left flex-1 min-w-0">
+                        <h3 class="font-extrabold text-sm sm:text-base text-white group-hover:text-brand-orange transition">Student / Walk-in</h3>
+                        <p class="text-xs text-brand-slate truncate">Direct order for Dine-In & Pickup</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-brand-slate group-hover:text-brand-orange group-hover:translate-x-1 transition duration-200"></i>
                 </div>
-                <h1 class="font-poppins text-2xl sm:text-3xl font-black leading-tight text-white">
-                    Welcome to <br><span class="text-brand-orange">Canteen Express!</span>
-                </h1>
-                <p class="text-xs sm:text-sm text-brand-slate max-w-xs mx-auto leading-relaxed">
-                    Please select your account role to continue to the ordering portal
-                </p>
-            </div>
+            </a>
 
-            <!-- Role Options -->
-            <div class="space-y-3.5 pt-2">
-                
-                <!-- Student / Walk-in Option -->
-                <a href="{% url 'customer_portal:kiosk_welcome' %}?role=student" class="group block w-full bg-brand-card hover:bg-white/5 border border-white/10 hover:border-brand-orange/50 active:scale-[0.98] rounded-2xl p-4 transition-all duration-200 shadow-lg">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange group-hover:bg-brand-orange group-hover:text-white transition duration-200 shrink-0">
-                            <i class="fa-solid fa-graduation-cap text-xl"></i>
-                        </div>
-                        <div class="text-left flex-1 min-w-0">
-                            <h3 class="font-poppins font-bold text-sm sm:text-base text-white group-hover:text-brand-orange transition">Student / Walk-in</h3>
-                            <p class="text-xs text-brand-slate truncate">Direct order for Dine-In & Pickup</p>
-                        </div>
-                        <i class="fa-solid fa-chevron-right text-xs text-brand-slate group-hover:text-brand-orange group-hover:translate-x-1 transition duration-200"></i>
+            <!-- Faculty / Staff -->
+            <a href="{% url 'accounts:faculty_location' %}" class="group block w-full bg-brand-card hover:bg-white/5 border border-white/10 hover:border-brand-orange/60 active:scale-[0.98] rounded-2xl p-4 transition-all duration-200 shadow-xl cursor-pointer relative z-20">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange group-hover:bg-brand-orange group-hover:text-white transition duration-200 shrink-0">
+                        <i class="fa-solid fa-user-tie text-xl"></i>
                     </div>
-                </a>
-
-                <!-- Faculty / Staff Option -->
-                <a href="{% url 'accounts:faculty_location' %}" class="group block w-full bg-brand-card hover:bg-white/5 border border-white/10 hover:border-brand-orange/50 active:scale-[0.98] rounded-2xl p-4 transition-all duration-200 shadow-lg">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange group-hover:bg-brand-orange group-hover:text-white transition duration-200 shrink-0">
-                            <i class="fa-solid fa-user-tie text-xl"></i>
-                        </div>
-                        <div class="text-left flex-1 min-w-0">
-                            <h3 class="font-poppins font-bold text-sm sm:text-base text-white group-hover:text-brand-orange transition">Faculty / Staff</h3>
-                            <p class="text-xs text-brand-slate truncate">Unlocks Office Delivery features</p>
-                        </div>
-                        <i class="fa-solid fa-chevron-right text-xs text-brand-slate group-hover:text-brand-orange group-hover:translate-x-1 transition duration-200"></i>
+                    <div class="text-left flex-1 min-w-0">
+                        <h3 class="font-extrabold text-sm sm:text-base text-white group-hover:text-brand-orange transition">Faculty / Staff</h3>
+                        <p class="text-xs text-brand-slate truncate">Unlocks Office Delivery features</p>
                     </div>
-                </a>
+                    <i class="fa-solid fa-chevron-right text-xs text-brand-slate group-hover:text-brand-orange group-hover:translate-x-1 transition duration-200"></i>
+                </div>
+            </a>
+        </div>
+    </main>
 
-            </div>
-        </main>
+    <!-- Footer -->
+    <footer class="pb-6 text-center space-y-2 border-t border-white/5 pt-4">
+        <p class="text-xs text-brand-slate">
+            Already registered staff? 
+            <a href="{% url 'accounts:staff_login' %}" class="text-brand-orange font-bold hover:underline">Staff Login</a> | 
+            <a href="{% url 'accounts:delivery_login' %}" class="text-brand-orange font-bold hover:underline">Rider Login</a>
+        </p>
+        <p class="text-[10px] text-brand-slate/60 uppercase font-bold tracking-widest pt-1">
+            Touch your role to proceed
+        </p>
+    </footer>
 
-
-        <!-- ================= 3. FOOTER SECTION ================= -->
-        <footer class="pb-6 text-center space-y-2 border-t border-white/5 pt-4">
-            <p class="text-xs text-brand-slate">
-                Already registered? 
-                <a href="#" class="text-brand-orange font-semibold hover:underline">Log In</a>
-            </p>
-            <p class="text-[10px] text-brand-slate/60 uppercase font-bold tracking-widest pt-1">
-                Touch your role to proceed
-            </p>
-        </footer>
-
-    </div>
-
-
-    <!-- ================= JAVASCRIPT CONTROLLER ================= -->
-    <script>
-        // --- SPLASH FADE CONTROLLER (Matches Kiosk Welcome) ---
-        window.addEventListener('DOMContentLoaded', () => {
-            const splash = document.getElementById('splash-screen');
-            
-            setTimeout(() => {
-                splash.classList.add('opacity-0');
-                setTimeout(() => {
-                    splash.style.display = 'none';
-                }, 1000);
-            }, 2500);
-        });
-    </script>
 </body>
 </html>
