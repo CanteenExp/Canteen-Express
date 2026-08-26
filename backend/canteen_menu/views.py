@@ -1,4 +1,5 @@
-from django.shortcuts import render
+# canteen_menu/views.py
+from django.http import HttpResponse
 
-def menu_list_view(request):
-    return render(request, 'canteen_menu/menu_list.html')
+def menu_list(request):
+    return HttpResponse("Canteen Menu List")

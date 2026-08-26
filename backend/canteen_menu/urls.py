@@ -5,5 +5,6 @@ from . import views
 app_name = 'canteen_menu'
 
 urlpatterns = [
-    path('', views.menu_list_view, name='menu_list'),
+    # Defines the 'menu_list' route expected by your login redirect
+    path('', views.menu_list, name='menu_list'),
 ]
