@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Today's Menu - Canteen Express Kiosk</title>
@@ -329,15 +330,17 @@
                 <!-- Slip Header -->
                 <div class="border-b border-dashed border-gray-300 pb-3 space-y-1">
                     <h3 class="text-lg font-black text-gray-900 uppercase tracking-wider">CANTEEN EXPRESS</h3>
-                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Official Kiosk Queue Slip</p>
+                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest" id="slip-title-label">Official Kiosk Queue Slip</p>
+                    <p class="text-[9px] text-gray-400 hidden" id="slip-receipt-date"></p>
                 </div>
 
                 <!-- Queue Number & Mode -->
                 <div class="bg-orange-50 rounded-2xl p-4 border border-orange-100 space-y-1">
                     <span class="text-[10px] font-black uppercase tracking-wider text-orange-600 block">Queue Number</span>
                     <span id="slip-queue-number" class="text-4xl font-black text-orange-600 tracking-tight">#CE-0000</span>
-                    <div class="pt-1">
+                    <div class="pt-1 flex items-center justify-center gap-2">
                         <span id="slip-dining-mode" class="inline-block bg-orange-600 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider">DINE-IN</span>
+                        <span id="slip-payment-badge" class="hidden inline-block bg-emerald-600 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider">PAID</span>
                     </div>
                 </div>
 
@@ -353,10 +356,10 @@
                     </div>
                 </div>
 
-                <!-- Barcode Container -->
-                <div class="border-t border-dashed border-gray-300 pt-3 flex flex-col items-center justify-center">
+                <!-- Barcode Container / Footer -->
+                <div class="border-t border-dashed border-gray-300 pt-3 flex flex-col items-center justify-center" id="slip-footer-container">
                     <svg id="slip-barcode" class="w-full h-16"></svg>
-                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">Scan at Counter to Process Payment</span>
+                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1" id="slip-footer-text">Scan at Counter to Process Payment</span>
                 </div>
 
             </div>
@@ -365,10 +368,10 @@
             <div class="space-y-2">
                 <button onclick="downloadQueueSlip()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
                     <i class="fa-solid fa-download"></i>
-                    <span>Download Slip as Image</span>
+                    <span id="slip-download-text">Download Slip as Image</span>
                 </button>
 
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-2 gap-2" id="slip-actions-grid">
                     <button onclick="editPendingOrder()" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider text-[11px] transition border border-white/10 flex items-center justify-center gap-1.5">
                         <i class="fa-solid fa-pen-to-square"></i>
                         <span>Edit Order</span>
@@ -834,6 +837,74 @@ function editPendingOrder() {
     openCartDrawer();
 }
 
+let kioskPollInterval = null;
+
+function startKioskStatusPolling() {
+    if (kioskPollInterval) clearInterval(kioskPollInterval);
+    kioskPollInterval = setInterval(async () => {
+        if (!currentPendingOrder || !currentPendingOrder.order_number) return;
+        try {
+            const response = await fetch("{% url 'canteen_menu:process_barcode_api' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'fetch',
+                    order_id: currentPendingOrder.order_number
+                })
+            });
+            const data = await response.json();
+            if (data.status === 'success' && data.order) {
+                if (data.order.status && data.order.status !== 'unpaid') {
+                    transformToOfficialReceipt();
+                }
+            }
+        } catch (err) {
+            console.error("Error polling order status:", err);
+        }
+    }, 2500);
+}
+
+function stopKioskStatusPolling() {
+    if (kioskPollInterval) {
+        clearInterval(kioskPollInterval);
+        kioskPollInterval = null;
+    }
+}
+
+function transformToOfficialReceipt() {
+    stopKioskStatusPolling();
+
+    const titleLabel = document.getElementById('slip-title-label');
+    if (titleLabel) titleLabel.textContent = "Official Payment Receipt";
+
+    const receiptDate = document.getElementById('slip-receipt-date');
+    if (receiptDate) {
+        receiptDate.textContent = new Date().toLocaleString();
+        receiptDate.classList.remove('hidden');
+    }
+
+    const paymentBadge = document.getElementById('slip-payment-badge');
+    if (paymentBadge) paymentBadge.classList.remove('hidden');
+
+    const footerContainer = document.getElementById('slip-footer-container');
+    if (footerContainer) {
+        footerContainer.innerHTML = `
+            <div class="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wider py-1">
+                <i class="fa-solid fa-circle-check"></i> Payment Verified & Sent to Kitchen
+            </div>
+            <p class="text-[9px] text-gray-400 mt-0.5">Salamat sa pagtangkilik sa Canteen Express!</p>
+        `;
+    }
+
+    const downloadText = document.getElementById('slip-download-text');
+    if (downloadText) downloadText.textContent = "Download Official Receipt Image";
+
+    const actionsGrid = document.getElementById('slip-actions-grid');
+    if (actionsGrid) actionsGrid.style.display = 'none';
+}
+
 function cancelPendingOrder() {
     if (confirm("Are you sure you want to cancel your queue slip?")) {
         currentPendingOrder = null;
@@ -849,11 +920,13 @@ function openQueueSlipModal() {
     if (currentPendingOrder) {
         renderQueueSlipUI(currentPendingOrder);
         document.getElementById('queue-slip-modal').classList.remove('hidden');
+        startKioskStatusPolling();
     }
 }
 
 function closeQueueSlipModal() {
     document.getElementById('queue-slip-modal').classList.add('hidden');
+    stopKioskStatusPolling();
 }
 
 // ================= FLOATING TOAST NOTIFICATION HELPERS =================

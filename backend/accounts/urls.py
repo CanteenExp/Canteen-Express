@@ -12,7 +12,12 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='accounts/login.html'), name='login'),
     path('staff-login/', views.staff_login_view, name='staff_login'),
     path('delivery-login/', views.delivery_login_view, name='delivery_login'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='accounts:landing'), name='logout'),
+    
+    # Specific Role Logouts & Fallback Logout
+    path('logout/', views.faculty_logout_view, name='logout'),
+    path('logout/faculty/', views.faculty_logout_view, name='faculty_logout'),
+    path('logout/staff/', views.staff_logout_view, name='staff_logout'),
+    path('logout/delivery/', views.delivery_logout_view, name='delivery_logout'),
     
     path('faculty/location/', views.faculty_location_view, name='faculty_location'),
     path('faculty/auth/', views.faculty_auth_view, name='faculty_auth'),

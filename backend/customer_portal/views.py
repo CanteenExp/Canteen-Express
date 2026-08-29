@@ -75,21 +75,50 @@ def process_checkout(request):
             return JsonResponse({'success': False, 'message': 'Walang laman ang cart.'}, status=400)
 
         order_number = f"#CE-{random.randint(1000, 9999)}"
-        initial_status = 'pending_rider' if is_delivery else 'unpaid'
+        initial_status = 'pending' if is_delivery else 'unpaid'
 
         order = Order.objects.create(
             order_number=order_number,
             total_amount=total_amount,
-            status=initial_status
+            status=initial_status,
+            customer=request.user if request.user.is_authenticated else None
         )
 
+        from queuing.models import DigitalQueueSlip
+        try:
+            DigitalQueueSlip.objects.get_or_create(
+                order=order,
+                defaults={'queue_number': order_number}
+            )
+        except Exception:
+            pass
+
         for item in cart_items:
+            qty = int(item.get('qty', 1))
+            item_name = item.get('name', '')
+            item_id = item.get('id')
+
             OrderItem.objects.create(
                 order=order,
-                item_name=item.get('name', ''),
+                item_name=item_name,
                 price=item.get('price', 0),
-                quantity=item.get('qty', 1)
+                quantity=qty
             )
+
+            menu_item = None
+            if item_id:
+                menu_item = MenuItem.objects.filter(id=item_id).first()
+            if not menu_item and item_name:
+                menu_item = MenuItem.objects.filter(name__iexact=item_name).first()
+
+            if menu_item:
+                if menu_item.stock >= qty:
+                    menu_item.stock -= qty
+                else:
+                    menu_item.stock = 0
+                if menu_item.stock <= 0:
+                    menu_item.is_available = False
+                menu_item.save()
 
         if is_delivery:
             from deliveries.models import DeliveryRequest

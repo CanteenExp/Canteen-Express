@@ -144,7 +144,7 @@
                     {% for order in all_orders %}
                     <tr class="hover:bg-gray-50/80 transition">
                         <td class="py-3.5 px-4 font-black text-dark-900">#{{ order.id }}</td>
-                        <td class="py-3.5 px-4 text-gray-800">{{ order.customer.username }}</td>
+                        <td class="py-3.5 px-4 text-gray-800">{% if order.customer %}{{ order.customer.username }}{% else %}Walk-in Guest{% endif %}</td>
                         <td class="py-3.5 px-4 text-xs font-bold text-blue-600">{{ order.status }}</td>
                         <td class="py-3.5 px-4 text-gray-400 text-xs">{{ order.created_at }}</td>
                     </tr>

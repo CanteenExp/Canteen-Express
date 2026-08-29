@@ -2,8 +2,25 @@
 
 {% block title %}Canteen Staff Unified Dashboard - Canteen Express{% endblock %}
 
+{% block header %}{% endblock %}
+
+{% block main_class %}w-full m-0 p-0 flex-grow flex flex-col bg-gray-50{% endblock %}
+
 {% block content %}
-<div class="flex flex-col md:flex-row min-h-[85vh] bg-gray-100 rounded-3xl overflow-hidden border border-gray-200 shadow-sm" x-data="{ activeTab: 'overview' }">
+<div class="flex flex-col md:flex-row min-h-[calc(100vh-4rem)] w-full bg-gray-50 overflow-hidden" 
+     x-data="{ 
+         activeTab: 'overview', 
+         showAddModal: false, 
+         showEditModal: false, 
+         showRiderModal: false,
+         showCategoryModal: false,
+         filterCategory: 'all',
+         editItem: { id: '', name: '', price: '', stock: '', category_id: '', image_url: '', description: '' },
+         openEdit(id, name, price, stock, catId, imgUrl, desc) {
+             this.editItem = { id: id, name: name, price: price, stock: stock, category_id: catId, image_url: imgUrl, description: desc };
+             this.showEditModal = true;
+         }
+     }">
 
     <!-- DESKTOP SIDEBAR NAVIGATION -->
     <aside class="hidden md:flex w-64 bg-dark-900 text-white p-6 flex-col justify-between shrink-0 space-y-6">
@@ -71,6 +88,9 @@
             <a href="{% url 'canteen_menu:counter_pos' %}" target="_blank" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2">
                 <i class="fa-solid fa-barcode"></i> Counter POS ↗
             </a>
+            <a href="{% url 'accounts:staff_logout' %}" class="w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2 border border-red-500/30">
+                <i class="fa-solid fa-right-from-bracket"></i> Staff Logout
+            </a>
         </div>
     </aside>
 
@@ -101,6 +121,17 @@
 
     <!-- MAIN CONTENT AREA -->
     <main class="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto space-y-6 bg-gray-50/50">
+
+        <!-- MESSAGES -->
+        {% if messages %}
+        <div class="space-y-2">
+            {% for message in messages %}
+            <div class="p-4 rounded-2xl text-xs font-bold {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-emerald-50 text-emerald-700 border border-emerald-200{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
         <!-- 1. TAB: DASHBOARD OVERVIEW -->
         <div x-show="activeTab === 'overview'" class="space-y-6">
@@ -165,7 +196,7 @@
                 </div>
             </div>
 
-            <!-- Recent Orders Table -->
+            <!-- Active Orders Queue -->
             <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 space-y-4">
                 <div class="flex justify-between items-center border-b border-gray-100 pb-3">
                     <h3 class="font-black text-dark-900 text-base">Active Orders Queue</h3>
@@ -186,7 +217,7 @@
                             {% for order in recent_orders %}
                             <tr class="hover:bg-gray-50 transition">
                                 <td class="py-3.5 px-3 font-black text-dark-900">{{ order.order_number }}</td>
-                                <td class="py-3.5 px-3 text-gray-800">{{ order.customer.get_full_name }}</td>
+                                <td class="py-3.5 px-3 text-gray-800">{% if order.customer %}{{ order.customer.get_full_name|default:order.customer.username }}{% else %}Walk-in Guest{% endif %}</td>
                                 <td class="py-3.5 px-3 font-bold text-gray-900">₱{{ order.total_amount }}</td>
                                 <td class="py-3.5 px-3">
                                     <span class="px-2.5 py-1 rounded-full font-bold text-[10px] uppercase {% if order.status == 'pending' %}bg-brand-50 text-brand-600 border border-brand-200{% elif order.status == 'preparing' %}bg-blue-50 text-blue-600 border border-blue-200{% else %}bg-emerald-50 text-emerald-600 border border-emerald-200{% endif %}">
@@ -208,37 +239,35 @@
 
         <!-- 2. TAB: MENU MANAGEMENT -->
         <div x-show="activeTab === 'menu'" class="space-y-6" style="display: none;">
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex justify-between items-center">
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 class="text-xl font-black text-dark-900">Menu & Stock Management</h2>
                     <p class="text-xs text-gray-500 mt-0.5">Add new dishes, update prices, and control stock availability.</p>
                 </div>
+                <div class="flex items-center gap-2">
+                    <button @click="showCategoryModal = true" type="button" class="bg-white hover:bg-gray-100 text-dark-900 border border-gray-200 font-bold px-4 py-2.5 rounded-2xl text-xs shadow-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-folder-tree text-brand-500 text-sm"></i> Categories
+                    </button>
+                    <button @click="showAddModal = true" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-5 py-2.5 rounded-2xl text-xs shadow-lg shadow-brand-500/25 transition flex items-center gap-2">
+                        <i class="fa-solid fa-plus text-sm"></i> Add New Item
+                    </button>
+                </div>
             </div>
 
-            <!-- Add Menu Form -->
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
-                <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Add New Menu Item</h3>
-                <form method="POST" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    {% csrf_token %}
-                    <input type="hidden" name="add_menu_item" value="1">
-                    <div>
-                        <label class="block text-[11px] font-bold text-gray-600 mb-1">Item Name</label>
-                        <input type="text" name="name" required class="w-full px-3 py-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-gray-600 mb-1">Price (₱)</label>
-                        <input type="number" step="0.01" name="price" required class="w-full px-3 py-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-gray-600 mb-1">Initial Stock</label>
-                        <input type="number" name="stock" value="50" required class="w-full px-3 py-2.5 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
-                    </div>
-                    <div class="flex items-end">
-                        <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition shadow-md shadow-brand-500/20">
-                            <i class="fa-solid fa-plus mr-1"></i> Add Item
-                        </button>
-                    </div>
-                </form>
+            <!-- Filter & Sort Bar -->
+            <div class="bg-white rounded-3xl p-4 border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-3">
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <span class="text-xs font-bold text-gray-500">Filter Category:</span>
+                    <select x-model="filterCategory" class="px-3 py-2 border rounded-xl text-xs font-bold text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <option value="all">All Categories</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="text-xs text-gray-400 font-bold">
+                    Total Items: {{ menu_items|length }}
+                </div>
             </div>
 
             <!-- Menu Table -->
@@ -249,6 +278,7 @@
                         <thead>
                             <tr class="text-gray-400 font-extrabold uppercase border-b border-gray-100">
                                 <th class="py-3 px-3">Item Name</th>
+                                <th class="py-3 px-3">Category</th>
                                 <th class="py-3 px-3">Price</th>
                                 <th class="py-3 px-3">Stock</th>
                                 <th class="py-3 px-3">Availability</th>
@@ -257,26 +287,50 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100 font-medium">
                             {% for item in menu_items %}
-                            <tr class="hover:bg-gray-50 transition">
-                                <td class="py-3.5 px-3 font-black text-dark-900">{{ item.name }}</td>
-                                <td class="py-3.5 px-3 font-bold text-gray-800">₱{{ item.price }}</td>
-                                <td class="py-3.5 px-3 font-bold {% if item.stock < 10 %}text-red-500{% else %}text-emerald-600{% endif %}">{{ item.stock }} units</td>
-                                <td class="py-3.5 px-3">
-                                    {% if item.is_available %}
-                                        <span class="bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-full text-[10px]">Available</span>
-                                    {% else %}
-                                        <span class="bg-red-50 text-red-700 font-bold px-2.5 py-1 rounded-full text-[10px]">Unavailable</span>
+                            <tr class="hover:bg-gray-50 transition"
+                                x-show="filterCategory === 'all' || String('{{ item.category.id }}') === String(filterCategory)"
+                                x-data="{ isAvailable: {% if item.is_available %}true{% else %}false{% endif %}, stock: {{ item.stock }} }">
+                                <td class="py-3.5 px-3 font-black text-dark-900 flex items-center gap-3">
+                                    {% if item.get_image_src %}
+                                    <img src="{{ item.get_image_src }}" class="w-9 h-9 rounded-xl object-cover shadow-sm">
                                     {% endif %}
+                                    <div>
+                                        <span>{{ item.name }}</span>
+                                        <p class="text-[10px] text-gray-400 font-normal truncate max-w-[200px]">{{ item.description }}</p>
+                                    </div>
                                 </td>
-                                <td class="py-3.5 px-3 text-right">
-                                    <a href="{% url 'kitchen_display:toggle_availability' item.id %}" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-3 py-1.5 rounded-xl transition">
-                                        Toggle
+                                <td class="py-3.5 px-3 text-gray-600 font-bold">{{ item.category.name|default:"General" }}</td>
+                                <td class="py-3.5 px-3 font-bold text-gray-800">₱{{ item.price }}</td>
+                                <td class="py-3.5 px-3 font-bold" :class="stock < 10 ? 'text-red-500' : 'text-emerald-600'">
+                                    <span x-text="stock"></span> units
+                                </td>
+                                <td class="py-3.5 px-3">
+                                    <button type="button" @click="
+                                        isAvailable = !isAvailable;
+                                        fetch('{% url 'canteen_menu:staff_menu_toggle_ajax' item.id %}', { method: 'POST', headers: { 'X-CSRFToken': '{{ csrf_token }}' } })
+                                        .then(res => res.json())
+                                        .then(data => {
+                                            if(data.success) {
+                                                isAvailable = data.is_available;
+                                                stock = data.stock;
+                                            }
+                                        })
+                                    " class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none shadow-sm" :class="isAvailable ? 'bg-emerald-500' : 'bg-gray-300'" role="switch" :aria-checked="isAvailable" title="Toggle Availability">
+                                        <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out" :class="isAvailable ? 'translate-x-5' : 'translate-x-0'"></span>
+                                    </button>
+                                </td>
+                                <td class="py-3.5 px-3 text-right space-x-1">
+                                    <button @click="openEdit('{{ item.id }}', '{{ item.name|escapejs }}', '{{ item.price }}', '{{ item.stock }}', '{{ item.category.id }}', '{{ item.image_url|default:""|escapejs }}', '{{ item.description|default:""|escapejs }}')" class="bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold px-3 py-1.5 rounded-xl transition">
+                                        Edit
+                                    </button>
+                                    <a href="{% url 'canteen_menu:staff_menu_delete' item.id %}" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-xl transition inline-block">
+                                        Delete
                                     </a>
                                 </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" class="py-8 text-center text-gray-400">No menu items found.</td>
+                                <td colspan="6" class="py-8 text-center text-gray-400">No menu items found.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -289,7 +343,7 @@
         <div x-show="activeTab === 'users'" class="space-y-6" style="display: none;">
             <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm">
                 <h2 class="text-xl font-black text-dark-900">Registered Users Management</h2>
-                <p class="text-xs text-gray-500 mt-0.5">Overview of registered students, faculty members, and staff accounts.</p>
+                <p class="text-xs text-gray-500 mt-0.5">Overview of registered students, faculty members, and staff accounts with account action controls.</p>
             </div>
 
             <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-6">
@@ -301,7 +355,8 @@
                                 <th class="py-3 px-3">Full Name</th>
                                 <th class="py-3 px-3">Email</th>
                                 <th class="py-3 px-3">Role</th>
-                                <th class="py-3 px-3 text-right">Joined</th>
+                                <th class="py-3 px-3">Status</th>
+                                <th class="py-3 px-3 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 font-medium">
@@ -315,11 +370,29 @@
                                         {{ u.role|default:"User" }}
                                     </span>
                                 </td>
-                                <td class="py-3.5 px-3 text-right text-gray-400">{{ u.date_joined|date:"M d, Y" }}</td>
+                                <td class="py-3.5 px-3">
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase {% if u.is_active and u.account_status != 'restricted' %}bg-emerald-50 text-emerald-700{% elif u.account_status == 'restricted' %}bg-amber-50 text-amber-700{% else %}bg-red-50 text-red-700{% endif %}">
+                                        {{ u.account_status|default:"Active" }}
+                                    </span>
+                                </td>
+                                <td class="py-3.5 px-3 text-right space-x-1">
+                                    <form method="POST" action="{% url 'canteen_menu:update_user_status' u.id %}" class="inline">
+                                        {% csrf_token %}
+                                        {% if u.is_active and u.account_status != 'restricted' %}
+                                        <input type="hidden" name="action" value="restrict">
+                                        <button type="submit" class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">Restrict</button>
+                                        <input type="hidden" name="action" value="ban">
+                                        <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">Ban</button>
+                                        {% else %}
+                                        <input type="hidden" name="action" value="activate">
+                                        <button type="submit" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1.5 rounded-xl transition">Activate</button>
+                                        {% endif %}
+                                    </form>
+                                </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" class="py-8 text-center text-gray-400">No registered users found.</td>
+                                <td colspan="6" class="py-8 text-center text-gray-400">No registered users found.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -330,12 +403,76 @@
 
         <!-- 4. TAB: DELIVERY STAFF MANAGEMENT -->
         <div x-show="activeTab === 'deliveries'" class="space-y-6" style="display: none;">
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm">
-                <h2 class="text-xl font-black text-dark-900">Delivery Staff & Campus Dispatch</h2>
-                <p class="text-xs text-gray-500 mt-0.5">Monitor campus deliveries, assigned riders, and dispatch statuses.</p>
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-black text-dark-900">Delivery Staff & Campus Dispatch</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Manage delivery personnel accounts and monitor live campus dispatches.</p>
+                </div>
+                <button @click="showRiderModal = true" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-5 py-2.5 rounded-2xl text-xs shadow-lg shadow-brand-500/25 transition flex items-center gap-2">
+                    <i class="fa-solid fa-motorcycle text-sm"></i> Add Delivery Staff
+                </button>
             </div>
 
-            <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-6">
+            <!-- Delivery Staff Accounts List -->
+            <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 space-y-4">
+                <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Registered Riders / Delivery Personnel</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="text-gray-400 font-extrabold uppercase border-b border-gray-100">
+                                <th class="py-3 px-3">Username</th>
+                                <th class="py-3 px-3">Name</th>
+                                <th class="py-3 px-3">Phone</th>
+                                <th class="py-3 px-3">Vehicle Plate</th>
+                                <th class="py-3 px-3">Status</th>
+                                <th class="py-3 px-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 font-medium">
+                            {% for rider in delivery_staff_list %}
+                            <tr class="hover:bg-gray-50 transition">
+                                <td class="py-3.5 px-3 font-black text-dark-900">{{ rider.username }}</td>
+                                <td class="py-3.5 px-3 text-gray-800">{{ rider.get_full_name|default:"Rider" }}</td>
+                                <td class="py-3.5 px-3 text-gray-600">{{ rider.phone|default:"N/A" }}</td>
+                                <td class="py-3.5 px-3 text-gray-600">{{ rider.vehicle_plate|default:"N/A" }}</td>
+                                <td class="py-3.5 px-3">
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase {% if rider.is_active and rider.account_status == 'active' %}bg-emerald-50 text-emerald-700{% else %}bg-red-50 text-red-700{% endif %}">
+                                        {{ rider.account_status|default:"Active" }}
+                                    </span>
+                                </td>
+                                <td class="py-3.5 px-3 text-right space-x-1">
+                                    <form method="POST" action="{% url 'canteen_menu:update_delivery_staff_status' rider.id %}" class="inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="toggle_active">
+                                        <button type="submit" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-2.5 py-1.5 rounded-xl transition">
+                                            {% if rider.is_active %}Deactivate{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{% url 'canteen_menu:update_delivery_staff_status' rider.id %}" class="inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="hold">
+                                        <button type="submit" class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">Hold</button>
+                                    </form>
+                                    <form method="POST" action="{% url 'canteen_menu:update_delivery_staff_status' rider.id %}" class="inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="penalize">
+                                        <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">Penalize</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="py-8 text-center text-gray-400">No delivery staff accounts created yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Active Delivery Requests Table -->
+            <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 space-y-4">
+                <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Live Delivery Dispatches</h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead>
@@ -388,28 +525,408 @@
         </div>
 
         <!-- 6. TAB: REPORTS & SALES -->
-        <div x-show="activeTab === 'reports'" class="space-y-6" style="display: none;">
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm">
-                <h2 class="text-xl font-black text-dark-900">Sales Reports & Analytics</h2>
-                <p class="text-xs text-gray-500 mt-0.5">Daily earnings, popular dishes, and overall canteen financial summary.</p>
+        <div x-show="activeTab === 'reports'" class="space-y-6" style="display: none;" x-data="{ reportMode: 'daily' }">
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-black text-dark-900">Sales Reports & Analytics</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Earnings breakdown per day, week, and month with visual graph.</p>
+                </div>
+                <!-- Report Period Filter Buttons -->
+                <div class="flex bg-gray-100 p-1 rounded-2xl">
+                    <button @click="reportMode = 'daily'; switchChart('daily')" :class="reportMode === 'daily' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-4 py-2 rounded-xl text-xs transition cursor-pointer">Daily (7 Days)</button>
+                    <button @click="reportMode = 'weekly'; switchChart('weekly')" :class="reportMode === 'weekly' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-4 py-2 rounded-xl text-xs transition cursor-pointer">Weekly (4 Wks)</button>
+                    <button @click="reportMode = 'monthly'; switchChart('monthly')" :class="reportMode === 'monthly' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-4 py-2 rounded-xl text-xs transition cursor-pointer">Monthly (6 Mos)</button>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-2">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Orders Today</span>
-                    <p class="text-3xl font-black text-brand-500">{{ total_orders_today }}</p>
-                    <p class="text-xs text-emerald-600 font-bold"><i class="fa-solid fa-arrow-up"></i> Live operational volume</p>
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Sales Today</span>
+                    <p class="text-2xl font-black text-brand-500">₱{{ sales_today|floatformat:2 }}</p>
+                    <p class="text-xs text-emerald-600 font-bold"><i class="fa-solid fa-arrow-up"></i> Today's total revenue</p>
+                </div>
+                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Sales This Week</span>
+                    <p class="text-2xl font-black text-blue-600">₱{{ sales_week|floatformat:2 }}</p>
+                    <p class="text-xs text-blue-600 font-bold"><i class="fa-solid fa-calendar-week"></i> Past 7 days revenue</p>
+                </div>
+                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Sales This Month</span>
+                    <p class="text-2xl font-black text-emerald-600">₱{{ sales_month|floatformat:2 }}</p>
+                    <p class="text-xs text-emerald-600 font-bold"><i class="fa-solid fa-calendar-days"></i> Current month revenue</p>
+                </div>
+            </div>
+
+            <!-- Graph Section -->
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider" x-text="reportMode === 'daily' ? 'Daily Sales Trend (Last 7 Days)' : (reportMode === 'weekly' ? 'Weekly Sales Trend (Last 4 Weeks)' : 'Monthly Sales Trend (Last 6 Months)')"></h3>
+                    <span class="text-xs font-bold text-gray-400">Revenue in PHP (₱)</span>
+                </div>
+                <div class="h-72 w-full relative">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Tables per Report Mode -->
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
+                <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Detailed Financial Breakdown</h3>
+                
+                <!-- Daily Table -->
+                <div x-show="reportMode === 'daily'" class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
+                                <th class="py-3 px-4">Date</th>
+                                <th class="py-3 px-4">Total Orders</th>
+                                <th class="py-3 px-4 text-right">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
+                            {% for row in daily_sales %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-3.5 px-4 font-bold text-dark-900">{{ row.period|date:"F j, Y" }}</td>
+                                <td class="py-3.5 px-4">{{ row.count }} orders</td>
+                                <td class="py-3.5 px-4 text-right font-black text-brand-500">₱{{ row.total|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="py-6 text-center text-gray-400">No daily sales data available.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
 
-                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-2">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">System Status</span>
-                    <p class="text-3xl font-black text-emerald-600">Online 🟢</p>
-                    <p class="text-xs text-gray-500 font-bold">Neon Cloud DB Connected</p>
+                <!-- Weekly Table -->
+                <div x-show="reportMode === 'weekly'" class="overflow-x-auto" style="display: none;">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
+                                <th class="py-3 px-4">Week Starting</th>
+                                <th class="py-3 px-4">Total Orders</th>
+                                <th class="py-3 px-4 text-right">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
+                            {% for row in weekly_sales %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-3.5 px-4 font-bold text-dark-900">Week of {{ row.period|date:"F j, Y" }}</td>
+                                <td class="py-3.5 px-4">{{ row.count }} orders</td>
+                                <td class="py-3.5 px-4 text-right font-black text-blue-600">₱{{ row.total|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="py-6 text-center text-gray-400">No weekly sales data available.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Monthly Table -->
+                <div x-show="reportMode === 'monthly'" class="overflow-x-auto" style="display: none;">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
+                                <th class="py-3 px-4">Month</th>
+                                <th class="py-3 px-4">Total Orders</th>
+                                <th class="py-3 px-4 text-right">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
+                            {% for row in monthly_sales %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-3.5 px-4 font-bold text-dark-900">{{ row.period|date:"F Y" }}</td>
+                                <td class="py-3.5 px-4">{{ row.count }} orders</td>
+                                <td class="py-3.5 px-4 text-right font-black text-emerald-600">₱{{ row.total|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="py-6 text-center text-gray-400">No monthly sales data available.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
+        <!-- Include Chart.js -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        {{ daily_chart_data|json_script:"daily-data-json" }}
+        {{ weekly_chart_data|json_script:"weekly-data-json" }}
+        {{ monthly_chart_data|json_script:"monthly-data-json" }}
+        <script>
+            let salesChart = null;
+
+            const dailyData = JSON.parse(document.getElementById('daily-data-json').textContent);
+            const weeklyData = JSON.parse(document.getElementById('weekly-data-json').textContent);
+            const monthlyData = JSON.parse(document.getElementById('monthly-data-json').textContent);
+
+            function switchChart(mode) {
+                let dataset = dailyData;
+                let color = '#f97316';
+                if (mode === 'weekly') {
+                    dataset = weeklyData;
+                    color = '#2563eb';
+                } else if (mode === 'monthly') {
+                    dataset = monthlyData;
+                    color = '#059669';
+                }
+
+                if (salesChart) salesChart.destroy();
+
+                const ctx = document.getElementById('salesChart');
+                if (!ctx) return;
+
+                salesChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: dataset.labels,
+                        datasets: [{
+                            label: 'Revenue (₱)',
+                            data: dataset.data,
+                            backgroundColor: color + 'CC',
+                            borderColor: color,
+                            borderWidth: 2,
+                            borderRadius: 10,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(0,0,0,0.05)' }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => {
+                    switchChart('daily');
+                }, 200);
+            });
+        </script>
+
     </main>
+
+    <!-- MODALS -->
+
+    <!-- 1. ADD MENU ITEM MODAL -->
+    <div x-show="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" style="display: none;">
+        <div @click.away="showAddModal = false" class="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl border border-gray-100">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-black text-dark-900">Add New Menu Item</h3>
+                <button @click="showAddModal = false" class="text-gray-400 hover:text-gray-600 text-lg font-bold">&times;</button>
+            </div>
+            <form method="POST" enctype="multipart/form-data" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="add_menu_item" value="1">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Item Name</label>
+                    <input type="text" name="name" required class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Price (₱)</label>
+                        <input type="number" step="0.01" name="price" required class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Initial Stock</label>
+                        <input type="number" name="stock" value="50" required class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Category</label>
+                    <select name="category" required class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white">
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Image URL (Optional)</label>
+                    <input type="url" name="image_url" placeholder="https://..." class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Or Upload Image File</label>
+                    <input type="file" name="image" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Description (Auto-generated if empty)</label>
+                    <textarea name="description" rows="2" class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-3">
+                    <button type="button" @click="showAddModal = false" class="px-4 py-2.5 rounded-xl border text-xs font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold shadow-lg shadow-brand-500/20">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. EDIT MENU ITEM MODAL -->
+    <div x-show="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" style="display: none;">
+        <div @click.away="showEditModal = false" class="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl border border-gray-100">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-black text-dark-900">Edit Menu Item</h3>
+                <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600 text-lg font-bold">&times;</button>
+            </div>
+            <form method="POST" action="{% url 'canteen_menu:staff_menu_edit_ajax' %}" enctype="multipart/form-data" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="item_id" x-model="editItem.id">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Item Name</label>
+                    <input type="text" name="name" x-model="editItem.name" required class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Price (₱)</label>
+                        <input type="number" step="0.01" name="price" x-model="editItem.price" required class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Stock</label>
+                        <input type="number" name="stock" x-model="editItem.stock" required class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Category</label>
+                    <select name="category" x-model="editItem.category_id" required class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white">
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Image URL</label>
+                    <input type="url" name="image_url" x-model="editItem.image_url" class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Update Image File (Optional)</label>
+                    <input type="file" name="image" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+                </div>
+                <div class="flex justify-end gap-3 pt-3">
+                    <button type="button" @click="showEditModal = false" class="px-4 py-2.5 rounded-xl border text-xs font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold shadow-lg shadow-brand-500/20">Update Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. ADD DELIVERY STAFF MODAL -->
+    <div x-show="showRiderModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" style="display: none;">
+        <div @click.away="showRiderModal = false" class="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl border border-gray-100">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-black text-dark-900">Create Delivery Staff Account</h3>
+                <button @click="showRiderModal = false" class="text-gray-400 hover:text-gray-600 text-lg font-bold">&times;</button>
+            </div>
+            <form method="POST" action="{% url 'canteen_menu:create_delivery_staff' %}" class="space-y-4">
+                {% csrf_token %}
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Username</label>
+                        <input type="text" name="username" required class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Full Name</label>
+                        <input type="text" name="first_name" placeholder="Rider Name" class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Email Address</label>
+                    <input type="email" name="email" required class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Password</label>
+                    <input type="password" name="password" required class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Phone Number</label>
+                        <input type="text" name="phone" placeholder="0912..." class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Vehicle / Plate Number</label>
+                        <input type="text" name="vehicle_plate" placeholder="ABC-123" class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-3">
+                    <button type="button" @click="showRiderModal = false" class="px-4 py-2.5 rounded-xl border text-xs font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold shadow-lg shadow-brand-500/20">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. CATEGORIES MANAGEMENT MODAL -->
+    <div x-show="showCategoryModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" style="display: none;">
+        <div @click.away="showCategoryModal = false" class="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-6 shadow-2xl border border-gray-100 max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-4">
+                <div>
+                    <h3 class="text-lg font-black text-dark-900">Manage Categories</h3>
+                    <p class="text-xs text-gray-500">Add, edit, and remove food categories on the fly.</p>
+                </div>
+                <button @click="showCategoryModal = false" class="text-gray-400 hover:text-gray-600 text-lg font-bold">&times;</button>
+            </div>
+
+            <!-- Add Category Inline Form -->
+            <form method="POST" action="{% url 'canteen_menu:category_create' %}" class="bg-gray-50 p-4 rounded-2xl border border-gray-200/80 space-y-3">
+                {% csrf_token %}
+                <h4 class="text-xs font-black text-dark-900 uppercase tracking-wider">Add New Category</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 mb-1">Category Name</label>
+                        <input type="text" name="name" required class="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 mb-1">Description (Optional)</label>
+                        <input type="text" name="description" class="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="flex justify-end pt-1">
+                    <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-md shadow-brand-500/20">
+                        <i class="fa-solid fa-plus mr-1"></i> Add Category
+                    </button>
+                </div>
+            </form>
+
+            <!-- Categories List with Edit & Delete -->
+            <div class="space-y-3">
+                <h4 class="text-xs font-black text-dark-900 uppercase tracking-wider">Existing Categories</h4>
+                <div class="divide-y divide-gray-100 max-h-60 overflow-y-auto pr-1">
+                    {% for cat in categories %}
+                    <div class="py-3 flex items-center justify-between gap-3 hover:bg-gray-50 px-2 rounded-xl transition">
+                        <div>
+                            <p class="font-bold text-xs text-dark-900">{{ cat.name }}</p>
+                            <p class="text-[10px] text-gray-500">{{ cat.description|default:"No description" }}</p>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <a href="{% url 'canteen_menu:category_update' cat.pk %}" class="bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold px-2.5 py-1.5 rounded-lg text-xs transition">
+                                Edit
+                            </a>
+                            <a href="{% url 'canteen_menu:category_delete' cat.pk %}" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-lg text-xs transition">
+                                Delete
+                            </a>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-xs text-gray-400 text-center py-4">No categories found.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-gray-100">
+                <button type="button" @click="showCategoryModal = false" class="px-5 py-2.5 rounded-xl bg-dark-900 text-white text-xs font-bold hover:bg-black transition">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
 
 </div>
 {% endblock %}

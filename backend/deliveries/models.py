@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from order_management.models import Order
+from customer_portal.models import Order
 
 class DeliveryRequest(models.Model):
     class RequestStatus(models.TextChoices):

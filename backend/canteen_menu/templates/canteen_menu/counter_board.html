@@ -1,13 +1,14 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Counter Board - Canteen Express Staff</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
-        /* Custom scrollbar para sa malinis na board columns */
         .custom-scroll::-webkit-scrollbar {
             width: 5px;
         }
@@ -35,7 +36,6 @@
 
             <!-- Navigation Links -->
             <nav class="space-y-6 text-xs font-semibold">
-                <!-- Operations -->
                 <div>
                     <p class="text-[10px] uppercase text-gray-500 px-3 mb-2 font-bold tracking-wider">Operations</p>
                     <a href="{% url 'canteen_menu:counter_board' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl bg-orange-500 text-white font-bold shadow-md shadow-orange-500/20 transition">
@@ -44,7 +44,6 @@
                     </a>
                 </div>
 
-                <!-- Management -->
                 <div>
                     <p class="text-[10px] uppercase text-gray-500 px-3 mb-2 font-bold tracking-wider">Management</p>
                     <a href="{% url 'canteen_menu:staff_menu_list' %}" class="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition">
@@ -92,23 +91,16 @@
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-black text-gray-900 tracking-tight">Kitchen Counter Board</h1>
-                    <p class="text-xs text-gray-500 font-medium mt-0.5">Fast view of incoming, preparing, and ready orders</p>
+                    <p class="text-xs text-gray-500 font-medium mt-0.5">Real-time live queue and order processing</p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2 text-xs font-medium">
                     <span class="bg-orange-100/70 text-orange-700 px-3 py-1.5 rounded-full border border-orange-200/60">
-                        Tap action buttons to move status
+                        Tap action buttons to advance status
                     </span>
-                    <span class="bg-amber-100/70 text-amber-800 px-3 py-1.5 rounded-full border border-amber-200/60">
-                        Ready orders glow for pickup
-                    </span>
-                    <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-200/80 shadow-sm ml-auto">
-                        <span class="text-gray-400 uppercase text-[10px] font-bold">SORT</span>
-                        <select class="bg-transparent font-bold text-gray-800 outline-none cursor-pointer text-xs">
-                            <option>Newest</option>
-                            <option>Oldest</option>
-                        </select>
-                    </div>
+                    <a href="{% url 'canteen_menu:counter_pos' %}" target="_blank" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition shadow-md shadow-orange-500/20">
+                        <i class="fa-solid fa-barcode mr-1"></i> Open Counter POS ↗
+                    </a>
                 </div>
             </div>
 
@@ -116,22 +108,22 @@
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- Pending Stat -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60 flex flex-col justify-between">
-                    <span class="text-3xl font-black text-gray-900">{{ incoming_orders|length|default:"4" }}</span>
+                    <span class="text-3xl font-black text-gray-900">{{ incoming_orders|length }}</span>
                     <span class="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase mt-3">PENDING</span>
                 </div>
                 <!-- Preparing Stat -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60 flex flex-col justify-between">
-                    <span class="text-3xl font-black text-orange-500">{{ preparing_orders|length|default:"2" }}</span>
+                    <span class="text-3xl font-black text-orange-500">{{ preparing_orders|length }}</span>
                     <span class="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase mt-3">PREPARING</span>
                 </div>
                 <!-- Ready Stat -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60 flex flex-col justify-between">
-                    <span class="text-3xl font-black text-emerald-500">{{ ready_orders|length|default:"3" }}</span>
+                    <span class="text-3xl font-black text-emerald-500">{{ ready_orders|length }}</span>
                     <span class="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase mt-3">READY</span>
                 </div>
                 <!-- Done Today Stat -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60 flex flex-col justify-between">
-                    <span class="text-3xl font-black text-gray-800">{{ done_today_count|default:"5" }}</span>
+                    <span class="text-3xl font-black text-gray-800">{{ done_today_count }}</span>
                     <span class="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase mt-3">DONE TODAY</span>
                 </div>
             </div>
@@ -141,283 +133,184 @@
 
                 <!-- ---------------- COLUMN 1: INCOMING ORDERS ---------------- -->
                 <div class="space-y-4">
-                    <!-- Column Header -->
                     <div class="flex items-center justify-between px-1">
                         <span class="text-xs font-black tracking-wider uppercase text-gray-600">INCOMING</span>
                         <span class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 font-bold text-xs flex items-center justify-center">
-                            {{ incoming_orders|length|default:"2" }}
+                            {{ incoming_orders|length }}
                         </span>
                     </div>
 
-                    <!-- Column Cards Container -->
                     <div class="space-y-4 custom-scroll max-h-[75vh] overflow-y-auto pr-1">
-                        
-                        <!-- Sample Incoming Order 1 (Delivery - Faculty/Staff) -->
-                        <div class="bg-white rounded-3xl p-5 border-2 border-gray-200/80 shadow-sm space-y-4">
-                            <!-- Header Info -->
+                        {% for order in incoming_orders %}
+                        <div class="bg-white rounded-3xl p-5 border-2 border-gray-200/80 shadow-sm space-y-4" id="order-card-{{ order.id }}">
                             <div class="flex items-start justify-between border-b border-dashed border-gray-200 pb-3">
                                 <div>
-                                    <h3 class="text-xl font-black text-orange-500">#CE-0249</h3>
+                                    <h3 class="text-xl font-black text-orange-500">{{ order.order_number }}</h3>
                                     <p class="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
-                                        <i class="fa-regular fa-clock"></i> 05:45 PM
+                                        <i class="fa-regular fa-clock"></i> {{ order.created_at|time:"h:i A" }}
                                     </p>
                                 </div>
-                                <div class="flex flex-col items-end gap-1.5">
-                                    <span class="bg-slate-100 text-slate-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-slate-200">
-                                        • Pending
-                                    </span>
-                                    <span class="bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                        <i class="fa-solid fa-motorcycle text-[9px]"></i> Delivery
-                                    </span>
-                                </div>
+                                <span class="bg-slate-100 text-slate-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-slate-200 uppercase">
+                                    • {{ order.status }}
+                                </span>
                             </div>
 
-                            <!-- Customer & Rider Info -->
-                            <div class="space-y-2">
-                                <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-xl bg-orange-400 text-white font-bold flex items-center justify-center text-xs">S</div>
-                                    <div>
-                                        <p class="font-extrabold text-xs text-gray-800">Sofia Reyes</p>
-                                        <p class="text-[10px] text-gray-500 font-medium flex items-center gap-1">
-                                            <i class="fa-solid fa-user text-[9px]"></i> Faculty / Customer
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="bg-purple-50/70 p-2.5 rounded-2xl flex items-center gap-3 border border-purple-100">
-                                    <div class="w-8 h-8 rounded-xl bg-purple-500 text-white font-bold flex items-center justify-center text-xs">?</div>
-                                    <div>
-                                        <p class="font-extrabold text-xs text-purple-900">Awaiting Rider</p>
-                                        <p class="text-[10px] text-purple-600 font-medium flex items-center gap-1">
-                                            <i class="fa-solid fa-motorcycle text-[9px]"></i> Delivery Staff
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Order Items List -->
-                            <div class="text-xs space-y-1.5 font-semibold text-gray-700 py-1">
-                                <div class="flex justify-between"><span class="text-orange-500 font-bold">x1</span> <span>Tapsilog</span></div>
-                                <div class="flex justify-between"><span class="text-orange-500 font-bold">x1</span> <span>Orange Juice</span></div>
-                            </div>
-
-                            <!-- Card Footer Action -->
-                            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
-                                <span class="text-lg font-black text-orange-500">₱165</span>
-                                <form method="POST" action="#">
-                                    {% csrf_token %}
-                                    <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-orange-500/20 active:scale-95 transition">
-                                        Start Preparing
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-
-                        <!-- Sample Incoming Order 2 (Pickup - Payment Slip counter) -->
-                        <div class="bg-white rounded-3xl p-5 border-2 border-gray-200/80 shadow-sm space-y-4">
-                            <!-- Header Info -->
-                            <div class="flex items-start justify-between border-b border-dashed border-gray-200 pb-3">
-                                <div>
-                                    <h3 class="text-xl font-black text-orange-500">#CE-0248</h3>
-                                    <p class="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
-                                        <i class="fa-regular fa-clock"></i> 11:42 AM
-                                    </p>
-                                </div>
-                                <div class="flex flex-col items-end gap-1.5">
-                                    <span class="bg-slate-100 text-slate-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-slate-200">
-                                        • Pending
-                                    </span>
-                                    <span class="bg-sky-50 text-sky-600 border border-sky-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                        <i class="fa-solid fa-basket-shopping text-[9px]"></i> Pickup
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Customer Info -->
                             <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-xl bg-amber-500 text-white font-bold flex items-center justify-center text-xs">M</div>
+                                <div class="w-8 h-8 rounded-xl bg-orange-400 text-white font-bold flex items-center justify-center text-xs">
+                                    {{ order.customer.username|slice:":1"|upper }}
+                                </div>
                                 <div>
-                                    <p class="font-extrabold text-xs text-gray-800">Maria Santos</p>
-                                    <p class="text-[10px] text-gray-500 font-medium flex items-center gap-1">
-                                        <i class="fa-solid fa-receipt text-[9px]"></i> Paid via Counter Slip
-                                    </p>
+                                    <p class="font-extrabold text-xs text-gray-800">{{ order.customer.get_full_name|default:order.customer.username }}</p>
+                                    <p class="text-[10px] text-gray-500 font-medium capitalize">{{ order.customer.role|default:"Customer" }}</p>
                                 </div>
                             </div>
 
-                            <!-- Order Items List -->
                             <div class="text-xs space-y-1.5 font-semibold text-gray-700 py-1">
-                                <div class="flex justify-between"><span class="text-orange-500 font-bold">x1</span> <span>Chicken Adobo</span></div>
+                                {% for item in order.items.all %}
+                                <div class="flex justify-between">
+                                    <span><span class="text-orange-500 font-bold">x{{ item.quantity }}</span> {{ item.product.name }}</span>
+                                    <span class="text-gray-900">₱{{ item.total_price }}</span>
+                                </div>
+                                {% empty %}
+                                <p class="text-xs text-gray-400">No items found.</p>
+                                {% endfor %}
                             </div>
 
-                            <!-- Card Footer Action -->
                             <div class="flex items-center justify-between pt-3 border-t border-gray-100">
-                                <span class="text-lg font-black text-orange-500">₱85</span>
-                                <form method="POST" action="#">
-                                    {% csrf_token %}
-                                    <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-orange-500/20 active:scale-95 transition">
-                                        Start Preparing
-                                    </button>
-                                </form>
+                                <span class="text-lg font-black text-orange-500">₱{{ order.total_amount }}</span>
+                                <button type="button" data-order-id="{{ order.id }}" data-status="preparing" class="status-btn bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-orange-500/20 active:scale-95 transition">
+                                    Start Preparing
+                                </button>
                             </div>
                         </div>
-
+                        {% empty %}
+                        <div class="bg-white rounded-3xl p-8 border border-gray-200 text-center text-gray-400 text-xs">
+                            No incoming orders right now.
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
 
                 <!-- ---------------- COLUMN 2: IN THE KITCHEN ---------------- -->
                 <div class="space-y-4">
-                    <!-- Column Header -->
                     <div class="flex items-center justify-between px-1">
                         <span class="text-xs font-black tracking-wider uppercase text-gray-600">IN THE KITCHEN</span>
                         <span class="w-6 h-6 rounded-full bg-orange-500 text-white font-bold text-xs flex items-center justify-center shadow-sm">
-                            {{ preparing_orders|length|default:"2" }}
+                            {{ preparing_orders|length }}
                         </span>
                     </div>
 
-                    <!-- Column Cards Container -->
                     <div class="space-y-4 custom-scroll max-h-[75vh] overflow-y-auto pr-1">
-                        
-                        <!-- Sample Kitchen Order 1 -->
-                        <div class="bg-white rounded-3xl p-5 border-2 border-orange-200/80 shadow-md space-y-4 relative">
-                            <!-- Header Info -->
+                        {% for order in preparing_orders %}
+                        <div class="bg-white rounded-3xl p-5 border-2 border-orange-200/80 shadow-md space-y-4" id="order-card-{{ order.id }}">
                             <div class="flex items-start justify-between border-b border-dashed border-gray-200 pb-3">
                                 <div>
-                                    <h3 class="text-xl font-black text-orange-500">#CE-0247</h3>
+                                    <h3 class="text-xl font-black text-orange-500">{{ order.order_number }}</h3>
                                     <p class="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
-                                        <i class="fa-regular fa-clock"></i> 11:38 AM
+                                        <i class="fa-regular fa-clock"></i> {{ order.created_at|time:"h:i A" }}
                                     </p>
                                 </div>
-                                <div class="flex flex-col items-end gap-1.5">
-                                    <span class="bg-amber-50 text-amber-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-200">
-                                        • Preparing
-                                    </span>
-                                    <span class="bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                        <i class="fa-solid fa-motorcycle text-[9px]"></i> Delivery
-                                    </span>
+                                <span class="bg-amber-50 text-amber-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-200 uppercase">
+                                    • {{ order.status }}
+                                </span>
+                            </div>
+
+                            <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-orange-500 text-white font-bold flex items-center justify-center text-xs">
+                                    {{ order.customer.username|slice:":1"|upper }}
+                                </div>
+                                <div>
+                                    <p class="font-extrabold text-xs text-gray-800">{{ order.customer.get_full_name|default:order.customer.username }}</p>
+                                    <p class="text-[10px] text-gray-500 font-medium capitalize">{{ order.customer.role|default:"Customer" }}</p>
                                 </div>
                             </div>
 
-                            <!-- Customer & Rider Info -->
-                            <div class="space-y-2">
-                                <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-xl bg-orange-500 text-white font-bold flex items-center justify-center text-xs">J</div>
-                                    <div>
-                                        <p class="font-extrabold text-xs text-gray-800">Juan Dela Cruz</p>
-                                        <p class="text-[10px] text-gray-500 font-medium">Customer</p>
-                                    </div>
-                                </div>
-                                <div class="bg-purple-50/70 p-2.5 rounded-2xl flex items-center gap-3 border border-purple-100">
-                                    <div class="w-8 h-8 rounded-xl bg-purple-500 text-white font-bold flex items-center justify-center text-xs">?</div>
-                                    <div>
-                                        <p class="font-extrabold text-xs text-purple-900">Awaiting Rider</p>
-                                        <p class="text-[10px] text-purple-600 font-medium">Delivery Staff</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Order Items List -->
                             <div class="text-xs space-y-1.5 font-semibold text-gray-700 py-1">
-                                <div class="flex justify-between"><span class="text-orange-500 font-bold">x1</span> <span>Pork Sinigang</span></div>
-                                <div class="flex justify-between"><span class="text-orange-500 font-bold">x2</span> <span>Rice</span></div>
+                                {% for item in order.items.all %}
+                                <div class="flex justify-between">
+                                    <span><span class="text-orange-500 font-bold">x{{ item.quantity }}</span> {{ item.product.name }}</span>
+                                    <span class="text-gray-900">₱{{ item.total_price }}</span>
+                                </div>
+                                {% endfor %}
                             </div>
 
-                            <!-- Card Footer Action -->
                             <div class="flex items-center justify-between pt-3 border-t border-gray-100">
-                                <span class="text-lg font-black text-orange-500">₱220</span>
-                                <form method="POST" action="#">
-                                    {% csrf_token %}
-                                    <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-emerald-500/20 active:scale-95 transition">
-                                        Order Ready
-                                    </button>
-                                </form>
+                                <span class="text-lg font-black text-orange-500">₱{{ order.total_amount }}</span>
+                                <button type="button" data-order-id="{{ order.id }}" data-status="ready" class="status-btn bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-emerald-500/20 active:scale-95 transition">
+                                    Order Ready
+                                </button>
                             </div>
                         </div>
-
+                        {% empty %}
+                        <div class="bg-white rounded-3xl p-8 border border-gray-200 text-center text-gray-400 text-xs">
+                            No orders currently being cooked.
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
 
                 <!-- ---------------- COLUMN 3: READY TO SERVE ---------------- -->
                 <div class="space-y-4">
-                    <!-- Column Header -->
                     <div class="flex items-center justify-between px-1">
                         <span class="text-xs font-black tracking-wider uppercase text-gray-600">READY TO SERVE</span>
                         <span class="w-6 h-6 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center shadow-sm">
-                            {{ ready_orders|length|default:"3" }}
+                            {{ ready_orders|length }}
                         </span>
                     </div>
 
-                    <!-- Column Cards Container -->
                     <div class="space-y-4 custom-scroll max-h-[75vh] overflow-y-auto pr-1">
-                        
-                        <!-- Sample Ready Order (Delivery Rider assigned) -->
-                        <div class="bg-white rounded-3xl overflow-hidden border-2 border-emerald-400 shadow-lg space-y-4">
-                            
-                            <!-- Green Top Banner -->
+                        {% for order in ready_orders %}
+                        <div class="bg-white rounded-3xl overflow-hidden border-2 border-emerald-400 shadow-lg space-y-4" id="order-card-{{ order.id }}">
                             <div class="bg-emerald-500 text-white px-4 py-2.5 flex items-center justify-between font-bold text-xs">
                                 <span class="flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> Order Ready</span>
-                                <span class="bg-emerald-600/80 px-2.5 py-0.5 rounded-full text-[10px] flex items-center gap-1">
-                                    <i class="fa-solid fa-hourglass-half text-[9px]"></i> Waiting for Rider
-                                </span>
+                                <span class="bg-emerald-600/80 px-2.5 py-0.5 rounded-full text-[10px]">For Pickup / Dispatch</span>
                             </div>
 
                             <div class="p-5 space-y-4 pt-1">
-                                <!-- Header Info -->
                                 <div class="flex items-start justify-between border-b border-dashed border-gray-200 pb-3">
                                     <div>
-                                        <h3 class="text-xl font-black text-orange-500">#CE-0246</h3>
+                                        <h3 class="text-xl font-black text-orange-500">{{ order.order_number }}</h3>
                                         <p class="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
-                                            <i class="fa-regular fa-clock"></i> 11:30 AM
+                                            <i class="fa-regular fa-clock"></i> {{ order.created_at|time:"h:i A" }}
                                         </p>
                                     </div>
-                                    <div class="flex flex-col items-end gap-1.5">
-                                        <span class="bg-emerald-50 text-emerald-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                                            • Ready
-                                        </span>
-                                        <span class="bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                            <i class="fa-solid fa-motorcycle text-[9px]"></i> Delivery
-                                        </span>
+                                    <span class="bg-emerald-50 text-emerald-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200 uppercase">
+                                        • {{ order.status }}
+                                    </span>
+                                </div>
+
+                                <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-xl bg-amber-500 text-white font-bold flex items-center justify-center text-xs">
+                                        {{ order.customer.username|slice:":1"|upper }}
+                                    </div>
+                                    <div>
+                                        <p class="font-extrabold text-xs text-gray-800">{{ order.customer.get_full_name|default:order.customer.username }}</p>
+                                        <p class="text-[10px] text-gray-500 font-medium capitalize">{{ order.customer.role|default:"Customer" }}</p>
                                     </div>
                                 </div>
 
-                                <!-- Customer & Assigned Rider Info -->
-                                <div class="space-y-2">
-                                    <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-xl bg-amber-500 text-white font-bold flex items-center justify-center text-xs">A</div>
-                                        <div>
-                                            <p class="font-extrabold text-xs text-gray-800">Ana Reyes</p>
-                                            <p class="text-[10px] text-gray-500 font-medium">Customer</p>
-                                        </div>
-                                    </div>
-                                    <div class="bg-purple-100/60 p-2.5 rounded-2xl flex items-center gap-3 border border-purple-200/60">
-                                        <div class="w-8 h-8 rounded-xl bg-purple-600 text-white font-bold flex items-center justify-center text-xs">R</div>
-                                        <div>
-                                            <p class="font-extrabold text-xs text-purple-950">Rico Reyes</p>
-                                            <p class="text-[10px] text-purple-700 font-medium flex items-center gap-1">
-                                                <i class="fa-solid fa-motorcycle text-[9px]"></i> Delivery Staff
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Order Items List -->
                                 <div class="text-xs space-y-1.5 font-semibold text-gray-700 py-1">
-                                    <div class="flex justify-between"><span class="text-orange-500 font-bold">x1</span> <span>Pancit Canton</span></div>
-                                    <div class="flex justify-between"><span class="text-orange-500 font-bold">x3</span> <span>Lumpia</span></div>
-                                    <div class="flex justify-between"><span class="text-orange-500 font-bold">x1</span> <span>Juice</span></div>
+                                    {% for item in order.items.all %}
+                                    <div class="flex justify-between">
+                                        <span><span class="text-orange-500 font-bold">x{{ item.quantity }}</span> {{ item.product.name }}</span>
+                                        <span class="text-gray-900">₱{{ item.total_price }}</span>
+                                    </div>
+                                    {% endfor %}
                                 </div>
 
-                                <!-- Card Footer Action -->
                                 <div class="flex items-center justify-between pt-3 border-t border-gray-100">
-                                    <span class="text-lg font-black text-orange-500">₱290</span>
-                                    <form method="POST" action="#">
-                                        {% csrf_token %}
-                                        <button type="submit" class="bg-slate-900 hover:bg-black text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md active:scale-95 transition">
-                                            Picked Up by Rider
-                                        </button>
-                                    </form>
+                                    <span class="text-lg font-black text-orange-500">₱{{ order.total_amount }}</span>
+                                    <button type="button" data-order-id="{{ order.id }}" data-status="completed" class="status-btn bg-slate-900 hover:bg-black text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md active:scale-95 transition">
+                                        Complete / Served
+                                    </button>
                                 </div>
                             </div>
                         </div>
-
+                        {% empty %}
+                        <div class="bg-white rounded-3xl p-8 border border-gray-200 text-center text-gray-400 text-xs">
+                            No orders ready for pickup.
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
 
@@ -426,20 +319,67 @@
         </div>
     </main>
 
-    <!-- Live Clock Script -->
+    <!-- Live Clock Script & Status Updater -->
     <script>
-        function updateClock() {
-            const now = new Date();
-            let hours = now.getHours();
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12 || 12;
-            const strTime = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
-            document.getElementById('live-clock').textContent = strTime;
+        function getCSRFToken() {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, 10) === 'csrftoken=') {
+                        cookieValue = decodeURIComponent(cookie.substring(10));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
-        setInterval(updateClock, 1000);
-        updateClock();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.status-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const orderId = this.getAttribute('data-order-id');
+                    const newStatus = this.getAttribute('data-status');
+                    
+                    fetch(`/kitchen/order/${orderId}/update-status/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken(),
+                        },
+                        body: JSON.stringify({ status: newStatus })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.reload();
+                        } else {
+                            alert('Error: ' + (data.error || 'Failed to update order status.'));
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                });
+            });
+
+            function updateClock() {
+                const now = new Date();
+                let hours = now.getHours();
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12 || 12;
+                const strTime = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+                document.getElementById('live-clock').textContent = strTime;
+            }
+            setInterval(updateClock, 1000);
+            updateClock();
+
+            // Real-time auto-refresh every 5 seconds
+            setInterval(() => {
+                window.location.reload();
+            }, 5000);
+        });
     </script>
 </body>
 </html>

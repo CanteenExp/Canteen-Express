@@ -33,27 +33,27 @@
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="bg-white p-5 rounded-3xl border border-gray-200/80 shadow-sm flex justify-between items-center">
             <div>
-                <span class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Pending Orders</span>
-                <p class="text-2xl font-black text-brand-500 mt-0.5">{{ pending_orders|length }} New</p>
+                <span class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Kiosk Accepted</span>
+                <p class="text-2xl font-black text-brand-500 mt-0.5">{{ kiosk_orders|length }} Active</p>
             </div>
             <span class="text-xl bg-brand-50 text-brand-500 p-3 rounded-2xl border border-brand-100">
-                <i class="fa-solid fa-clock"></i>
+                <i class="fa-solid fa-store"></i>
             </span>
         </div>
 
         <div class="bg-white p-5 rounded-3xl border border-gray-200/80 shadow-sm flex justify-between items-center">
             <div>
-                <span class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">In Preparation</span>
-                <p class="text-2xl font-black text-blue-600 mt-0.5">{{ preparing_orders|length }} Cooking</p>
+                <span class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Delivery</span>
+                <p class="text-2xl font-black text-orange-600 mt-0.5">{{ delivery_orders|length }} Pending</p>
             </div>
-            <span class="text-xl bg-blue-50 text-blue-600 p-3 rounded-2xl border border-blue-100">
-                <i class="fa-solid fa-kitchen-set"></i>
+            <span class="text-xl bg-orange-50 text-orange-600 p-3 rounded-2xl border border-orange-100">
+                <i class="fa-solid fa-motorcycle"></i>
             </span>
         </div>
 
         <div class="bg-white p-5 rounded-3xl border border-gray-200/80 shadow-sm flex justify-between items-center">
             <div>
-                <span class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Ready for Pickup</span>
+                <span class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Orders Ready</span>
                 <p class="text-2xl font-black text-emerald-600 mt-0.5">{{ ready_orders|length }} Ready</p>
             </div>
             <span class="text-xl bg-emerald-50 text-emerald-600 p-3 rounded-2xl border border-emerald-100">
@@ -65,31 +65,32 @@
     <!-- Kanban Board Grid -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-        <!-- Column 1: Pending Orders -->
+        <!-- Column 1: Kiosk Accepted -->
         <div class="space-y-4">
             <div class="flex items-center justify-between px-2">
                 <h2 class="text-xs font-extrabold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-brand-500"></span> Pending Orders
+                    <span class="w-2.5 h-2.5 rounded-full bg-brand-500"></span> Kiosk Accepted
                 </h2>
-                <span class="text-xs font-bold bg-brand-100 text-brand-700 px-2.5 py-0.5 rounded-full">{{ pending_orders|length }}</span>
+                <span class="text-xs font-bold bg-brand-100 text-brand-700 px-2.5 py-0.5 rounded-full">{{ kiosk_orders|length }}</span>
             </div>
 
-            {% for order in pending_orders %}
-            <div class="bg-white rounded-3xl p-6 border-2 border-brand-500 shadow-md space-y-4 relative" id="order-card-{{ order.id }}">
+            {% for order in kiosk_orders %}
+            <div class="bg-white rounded-3xl p-6 border-2 border-emerald-500 shadow-md space-y-4 relative" id="order-card-{{ order.id }}">
                 <div class="flex justify-between items-start border-b border-gray-100 pb-3">
                     <div>
-                        <span class="text-[11px] font-black text-brand-500 uppercase tracking-wider">Order #{{ order.id }}</span>
-                        <h3 class="text-base font-black text-dark-900">{{ order.customer.get_full_name|default:order.customer.username }}</h3>
+                        <span class="text-lg font-black text-emerald-600 uppercase tracking-wider">
+                            Order #{{ order.id }} ({{ order.order_number }})
+                        </span>
                     </div>
-                    <span class="text-[10px] bg-brand-50 text-brand-700 font-bold px-2.5 py-1 rounded-lg border border-brand-200">
-                        New Ticket
+                    <span class="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2.5 py-1 rounded-lg border border-emerald-300 flex items-center gap-1">
+                        <i class="fa-solid fa-store"></i> Walk-in Kiosk
                     </span>
                 </div>
 
                 <div class="space-y-2 text-sm text-gray-700 font-medium">
                     {% for item in order.items.all %}
                     <div class="flex justify-between items-center">
-                        <span>{{ item.quantity }}x {{ item.product.name }}</span>
+                        <span>{{ item.quantity }}x {{ item.item_name|default:item.product.name }}</span>
                         <span class="font-bold text-dark-900">₱{{ item.total_price }}</span>
                     </div>
                     {% empty %}
@@ -101,45 +102,49 @@
                     <span class="text-gray-400 font-medium">
                         <i class="fa-regular fa-clock mr-1"></i> {{ order.created_at|timesince }} ago
                     </span>
-                    <button data-order-id="{{ order.id }}" data-status="PREPARING" class="status-btn bg-brand-500 hover:bg-brand-600 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md shadow-brand-500/20 transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-fire"></i> Start Preparing
+                    <button data-order-id="{{ order.id }}" data-status="ready" class="status-btn bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 py-2.5 rounded-xl text-xs shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-check"></i> Done (Ready)
                     </button>
                 </div>
             </div>
             {% empty %}
             <div class="bg-white rounded-3xl p-6 border border-gray-200 text-center text-gray-400 text-sm">
-                No pending orders right now.
+                No kiosk orders right now.
             </div>
             {% endfor %}
         </div>
 
-        <!-- Column 2: In Preparation -->
+        <!-- Column 2: Delivery -->
         <div class="space-y-4">
             <div class="flex items-center justify-between px-2">
                 <h2 class="text-xs font-extrabold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> In Cooking
+                    <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span> Delivery
                 </h2>
-                <span class="text-xs font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full">{{ preparing_orders|length }}</span>
+                <span class="text-xs font-bold bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full">{{ delivery_orders|length }}</span>
             </div>
 
-            {% for order in preparing_orders %}
-            <div class="bg-white rounded-3xl p-6 border-2 border-blue-400 shadow-md space-y-4" id="order-card-{{ order.id }}">
+            {% for order in delivery_orders %}
+            <div class="bg-white rounded-3xl p-6 border-2 border-orange-500 shadow-md space-y-4" id="order-card-{{ order.id }}">
                 <div class="flex justify-between items-start border-b border-gray-100 pb-3">
                     <div>
-                        <span class="text-[11px] font-black text-blue-600 uppercase tracking-wider">Order #{{ order.id }}</span>
-                        <h3 class="text-base font-black text-dark-900">{{ order.customer.get_full_name|default:order.customer.username }}</h3>
+                        <span class="text-[11px] font-black text-orange-600 uppercase tracking-wider">
+                            Order #{{ order.id }} ({{ order.order_number }})
+                        </span>
+                        <h3 class="text-base font-black text-dark-900">{% if order.customer %}{{ order.customer.get_full_name|default:order.customer.username }}{% else %}Walk-in Guest{% endif %}</h3>
                     </div>
-                    <span class="text-[10px] bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-lg border border-blue-200">
-                        Preparing
+                    <span class="text-[10px] bg-orange-100 text-orange-800 font-extrabold px-2.5 py-1 rounded-lg border border-orange-300 flex items-center gap-1">
+                        <i class="fa-solid fa-motorcycle"></i> Campus Delivery
                     </span>
                 </div>
 
                 <div class="space-y-2 text-sm text-gray-700 font-medium">
                     {% for item in order.items.all %}
                     <div class="flex justify-between items-center">
-                        <span>{{ item.quantity }}x {{ item.product.name }}</span>
+                        <span>{{ item.quantity }}x {{ item.item_name|default:item.product.name }}</span>
                         <span class="font-bold text-dark-900">₱{{ item.total_price }}</span>
                     </div>
+                    {% empty %}
+                    <p class="text-xs text-gray-400">No items found.</p>
                     {% endfor %}
                 </div>
 
@@ -147,23 +152,23 @@
                     <span class="text-gray-400 font-medium">
                         <i class="fa-regular fa-clock mr-1"></i> {{ order.created_at|timesince }} ago
                     </span>
-                    <button data-order-id="{{ order.id }}" data-status="READY" class="status-btn bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5">
+                    <button data-order-id="{{ order.id }}" data-status="ready" class="status-btn bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5">
                         <i class="fa-solid fa-check"></i> Mark Ready
                     </button>
                 </div>
             </div>
             {% empty %}
             <div class="bg-white rounded-3xl p-6 border border-gray-200 text-center text-gray-400 text-sm">
-                No orders currently being cooked.
+                No delivery orders right now.
             </div>
             {% endfor %}
         </div>
 
-        <!-- Column 3: Ready for Pickup -->
+        <!-- Column 3: Orders Ready -->
         <div class="space-y-4">
             <div class="flex items-center justify-between px-2">
                 <h2 class="text-xs font-extrabold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Ready for Pickup
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Orders Ready
                 </h2>
                 <span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full">{{ ready_orders|length }}</span>
             </div>
@@ -172,12 +177,31 @@
             <div class="bg-gray-50 rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4" id="order-card-{{ order.id }}">
                 <div class="flex justify-between items-start border-b border-gray-200 pb-3">
                     <div>
-                        <span class="text-[11px] font-black text-emerald-600 uppercase tracking-wider">Order #{{ order.id }}</span>
-                        <h3 class="text-base font-black text-dark-900">{{ order.customer.get_full_name|default:order.customer.username }}</h3>
+                        <span class="text-[11px] font-black text-emerald-600 uppercase tracking-wider">
+                            Order #{{ order.id }} ({{ order.order_number }})
+                        </span>
+                        <h3 class="text-base font-black text-dark-900">{% if order.customer %}{{ order.customer.get_full_name|default:order.customer.username }}{% else %}Walk-in Guest{% endif %}</h3>
                     </div>
-                    <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-lg">
-                        Ready
+                    {% if order.is_delivery %}
+                    <span class="text-[10px] bg-orange-100 text-orange-800 font-extrabold px-2.5 py-1 rounded-lg border border-orange-300 flex items-center gap-1">
+                        <i class="fa-solid fa-motorcycle"></i> Delivery Ready
                     </span>
+                    {% else %}
+                    <span class="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2.5 py-1 rounded-lg border border-emerald-300 flex items-center gap-1">
+                        <i class="fa-solid fa-store"></i> Counter Ready
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-2 text-sm text-gray-700 font-medium">
+                    {% for item in order.items.all %}
+                    <div class="flex justify-between items-center">
+                        <span>{{ item.quantity }}x {{ item.item_name|default:item.product.name }}</span>
+                        <span class="font-bold text-dark-900">₱{{ item.total_price }}</span>
+                    </div>
+                    {% empty %}
+                    <p class="text-xs text-gray-400">No items found.</p>
+                    {% endfor %}
                 </div>
 
                 <p class="text-xs text-gray-500 font-medium">
@@ -199,7 +223,7 @@
             </div>
             {% empty %}
             <div class="bg-white rounded-3xl p-6 border border-gray-200 text-center text-gray-400 text-sm">
-                No orders waiting for pickup/delivery.
+                No orders ready for pickup/delivery.
             </div>
             {% endfor %}
         </div>
@@ -253,8 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => {
         window.location.reload();
     }, 5000);
-});
-    });
 });
 </script>
 {% endblock %}

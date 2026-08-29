@@ -13,18 +13,24 @@ def delivery_dashboard(request):
     # Calculate earnings (₱30 per completed delivery)
     completed_count = DeliveryRequest.objects.filter(rider=request.user, status=DeliveryRequest.RequestStatus.DELIVERED).count()
     total_earnings = completed_count * 30.00
+    active_deliveries_count = DeliveryRequest.objects.filter(rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED).count()
     
     context = {
         'pending_deliveries': pending_deliveries,
         'my_deliveries': my_deliveries,
         'completed_count': completed_count,
         'total_earnings': total_earnings,
+        'active_deliveries_count': active_deliveries_count,
     }
     return render(request, 'delivery_dashboard.html', context)
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
 def accept_delivery(request, delivery_id):
     delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    active_count = DeliveryRequest.objects.filter(rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED).count()
+    if active_count >= 3:
+        return redirect('deliveries:dashboard')
+
     if delivery.status == DeliveryRequest.RequestStatus.SEARCHING:
         delivery.status = DeliveryRequest.RequestStatus.ACCEPTED
         delivery.rider = request.user
@@ -56,7 +62,9 @@ def get_delivery_messages(request, delivery_id):
     delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
     messages = delivery.messages.all().order_by('timestamp')
     msg_list = [{
+        'id': m.id,
         'sender': m.sender.username,
+        'sender_role': m.sender.role,
         'is_me': m.sender == request.user,
         'message': m.message,
         'time': m.timestamp.strftime('%H:%M')

@@ -1,8 +1,21 @@
-# 🍱 Canteen Express - Backend Setup Guide
+# 🍱 Canteen Express - Django Web Application & Setup Guide
 
-Welcome sa **Canteen Express** project! 🎉
+Welcome sa **Canteen Express** project! 🎉 Isang kumpletong Django 5 web application para sa Canteen Ordering, Counter POS, Kitchen Display, Digital Queuing, at Campus Delivery.
 
-Sundin ang step-by-step guide na ito para ma-setup at mapatakbo nang maayos ang **Django backend** sa inyong local machine.
+---
+
+## 🚀 Latest System Updates & Features
+- **Official Favicon Integration:**
+  - Ang official Canteen Express logo ay naka-link na bilang browser favicon (`<link rel="icon" ... />`) sa lahat ng web pages at templates sa buong sistema.
+- **Dark Theme Login Portals:**
+  - Ang **Canteen Staff Portal** at **Delivery Personnel Portal** login pages ay naka-dark theme na ngayon (full-screen `bg-brand-dark`), gamit ang eksaktong brand color palette.
+- **Kitchen Display Kanban Board & Dashboards:**
+  - 3-column workflow: **Kiosk Accepted** (Walk-in Kiosk), **Delivery** (Campus Delivery), at **Orders Ready** (Orders finished and ready for pickup/dispatch).
+  - Robust null-safety handling para sa mga walk-in kiosk orders na walang registered customer account.
+- **Sales Reports & Analytics with Charts:**
+  - Interactive Chart.js bar graph na may filter tabs para sa **Daily (7 Days)**, **Weekly (4 Weeks)**, at **Monthly (6 Months)** sales reports at financial breakdown tables.
+- **Convenience Fee & Loyalty Points:**
+  - Awtomatikong kinakalkula ang convenience fee na **₱15 per ₱300 purchase block** para sa mga campus deliveries at loyalty points para sa faculty/staff.
 
 ---
 
@@ -27,8 +40,6 @@ Buksan ang **Terminal / PowerShell** at i-run:
 git clone https://github.com/CanteenExp/Canteen-Express.git
 cd "CANTEEN EXPRESS/backend"
 ```
-
-> **Note:** Palitan ang `<REPOSITORY_URL_HERE>` ng actual GitHub repository URL.
 
 ---
 
@@ -55,14 +66,6 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-> ⚠️ **Important:** Siguraduhing may `(venv)` na nakikita sa unahan ng terminal bago magpatuloy.
->
-> Example:
->
-> ```text
-> (venv) PS C:\...\CANTEEN EXPRESS\backend>
-> ```
-
 ---
 
 ## 3. Install Dependencies
@@ -73,55 +76,11 @@ I-install ang lahat ng required packages gamit ang:
 pip install -r requirements.txt
 ```
 
-### Kung wala pang `requirements.txt`
-
-I-install ang pangunahing dependencies:
-
-```bash
-pip install django python-dotenv psycopg2-binary
-```
-
 ---
 
 ## 4. Setup Environment Variables
 
-### Create `.env` File
-
-Gumawa ng bagong file sa loob ng:
-
-```text
-backend/
-```
-
-Ilagay ito sa parehong folder kung nasaan ang `manage.py`.
-
-Ang structure ay dapat ganito:
-
-```text
-backend/
-├── manage.py
-├── .env
-├── requirements.txt
-├── config/
-├── accounts/
-└── ...
-```
-
-> 🛑 **IMPORTANT:** Siguraduhing ang filename ay:
->
-> ```text
-> .env
-> ```
->
-> at **HINDI**:
->
-> ```text
-> .env.txt
-> ```
-
-### `.env` Contents
-
-I-paste ang following environment variables sa `.env`:
+Gumawa ng `.env` file sa loob ng `backend/` folder kasama ang manage.py:
 
 ```env
 SECRET_KEY="django-insecure-your-secret-key-here"
@@ -130,22 +89,10 @@ DEBUG=True
 # Neon Cloud Database Credentials
 DB_NAME="neondb"
 DB_USER="neondb_owner"
-DB_PASSWORD="<HINGIIN_ANG_PASSWORD_SA_PROJECT_LEAD>"
+DB_PASSWORD="<YOUR_DB_PASSWORD>"
 DB_HOST="ep-shy-heart-ayghwl06-pooler.c-5.us-east-2.aws.neon.tech"
 DB_PORT="5432"
 ```
-
-### 🔐 Security Reminder
-
-**Huwag i-commit o i-push ang `.env` file sa GitHub.**
-
-Siguraduhing kasama ang `.env` sa `.gitignore`:
-
-```gitignore
-.env
-```
-
-> ⚠️ **Never share your actual database password or Django `SECRET_KEY` publicly.**
 
 ---
 
@@ -154,15 +101,6 @@ Siguraduhing kasama ang `.env` sa `.gitignore`:
 Siguraduhing updated ang database tables:
 
 ```bash
-python manage.py migrate
-```
-
-### Kapag may binago sa Models
-
-Kung may binago o gumawa ng bagong model sa iyong branch, patakbuhin:
-
-```bash
-python manage.py makemigrations
 python manage.py migrate
 ```
 
@@ -176,18 +114,6 @@ Kung kailangan mo ng access sa **Django Admin Dashboard**, gumawa ng superuser:
 python manage.py createsuperuser
 ```
 
-Sundin ang instructions sa terminal para gumawa ng:
-
-- Username
-- Email
-- Password
-
-Pagkatapos nito, maa-access ang Django Admin sa:
-
-```text
-http://127.0.0.1:8000/admin/
-```
-
 ---
 
 ## 7. Run Development Server
@@ -198,12 +124,6 @@ Patakbuhin ang Django development server:
 python manage.py runserver
 ```
 
-Kapag successful, dapat may makita kang output na parang:
-
-```text
-Starting development server at http://127.0.0.1:8000/
-```
-
 Buksan sa browser:
 
 ```text
@@ -212,51 +132,7 @@ http://127.0.0.1:8000/
 
 ---
 
-# 🔄 Daily Development Workflow
-
-Every time na mag-start ka ng development:
-
-### 1. Navigate to Backend
-
-```bash
-cd "CANTEEN EXPRESS/backend"
-```
-
-### 2. Activate Virtual Environment
-
-**PowerShell:**
-
-```powershell
-.\venv\Scripts\Activate
-```
-
-### 3. Pull Latest Changes
-
-```bash
-git pull
-```
-
-### 4. Install New Dependencies (if needed)
-
-```bash
-pip install -r requirements.txt
-```
-
-### 5. Apply Database Migrations
-
-```bash
-python manage.py migrate
-```
-
-### 6. Start Django Server
-
-```bash
-python manage.py runserver
-```
-
----
-
-# 🛠️ Common Commands
+# 🛠️ Common Commands & Order Reset
 
 | Command | Purpose |
 |---|---|
@@ -264,15 +140,54 @@ python manage.py runserver
 | `python manage.py makemigrations` | Create migrations from model changes |
 | `python manage.py migrate` | Apply migrations |
 | `python manage.py createsuperuser` | Create admin account |
-| `python manage.py shell` | Open Django shell |
+| `python manage.py shell` | Open Django interactive shell |
 | `pip install -r requirements.txt` | Install project dependencies |
-| `pip freeze > requirements.txt` | Update requirements file |
+
+### 🔄 Reset / Clear All Orders (Testing Command)
+Kung nais i-reset o i-clear ang lahat ng orders sa database para sa pagte-test:
+1. Buksan ang Django shell:
+   ```bash
+   python manage.py shell
+   ```
+2. I-run ang mga sumusunod na Python commands:
+   ```python
+   from customer_portal.models import Order, OrderItem
+   OrderItem.objects.all().delete()
+   Order.objects.all().delete()
+   exit()
+   ```
+
+---
+
+# 🔌 System APIs & Endpoints
+
+Ang sistema ay naglalaman ng mga sumusunod na pangunahing API endpoints para sa real-time POS scanning, kitchen board updates, at delivery tracking:
+
+1. **Barcode & Queue Slip Processing API (`canteen_menu`)**
+   - **Endpoint:** `/canteen/api/process-barcode/`
+   - **Method:** `POST`
+   - **Payload:** `{"queue_slip": "#CE-1001"}` (or scanned barcode string)
+   - **Purpose:** Hinahanap sa database ang kiosk queue slip, kino-convert ang status mula `unpaid` patungong `pending` (mark as paid), at kino-confirm ang pagbabayad sa Counter POS.
+
+2. **Kitchen Order Status Update API (`kitchen_display`)**
+   - **Endpoint:** `/kitchen/order/<int:order_id>/update-status/`
+   - **Method:** `POST`
+   - **Payload:** `{"status": "ready"}` o `{"status": "completed"}`
+   - **Purpose:** Real-time AJAX endpoint para i-update ang order status ng kitchen board (Kiosk Accepted/Delivery -> Orders Ready -> Completed).
+
+3. **Customer Kiosk & Ordering APIs (`customer_portal`)**
+   - **Endpoint:** `/kiosk/` and associated menu/cart endpoints.
+   - **Method:** `GET`, `POST`
+   - **Purpose:** Kinukuha ang daily menu items, pinamamahalaan ang cart, at nagp-process ng bagong kiosk o delivery order na may kasamang queue slip at QR/barcode generation.
+
+4. **Delivery & Live Chat APIs (`deliveries`)**
+   - **Endpoints:** `/deliveries/...`
+   - **Method:** `GET`, `POST`
+   - **Purpose:** Nagbibigay-daan sa mga delivery riders na i-accept ang mga delivery requests, mag-update ng GPS location/status, at makipag-chat nang real-time sa faculty/staff customer.
 
 ---
 
 # 📁 Backend Structure
-
-A typical backend structure should look similar to:
 
 ```text
 CANTEEN EXPRESS/
@@ -281,19 +196,20 @@ CANTEEN EXPRESS/
 │   ├── manage.py
 │   ├── .env
 │   ├── requirements.txt
-│   │
+│   ├── static/
+│   ├── templates/
 │   ├── config/
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │   ├── asgi.py
-│   │   └── wsgi.py
-│   │
 │   ├── accounts/
 │   ├── canteen_menu/
-│   └── ...
-│
-├── frontend/
-│   └── ...
+│   ├── customer_portal/
+│   ├── kitchen_display/
+│   ├── deliveries/
+│   ├── queuing/
+│   ├── order_management/
+│   ├── user_notifications/
+│   ├── analytics_reports/
+│   ├── admin_dashboard/
+│   └── core_app/
 │
 └── README.md
 ```
@@ -303,79 +219,21 @@ CANTEEN EXPRESS/
 # ⚠️ Troubleshooting
 
 ### `ModuleNotFoundError`
-
-Make sure the virtual environment is activated:
-
+Siguraduhing naka-activate ang virtual environment at naka-install ang dependencies:
 ```powershell
 .\venv\Scripts\Activate
-```
-
-Then reinstall dependencies:
-
-```bash
 pip install -r requirements.txt
 ```
 
----
-
-### `.env` Not Working
-
-Check that:
-
-1. The file is named exactly `.env`
-2. It is inside the `backend/` folder
-3. It is located beside `manage.py`
-4. The environment variables are spelled correctly
-5. The actual database password is correct
-
----
-
 ### Database Connection Error
-
-Check your Neon database credentials:
-
-```env
-DB_NAME="neondb"
-DB_USER="neondb_owner"
-DB_PASSWORD="YOUR_PASSWORD"
-DB_HOST="YOUR_HOST"
-DB_PORT="5432"
-```
-
-If you don't have the database password, **ask the project lead** instead of committing or sharing credentials publicly.
-
----
-
-# 👥 For Canteen Express Developers
-
-Before pushing your changes:
-
-```bash
-git status
-```
-
-Review your changed files and make sure that sensitive files such as `.env` are **not included**.
-
-Then:
-
-```bash
-git add .
-git commit -m "Your commit message"
-git push
-```
-
-> 💡 Follow the team's Git branching workflow before pushing changes to shared branches.
+Suriin ang `.env` file kung tama ang `DB_HOST`, `DB_USER`, at `DB_PASSWORD`. Kung walang `.env`, gagamitin nito ang lokal na `db.sqlite3` fallback.
 
 ---
 
 # 🎯 Ready to Develop!
 
-Once the server is running successfully:
-
 ```text
 http://127.0.0.1:8000/
 ```
-
-You're ready to start working on **Canteen Express**! 🍱🚀
 
 **Happy coding, team! 💻**

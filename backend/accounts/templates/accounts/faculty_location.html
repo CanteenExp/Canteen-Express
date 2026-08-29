@@ -1,6 +1,8 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Faculty Onboarding - Step 1: Location</title>
@@ -13,7 +15,6 @@
         <!-- Step Progress Indicator -->
         <div class="space-y-2">
             <div class="flex justify-between text-xs font-extrabold text-zinc-400 uppercase tracking-wider">
-                <span class="text-orange-600">Step 1 of 5</span>
                 <span>Location Check</span>
             </div>
             <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
@@ -27,20 +28,20 @@
                 <i class="fa-solid fa-location-crosshairs text-2xl"></i>
             </div>
             <h2 class="text-2xl font-black text-zinc-900">Delivery Location Check</h2>
-            <p class="text-xs text-zinc-500 leading-relaxed">We need your current location to verify if your office is within our delivery coverage zone.</p>
+            <p class="text-xs text-zinc-500 leading-relaxed">We verify your location to ensure seamless campus office deliveries.</p>
         </div>
 
         <!-- Form -->
         <form method="POST" id="location-form" class="space-y-4">
             {% csrf_token %}
             
-            <input type="hidden" name="latitude" id="latitude">
-            <input type="hidden" name="longitude" id="longitude">
+            <input type="hidden" name="latitude" id="latitude" value="9.7401">
+            <input type="hidden" name="longitude" id="longitude" value="118.7357">
 
             <!-- Status Box -->
-            <div id="status-box" class="p-4 bg-zinc-50 border border-zinc-200 rounded-2xl text-center">
+            <div id="status-box" class="p-4 bg-zinc-50 border border-zinc-200 rounded-2xl text-center transition-all duration-300">
                 <i id="status-icon" class="fa-solid fa-map-pin text-3xl text-zinc-400 mb-2"></i>
-                <p id="status-text" class="text-xs font-semibold text-zinc-600">Click the button below to allow location access.</p>
+                <p id="status-text" class="text-xs font-semibold text-zinc-600">Click below to detect your location or proceed instantly.</p>
             </div>
 
             <!-- Action Button -->
@@ -49,9 +50,15 @@
                 <span>Detect My Location</span>
             </button>
 
+            <!-- Quick Bypass / Default Campus Location Button -->
+            <button type="button" onclick="useDefaultLocation()" class="w-full py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold rounded-2xl transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer">
+                <i class="fa-solid fa-building-columns"></i>
+                <span>Use Campus Default Location</span>
+            </button>
+
             <!-- Submit Button (Hidden initially until location is obtained) -->
-            <button type="submit" id="next-btn" class="hidden w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-600/25 transition text-xs uppercase tracking-wider items-center justify-center gap-2 cursor-pointer relative z-20">
-                <span>Continue to Phone Verification</span>
+            <button type="submit" id="next-btn" class="hidden w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-600/25 transition text-xs uppercase tracking-wider items-center justify-center gap-2 cursor-pointer relative z-25">
+                <span>Continue to Sign in / Sign up</span>
                 <i class="fa-solid fa-arrow-right"></i>
             </button>
         </form>
@@ -75,43 +82,59 @@
                 statusText.innerText = "Locating your position...";
                 statusIcon.className = "fa-solid fa-spinner fa-spin text-3xl text-orange-500 mb-2";
 
+                const geoOptions = {
+                    enableHighAccuracy: false,
+                    timeout: 6000,
+                    maximumAge: 60000
+                };
+
+                let geoTimeout = setTimeout(() => {
+                    // Fallback if GPS takes too long on tunnels
+                    useDefaultLocation();
+                }, 6500);
+
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
+                        clearTimeout(geoTimeout);
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
-
-                        document.getElementById('latitude').value = lat;
-                        document.getElementById('longitude').value = lng;
-
-                        statusBox.className = "p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center";
-                        statusIcon.className = "fa-solid fa-circle-check text-3xl text-emerald-500 mb-2";
-                        statusText.innerHTML = `<span class="text-emerald-700 font-bold">Location Verified!</span><br><span class="text-[11px] text-emerald-600">Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}</span>`;
-
-                        detectBtn.classList.add('hidden');
-                        nextBtn.classList.remove('hidden');
-                        nextBtn.classList.add('flex');
+                        setCoordinates(lat, lng);
                     },
                     (error) => {
-                        statusBox.className = "p-4 bg-red-50 border border-red-200 rounded-2xl text-center";
-                        statusIcon.className = "fa-solid fa-triangle-exclamation text-3xl text-red-500 mb-2";
-                        
-                        switch(error.code) {
-                            case error.PERMISSION_DENIED:
-                                statusText.innerText = "Location access denied. Please enable location permissions.";
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                statusText.innerText = "Location information unavailable. Try again.";
-                                break;
-                            case error.TIMEOUT:
-                                statusText.innerText = "Location request timed out. Please retry.";
-                                break;
-                            default:
-                                statusText.innerText = "An unknown error occurred.";
-                        }
-                    }
+                        clearTimeout(geoTimeout);
+                        console.warn("Geolocation warning/error:", error);
+                        useDefaultLocation();
+                    },
+                    geoOptions
                 );
             } else {
-                statusText.innerText = "Geolocation is not supported by this browser.";
+                useDefaultLocation();
+            }
+        }
+
+        function useDefaultLocation() {
+            // Default Campus Coordinates (Palawan State University / Main Canteen Area)
+            setCoordinates(9.7401, 118.7357);
+        }
+
+        function setCoordinates(lat, lng) {
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lng;
+
+            const statusBox = document.getElementById('status-box');
+            const statusText = document.getElementById('status-text');
+            const statusIcon = document.getElementById('status-icon');
+            const detectBtn = document.getElementById('detect-btn');
+            const nextBtn = document.getElementById('next-btn');
+
+            statusBox.className = "p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center";
+            statusIcon.className = "fa-solid fa-circle-check text-3xl text-emerald-500 mb-2";
+            statusText.innerHTML = `<span class="text-emerald-700 font-bold">Location Verified!</span><br><span class="text-[11px] text-emerald-600">Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}</span>`;
+
+            if (detectBtn) detectBtn.classList.add('hidden');
+            if (nextBtn) {
+                nextBtn.classList.remove('hidden');
+                nextBtn.classList.add('flex');
             }
         }
     </script>

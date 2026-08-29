@@ -9,9 +9,23 @@ class CustomUser(AbstractUser):
         ('STUDENT', 'Student'),
         ('FACULTY', 'Faculty'),
         ('STAFF', 'Canteen Staff'),
+        ('DELIVERY', 'Delivery Personnel'),
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='STUDENT')
     is_email_verified = models.BooleanField(default=False)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    vehicle_plate = models.CharField(max_length=50, blank=True, null=True)
+    account_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('active', 'Active'),
+            ('restricted', 'Restricted'),
+            ('banned', 'Banned'),
+            ('held', 'Held'),
+            ('penalized', 'Penalized'),
+        ],
+        default='active'
+    )
     
     # OTP Fields
     otp_code = models.CharField(max_length=6, blank=True, null=True)

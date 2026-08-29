@@ -1,6 +1,6 @@
 import uuid
 from django.db import models
-from order_management.models import Order
+from customer_portal.models import Order
 
 class DigitalQueueSlip(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='queue_slip')
