@@ -11,7 +11,17 @@
 </head>
 <body class="bg-zinc-900 min-h-screen flex items-center justify-center p-4">
 
-    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 relative z-10" x-data="{ mode: '{{ mode|default:"login" }}' }">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 relative z-10" 
+         x-data="{ 
+            mode: '{{ mode|default:"login" }}',
+            showLoginPass: false,
+            showSignupPass: false,
+            rememberMe: false,
+            showTermsModal: false,
+            termsOpened: false,
+            agreedTerms: false
+         }">
+        
         <!-- Progress Bar / Header -->
         <div class="space-y-2">
             <div class="flex justify-between text-xs font-extrabold text-zinc-400 uppercase tracking-wider">
@@ -61,8 +71,21 @@
 
             <div>
                 <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Password</label>
-                <input type="password" name="password" required placeholder="••••••••"
-                    class="w-full px-4 py-3 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
+                <div class="relative">
+                    <input :type="showLoginPass ? 'text' : 'password'" name="password" required placeholder="••••••••"
+                        class="w-full px-4 py-3 pr-10 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
+                    <button type="button" @click="showLoginPass = !showLoginPass" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 cursor-pointer">
+                        <i :class="showLoginPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Remember Me Checkbox -->
+            <div class="flex items-center justify-between text-xs">
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" name="remember_me" class="w-4 h-4 rounded border-zinc-300 text-orange-500 focus:ring-orange-500 cursor-pointer">
+                    <span class="font-bold text-zinc-600">Remember Me</span>
+                </label>
             </div>
 
             <button type="submit" class="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl shadow-lg shadow-orange-500/25 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20">
@@ -90,15 +113,62 @@
 
             <div>
                 <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Password</label>
-                <input type="password" name="password" required placeholder="••••••••"
-                    class="w-full px-4 py-3 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
+                <div class="relative">
+                    <input :type="showSignupPass ? 'text' : 'password'" name="password" required placeholder="••••••••"
+                        class="w-full px-4 py-3 pr-10 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
+                    <button type="button" @click="showSignupPass = !showSignupPass" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 cursor-pointer">
+                        <i :class="showSignupPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                    </button>
+                </div>
             </div>
 
-            <button type="submit" class="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl shadow-lg shadow-orange-500/25 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20">
+            <!-- Terms and Conditions Agreement -->
+            <div class="space-y-2 pt-1">
+                <div class="flex items-start gap-2">
+                    <input type="checkbox" id="terms_check" x-model="agreedTerms" :disabled="!termsOpened" required
+                           class="mt-0.5 w-4 h-4 rounded border-zinc-300 text-orange-500 focus:ring-orange-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    <label for="terms_check" class="text-xs text-zinc-600 font-medium select-none">
+                        I have read and agree to the 
+                        <button type="button" @click="showTermsModal = true; termsOpened = true;" class="text-orange-600 font-bold underline hover:text-orange-700 cursor-pointer">
+                            Terms and Conditions
+                        </button>
+                        <span class="block text-[10px] text-orange-500 font-bold" x-show="!termsOpened">*(Please open & read Terms first)*</span>
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" 
+                    :disabled="!termsOpened || !agreedTerms"
+                    :class="(!termsOpened || !agreedTerms) ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/25 cursor-pointer'"
+                    class="w-full py-3.5 text-white font-black rounded-2xl shadow-lg transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 relative z-20">
                 <span>Register & Continue</span>
                 <i class="fa-solid fa-arrow-right text-xs"></i>
             </button>
         </form>
+
+        <!-- Terms & Conditions Modal -->
+        <div x-show="showTermsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" style="display: none;">
+            <div @click.away="showTermsModal = false" class="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-4 max-h-[80vh] flex flex-col">
+                <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
+                    <h3 class="text-base font-black text-zinc-900">Canteen Express - Terms and Conditions</h3>
+                    <button @click="showTermsModal = false" class="text-zinc-400 hover:text-zinc-700 text-lg font-bold cursor-pointer">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="overflow-y-auto text-xs text-zinc-600 space-y-3 leading-relaxed pr-2">
+                    <p><strong>1. Acceptance of Terms:</strong> By registering and using Canteen Express, you agree to comply with and be bound by these Terms and Conditions.</p>
+                    <p><strong>2. Institutional Account Use:</strong> Faculty and staff accounts require a valid Palawan State University institutional email ending in @psu.palawan.edu.ph. You are responsible for maintaining the confidentiality of your account credentials.</p>
+                    <p><strong>3. Ordering & Campus Deliveries:</strong> Delivery requests are processed within campus buildings and rooms. Convenience fees and delivery charges apply as stated during checkout.</p>
+                    <p><strong>4. Privacy Policy:</strong> Your personal data, contact number, and location information are collected solely for order processing, queuing, and delivery tracking purposes.</p>
+                    <p><strong>5. User Conduct:</strong> Any misuse of the platform, fraudulent ordering, or harassment of delivery riders and canteen staff will result in account restriction or ban.</p>
+                </div>
+                <div class="pt-3 border-t border-zinc-100 flex justify-end">
+                    <button type="button" @click="showTermsModal = false; termsOpened = true;" class="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-md">
+                        I Understand & Agree
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <div class="text-center pt-2 border-t border-zinc-100">
             <a href="{% url 'accounts:faculty_location' %}" class="text-xs font-bold text-zinc-400 hover:text-zinc-700 transition">

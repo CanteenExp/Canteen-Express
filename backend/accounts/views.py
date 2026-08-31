@@ -66,6 +66,7 @@ def faculty_auth_view(request):
         elif action == 'login':
             email = request.POST.get('email', '').strip().lower()
             password = request.POST.get('password')
+            remember_me = request.POST.get('remember_me')
             
             try:
                 user_obj = User.objects.filter(email=email).first()
@@ -74,6 +75,10 @@ def faculty_auth_view(request):
                     if user is not None:
                         logout(request)
                         login(request, user)
+                        if remember_me:
+                            request.session.set_expiry(1209600)
+                        else:
+                            request.session.set_expiry(0)
                         request.session['faculty_email'] = email
                         return redirect('accounts:dashboard')
                     else:
