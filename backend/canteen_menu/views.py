@@ -430,8 +430,4 @@ def process_barcode_api(request):
 
 
 def counter_pos_view(request):
-<<<<<<< HEAD
     return render(request, 'canteen_menu/counter_pos.html')
-=======
-    return render(request, 'canteen_menu/counter_pos.html')
->>>>>>> pilot-testing
