@@ -1,0 +1,29 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete Category - Canteen Staff</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body class="bg-zinc-900 text-white min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-zinc-800 border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 text-center">
+        <div class="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl border border-red-500/30">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div>
+            <h1 class="text-lg font-black text-white">Delete Category?</h1>
+            <p class="text-xs text-zinc-400 mt-1">Are you sure you want to delete category <span class="text-orange-400 font-bold">"{{ category.name }}"</span>? Items under this category may be affected.</p>
+        </div>
+
+        <form method="POST" class="flex items-center gap-3 pt-2">
+            {% csrf_token %}
+            <a href="{% url 'canteen_menu:staff_menu_list' %}" class="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 rounded-xl text-xs transition">Cancel</a>
+            <button type="submit" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-xl text-xs shadow-lg shadow-red-600/30 transition">Yes, Delete</button>
+        </form>
+    </div>
+</body>
+</html>

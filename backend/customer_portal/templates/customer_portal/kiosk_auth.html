@@ -1,0 +1,240 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log In & Onboarding - Canteen Express</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Tailwind Native Color Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            orange: '#FF6117',
+                            dark: '#1E1E1E',
+                            card: '#292929',
+                            light: '#EAEAEA',
+                            slate: '#8E8E93',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+        }
+
+        /* Smooth Slide Transition */
+        .slide-item {
+            transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-[#121212] text-brand-light min-h-screen overflow-y-auto relative select-none flex items-center justify-center p-4 md:p-8">
+
+    <!-- MAIN SPLIT CONTAINER CARD -->
+    <div class="w-full max-w-5xl bg-brand-card/95 backdrop-blur-xl rounded-[36px] shadow-2xl border border-white/10 relative z-10 overflow-hidden flex flex-col lg:flex-row my-auto">
+
+        <!-- ================= LEFT PANEL: INTERACTIVE ONBOARDING CAROUSEL ================= -->
+        <div class="w-full lg:w-1/2 bg-[#1A1A1A] p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/10 relative min-h-[580px]">
+            
+            <!-- Top Controls (Back, Home, Badge, Skip) -->
+            <div class="flex items-center justify-between w-full mb-4">
+                <div class="flex items-center gap-2">
+                    <a href="{% url 'kiosk_welcome' %}" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition active:scale-95 border border-white/10">
+                        <i class="fa-solid fa-arrow-left text-xs"></i>
+                    </a>
+                    <a href="{% url 'kiosk_welcome' %}" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition active:scale-95 border border-white/10">
+                        <i class="fa-solid fa-house text-xs"></i>
+                    </a>
+                </div>
+
+                <div class="px-3 py-1 rounded-full bg-brand-orange/15 border border-brand-orange/30 flex items-center gap-1.5">
+                    <i class="fa-solid fa-bolt text-brand-orange text-xs"></i>
+                    <span class="text-[11px] font-bold text-brand-orange uppercase tracking-wide">Student & Faculty Kiosk</span>
+                </div>
+            </div>
+
+            <!-- CAROUSEL CONTENT WRAPPER -->
+            <div class="w-full my-auto text-center flex flex-col items-center">
+                
+                <!-- SLIDE 1 -->
+                <div id="slide-0" class="slide-item w-full flex flex-col items-center">
+                    <div class="w-full h-56 sm:h-64 rounded-3xl overflow-hidden shadow-2xl relative mb-6 border border-white/10">
+                        <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80" 
+                             class="w-full h-full object-cover" alt="Order Ahead">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-2">Order Ahead</h2>
+                    <p class="text-xs sm:text-sm text-brand-slate max-w-xs leading-relaxed">
+                        Browse our daily menu, customize your favorite meals, and send orders straight to the canteen.
+                    </p>
+                </div>
+
+                <!-- SLIDE 2 -->
+                <div id="slide-1" class="slide-item w-full flex flex-col items-center hidden">
+                    <div class="w-full h-56 sm:h-64 rounded-3xl overflow-hidden shadow-2xl relative mb-6 border border-white/10">
+                        <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80" 
+                             class="w-full h-full object-cover" alt="Skip the Line">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-2">Skip the Line</h2>
+                    <p class="text-xs sm:text-sm text-brand-slate max-w-xs leading-relaxed">
+                        Pay quickly at the kiosk or via your phone, then pick up your warm meal when ready.
+                    </p>
+                </div>
+
+                <!-- SLIDE 3 -->
+                <div id="slide-2" class="slide-item w-full flex flex-col items-center hidden">
+                    <div class="w-full h-56 sm:h-64 rounded-3xl overflow-hidden shadow-2xl relative mb-6 border border-white/10">
+                        <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80" 
+                             class="w-full h-full object-cover" alt="Fresh & Hot">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-2">Fresh & Delicious</h2>
+                    <p class="text-xs sm:text-sm text-brand-slate max-w-xs leading-relaxed">
+                        Enjoy hot food prepared daily with top quality ingredients right inside your campus.
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- Bottom Carousel Controls (Dots & Next Button) -->
+            <div class="w-full flex flex-col items-center gap-4 mt-4">
+                
+                <!-- Pagination Dots -->
+                <div class="flex items-center gap-2">
+                    <button onclick="goToSlide(0)" id="dot-0" class="h-2 w-7 rounded-full bg-brand-orange transition-all duration-300"></button>
+                    <button onclick="goToSlide(1)" id="dot-1" class="h-2 w-2 rounded-full bg-white/20 transition-all duration-300"></button>
+                    <button onclick="goToSlide(2)" id="dot-2" class="h-2 w-2 rounded-full bg-white/20 transition-all duration-300"></button>
+                </div>
+
+                <!-- Next Button -->
+                <button onclick="nextSlide()" 
+                        class="w-full bg-[#2B2B2B] hover:bg-[#353535] text-white font-bold text-xs sm:text-sm py-3.5 rounded-2xl border border-white/10 flex items-center justify-center gap-2 transition active:scale-98">
+                    <span>Next</span>
+                    <i class="fa-solid fa-arrow-right text-brand-orange"></i>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- ================= RIGHT PANEL: LOGIN FORM ================= -->
+        <div class="w-full lg:w-1/2 p-6 sm:p-10 flex flex-col justify-between my-auto">
+
+            <!-- Right Header -->
+            <div class="mb-6">
+                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-1">Login to Account</h1>
+                <p class="text-xs text-brand-slate">Please enter your credentials to continue</p>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <form action="{% url 'kiosk_home' %}" method="GET" class="w-full space-y-3.5">
+                
+                <!-- Username Input -->
+                <div>
+                    <label class="block text-xs font-semibold text-brand-slate mb-1 ml-1 uppercase tracking-wider">Username</label>
+                    <div class="relative flex items-center">
+                        <i class="fa-solid fa-user absolute left-4 text-brand-slate text-sm"></i>
+                        <input type="text" name="username" required placeholder="Enter username" 
+                               class="w-full bg-[#1C1C1C] text-white text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-white/10 focus:border-brand-orange focus:outline-none transition placeholder-gray-500">
+                    </div>
+                </div>
+
+                <!-- Email Input -->
+                <div>
+                    <label class="block text-xs font-semibold text-brand-slate mb-1 ml-1 uppercase tracking-wider">Email</label>
+                    <div class="relative flex items-center">
+                        <i class="fa-solid fa-envelope absolute left-4 text-brand-slate text-sm"></i>
+                        <input type="email" name="email" required placeholder="Enter email address" 
+                               class="w-full bg-[#1C1C1C] text-white text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-white/10 focus:border-brand-orange focus:outline-none transition placeholder-gray-500">
+                    </div>
+                </div>
+
+                <!-- Password Input -->
+                <div>
+                    <label class="block text-xs font-semibold text-brand-slate mb-1 ml-1 uppercase tracking-wider">Password</label>
+                    <div class="relative flex items-center">
+                        <i class="fa-solid fa-lock absolute left-4 text-brand-slate text-sm"></i>
+                        <input type="password" name="password" required placeholder="Enter password" 
+                               class="w-full bg-[#1C1C1C] text-white text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-white/10 focus:border-brand-orange focus:outline-none transition placeholder-gray-500">
+                    </div>
+                </div>
+
+                <!-- Remember Me & Forgot Password -->
+                <div class="flex items-center justify-between text-xs pt-1 px-1">
+                    <label class="flex items-center text-brand-slate cursor-pointer">
+                        <input type="checkbox" class="accent-brand-orange rounded mr-2">
+                        Remember me
+                    </label>
+                    <a href="#" class="text-brand-orange hover:underline font-semibold">Forgot password?</a>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" 
+                        class="w-full bg-brand-orange hover:bg-orange-600 active:scale-95 text-white font-extrabold text-xs sm:text-sm py-4 rounded-2xl shadow-xl shadow-brand-orange/20 transition-all text-center uppercase tracking-wider border border-orange-400/30 mt-2">
+                    Sign In
+                </button>
+
+            </form>
+
+            <!-- Footer Sign-up Link -->
+            <footer class="w-full text-center mt-6 pt-2">
+                <p class="text-xs text-brand-slate font-medium">
+                    Don't have an account? 
+                    <a href="#" class="text-brand-orange font-bold hover:underline ml-1">Sign up</a>
+                </p>
+            </footer>
+
+        </div>
+
+    </div>
+
+    <!-- CAROUSEL SCRIPT -->
+    <script>
+        let currentSlide = 0;
+        const totalSlides = 3;
+
+        function goToSlide(index) {
+            // Hide all slides
+            for (let i = 0; i < totalSlides; i++) {
+                document.getElementById(`slide-${i}`).classList.add('hidden');
+                
+                // Reset dots
+                const dot = document.getElementById(`dot-${i}`);
+                dot.classList.remove('w-7', 'bg-brand-orange');
+                dot.classList.add('w-2', 'bg-white/20');
+            }
+
+            // Show selected slide
+            document.getElementById(`slide-${index}`).classList.remove('hidden');
+
+            // Highlight active dot
+            const activeDot = document.getElementById(`dot-${index}`);
+            activeDot.classList.remove('w-2', 'bg-white/20');
+            activeDot.classList.add('w-7', 'bg-brand-orange');
+
+            currentSlide = index;
+        }
+
+        function nextSlide() {
+            let nextIndex = (currentSlide + 1) % totalSlides;
+            goToSlide(nextIndex);
+        }
+    </script>
+
+</body>
+</html>

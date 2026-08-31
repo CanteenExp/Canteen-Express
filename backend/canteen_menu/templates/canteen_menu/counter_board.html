@@ -1,0 +1,385 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Counter Board - Canteen Express Staff</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        .custom-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-[#f5f0eb] text-gray-800 font-sans antialiased min-h-screen flex">
+
+    <!-- ================= SIDEBAR ================= -->
+    <aside class="w-64 bg-[#0d0d12] text-white flex flex-col justify-between shrink-0 min-h-screen p-4 hidden md:flex">
+        <div class="space-y-8">
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-3 px-2 pt-2">
+                <div class="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-orange-500/30">
+                    <i class="fa-solid fa-utensils"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-sm tracking-wide text-white">Canteen Express</h1>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Staff View</p>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="space-y-6 text-xs font-semibold">
+                <div>
+                    <p class="text-[10px] uppercase text-gray-500 px-3 mb-2 font-bold tracking-wider">Operations</p>
+                    <a href="{% url 'canteen_menu:counter_board' %}" class="flex items-center gap-3 px-4 py-3 rounded-2xl bg-orange-500 text-white font-bold shadow-md shadow-orange-500/20 transition">
+                        <i class="fa-solid fa-clipboard-list text-base w-5 text-center"></i>
+                        <span>Counter Board</span>
+                    </a>
+                </div>
+
+                <div>
+                    <p class="text-[10px] uppercase text-gray-500 px-3 mb-2 font-bold tracking-wider">Management</p>
+                    <a href="{% url 'canteen_menu:staff_menu_list' %}" class="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition">
+                        <i class="fa-solid fa-plus-square text-base w-5 text-center"></i>
+                        <span>Menu Management</span>
+                    </a>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Staff Profile Card -->
+        <div class="bg-[#16161e] p-3 rounded-2xl flex items-center gap-3 border border-white/5">
+            <div class="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center font-bold text-white text-sm shadow-sm">
+                S
+            </div>
+            <div class="text-xs">
+                <p class="font-bold text-white">Staff Member</p>
+                <p class="text-[10px] text-gray-400">Canteen Staff</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ================= MAIN CONTENT AREA ================= -->
+    <main class="flex-1 flex flex-col min-w-0 min-h-screen">
+        
+        <!-- Top Navigation Bar -->
+        <header class="bg-[#0d0d12] text-white px-6 py-3.5 flex items-center justify-between border-b border-white/5">
+            <div class="flex items-center gap-3">
+                <span class="text-base">🍔</span>
+                <h2 class="font-bold text-sm text-gray-200">Counter Board</h2>
+            </div>
+            
+            <div class="flex items-center gap-4 text-xs font-semibold">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> LIVE
+                </span>
+                <span class="text-gray-400 font-mono" id="live-clock">00:00:00 PM</span>
+            </div>
+        </header>
+
+        <!-- Main Body Content -->
+        <div class="p-4 sm:p-8 max-w-[1600px] w-full mx-auto space-y-6">
+
+            <!-- Title & Top Info Pills -->
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-black text-gray-900 tracking-tight">Kitchen Counter Board</h1>
+                    <p class="text-xs text-gray-500 font-medium mt-0.5">Real-time live queue and order processing</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 text-xs font-medium">
+                    <span class="bg-orange-100/70 text-orange-700 px-3 py-1.5 rounded-full border border-orange-200/60">
+                        Tap action buttons to advance status
+                    </span>
+                    <a href="{% url 'canteen_menu:counter_pos' %}" target="_blank" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition shadow-md shadow-orange-500/20">
+                        <i class="fa-solid fa-barcode mr-1"></i> Open Counter POS ↗
+                    </a>
+                </div>
+            </div>
+
+            <!-- Top Summary Stats Grid -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Pending Stat -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60 flex flex-col justify-between">
+                    <span class="text-3xl font-black text-gray-900">{{ incoming_orders|length }}</span>
+                    <span class="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase mt-3">PENDING</span>
+                </div>
+                <!-- Preparing Stat -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60 flex flex-col justify-between">
+                    <span class="text-3xl font-black text-orange-500">{{ preparing_orders|length }}</span>
+                    <span class="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase mt-3">PREPARING</span>
+                </div>
+                <!-- Ready Stat -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60 flex flex-col justify-between">
+                    <span class="text-3xl font-black text-emerald-500">{{ ready_orders|length }}</span>
+                    <span class="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase mt-3">READY</span>
+                </div>
+                <!-- Done Today Stat -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200/60 flex flex-col justify-between">
+                    <span class="text-3xl font-black text-gray-800">{{ done_today_count }}</span>
+                    <span class="text-[11px] font-extrabold text-gray-400 tracking-wider uppercase mt-3">DONE TODAY</span>
+                </div>
+            </div>
+
+            <!-- ================= KANBAN BOARD COLUMNS ================= -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+                <!-- ---------------- COLUMN 1: INCOMING ORDERS ---------------- -->
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-xs font-black tracking-wider uppercase text-gray-600">INCOMING</span>
+                        <span class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 font-bold text-xs flex items-center justify-center">
+                            {{ incoming_orders|length }}
+                        </span>
+                    </div>
+
+                    <div class="space-y-4 custom-scroll max-h-[75vh] overflow-y-auto pr-1">
+                        {% for order in incoming_orders %}
+                        <div class="bg-white rounded-3xl p-5 border-2 border-gray-200/80 shadow-sm space-y-4" id="order-card-{{ order.id }}">
+                            <div class="flex items-start justify-between border-b border-dashed border-gray-200 pb-3">
+                                <div>
+                                    <h3 class="text-xl font-black text-orange-500">{{ order.order_number }}</h3>
+                                    <p class="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
+                                        <i class="fa-regular fa-clock"></i> {{ order.created_at|time:"h:i A" }}
+                                    </p>
+                                </div>
+                                <span class="bg-slate-100 text-slate-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-slate-200 uppercase">
+                                    • {{ order.status }}
+                                </span>
+                            </div>
+
+                            <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-orange-400 text-white font-bold flex items-center justify-center text-xs">
+                                    {{ order.customer.username|slice:":1"|upper }}
+                                </div>
+                                <div>
+                                    <p class="font-extrabold text-xs text-gray-800">{{ order.customer.get_full_name|default:order.customer.username }}</p>
+                                    <p class="text-[10px] text-gray-500 font-medium capitalize">{{ order.customer.role|default:"Customer" }}</p>
+                                </div>
+                            </div>
+
+                            <div class="text-xs space-y-1.5 font-semibold text-gray-700 py-1">
+                                {% for item in order.items.all %}
+                                <div class="flex justify-between">
+                                    <span><span class="text-orange-500 font-bold">x{{ item.quantity }}</span> {{ item.product.name }}</span>
+                                    <span class="text-gray-900">₱{{ item.total_price }}</span>
+                                </div>
+                                {% empty %}
+                                <p class="text-xs text-gray-400">No items found.</p>
+                                {% endfor %}
+                            </div>
+
+                            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                                <span class="text-lg font-black text-orange-500">₱{{ order.total_amount }}</span>
+                                <button type="button" data-order-id="{{ order.id }}" data-status="preparing" class="status-btn bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-orange-500/20 active:scale-95 transition">
+                                    Start Preparing
+                                </button>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="bg-white rounded-3xl p-8 border border-gray-200 text-center text-gray-400 text-xs">
+                            No incoming orders right now.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- ---------------- COLUMN 2: IN THE KITCHEN ---------------- -->
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-xs font-black tracking-wider uppercase text-gray-600">IN THE KITCHEN</span>
+                        <span class="w-6 h-6 rounded-full bg-orange-500 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+                            {{ preparing_orders|length }}
+                        </span>
+                    </div>
+
+                    <div class="space-y-4 custom-scroll max-h-[75vh] overflow-y-auto pr-1">
+                        {% for order in preparing_orders %}
+                        <div class="bg-white rounded-3xl p-5 border-2 border-orange-200/80 shadow-md space-y-4" id="order-card-{{ order.id }}">
+                            <div class="flex items-start justify-between border-b border-dashed border-gray-200 pb-3">
+                                <div>
+                                    <h3 class="text-xl font-black text-orange-500">{{ order.order_number }}</h3>
+                                    <p class="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
+                                        <i class="fa-regular fa-clock"></i> {{ order.created_at|time:"h:i A" }}
+                                    </p>
+                                </div>
+                                <span class="bg-amber-50 text-amber-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-200 uppercase">
+                                    • {{ order.status }}
+                                </span>
+                            </div>
+
+                            <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-orange-500 text-white font-bold flex items-center justify-center text-xs">
+                                    {{ order.customer.username|slice:":1"|upper }}
+                                </div>
+                                <div>
+                                    <p class="font-extrabold text-xs text-gray-800">{{ order.customer.get_full_name|default:order.customer.username }}</p>
+                                    <p class="text-[10px] text-gray-500 font-medium capitalize">{{ order.customer.role|default:"Customer" }}</p>
+                                </div>
+                            </div>
+
+                            <div class="text-xs space-y-1.5 font-semibold text-gray-700 py-1">
+                                {% for item in order.items.all %}
+                                <div class="flex justify-between">
+                                    <span><span class="text-orange-500 font-bold">x{{ item.quantity }}</span> {{ item.product.name }}</span>
+                                    <span class="text-gray-900">₱{{ item.total_price }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                                <span class="text-lg font-black text-orange-500">₱{{ order.total_amount }}</span>
+                                <button type="button" data-order-id="{{ order.id }}" data-status="ready" class="status-btn bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md shadow-emerald-500/20 active:scale-95 transition">
+                                    Order Ready
+                                </button>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="bg-white rounded-3xl p-8 border border-gray-200 text-center text-gray-400 text-xs">
+                            No orders currently being cooked.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- ---------------- COLUMN 3: READY TO SERVE ---------------- -->
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-xs font-black tracking-wider uppercase text-gray-600">READY TO SERVE</span>
+                        <span class="w-6 h-6 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+                            {{ ready_orders|length }}
+                        </span>
+                    </div>
+
+                    <div class="space-y-4 custom-scroll max-h-[75vh] overflow-y-auto pr-1">
+                        {% for order in ready_orders %}
+                        <div class="bg-white rounded-3xl overflow-hidden border-2 border-emerald-400 shadow-lg space-y-4" id="order-card-{{ order.id }}">
+                            <div class="bg-emerald-500 text-white px-4 py-2.5 flex items-center justify-between font-bold text-xs">
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> Order Ready</span>
+                                <span class="bg-emerald-600/80 px-2.5 py-0.5 rounded-full text-[10px]">For Pickup / Dispatch</span>
+                            </div>
+
+                            <div class="p-5 space-y-4 pt-1">
+                                <div class="flex items-start justify-between border-b border-dashed border-gray-200 pb-3">
+                                    <div>
+                                        <h3 class="text-xl font-black text-orange-500">{{ order.order_number }}</h3>
+                                        <p class="text-[11px] text-gray-400 font-medium flex items-center gap-1 mt-0.5">
+                                            <i class="fa-regular fa-clock"></i> {{ order.created_at|time:"h:i A" }}
+                                        </p>
+                                    </div>
+                                    <span class="bg-emerald-50 text-emerald-600 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200 uppercase">
+                                        • {{ order.status }}
+                                    </span>
+                                </div>
+
+                                <div class="bg-stone-100/70 p-2.5 rounded-2xl flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-xl bg-amber-500 text-white font-bold flex items-center justify-center text-xs">
+                                        {{ order.customer.username|slice:":1"|upper }}
+                                    </div>
+                                    <div>
+                                        <p class="font-extrabold text-xs text-gray-800">{{ order.customer.get_full_name|default:order.customer.username }}</p>
+                                        <p class="text-[10px] text-gray-500 font-medium capitalize">{{ order.customer.role|default:"Customer" }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="text-xs space-y-1.5 font-semibold text-gray-700 py-1">
+                                    {% for item in order.items.all %}
+                                    <div class="flex justify-between">
+                                        <span><span class="text-orange-500 font-bold">x{{ item.quantity }}</span> {{ item.product.name }}</span>
+                                        <span class="text-gray-900">₱{{ item.total_price }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                                    <span class="text-lg font-black text-orange-500">₱{{ order.total_amount }}</span>
+                                    <button type="button" data-order-id="{{ order.id }}" data-status="completed" class="status-btn bg-slate-900 hover:bg-black text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md active:scale-95 transition">
+                                        Complete / Served
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="bg-white rounded-3xl p-8 border border-gray-200 text-center text-gray-400 text-xs">
+                            No orders ready for pickup.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Live Clock Script & Status Updater -->
+    <script>
+        function getCSRFToken() {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, 10) === 'csrftoken=') {
+                        cookieValue = decodeURIComponent(cookie.substring(10));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.status-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const orderId = this.getAttribute('data-order-id');
+                    const newStatus = this.getAttribute('data-status');
+                    
+                    fetch(`/kitchen/order/${orderId}/update-status/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken(),
+                        },
+                        body: JSON.stringify({ status: newStatus })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.reload();
+                        } else {
+                            alert('Error: ' + (data.error || 'Failed to update order status.'));
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                });
+            });
+
+            function updateClock() {
+                const now = new Date();
+                let hours = now.getHours();
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12 || 12;
+                const strTime = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+                document.getElementById('live-clock').textContent = strTime;
+            }
+            setInterval(updateClock, 1000);
+            updateClock();
+
+            // Real-time auto-refresh every 5 seconds
+            setInterval(() => {
+                window.location.reload();
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

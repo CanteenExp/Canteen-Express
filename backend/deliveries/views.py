@@ -1,48 +1,90 @@
-# deliveries/views.py
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
+from django.shortcuts import render, get_object_or_404, redirect
+from django.utils import timezone
+from django.http import JsonResponse
+import json
+from accounts.decorators import role_required
+from .models import DeliveryRequest, DeliveryMessage
 
-@login_required
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
 def delivery_dashboard(request):
-    # Retrieve active orders pending or in-transit for delivery
-    sample_deliveries = [
-        {
-            'id': 101,
-            'customer_name': 'Prof. Juan Dela Cruz',
-            'location': 'Building A - Room 302',
-            'phone': '09123456789',
-            'status': 'Ready for Pick-up',
-            'items': '1x Chicken Inasal, 1x Iced Tea',
-        },
-        {
-            'id': 102,
-            'customer_name': 'Dr. Maria Santos',
-            'location': 'Faculty Lounge - 2nd Floor',
-            'phone': '09987654321',
-            'status': 'Out for Delivery',
-            'items': '2x Pork Sinigang, 2x Rice',
-        }
-    ]
+    pending_deliveries = DeliveryRequest.objects.filter(status=DeliveryRequest.RequestStatus.SEARCHING).order_by('-requested_at')
+    my_deliveries = DeliveryRequest.objects.filter(rider=request.user).exclude(status=DeliveryRequest.RequestStatus.REJECTED).order_by('-requested_at')
+    
+    # Calculate earnings (₱30 per completed delivery)
+    completed_count = DeliveryRequest.objects.filter(rider=request.user, status=DeliveryRequest.RequestStatus.DELIVERED).count()
+    total_earnings = completed_count * 30.00
+    active_deliveries_count = DeliveryRequest.objects.filter(rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED).count()
     
     context = {
-        'deliveries': sample_deliveries,
+        'pending_deliveries': pending_deliveries,
+        'my_deliveries': my_deliveries,
+        'completed_count': completed_count,
+        'total_earnings': total_earnings,
+        'active_deliveries_count': active_deliveries_count,
     }
-    # Point directly to delivery_dashboard.html inside backend/templates/
     return render(request, 'delivery_dashboard.html', context)
 
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
+def accept_delivery(request, delivery_id):
+    delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    active_count = DeliveryRequest.objects.filter(rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED).count()
+    if active_count >= 3:
+        return redirect('deliveries:dashboard')
 
-@login_required
-def update_delivery_status(request, order_id):
-    if request.method == 'POST':
-        new_status = request.POST.get('status', 'Accepted')
-        # Logic to update Order.status in database goes here
-        messages.success(request, f"Order #{order_id} updated to {new_status}.")
+    if delivery.status == DeliveryRequest.RequestStatus.SEARCHING:
+        delivery.status = DeliveryRequest.RequestStatus.ACCEPTED
+        delivery.rider = request.user
+        delivery.accepted_at = timezone.now()
+        delivery.save()
+
+        order = delivery.order
+        order.status = 'pending'
+        order.save()
+
     return redirect('deliveries:dashboard')
 
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
+def complete_delivery(request, delivery_id):
+    delivery = get_object_or_404(DeliveryRequest, id=delivery_id, rider=request.user)
+    if delivery.status == DeliveryRequest.RequestStatus.ACCEPTED:
+        delivery.status = DeliveryRequest.RequestStatus.DELIVERED
+        delivery.delivered_at = timezone.now()
+        delivery.save()
 
-@login_required
-def accept_delivery(request, order_id):
-    if request.method == 'POST':
-        messages.success(request, f"Order #{order_id} successfully accepted!")
+        order = delivery.order
+        order.status = 'completed'
+        order.save()
+
     return redirect('deliveries:dashboard')
+
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
+def get_delivery_messages(request, delivery_id):
+    delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    messages = delivery.messages.all().order_by('timestamp')
+    msg_list = [{
+        'id': m.id,
+        'sender': m.sender.username,
+        'sender_role': m.sender.role,
+        'is_me': m.sender == request.user,
+        'message': m.message,
+        'time': m.timestamp.strftime('%H:%M')
+    } for m in messages]
+    return JsonResponse({'success': True, 'messages': msg_list})
+
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
+def send_delivery_message(request, delivery_id):
+    if request.method == 'POST':
+        try:
+            delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+            data = json.loads(request.body)
+            text = data.get('message', '').strip()
+            if text:
+                DeliveryMessage.objects.create(
+                    delivery=delivery,
+                    sender=request.user,
+                    message=text
+                )
+                return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+    return JsonResponse({'success': False}, status=400)

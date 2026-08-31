@@ -1,0 +1,1312 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty & Staff Portal - Canteen Express</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- Leaflet CSS & JS for Real-time Maps API -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            orange: '#FF6117',
+                            dark: '#121212',
+                            card: '#242424',
+                            light: '#EAEAEA',
+                            amber: '#FFB800',
+                            peach: '#FFECD9',
+                            slate: '#8E8E93',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-brand-dark text-brand-light h-screen flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative" x-data="facultyPortal()">
+
+    <!-- ================= HEADER ================= -->
+    <header class="bg-brand-dark border-b border-white/10 shrink-0 space-y-3 pb-3">
+        <div class="max-w-7xl mx-auto px-4 pt-3">
+            <div class="relative w-full h-16 sm:h-20 rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-r from-brand-orange/30 via-brand-dark to-black p-3 flex items-center justify-between shadow-xl">
+                <!-- Top Banner: Exact GPS Location -->
+                <div class="flex items-center gap-2.5 z-10">
+                    <span class="w-8 h-8 rounded-xl bg-brand-orange text-white flex items-center justify-center text-xs shadow">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </span>
+                    <div>
+                        <span class="text-[9px] text-brand-slate uppercase font-bold block">Exact GPS Location</span>
+                        <span id="gps-location-text" class="text-xs sm:text-sm font-black text-white">Acquiring GPS...</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 z-10">
+                    <span onclick="openPointsModal()" class="cursor-pointer bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-black px-3 py-1 rounded-xl flex items-center gap-1.5 shadow hover:bg-amber-500/30 transition">
+                        <i class="fa-solid fa-coins"></i> <span x-text="userPoints.toFixed(1)">0.0</span> Pts
+                    </span>
+                    <a href="{% url 'accounts:faculty_logout' %}" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-orange text-white flex items-center justify-center font-black text-lg">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                </div>
+                <div>
+                    <h1 class="text-xs sm:text-base font-black text-white leading-tight">Hello, {{ faculty_display_name }}!</h1>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Notification Bell Dropdown Wrapper -->
+                <div class="relative">
+                    <button onclick="toggleNotificationsDropdown(event)" class="relative w-10 h-10 rounded-xl bg-brand-orange/20 hover:bg-brand-orange/30 text-brand-orange border border-brand-orange/30 flex items-center justify-center transition shadow">
+                        <i class="fa-solid fa-bell text-xs"></i>
+                        <span id="ongoing-badge" class="absolute -top-1 -right-1 bg-brand-orange text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black" style="display: none;">0</span>
+                    </button>
+
+                    <!-- Notifications Dropdown -->
+                    <div id="notifications-dropdown" class="absolute right-0 mt-2 w-80 bg-brand-card border border-white/10 rounded-2xl shadow-2xl z-50 hidden p-3 space-y-2 animate-fade-in">
+                        <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                            <h4 class="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-bell text-brand-orange"></i> Order Notifications
+                            </h4>
+                            <button onclick="closeNotificationsDropdown()" class="text-brand-slate hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div id="notifications-dropdown-list" class="space-y-2 max-h-60 overflow-y-auto no-scrollbar">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Wrapper -->
+                <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10 shadow-lg">
+                    <button onclick="toggleSearch(event)" id="search-toggle-btn" type="button" class="w-10 h-10 shrink-0 flex items-center justify-center text-white transition active:scale-95">
+                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                    </button>
+                    <input 
+                        type="text" 
+                        id="search-input" 
+                        oninput="renderMenu()" 
+                        placeholder="Search menu..." 
+                        class="w-full bg-transparent border-0 pl-1 pr-3 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
+                    >
+                </div>
+            </div>
+        </div>
+    </header>
+
+
+    <!-- ================= MAIN LAYOUT ================= -->
+    <div class="flex-1 max-w-7xl w-full mx-auto flex overflow-hidden p-3 sm:p-4 gap-4">
+
+        <!-- Left: Category Sidebar -->
+        <aside class="w-24 sm:w-28 flex-shrink-0 flex flex-col gap-2.5 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
+            <button onclick="selectCategory('all', this)" class="category-btn active-cat flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-orange text-white text-center font-black text-xs gap-1.5 transition shadow-lg shadow-brand-orange/20">
+                <i class="fa-solid fa-utensils text-lg sm:text-xl"></i>
+                <span class="text-[11px] leading-tight">All Items</span>
+            </button>
+            {% for cat in categories %}
+            <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition">
+                <i class="fa-solid {% if 'rice' in cat.name|lower %}fa-bowl-rice{% elif 'biscuit' in cat.name|lower %}fa-cookie{% elif 'beverage' in cat.name|lower %}fa-bottle-water{% elif 'meryenda' in cat.name|lower %}fa-burger{% elif 'diet' in cat.name|lower %}fa-heart-pulse{% else %}fa-bowl-food{% endif %} text-lg sm:text-xl"></i>
+                <span class="text-[11px] leading-tight line-clamp-1">{{ cat.name }}</span>
+            </button>
+            {% endfor %}
+        </aside>
+
+        <!-- Center: Menu Grid -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar space-y-4 pr-1">
+            <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                <h2 id="category-heading" class="text-sm sm:text-lg font-black text-white uppercase tracking-wider">All Items</h2>
+                <span id="items-count-indicator" class="text-xs text-brand-slate font-bold">Showing items</span>
+            </div>
+
+            <section id="menu-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 pb-12">
+            </section>
+        </main>
+
+    </div>
+
+
+    <!-- ================= FOOTER BAR ================= -->
+    <footer class="bg-brand-card border-t border-white/10 p-3 sm:p-4 shrink-0 shadow-2xl z-20">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            
+            <div class="text-left">
+                <span class="text-[10px] sm:text-xs text-brand-slate uppercase font-bold block">Total Amount</span>
+                <span id="cart-total" class="text-xl sm:text-3xl font-black text-brand-orange">₱0.00</span>
+            </div>
+
+            <div class="flex items-center gap-2.5">
+                <button onclick="clearCart()" class="px-4 py-2.5 sm:py-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-brand-slate hover:text-red-400 font-bold text-xs sm:text-sm uppercase tracking-wider transition border border-white/10 active:scale-95">
+                    Clear
+                </button>
+
+                <button onclick="openCartDrawer()" id="next-btn" disabled class="bg-brand-orange disabled:opacity-40 disabled:cursor-not-allowed hover:bg-orange-600 active:scale-95 text-white font-extrabold text-xs sm:text-sm px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl shadow-lg shadow-brand-orange/25 uppercase tracking-wider transition flex items-center gap-2">
+                    <span id="next-btn-text">View Cart (0)</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+
+        </div>
+    </footer>
+
+
+    <!-- ================= COLLAPSIBLE CART DRAWER ================= -->
+    <div id="cart-drawer-backdrop" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden transition-opacity flex justify-end">
+        <div class="max-w-md w-full bg-brand-card border-l border-white/10 p-5 flex flex-col justify-between shadow-2xl h-full animate-slide-left">
+            
+            <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-cart-shopping text-brand-orange text-xl"></i>
+                    <h3 class="text-lg font-black text-white uppercase tracking-wider">Your Order Cart</h3>
+                </div>
+                <button onclick="closeCartDrawer()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div id="drawer-cart-list" class="flex-1 overflow-y-auto no-scrollbar py-4 space-y-3">
+            </div>
+
+            <div class="border-t border-white/10 pt-4 space-y-4 shrink-0">
+                <div class="space-y-1.5 text-xs text-brand-slate">
+                    <div class="flex justify-between">
+                        <span>Items Subtotal</span>
+                        <span id="drawer-subtotal" class="font-bold text-white">₱0.00</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Convenience Fee (Delivery)</span>
+                        <span id="drawer-convenience-fee" class="font-bold text-white">₱0.00</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center text-white font-black text-base pt-2 border-t border-white/10">
+                    <span>Total Amount</span>
+                    <span id="drawer-total-amount" class="text-brand-orange text-xl">₱0.00</span>
+                </div>
+
+                <button onclick="closeCartDrawer(); openCheckoutModal()" class="w-full py-3.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check"></i> Proceed to Delivery Checkout
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- ================= ITEM EXPAND / DETAILS MODAL ================= -->
+    <div id="item-details-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl space-y-4 relative animate-fade-in my-8">
+            <button onclick="closeItemModal()" class="absolute right-4 top-4 z-10 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="relative h-48 sm:h-56 bg-white/5">
+                <img id="modal-item-img" src="" alt="Item Image" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="w-full h-full object-cover">
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <span id="modal-item-category" class="bg-brand-orange/20 text-brand-orange px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider">Category</span>
+                    <h3 id="modal-item-name" class="text-xl font-black text-white mt-1">Item Name</h3>
+                    <p id="modal-item-desc" class="text-xs text-brand-slate mt-2 leading-relaxed">Description goes here...</p>
+                    
+                    <div id="modal-dietary-tags" class="flex flex-wrap gap-1.5 mt-3">
+                    </div>
+                </div>
+
+                <!-- ADD-ONS / CUSTOMIZERS -->
+                <div class="space-y-4 pt-3 border-t border-white/10">
+                    <div class="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
+                        <div>
+                            <span class="text-xs font-bold text-white block">Steamed Rice Portions</span>
+                            <span class="text-[10px] text-brand-orange font-bold">₱15.00 per serving</span>
+                        </div>
+                        <div class="flex items-center gap-3 bg-brand-dark px-3 py-1.5 rounded-xl border border-white/10">
+                            <button type="button" onclick="changeRiceQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition"><i class="fa-solid fa-minus text-xs"></i></button>
+                            <span id="modal-rice-count" class="text-xs font-black text-white w-4 text-center">0</span>
+                            <button type="button" onclick="changeRiceQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition"><i class="fa-solid fa-plus text-xs"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] font-bold text-brand-slate uppercase tracking-wider block">Optional Beverage Pairing</label>
+                        <select id="modal-beverage-select" onchange="updateModalTotal()" class="w-full bg-brand-dark border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange">
+                            <option value="">-- No Beverage --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-3 border-t border-white/10">
+                    <div>
+                        <span class="text-[10px] text-brand-slate uppercase font-bold block">Total Amount</span>
+                        <span id="modal-item-price" class="text-2xl font-black text-brand-orange">₱0.00</span>
+                    </div>
+                    <button onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-6 py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-cart-plus"></i> Add to Cart
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================= CHECKOUT MODAL ================= -->
+    <div id="checkout-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-brand-card border border-white/10 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl my-auto animate-fade-in">
+            <div class="flex justify-between items-center border-b border-white/10 pb-4">
+                <h2 class="text-lg font-black text-white">Campus Delivery Checkout</h2>
+                <button onclick="closeCheckoutModal()" class="text-brand-slate hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="space-y-4 text-xs">
+                <div class="p-3.5 rounded-2xl bg-brand-orange/10 border border-brand-orange/30 text-brand-orange font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-motorcycle text-base"></i>
+                    <span>Mode: Campus Delivery (Convenience Fee Applies)</span>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block font-bold text-white uppercase tracking-wider flex items-center justify-between">
+                        <span>Office Building & Room</span>
+                        <span class="text-[10px] text-brand-orange font-bold"><i class="fa-solid fa-map-location-dot"></i> Select on Map Below</span>
+                    </label>
+                    <input type="text" id="delivery-location-input" value="Faculty Office Bldg, Room 204" placeholder="e.g., Faculty Office Bldg, Room 204"
+                        class="w-full px-3.5 py-2.5 bg-black/40 border border-white/10 rounded-xl text-xs text-white focus:ring-2 focus:ring-brand-orange outline-none">
+                    
+                    <!-- Interactive Mini Leaflet Map -->
+                    <div id="checkout-mini-map" class="w-full h-36 rounded-2xl border border-white/10 overflow-hidden bg-zinc-800 z-10"></div>
+
+                    <!-- Quick Building Selectors -->
+                    <div class="grid grid-cols-2 gap-1.5 pt-1">
+                        <button type="button" onclick="setBuildingLocation('Faculty Office Bldg, Room 204', 9.7392, 118.7353)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-building text-brand-orange"></i> Faculty Office Bldg
+                        </button>
+                        <button type="button" onclick="setBuildingLocation('Administration Building, Rm 102', 9.7398, 118.7348)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-landmark text-brand-orange"></i> Administration Bldg
+                        </button>
+                        <button type="button" onclick="setBuildingLocation('Engineering Building, Rm 305', 9.7385, 118.7360)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-gears text-brand-orange"></i> Engineering Bldg
+                        </button>
+                        <button type="button" onclick="setBuildingLocation('Science & Tech Bldg, Rm 112', 9.7380, 118.7345)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-flask text-brand-orange"></i> Science & Tech Bldg
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loyalty Points Redemption (P10 = 0.1 pt -> 100 PHP = 10 pts) -->
+                <div class="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-2.5">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-coins text-amber-400"></i> Points Available: <span class="text-amber-400" id="user-points-lbl" x-text="userPoints.toFixed(1)">45.0</span>
+                        </span>
+                        <span class="text-[10px] text-brand-slate">1 Pt = ₱1 Off</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="points-redeem-input" min="0" value="0" oninput="updateCheckoutSummary()" placeholder="Points to use"
+                            class="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-xl text-xs text-white focus:ring-2 focus:ring-brand-orange outline-none">
+                        <button type="button" onclick="setMaxPoints()" class="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl text-xs font-bold transition">Max</button>
+                    </div>
+                    <p class="text-[11px] text-emerald-400 font-bold" id="points-earned-lbl">+ You will earn 0.0 loyalty points with this order!</p>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block font-bold text-white uppercase tracking-wider">Payment Method</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="p-3.5 rounded-2xl border font-black transition flex flex-col items-center gap-1.5 bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-600/30">
+                            <i class="fa-solid fa-money-bill-wave text-base"></i>
+                            <span>Cash on Delivery (COD)</span>
+                        </div>
+                        <div class="p-3.5 rounded-2xl border border-white/5 bg-white/5 opacity-50 cursor-not-allowed flex flex-col items-center justify-center gap-1.5 relative">
+                            <span class="absolute -top-2 bg-amber-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full">Coming Soon</span>
+                            <i class="fa-solid fa-wallet text-base text-brand-slate"></i>
+                            <span class="font-bold text-brand-slate">E-Payments</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white/5 p-4 rounded-2xl space-y-2 border border-white/5">
+                    <div class="flex justify-between text-brand-slate">
+                        <span>Items Subtotal</span>
+                        <span id="summary-subtotal" class="font-bold text-white">₱0.00</span>
+                    </div>
+                    <div class="flex justify-between text-brand-slate">
+                        <span>Convenience Fee (₱15 per ₱300 block)</span>
+                        <span id="summary-convenience-fee" class="font-bold text-white">₱0.00</span>
+                    </div>
+                    <div class="flex justify-between text-amber-400" id="summary-discount-row" style="display: none;">
+                        <span>Loyalty Points Discount</span>
+                        <span id="summary-discount" class="font-bold">-₱0.00</span>
+                    </div>
+                    <div class="flex justify-between text-white font-black text-sm pt-2 border-t border-white/10">
+                        <span>Total Payable</span>
+                        <span id="summary-total" class="text-brand-orange text-base">₱0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="submitFacultyOrder()" id="checkout-submit-btn"
+                class="w-full py-4 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ================= REAL-TIME LEAFLET MAP MODAL ================= -->
+    <div id="map-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col h-[450px]">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
+                <h3 class="font-black text-white text-sm flex items-center gap-2"><i class="fa-solid fa-map-location-dot text-brand-orange"></i> Live GPS Location Mapping</h3>
+                <button onclick="closeMapModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="leaflet-map" class="flex-1 w-full bg-zinc-800"></div>
+            <div class="p-3 bg-brand-dark border-t border-white/10 text-center text-[11px] text-brand-slate">
+                <span>Lat: <span id="map-lat">--</span>, Lng: <span id="map-lng">--</span> • Palawan State University Campus Zone</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= ONGOING ORDERS & LIVE TRACKING MODAL ================= -->
+    <div id="ongoing-orders-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
+                <h3 class="font-black text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-bell text-brand-orange"></i> Ongoing Orders & Live Tracking
+                </h3>
+                <button onclick="closeOngoingOrdersModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="ongoing-orders-container" class="p-5 overflow-y-auto space-y-4 flex-1">
+                <!-- Populated dynamically -->
+            </div>
+            <div class="p-4 bg-brand-dark border-t border-white/10 text-center text-xs text-brand-slate">
+                <span>Palawan State University Canteen Express Delivery System</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= RIDER CHAT MODAL ================= -->
+    <div id="rider-chat-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col h-[500px]">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
+                <div>
+                    <h3 class="font-black text-white text-sm">In-App Chat with Rider</h3>
+                    <p id="chat-rider-subtitle" class="text-[10px] text-brand-orange font-bold">Order & Rider info</p>
+                </div>
+                <button onclick="closeRiderChatModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="chat-messages-list" class="flex-1 p-4 overflow-y-auto space-y-3 bg-black/40">
+                <!-- Messages -->
+            </div>
+            <div class="p-3 border-t border-white/10 bg-brand-dark flex items-center gap-2">
+                <input type="text" id="chat-input-msg" placeholder="Type message to rider..." onkeyup="if(event.key==='Enter') sendRiderMessage()"
+                    class="flex-1 px-3.5 py-2.5 bg-black/40 border border-white/10 rounded-xl text-xs text-white placeholder-brand-slate focus:outline-none focus:border-brand-orange">
+                <button onclick="sendRiderMessage()" class="bg-brand-orange hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= POINTS INFO MODAL ================= -->
+    <div id="points-info-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl text-center">
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-coins"></i>
+            </div>
+            <h3 class="text-base font-black text-white">Loyalty Points System</h3>
+            <p class="text-xs text-brand-slate leading-relaxed">
+                Earn <strong class="text-amber-400">1 point per ₱100 spent</strong> on your campus delivery orders!<br><br>
+                Redeem your points at checkout where <strong class="text-white">1 Point = ₱1.00 Discount</strong> on your purchases.
+            </p>
+            <button onclick="closePointsModal()" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-black font-black rounded-xl text-xs uppercase tracking-wider transition">
+                Got it!
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= VIEW ORDER & LIVE TRACKING MODAL ================= -->
+    <div id="view-order-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
+                <div>
+                    <h3 id="view-order-no" class="font-black text-white text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-box-open text-brand-orange"></i> Order Details & Live Tracking
+                    </h3>
+                    <p id="view-order-status" class="text-[10px] text-brand-orange font-bold uppercase tracking-wider mt-0.5">Status: Processing</p>
+                </div>
+                <button onclick="closeViewOrderModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="p-5 overflow-y-auto space-y-4 flex-1">
+                <!-- Items Ordered List -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-black text-brand-slate uppercase tracking-wider">Ordered Items</h4>
+                    <div id="view-order-items-list" class="bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-2">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-1 text-xs">
+                    <div class="flex justify-between text-brand-slate">
+                        <span>Delivery Location</span>
+                        <span id="view-order-location" class="font-bold text-white">--</span>
+                    </div>
+                    <div class="flex justify-between text-brand-slate">
+                        <span>Assigned Rider</span>
+                        <span id="view-order-rider" class="font-bold text-white">--</span>
+                    </div>
+                    <div class="flex justify-between text-white font-black pt-2 border-t border-white/10">
+                        <span>Total Amount</span>
+                        <span id="view-order-total" class="text-brand-orange">₱0.00</span>
+                    </div>
+                </div>
+
+                <!-- Live Map Container -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-black text-brand-slate uppercase tracking-wider">Live Rider Tracking Map</h4>
+                    <div id="view-order-map" class="w-full h-48 rounded-2xl border border-white/10 overflow-hidden bg-zinc-800"></div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-brand-dark border-t border-white/10 flex justify-between items-center text-xs">
+                <button onclick="closeViewOrderModal(); openActiveRiderChat()" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-comments"></i> Chat with Rider
+                </button>
+                <button onclick="closeViewOrderModal()" class="bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2 rounded-xl transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= FLOATING MESSAGE ICON ================= -->
+    <div id="floating-msg-btn" class="fixed bottom-20 right-4 z-30" style="display: none;">
+        <button onclick="openActiveRiderChat()" class="w-12 h-12 rounded-full bg-brand-orange text-white flex items-center justify-center shadow-2xl hover:scale-105 transition border-2 border-white/20" title="Chat with Rider">
+            <i class="fa-solid fa-comments text-lg"></i>
+        </button>
+    </div>
+
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+    const rawMenuData = JSON.parse('{{ menu_data_json|escapejs }}');
+    const ongoingDeliveriesData = JSON.parse('{{ ongoing_deliveries_json|escapejs }}');
+    let activeChatDeliveryId = null;
+    let chatInterval = null;
+
+    let menuData = rawMenuData.map(item => ({
+        id: item.id,
+        name: item.name,
+        category: item.category ? String(item.category) : 'General',
+        price: parseFloat(item.price || 0),
+        desc: item.desc || '',
+        badge: item.badge || '',
+        img: item.img || ''
+    }));
+
+    let cart = {};
+    let activeCategory = 'all';
+    let selectedItemForModal = null;
+    let modalRiceQty = 0;
+    let userPoints = 0.0;
+    let currentLat = 9.7392;
+    let currentLng = 118.7353;
+    let locationText = "Detecting GPS...";
+    let leafletMap = null;
+    let leafletMarker = null;
+
+    // Get GPS Location on Load & Ongoing Badge
+    window.addEventListener('DOMContentLoaded', () => {
+        updateOngoingBadge();
+        updateCartUI();
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    currentLat = pos.coords.latitude;
+                    currentLng = pos.coords.longitude;
+                    locationText = `Lat: ${currentLat.toFixed(4)}, Lng: ${currentLng.toFixed(4)} (GPS Active)`;
+                    const gpsEl = document.getElementById('gps-location-text');
+                    if (gpsEl) gpsEl.innerText = locationText;
+                },
+                () => {
+                    const gpsEl = document.getElementById('gps-location-text');
+                    if (gpsEl) gpsEl.innerText = "PSU Campus (Default GPS)";
+                },
+                { enableHighAccuracy: true }
+            );
+        }
+    });
+
+    function updateOngoingBadge() {
+        const badge = document.getElementById('ongoing-badge');
+        if (badge && ongoingDeliveriesData.length > 0) {
+            badge.innerText = ongoingDeliveriesData.length;
+            badge.style.display = 'flex';
+        }
+    }
+
+    function openOngoingOrdersModal() {
+        const container = document.getElementById('ongoing-orders-container');
+        container.innerHTML = '';
+
+        if (ongoingDeliveriesData.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-16 text-brand-slate space-y-2">
+                    <i class="fa-solid fa-box-open text-4xl opacity-40"></i>
+                    <p class="text-xs font-bold">No ongoing delivery orders at the moment.</p>
+                </div>`;
+        } else {
+            ongoingDeliveriesData.forEach(d => {
+                const card = document.createElement('div');
+                card.className = "bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-black text-brand-orange">${d.order_number}</span>
+                            <h4 class="text-xs font-bold text-white mt-0.5">Location: ${d.location}</h4>
+                        </div>
+                        <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-black px-2.5 py-1 rounded-full uppercase">
+                            ${d.status}
+                        </span>
+                    </div>
+                    <div class="text-[11px] text-brand-slate flex justify-between items-center">
+                        <span>Rider: <strong class="text-white">${d.rider_name}</strong></span>
+                        <span class="text-brand-orange font-bold">₱${d.total_amount.toFixed(2)}</span>
+                    </div>
+                    <div class="pt-2 border-t border-white/5 flex justify-end">
+                        <button onclick="openRiderChat(${d.id}, '${d.order_number}', '${d.rider_name}')" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md">
+                            <i class="fa-solid fa-comments"></i> In-App Chat with Rider
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+        document.getElementById('ongoing-orders-modal').classList.remove('hidden');
+    }
+
+    function closeOngoingOrdersModal() {
+        document.getElementById('ongoing-orders-modal').classList.add('hidden');
+    }
+
+    function openRiderChat(deliveryId, orderNum, riderName) {
+        activeChatDeliveryId = deliveryId;
+        document.getElementById('chat-rider-subtitle').innerText = `${orderNum} • Rider: ${riderName}`;
+        document.getElementById('ongoing-orders-modal').classList.add('hidden');
+        document.getElementById('rider-chat-modal').classList.remove('hidden');
+        loadRiderMessages();
+        if (chatInterval) clearInterval(chatInterval);
+        chatInterval = setInterval(loadRiderMessages, 3000);
+    }
+
+    function closeRiderChatModal() {
+        document.getElementById('rider-chat-modal').classList.add('hidden');
+        if (chatInterval) clearInterval(chatInterval);
+        activeChatDeliveryId = null;
+    }
+
+    function loadRiderMessages() {
+        if (!activeChatDeliveryId) return;
+        fetch(`/deliveries/messages/${activeChatDeliveryId}/get/`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const list = document.getElementById('chat-messages-list');
+                    list.innerHTML = '';
+                    if (data.messages.length === 0) {
+                        list.innerHTML = `<div class="text-center py-10 text-brand-slate text-[11px]">No messages yet. Say hello to your rider!</div>`;
+                        return;
+                    }
+                    data.messages.forEach(m => {
+                        const isRider = (m.sender_role === 'DELIVERY' || m.sender_role === 'RIDER');
+                        const bubble = document.createElement('div');
+                        bubble.className = `flex flex-col ${isRider ? 'items-start' : 'items-end'}`;
+                        bubble.innerHTML = `
+                            <div class="max-w-[80%] px-3.5 py-2 rounded-2xl text-xs ${isRider ? 'bg-emerald-600 text-white rounded-bl-none' : 'bg-brand-orange text-white rounded-br-none'}">
+                                <p class="font-bold text-[9px] opacity-75 mb-0.5">${m.sender} (${m.time})</p>
+                                <p>${m.message}</p>
+                            </div>
+                        `;
+                        list.appendChild(bubble);
+                    });
+                    list.scrollTop = list.scrollHeight;
+                }
+            });
+    }
+
+    function sendRiderMessage() {
+        const input = document.getElementById('chat-input-msg');
+        const text = input.value.trim();
+        if (!text || !activeChatDeliveryId) return;
+
+        // Optimistic UI update for instant feedback (0ms delay)
+        const list = document.getElementById('chat-messages-list');
+        const tempBubble = document.createElement('div');
+        tempBubble.className = "flex flex-col items-end";
+        tempBubble.innerHTML = `
+            <div class="max-w-[80%] px-3.5 py-2 rounded-2xl text-xs bg-brand-orange text-white rounded-br-none shadow-md">
+                <p class="font-bold text-[9px] opacity-75 mb-0.5">You (Just now)</p>
+                <p>${text}</p>
+            </div>
+        `;
+        list.appendChild(tempBubble);
+        list.scrollTop = list.scrollHeight;
+        input.value = '';
+
+        fetch(`/deliveries/messages/${activeChatDeliveryId}/send/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ message: text })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                loadRiderMessages();
+            }
+        });
+    }
+
+    // Open Real-time Leaflet Map Modal
+    function openMapModal() {
+        document.getElementById('map-modal').classList.remove('hidden');
+        document.getElementById('map-lat').innerText = currentLat.toFixed(4);
+        document.getElementById('map-lng').innerText = currentLng.toFixed(4);
+
+        setTimeout(() => {
+            if (!leafletMap) {
+                leafletMap = L.map('leaflet-map').setView([currentLat, currentLng], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(leafletMap);
+                leafletMarker = L.marker([currentLat, currentLng]).addTo(leafletMap)
+                    .bindPopup('<b>Your Current Office Location</b><br>Faculty Delivery Zone').openPopup();
+            } else {
+                leafletMap.setView([currentLat, currentLng], 16);
+                leafletMarker.setLatLng([currentLat, currentLng]);
+                leafletMap.invalidateSize();
+            }
+        }, 100);
+    }
+
+    function closeMapModal() {
+        document.getElementById('map-modal').classList.add('hidden');
+    }
+
+    // Search Toggle
+    function toggleSearch(e) {
+        e.stopPropagation();
+        const wrapper = document.getElementById('search-wrapper');
+        const input = document.getElementById('search-input');
+        if (wrapper.style.width === '200px' || wrapper.style.width === '100%') {
+            wrapper.style.width = '40px';
+            input.value = '';
+            renderMenu();
+        } else {
+            wrapper.style.width = window.innerWidth < 640 ? '160px' : '200px';
+            input.focus();
+        }
+    }
+
+    document.addEventListener('click', (e) => {
+        const wrapper = document.getElementById('search-wrapper');
+        if (wrapper && !wrapper.contains(e.target)) {
+            const input = document.getElementById('search-input');
+            if (input && !input.value.trim()) {
+                wrapper.style.width = '40px';
+            }
+        }
+    });
+
+    // Render Menu
+    function renderMenu() {
+        const grid = document.getElementById('menu-grid');
+        if (!grid) return;
+        
+        const searchInput = document.getElementById('search-input');
+        const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        grid.innerHTML = '';
+
+        const filtered = menuData.filter(item => {
+            const itemCat = String(item.category || '').toLowerCase();
+            const activeCat = String(activeCategory).toLowerCase();
+            const itemName = String(item.name || '').toLowerCase();
+            const itemDesc = String(item.desc || '').toLowerCase();
+            
+            let matchesCat = (activeCat === 'all' || itemCat === activeCat || itemCat.includes(activeCat) || activeCat.includes(itemCat));
+            const matchesSearch = itemName.includes(searchQuery) || itemDesc.includes(searchQuery);
+            return matchesCat && matchesSearch;
+        });
+
+        document.getElementById('items-count-indicator').innerText = `Showing ${filtered.length} items`;
+
+        if (filtered.length === 0) {
+            grid.innerHTML = `
+                <div class="col-span-full text-center py-16 text-brand-slate">
+                    <i class="fa-solid fa-utensils text-4xl mb-2 opacity-40"></i>
+                    <p class="text-xs font-bold">No items found in this category.</p>
+                </div>`;
+            return;
+        }
+
+        filtered.forEach(item => {
+            const badgeHTML = item.badge ? `<span class="absolute top-2 right-2 bg-black/80 backdrop-blur-md text-brand-amber text-[9px] font-black uppercase px-2.5 py-1 rounded-xl">${item.badge}</span>` : '';
+            const card = document.createElement('div');
+            card.className = "bg-brand-card rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group cursor-pointer shadow-lg";
+            card.onclick = () => openItemModal(item.id);
+            card.innerHTML = `
+                <div class="relative h-28 sm:h-36 overflow-hidden bg-white/5">
+                    <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                    ${badgeHTML}
+                    <span class="absolute bottom-2 right-2 w-7 h-7 rounded-xl bg-white/5 group-hover:bg-brand-orange/25 group-hover:text-brand-orange text-brand-slate flex items-center justify-center transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg></span>
+                </div>
+                <div class="p-3.5 flex-1 flex flex-col justify-between gap-2">
+                    <div>
+                        <span class="text-[9px] font-extrabold text-brand-orange uppercase tracking-wider">${item.category}</span>
+                        <h3 class="text-xs sm:text-sm font-black text-white group-hover:text-brand-orange transition line-clamp-1 mt-0.5">${item.name}</h3>
+                        <p class="text-[10px] text-brand-slate line-clamp-1 mt-0.5">${item.desc || 'Freshly prepared daily.'}</p>
+                    </div>
+                    <div class="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
+                        <span class="text-sm font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function selectCategory(category, element) {
+        activeCategory = category;
+        document.getElementById('category-heading').innerText = category === 'all' ? 'All Items' : category;
+
+        document.querySelectorAll('#category-sidebar .category-btn').forEach(btn => {
+            btn.className = "category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition";
+        });
+        element.className = "category-btn active-cat flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-orange text-white text-center font-black text-xs gap-1.5 transition shadow-lg shadow-brand-orange/20";
+        renderMenu();
+    }
+
+    // Item Details Modal
+    function openItemModal(itemId) {
+        const item = menuData.find(i => i.id === itemId);
+        if (!item) return;
+        selectedItemForModal = item;
+        modalRiceQty = 0;
+
+        document.getElementById('modal-item-img').src = item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';
+        document.getElementById('modal-item-category').innerText = item.category;
+        document.getElementById('modal-item-name').innerText = item.name;
+        document.getElementById('modal-item-desc').innerText = item.desc || 'Freshly prepared daily with quality ingredients.';
+        
+        let dietaryTags = ['<i class="fa-solid fa-check mr-1"></i> Halal Friendly', '<i class="fa-solid fa-dumbbell mr-1"></i> High Protein', '<i class="fa-solid fa-fire mr-1"></i> Warm Meal'];
+        const nameL = item.name.toLowerCase();
+        const catL = String(item.category).toLowerCase();
+        
+        if (nameL.includes('pork')) {
+            dietaryTags = ['<i class="fa-solid fa-triangle-exclamation mr-1"></i> Contains Pork', '<i class="fa-solid fa-ban mr-1"></i> Not Halal', '<i class="fa-solid fa-dumbbell mr-1"></i> High Protein'];
+        } else if (nameL.includes('turon') || nameL.includes('banana') || nameL.includes('sweet') || nameL.includes('biscuit') || nameL.includes('cake') || nameL.includes('donut') || catL.includes('biscuits')) {
+            dietaryTags = ['<i class="fa-solid fa-triangle-exclamation mr-1"></i> High Sugar Content', '<i class="fa-solid fa-heart-pulse mr-1"></i> Caution for Diabetics', '<i class="fa-solid fa-cookie mr-1"></i> Sweet Snack'];
+        } else if (nameL.includes('chicken') || nameL.includes('beef')) {
+            dietaryTags = ['<i class="fa-solid fa-check mr-1"></i> Halal Friendly', '<i class="fa-solid fa-dumbbell mr-1"></i> High Protein', '<i class="fa-solid fa-fire mr-1"></i> Warm Meal'];
+        } else if (catL.includes('beverage')) {
+            dietaryTags = ['<i class="fa-solid fa-glass-water mr-1"></i> Refreshing', '<i class="fa-solid fa-snowflake mr-1"></i> Cold Drink'];
+        }
+
+        const tagsContainer = document.getElementById('modal-dietary-tags');
+        if (tagsContainer) {
+            tagsContainer.innerHTML = dietaryTags.map(tag => {
+                const isWarning = tag.includes('triangle-exclamation') || tag.includes('ban');
+                const bgClass = isWarning ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                return `<span class="${bgClass} px-2.5 py-1 rounded-md text-[10px] font-bold inline-flex items-center">${tag}</span>`;
+            }).join('');
+        }
+
+        document.getElementById('modal-rice-count').innerText = modalRiceQty;
+
+        const bevSelect = document.getElementById('modal-beverage-select');
+        if (bevSelect) {
+            bevSelect.innerHTML = '<option value="">-- No Beverage --</option>';
+            const beverages = menuData.filter(i => String(i.category).toLowerCase().includes('beverage') || i.name.toLowerCase().includes('coke') || i.name.toLowerCase().includes('sprite') || i.name.toLowerCase().includes('water') || i.name.toLowerCase().includes('juice'));
+            beverages.forEach(b => {
+                bevSelect.innerHTML += `<option value="${b.id}" data-price="${b.price}">${b.name} (+₱${b.price.toFixed(2)})</option>`;
+            });
+        }
+
+        updateModalTotal();
+        document.getElementById('item-details-modal').classList.remove('hidden');
+    }
+
+    function closeItemModal() {
+        document.getElementById('item-details-modal').classList.add('hidden');
+        selectedItemForModal = null;
+    }
+
+    function changeRiceQty(change) {
+        modalRiceQty = Math.max(0, modalRiceQty + change);
+        document.getElementById('modal-rice-count').innerText = modalRiceQty;
+        updateModalTotal();
+    }
+
+    function updateModalTotal() {
+        if (!selectedItemForModal) return;
+        let total = selectedItemForModal.price + (modalRiceQty * 15);
+        const bevSelect = document.getElementById('modal-beverage-select');
+        if (bevSelect && bevSelect.value) {
+            const selectedOpt = bevSelect.options[bevSelect.selectedIndex];
+            total += parseFloat(selectedOpt.getAttribute('data-price') || 0);
+        }
+        document.getElementById('modal-item-price').innerText = `₱${total.toFixed(2)}`;
+    }
+
+    function addCustomizedItemToCart() {
+        if (!selectedItemForModal) return;
+        let basePrice = selectedItemForModal.price + (modalRiceQty * 15);
+        let displayName = selectedItemForModal.name;
+        let additions = [];
+        if (modalRiceQty > 0) additions.push(`+${modalRiceQty} Rice`);
+
+        const bevSelect = document.getElementById('modal-beverage-select');
+        if (bevSelect && bevSelect.value) {
+            const selectedOpt = bevSelect.options[bevSelect.selectedIndex];
+            basePrice += parseFloat(selectedOpt.getAttribute('data-price') || 0);
+            additions.push(`+ ${selectedOpt.text.split(' (+')[0]}`);
+        }
+
+        if (additions.length > 0) {
+            displayName += ` (${additions.join(', ')})`;
+        }
+
+        const cartKey = `${selectedItemForModal.id}_${modalRiceQty}_${bevSelect ? bevSelect.value : ''}`;
+        if (cart[cartKey]) {
+            cart[cartKey].qty += 1;
+        } else {
+            cart[cartKey] = {
+                id: selectedItemForModal.id,
+                name: displayName,
+                price: basePrice,
+                qty: 1
+            };
+        }
+        closeItemModal();
+        updateCartUI();
+    }
+
+    // Cart Management
+    function openCartDrawer() {
+        if (Object.keys(cart).length === 0) return;
+        document.getElementById('cart-drawer-backdrop').classList.remove('hidden');
+    }
+
+    function closeCartDrawer() {
+        document.getElementById('cart-drawer-backdrop').classList.add('hidden');
+    }
+
+    function updateQty(key, change) {
+        if (cart[key]) {
+            cart[key].qty += change;
+            if (cart[key].qty <= 0) {
+                delete cart[key];
+            }
+        }
+        updateCartUI();
+    }
+
+    function clearCart() {
+        cart = {};
+        updateCartUI();
+        closeCartDrawer();
+    }
+
+    function getCartSubtotal() {
+        return Object.keys(cart).reduce((sum, k) => sum + (cart[k].price * cart[k].qty), 0);
+    }
+
+    function getConvenienceFee(subtotal) {
+        if (subtotal <= 0) return 0;
+        let blocks = Math.ceil(subtotal / 300);
+        return blocks * 15;
+    }
+
+    function updateCartUI() {
+        const drawerList = document.getElementById('drawer-cart-list');
+        if (!drawerList) return;
+        drawerList.innerHTML = '';
+
+        const keys = Object.keys(cart);
+        let count = 0;
+        let subtotal = 0;
+
+        keys.forEach(k => {
+            const item = cart[k];
+            count += item.qty;
+            subtotal += item.price * item.qty;
+
+            const row = document.createElement('div');
+            row.className = "flex items-center justify-between bg-white/5 border border-white/10 p-3 rounded-2xl gap-3";
+            row.innerHTML = `
+                <div class="min-w-0">
+                    <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
+                    <span class="text-xs font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <div class="flex items-center gap-2 bg-black/40 rounded-xl px-2 py-1 border border-white/10">
+                        <button onclick="updateQty('${k}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">-</button>
+                        <span class="text-xs font-black text-white px-1">${item.qty}</span>
+                        <button onclick="updateQty('${k}', 1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">+</button>
+                    </div>
+                </div>
+            `;
+            drawerList.appendChild(row);
+        });
+
+        if (keys.length === 0) {
+            drawerList.innerHTML = `<div class="text-center py-20 text-brand-slate text-xs font-bold">Your cart is empty.</div>`;
+        }
+
+        let fee = getConvenienceFee(subtotal);
+        let total = subtotal + fee;
+
+        document.getElementById('cart-total').innerText = `₱${total.toFixed(2)}`;
+        document.getElementById('drawer-subtotal').innerText = `₱${subtotal.toFixed(2)}`;
+        document.getElementById('drawer-convenience-fee').innerText = `₱${fee.toFixed(2)}`;
+        document.getElementById('drawer-total-amount').innerText = `₱${total.toFixed(2)}`;
+
+        const nextBtn = document.getElementById('next-btn');
+        const nextText = document.getElementById('next-btn-text');
+        const activeD = ongoingDeliveriesData.find(d => d.raw_status !== 'DELIVERED');
+        const floatingMsg = document.getElementById('floating-msg-btn');
+
+        if (activeD) {
+            if (floatingMsg) floatingMsg.style.display = 'block';
+            nextBtn.disabled = false;
+            nextBtn.onclick = openViewOrderModal; // View Order opens Order Details & Live Tracking Modal
+            nextText.innerHTML = `<i class="fa-solid fa-box-open mr-1"></i> View Order (${activeD.order_number})`;
+        } else {
+            if (floatingMsg) floatingMsg.style.display = 'none';
+            if (keys.length > 0) {
+                nextBtn.disabled = false;
+                nextBtn.onclick = openCartDrawer;
+                nextText.innerText = `View Cart (${count})`;
+            } else {
+                nextBtn.disabled = true;
+                nextBtn.onclick = null;
+                nextText.innerText = `View Cart (0)`;
+            }
+        }
+    }
+
+    function toggleNotificationsDropdown(e) {
+        e.stopPropagation();
+        const dropdown = document.getElementById('notifications-dropdown');
+        if (dropdown.classList.contains('hidden')) {
+            populateNotificationsList();
+            dropdown.classList.remove('hidden');
+        } else {
+            dropdown.classList.add('hidden');
+        }
+    }
+
+    function closeNotificationsDropdown() {
+        document.getElementById('notifications-dropdown').classList.add('hidden');
+    }
+
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('notifications-dropdown');
+        if (dropdown && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    function populateNotificationsList() {
+        const container = document.getElementById('notifications-dropdown-list');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (ongoingDeliveriesData.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-6 text-brand-slate space-y-1">
+                    <i class="fa-solid fa-bell-slash text-2xl opacity-40"></i>
+                    <p class="text-[11px] font-bold">No recent notifications.</p>
+                </div>`;
+        } else {
+            ongoingDeliveriesData.forEach(d => {
+                let processStep = "Processing";
+                let badgeColor = "bg-amber-500/20 text-amber-400";
+                if (d.raw_status === 'ACCEPTED') {
+                    processStep = `Accepted by ${d.rider_name}`;
+                    badgeColor = "bg-blue-500/20 text-blue-400";
+                } else if (d.raw_status === 'DELIVERED') {
+                    processStep = "Already Delivered";
+                    badgeColor = "bg-emerald-500/20 text-emerald-400";
+                } else if (d.raw_status === 'SEARCHING') {
+                    processStep = "Processing (Searching for Rider)";
+                }
+
+                const item = document.createElement('div');
+                item.className = "bg-white/5 border border-white/10 rounded-xl p-3 space-y-1.5";
+                item.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-[11px] font-black text-brand-orange">Order ${d.order_number}</span>
+                        <span class="text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase ${badgeColor}">${processStep}</span>
+                    </div>
+                    <p class="text-[11px] text-white font-medium truncate"><i class="fa-solid fa-location-dot text-brand-orange mr-1"></i> ${d.location}</p>
+                    <div class="text-[10px] text-brand-slate flex justify-between items-center pt-1 border-t border-white/5">
+                        <span>Rider: <strong class="text-white">${d.rider_name}</strong></span>
+                        <span>${d.created_at}</span>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+    }
+
+    function openActiveRiderChat() {
+        const activeD = ongoingDeliveriesData.find(d => d.raw_status !== 'DELIVERED');
+        if (!activeD) {
+            alert('Wala pang active delivery chat sa ngayon.');
+            return;
+        }
+        openRiderChat(activeD.id, activeD.order_number, activeD.rider_name);
+    }
+
+    function openPointsModal() {
+        document.getElementById('points-info-modal').classList.remove('hidden');
+    }
+
+    function closePointsModal() {
+        document.getElementById('points-info-modal').classList.add('hidden');
+    }
+
+    let viewOrderMap = null;
+    let viewOrderMarker = null;
+
+    function openViewOrderModal() {
+        const activeD = ongoingDeliveriesData.find(d => d.raw_status !== 'DELIVERED');
+        if (!activeD) {
+            alert('Wala kang active order sa ngayon.');
+            return;
+        }
+
+        document.getElementById('view-order-no').innerText = `Order Details & Live Tracking (${activeD.order_number})`;
+        document.getElementById('view-order-status').innerText = `Status: ${activeD.status}`;
+        document.getElementById('view-order-rider').innerText = activeD.rider_name;
+        document.getElementById('view-order-location').innerText = activeD.location;
+        document.getElementById('view-order-total').innerText = `₱${activeD.total_amount.toFixed(2)}`;
+
+        const itemsContainer = document.getElementById('view-order-items-list');
+        itemsContainer.innerHTML = '';
+        if (activeD.items && activeD.items.length > 0) {
+            activeD.items.forEach(i => {
+                const row = document.createElement('div');
+                row.className = "flex justify-between items-center text-xs border-b border-white/5 pb-2";
+                row.innerHTML = `
+                    <span class="text-white">${i.qty}x ${i.name}</span>
+                    <span class="font-bold text-brand-orange">₱${(i.price * i.qty).toFixed(2)}</span>
+                `;
+                itemsContainer.appendChild(row);
+            });
+        } else {
+            itemsContainer.innerHTML = `<p class="text-xs text-brand-slate">Items details available.</p>`;
+        }
+
+        document.getElementById('view-order-modal').classList.remove('hidden');
+
+        setTimeout(() => {
+            if (!viewOrderMap) {
+                viewOrderMap = L.map('view-order-map').setView([currentLat, currentLng], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap'
+                }).addTo(viewOrderMap);
+                viewOrderMarker = L.marker([currentLat, currentLng]).addTo(viewOrderMap)
+                    .bindPopup('<b>Delivery Route & Rider Progress</b>').openPopup();
+            } else {
+                viewOrderMap.setView([currentLat, currentLng], 16);
+                viewOrderMarker.setLatLng([currentLat, currentLng]);
+                viewOrderMap.invalidateSize();
+            }
+        }, 150);
+    }
+
+    function closeViewOrderModal() {
+        document.getElementById('view-order-modal').classList.add('hidden');
+    }
+
+    // Checkout Modal & Mini Map Integration
+    let checkoutMap = null;
+    let checkoutMarker = null;
+
+    function openCheckoutModal() {
+        if (Object.keys(cart).length === 0) return;
+        updateCheckoutSummary();
+        document.getElementById('checkout-modal').classList.remove('hidden');
+
+        setTimeout(() => {
+            if (!checkoutMap) {
+                checkoutMap = L.map('checkout-mini-map').setView([currentLat, currentLng], 17);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap'
+                }).addTo(checkoutMap);
+                checkoutMarker = L.marker([currentLat, currentLng]).addTo(checkoutMap)
+                    .bindPopup('<b>Selected Delivery Location</b>').openPopup();
+            } else {
+                checkoutMap.setView([currentLat, currentLng], 17);
+                checkoutMarker.setLatLng([currentLat, currentLng]);
+                checkoutMap.invalidateSize();
+            }
+        }, 150);
+    }
+
+    function setBuildingLocation(locName, lat, lng) {
+        document.getElementById('delivery-location-input').value = locName;
+        currentLat = lat;
+        currentLng = lng;
+        if (checkoutMap && checkoutMarker) {
+            checkoutMap.setView([lat, lng], 17);
+            checkoutMarker.setLatLng([lat, lng]);
+            checkoutMarker.bindPopup(`<b>${locName}</b><br>Delivery Building Selected`).openPopup();
+        }
+    }
+
+    function closeCheckoutModal() {
+        document.getElementById('checkout-modal').classList.add('hidden');
+    }
+
+    function setMaxPoints() {
+        let subtotal = getCartSubtotal();
+        document.getElementById('points-redeem-input').value = Math.min(userPoints, Math.floor(subtotal));
+        updateCheckoutSummary();
+    }
+
+    function updateCheckoutSummary() {
+        let subtotal = getCartSubtotal();
+        let fee = getConvenienceFee(subtotal);
+        let pointsEarned = Number((subtotal * 0.1).toFixed(1));
+
+        let pointsInput = document.getElementById('points-redeem-input');
+        let pointsToUse = parseInt(pointsInput.value) || 0;
+        pointsToUse = Math.max(0, Math.min(userPoints, Math.floor(subtotal), pointsToUse));
+        pointsInput.value = pointsToUse;
+
+        let finalPayable = subtotal + fee - pointsToUse;
+
+        let pointsLbl = document.getElementById('user-points-lbl');
+        if (pointsLbl) pointsLbl.innerText = userPoints.toFixed(1);
+        document.getElementById('points-earned-lbl').innerText = `+ You will earn ${pointsEarned} loyalty points with this order!`;
+        document.getElementById('summary-subtotal').innerText = `₱${subtotal.toFixed(2)}`;
+        document.getElementById('summary-convenience-fee').innerText = `₱${fee.toFixed(2)}`;
+
+        const discountRow = document.getElementById('summary-discount-row');
+        if (pointsToUse > 0) {
+            discountRow.style.display = 'flex';
+            document.getElementById('summary-discount').innerText = `-₱${pointsToUse.toFixed(2)}`;
+        } else {
+            discountRow.style.display = 'none';
+        }
+
+        document.getElementById('summary-total').innerText = `₱${Math.max(0, finalPayable).toFixed(2)}`;
+    }
+
+    function submitFacultyOrder() {
+        const activeD = ongoingDeliveriesData.find(d => d.raw_status !== 'DELIVERED');
+        if (activeD) {
+            alert('Hindi ka pwedeng mag-checkout dahil mayroon ka pang ongoing delivery order (' + activeD.order_number + '). Hintayin muna itong maihatid.');
+            const submitBtn = document.getElementById('checkout-submit-btn');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
+            closeCheckoutModal();
+            return;
+        }
+
+        let subtotal = getCartSubtotal();
+        let fee = getConvenienceFee(subtotal);
+        let pointsToUse = parseInt(document.getElementById('points-redeem-input').value) || 0;
+        let finalPayable = Math.max(0, subtotal + fee - pointsToUse);
+        let pointsEarned = Number((subtotal * 0.1).toFixed(1));
+        let deliveryLoc = document.getElementById('delivery-location-input').value;
+
+        const cartArray = Object.keys(cart).map(k => ({
+            id: cart[k].id,
+            name: cart[k].name,
+            price: cart[k].price,
+            qty: cart[k].qty
+        }));
+
+        const submitBtn = document.getElementById('checkout-submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processing Order...`;
+
+        fetch('/kiosk/api/checkout/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                cart: cartArray,
+                total_amount: finalPayable,
+                is_delivery: true,
+                delivery_location: deliveryLoc,
+                payment_method: 'COD',
+                points_redeemed: pointsToUse,
+                points_earned: pointsEarned
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                ongoingDeliveriesData.unshift({
+                    id: data.order_id || 1,
+                    order_number: data.order_number,
+                    status: 'Searching for Rider',
+                    raw_status: 'SEARCHING',
+                    location: deliveryLoc,
+                    rider_name: 'Searching for Rider...',
+                    total_amount: finalPayable,
+                    created_at: 'Just now'
+                });
+                cart = {};
+                closeCheckoutModal();
+                updateCartUI();
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
+                alert(`Delivery order successfully placed! Order Number: ${data.order_number}\nYou earned ${pointsEarned} loyalty points!`);
+            } else {
+                alert('Checkout error: ' + (data.message || 'Unknown error'));
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
+            }
+        })
+        .catch(err => {
+            alert('An error occurred during checkout.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
+        });
+    }
+
+    // Initialize
+    renderMenu();
+    </script>
+</body>
+</html>

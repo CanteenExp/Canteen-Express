@@ -1,194 +1,210 @@
 from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.contrib.auth import login, logout, authenticate
-from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.models import User
-from django.urls import reverse, NoReverseMatch
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import get_user_model
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 
+User = get_user_model()
 
-# 1. Landing Page & Student Choice
 def landing_view(request):
     return render(request, 'accounts/landing.html')
 
-
-def select_student_role_view(request):
-    request.session['user_role'] = 'student'
-    request.session['can_deliver'] = False
-    kiosk_url = _get_safe_url(['customer_portal:kiosk_menu', 'canteen_menu:kiosk_menu', 'kiosk_menu', '/kiosk/kiosk/'])
-    return redirect(kiosk_url if kiosk_url else '/')
-
-
-# 2. Faculty Onboarding Steps
+# STEP 1: Faculty Location Check
+@ensure_csrf_cookie
 def faculty_location_view(request):
     if request.method == 'POST':
         lat = request.POST.get('latitude')
         lng = request.POST.get('longitude')
-        request.session['user_location'] = {'lat': lat, 'lng': lng}
-        return redirect('accounts:faculty_phone')
-    
+        request.session['faculty_lat'] = lat
+        request.session['faculty_lng'] = lng
+        return redirect('accounts:faculty_auth')
+        
     return render(request, 'accounts/faculty_location.html')
 
-
-def faculty_phone_view(request):
+# STEP 2: Faculty Auth (Login or Signup with Database Saving & Staff Section Reflection)
+@ensure_csrf_cookie
+@csrf_protect
+def faculty_auth_view(request):
+    error = None
+    mode = request.GET.get('mode', 'login')
+    
     if request.method == 'POST':
-        phone = request.POST.get('phone_number')
+        action = request.POST.get('action')
         
-        generated_otp = "123456"  # Mock OTP
-        request.session['temp_phone'] = phone
-        request.session['phone_otp'] = generated_otp
-        
-        messages.info(request, "OTP sent to your phone number.")
-        return redirect('accounts:faculty_verify_phone')
-
-    return render(request, 'accounts/faculty_phone.html')
-
-
-def faculty_verify_phone_view(request):
-    if request.method == 'POST':
-        entered_otp = request.POST.get('otp')
-        saved_otp = request.session.get('phone_otp')
-
-        if entered_otp == saved_otp:
-            request.session['phone_verified'] = True
-            messages.success(request, "Phone number verified!")
-            return redirect('accounts:faculty_register')
-        else:
-            messages.error(request, "Invalid OTP code. Please try again.")
-
-    return render(request, 'accounts/faculty_verify_phone.html')
-
-
-def faculty_register_view(request):
-    if not request.session.get('phone_verified'):
-        messages.warning(request, "Please verify your phone number first.")
-        return redirect('accounts:faculty_phone')
-
-    if request.method == 'POST':
-        email = request.POST.get('corp_email')
-        
-        if not email.endswith('.edu.ph'):
-            messages.error(request, "Please use a valid corporate / school email address.")
-            return render(request, 'accounts/faculty_register.html')
-
-        request.session['temp_reg_data'] = {
-            'username': request.POST.get('username'),
-            'first_name': request.POST.get('first_name'),
-            'last_name': request.POST.get('last_name'),
-            'email': email,
-            'password': request.POST.get('password'),
-            'phone': request.session.get('temp_phone')
-        }
-
-        email_otp = "654321"  # Mock OTP
-        request.session['email_otp'] = email_otp
-
-        messages.info(request, "OTP sent to your corporate email.")
-        return redirect('accounts:faculty_verify_email')
-
-    return render(request, 'accounts/faculty_register.html')
-
-
-def faculty_verify_email_view(request):
-    if request.method == 'POST':
-        entered_otp = request.POST.get('otp')
-        saved_otp = request.session.get('email_otp')
-
-        if entered_otp == saved_otp:
-            reg_data = request.session.get('temp_reg_data', {})
+        if action == 'signup':
+            email = request.POST.get('email', '').strip().lower()
+            name = request.POST.get('name', '').strip()
+            password = request.POST.get('password')
             
-            username = reg_data.get('username')
-            if User.objects.filter(username=username).exists():
-                messages.error(request, "Username already exists. Please choose another.")
-                return render(request, 'accounts/faculty_register.html')
-
-            user = User.objects.create_user(
-                username=reg_data.get('username'),
-                email=reg_data.get('email'),
-                password=reg_data.get('password'),
-                first_name=reg_data.get('first_name', ''),
-                last_name=reg_data.get('last_name', '')
-            )
-
-            login(request, user)
+            if not email.endswith('@psu.palawan.edu.ph'):
+                error = "Institutional email must end with @psu.palawan.edu.ph"
+                mode = 'signup'
+            elif User.objects.filter(email=email).exists():
+                error = "An account with this institutional email already exists. Please sign in."
+                mode = 'login'
+            else:
+                try:
+                    username = email.split('@')[0]
+                    if User.objects.filter(username=username).exists():
+                        username = f"{username}_{User.objects.count()}"
+                    
+                    user = User.objects.create_user(
+                        username=username,
+                        email=email,
+                        password=password,
+                        first_name=name,
+                        role='FACULTY',
+                        is_email_verified=True
+                    )
+                    logout(request)
+                    login(request, user)
+                    request.session['faculty_email'] = email
+                    return redirect('accounts:dashboard')
+                except Exception as e:
+                    error = f"Registration error: {str(e)}"
+                    mode = 'signup'
+                    
+        elif action == 'login':
+            email = request.POST.get('email', '').strip().lower()
+            password = request.POST.get('password')
             
-            request.session['user_role'] = 'faculty'
-            request.session['can_deliver'] = True
+            try:
+                user_obj = User.objects.filter(email=email).first()
+                if user_obj:
+                    user = authenticate(request, username=user_obj.username, password=password)
+                    if user is not None:
+                        logout(request)
+                        login(request, user)
+                        request.session['faculty_email'] = email
+                        return redirect('accounts:dashboard')
+                    else:
+                        error = "Invalid password."
+                        mode = 'login'
+                else:
+                    error = "No account found with this email. Please sign up first."
+                    mode = 'signup'
+            except Exception as e:
+                error = f"Login error: {str(e)}"
+                mode = 'login'
 
-            _clear_registration_sessions(request)
+    return render(request, 'accounts/faculty_auth.html', {'error': error, 'mode': mode})
 
-            messages.success(request, f"Welcome, {user.first_name}! Your Faculty account is ready.")
-            kiosk_url = _get_safe_url(['customer_portal:kiosk_menu', 'canteen_menu:kiosk_menu', 'kiosk_menu', '/kiosk/kiosk/'])
-            return redirect(kiosk_url if kiosk_url else '/')
-        else:
-            messages.error(request, "Invalid Email OTP code.")
-
-    return render(request, 'accounts/faculty_verify_email.html')
-
-
-# 3. Standard Login & Logout
-def login_view(request):
-    if request.user.is_authenticated:
-        return redirect(_get_post_login_destination(request.user))
-
-    if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
-            login(request, user)
-            messages.success(request, f"Welcome back, {user.username}!")
-
-            next_url = request.GET.get('next')
-            if next_url:
-                return redirect(next_url)
-
-            return redirect(_get_post_login_destination(user))
-        else:
-            messages.error(request, "Invalid username or password.")
+# STEP 3: Faculty Dashboard
+def faculty_dashboard_view(request):
+    from canteen_menu.models import MenuItem, Category
+    import json
+    menu_items = MenuItem.objects.filter(is_available=True)
+    categories = Category.objects.all()
+    
+    email = request.session.get('faculty_email', '') or getattr(request.user, 'email', '')
+    if email:
+        local_part = email.split('@')[0]
+        name_parts = local_part.replace('.', ' ').replace('_', ' ').split()
+        faculty_display_name = ' '.join([p.capitalize() for p in name_parts])
+    elif request.user.is_authenticated and request.user.first_name:
+        faculty_display_name = request.user.first_name
     else:
-        form = AuthenticationForm()
+        faculty_display_name = 'Professor'
 
-    return render(request, 'accounts/login.html', {'form': form})
+    formatted_menu = []
+    for item in menu_items:
+        img_url = ''
+        if hasattr(item, 'get_image_src'):
+            attr = getattr(item, 'get_image_src')
+            img_url = attr() if callable(attr) else attr
+        elif hasattr(item, 'image') and item.image:
+            try:
+                img_url = item.image.url
+            except ValueError:
+                img_url = ''
+        category_str = item.category.name if item.category else 'General'
+        formatted_menu.append({
+            'id': item.id,
+            'name': item.name,
+            'category': category_str,
+            'price': float(item.price) if item.price else 0.0,
+            'desc': getattr(item, 'description', ''),
+            'badge': getattr(item, 'badge', ''),
+            'img': img_url
+        })
+
+    from deliveries.models import DeliveryRequest
+    if request.user.is_authenticated:
+        ongoing_deliveries = DeliveryRequest.objects.filter(order__customer=request.user).exclude(status='DELIVERED').order_by('-requested_at')[:5]
+    else:
+        ongoing_deliveries = []
+
+    ongoing_data = [{
+        'id': d.id,
+        'order_number': d.order.order_number,
+        'status': d.get_status_display(),
+        'raw_status': d.status,
+        'location': d.delivery_location,
+        'rider_name': d.rider.get_full_name() or d.rider.username if d.rider else 'Searching for Rider...',
+        'total_amount': float(d.order.total_amount),
+        'created_at': d.requested_at.strftime('%H:%M %p'),
+        'items': [{'name': i.item_name, 'qty': i.quantity, 'price': float(i.price)} for i in d.order.items.all()]
+    } for d in ongoing_deliveries]
+
+    context = {
+        'menu_items': menu_items,
+        'categories': categories,
+        'menu_data_json': json.dumps(formatted_menu),
+        'faculty_display_name': faculty_display_name,
+        'ongoing_deliveries_json': json.dumps(ongoing_data)
+    }
+    return render(request, 'accounts/dashboard.html', context)
 
 
-def logout_view(request):
+# Separate Staff Login View
+@ensure_csrf_cookie
+@csrf_protect
+def staff_login_view(request):
+    if request.method == 'GET':
+        logout(request)
+    error = None
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        if user is not None and (user.is_staff or getattr(user, 'role', '') in ['STAFF', 'ADMIN']):
+            logout(request)
+            login(request, user)
+            return redirect('canteen_menu:staff_dashboard')
+        else:
+            error = "Invalid canteen staff credentials."
+    return render(request, 'accounts/staff_login.html', {'error': error})
+
+
+# Separate Delivery Personnel Login View
+@ensure_csrf_cookie
+@csrf_protect
+def delivery_login_view(request):
+    if request.method == 'GET':
+        logout(request)
+    error = None
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        if user is not None and (getattr(user, 'role', '') == 'DELIVERY' or user.is_staff):
+            logout(request)
+            login(request, user)
+            return redirect('deliveries:dashboard')
+        else:
+            error = "Invalid delivery personnel credentials."
+    return render(request, 'accounts/delivery_login.html', {'error': error})
+
+
+# Role-specific Logout Views
+def faculty_logout_view(request):
+    request.session.flush()
     logout(request)
-    messages.info(request, "You have been logged out.")
-    login_url = _get_safe_url(['accounts:login', 'login', '/accounts/login/'])
-    return redirect(login_url if login_url else '/')
+    return redirect('accounts:landing')
 
+def staff_logout_view(request):
+    logout(request)
+    return redirect('accounts:staff_login')
 
-# Helper Functions
-def _clear_registration_sessions(request):
-    keys = ['temp_phone', 'phone_otp', 'phone_verified', 'temp_reg_data', 'email_otp']
-    for key in keys:
-        if key in request.session:
-            del request.session[key]
-
-
-def _get_post_login_destination(user):
-    if user.is_superuser or user.is_staff:
-        admin_url = _get_safe_url(['admin:index', 'admin_dashboard:index'])
-        if admin_url:
-            return admin_url
-
-    candidate_urls = [
-        'customer_portal:kiosk_menu',
-        'canteen_menu:kiosk_menu',
-        'kiosk_menu',
-        'accounts:landing',
-        '/',
-    ]
-
-    destination = _get_safe_url(candidate_urls)
-    return destination if destination else '/'
-
-
-def _get_safe_url(url_candidates):
-    for url_name in url_candidates:
-        if url_name.startswith('/'):
-            return url_name
-        try:
-            return reverse(url_name)
-        except NoReverseMatch:
-            continue
-    return None
+def delivery_logout_view(request):
+    logout(request)
+    return redirect('accounts:delivery_login')
