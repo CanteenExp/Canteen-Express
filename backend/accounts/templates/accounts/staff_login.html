@@ -4,86 +4,152 @@
 <head>
     <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Canteen Staff Portal - Canteen Express</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: {
+                        poppins: ['Poppins', 'sans-serif'],
+                        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
                     colors: {
                         brand: {
                             orange: '#FF6117',
-                            dark: '#121212',
-                            card: '#292929',
-                            light: '#EAEAEA',
+                            dark: '#0A0A0C',
+                            card: '#141416',
                             slate: '#8E8E93',
+                            blue: '#3B82F6',
                         }
                     }
                 }
             }
         }
     </script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; height: 100dvh; overflow: hidden; }
+        .font-poppins { font-family: 'Poppins', sans-serif; }
+
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        @keyframes scroll-right {
+            0% { transform: translateX(-50%); }
+            100% { transform: translateX(0); }
+        }
+        .animate-scroll-1 {
+            display: flex;
+            width: 200%;
+            animation: scroll-left 42s linear infinite;
+        }
+        .animate-scroll-2 {
+            display: flex;
+            width: 200%;
+            animation: scroll-right 48s linear infinite;
+        }
+        .diagonal-wrapper {
+            transform: rotate(-12deg) scale(1.4);
+        }
+    </style>
 </head>
-<body class="bg-brand-dark text-brand-light min-h-screen flex flex-col justify-between p-6 sm:p-8 max-w-md mx-auto w-full select-none">
+<body class="bg-brand-dark text-white flex flex-col justify-between p-4 max-w-md mx-auto w-full relative select-none">
+
+    <!-- ================= DIAGONAL BACKGROUND FOOD CAROUSEL ================= -->
+    <div class="absolute inset-0 z-0 pointer-events-none opacity-35 overflow-hidden flex flex-col justify-center gap-10 diagonal-wrapper">
+        <div class="animate-scroll-1 flex gap-6">
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+        </div>
+        <div class="animate-scroll-2 flex gap-6">
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+        </div>
+    </div>
+
+    <!-- Dark Gradient Overlay -->
+    <div class="absolute inset-0 bg-gradient-to-b from-brand-dark/80 via-brand-dark/75 to-brand-dark/90 z-0"></div>
 
     <!-- Header Brand -->
-    <header class="flex justify-center pt-2">
-        <div class="flex items-center gap-2">
-            <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto object-contain">
-            <span class="text-xs font-bold uppercase tracking-[0.2em] text-brand-light/95">CANTEEN EXPRESS</span>
+    <header class="flex justify-center pt-2 relative z-10 shrink-0">
+        <div class="flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full border border-white/15 backdrop-blur-md">
+            <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-6 w-auto object-contain">
+            <span class="text-xs font-bold uppercase tracking-[0.2em] text-white/90 font-poppins">CANTEEN EXPRESS</span>
         </div>
     </header>
 
-    <div class="my-auto py-8">
-        <div class="bg-brand-card rounded-3xl p-8 border border-white/10 shadow-2xl space-y-6">
-            <div class="text-center">
-                <div class="w-14 h-14 bg-brand-orange/10 border border-brand-orange/20 text-brand-orange rounded-2xl flex items-center justify-center text-2xl mx-auto shadow-lg shadow-brand-orange/10">
+    <!-- Main Content Container Card -->
+    <main class="my-auto w-full max-w-md mx-auto relative z-10 shrink-0">
+        <div class="bg-[#121215]/90 border border-white/15 rounded-[32px] p-6 sm:p-7 space-y-4 backdrop-blur-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] ring-1 ring-white/10 text-white">
+            <div class="text-center space-y-1.5">
+                <div class="w-14 h-14 bg-brand-orange/20 border border-brand-orange/40 text-brand-orange rounded-2xl flex items-center justify-center text-xl mx-auto shadow-lg shadow-brand-orange/20">
                     <i class="fa-solid fa-utensils"></i>
                 </div>
-                <h2 class="text-2xl font-black text-brand-light mt-3">Canteen Staff Portal</h2>
-                <p class="text-brand-slate text-xs mt-1">Sign in with your Canteen Staff credentials</p>
+                <h2 class="text-2xl font-black text-white font-poppins">Canteen Staff Portal</h2>
+                <p class="text-xs text-white/70 max-w-xs mx-auto">Sign in with your Canteen Staff credentials</p>
             </div>
 
-            <form method="POST" class="space-y-4">
+            <form method="POST" class="space-y-3.5">
                 {% csrf_token %}
 
                 {% if error %}
-                    <div class="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs font-semibold">
+                    <div class="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-xs font-bold backdrop-blur-md">
                         <p>{{ error }}</p>
                     </div>
                 {% endif %}
 
                 <div>
-                    <label class="block text-xs font-extrabold text-brand-slate uppercase tracking-wider mb-1">Username</label>
+                    <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Username</label>
                     <input type="text" name="username" required placeholder="Staff username"
-                           class="w-full px-4 py-3 rounded-xl bg-brand-dark border border-white/10 text-brand-light placeholder-brand-slate/60 focus:ring-2 focus:ring-brand-orange focus:outline-none text-sm font-semibold">
+                           class="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/15 text-white placeholder-white/30 focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm font-bold backdrop-blur-md">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-extrabold text-brand-slate uppercase tracking-wider mb-1">Password</label>
+                    <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Password</label>
                     <input type="password" name="password" required placeholder="••••••••"
-                           class="w-full px-4 py-3 rounded-xl bg-brand-dark border border-white/10 text-brand-light placeholder-brand-slate/60 focus:ring-2 focus:ring-brand-orange focus:outline-none text-sm font-semibold">
+                           class="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/15 text-white placeholder-white/30 focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm font-bold backdrop-blur-md">
                 </div>
 
-                <button type="submit" class="w-full bg-brand-orange hover:opacity-90 text-white font-black py-3.5 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/20 transition cursor-pointer">
+                <button type="submit" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-black py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-xl shadow-brand-orange/35 transition cursor-pointer font-poppins">
                     <i class="fa-solid fa-right-to-bracket mr-1.5"></i> Staff Login
                 </button>
             </form>
 
-            <div class="text-center pt-2 border-t border-white/5">
-                <a href="{% url 'accounts:landing' %}" class="text-xs font-bold text-brand-slate hover:text-brand-orange transition flex items-center justify-center gap-1">
+            <div class="text-center pt-2 border-t border-white/10">
+                <a href="{% url 'accounts:landing' %}" class="text-xs font-bold text-white/60 hover:text-white transition flex items-center justify-center gap-1">
                     <i class="fa-solid fa-arrow-left"></i> Back to Role Selection
                 </a>
             </div>
         </div>
-    </div>
+    </main>
 
-    <footer class="pb-2 text-center">
-        <p class="text-[10px] text-brand-slate uppercase font-bold tracking-widest">Canteen Express Secure Terminal</p>
+    <footer class="pb-2 text-center relative z-10 shrink-0">
+        <p class="text-[10px] text-white/50 uppercase font-bold tracking-widest">Canteen Express Secure Terminal</p>
     </footer>
 
 </body>

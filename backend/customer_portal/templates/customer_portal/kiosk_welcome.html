@@ -4,16 +4,16 @@
 <head>
     <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Welcome - Canteen Express</title>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Google Fonts: Poppins & Plus Jakarta Sans -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -29,9 +29,10 @@
                     colors: {
                         brand: {
                             orange: '#FF6117',
-                            dark: '#121212',
-                            card: '#1E1E1E',
+                            dark: '#0A0A0C',
+                            card: '#141416',
                             slate: '#8E8E93',
+                            blue: '#3B82F6',
                         }
                     }
                 }
@@ -40,12 +41,36 @@
     </script>
 
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; height: 100dvh; overflow: hidden; }
         .font-poppins { font-family: 'Poppins', sans-serif; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* Keyframes for ultra-smooth slow fade-in and subtle scaling */
+        /* Smooth Infinite Diagonal Food Carousel */
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        @keyframes scroll-right {
+            0% { transform: translateX(-50%); }
+            100% { transform: translateX(0); }
+        }
+
+        .animate-scroll-1 {
+            display: flex;
+            width: 200%;
+            animation: scroll-left 42s linear infinite;
+        }
+
+        .animate-scroll-2 {
+            display: flex;
+            width: 200%;
+            animation: scroll-right 48s linear infinite;
+        }
+
+        .diagonal-wrapper {
+            transform: rotate(-12deg) scale(1.4);
+        }
+
+        /* Entry Animation */
         @keyframes slowSmoothFadeIn {
             0% {
                 opacity: 0;
@@ -64,82 +89,118 @@
         }
     </style>
 </head>
-<body class="bg-brand-dark text-white min-h-screen flex flex-col justify-between relative overflow-hidden select-none">
+<body class="bg-brand-dark text-white flex flex-col justify-between p-4 max-w-md mx-auto w-full relative select-none">
 
-    <!-- ================= 1. ULTRA-SMOOTH SLOW FADE-IN SPLASH SCREEN ================= -->
+    <!-- ================= 0. MAIN DIAGONAL BACKGROUND FOOD CAROUSEL ================= -->
+    <div class="absolute inset-0 z-0 pointer-events-none opacity-45 overflow-hidden flex flex-col justify-center gap-10 diagonal-wrapper">
+        <div class="animate-scroll-1 flex gap-6">
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+        </div>
+        <div class="animate-scroll-2 flex gap-6">
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+        </div>
+    </div>
+
+    <!-- Dark Gradient Overlay -->
+    <div class="absolute inset-0 bg-gradient-to-b from-brand-dark/70 via-brand-dark/65 to-brand-dark/80 z-0"></div>
+
+
+    <!-- ================= 1. SPLASH SCREEN ================= -->
     <div id="splash-screen" class="fixed inset-0 z-50 bg-brand-dark flex flex-col items-center justify-center p-6 transition-opacity duration-1000 ease-in-out">
         <div class="flex flex-col items-center gap-1.5 animate-slow-fade">
-            <!-- Enlarged Logo -->
             <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Canteen Express Logo" class="h-32 sm:h-36 w-auto object-contain drop-shadow-[0_10px_25px_rgba(255,97,23,0.25)]">
-            <!-- Poppins Styled Name -->
             <h2 class="font-poppins text-xs sm:text-sm font-medium uppercase tracking-[0.25em] text-brand-orange">Canteen Express</h2>
         </div>
     </div>
 
 
-    <!-- ================= MAIN APP LANDING ================= -->
-    <div class="relative z-10 min-h-screen flex flex-col justify-between p-6 sm:p-10 max-w-md mx-auto w-full">
+    <!-- ================= 2. MAIN APP LANDING ================= -->
+    <div class="relative z-10 flex flex-col justify-between h-full max-w-md mx-auto w-full py-2">
         
         <!-- Header Brand -->
-        <header class="flex justify-center pt-4">
-            <div class="flex items-center gap-2">
-                <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto">
-                <span class="font-poppins text-xs font-medium uppercase tracking-widest text-white/90">Canteen Express</span>
+        <header class="flex justify-center pt-1 shrink-0">
+            <div class="flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full border border-white/15 backdrop-blur-md">
+                <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-6 w-auto">
+                <span class="font-poppins text-xs font-bold uppercase tracking-widest text-white/90">Canteen Express</span>
             </div>
         </header>
 
 
-        <!-- ================= 2. 3-PAGE AUTOMATIC SLIDER ================= -->
-        <main class="my-auto py-8">
-            <div class="relative overflow-hidden w-full">
+        <!-- Description Slide Container -->
+        <main class="my-auto w-full max-w-md mx-auto shrink-0">
+            
+            <div class="relative overflow-hidden w-full bg-[#121215]/90 border border-white/15 rounded-[32px] p-6 backdrop-blur-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] ring-1 ring-white/10">
                 
-                <!-- Slides Wrapper -->
-                <div id="slider-container" class="flex transition-transform duration-500 ease-in-out">
-                    
-                    <!-- SLIDE 1 -->
-                    <div class="w-full shrink-0 flex flex-col items-center text-center space-y-4 px-2">
-                        <div class="w-20 h-20 rounded-3xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange text-3xl mb-2 shadow-lg shadow-brand-orange/5">
-                            <i class="fa-solid fa-utensils"></i>
+                <div class="overflow-hidden w-full rounded-2xl">
+                    <div id="slider-container" class="flex w-full transition-transform duration-500 ease-in-out">
+                        
+                        <!-- SLIDE 1 -->
+                        <div class="min-w-full w-full shrink-0 flex flex-col items-center justify-center text-center space-y-3 px-2 box-border">
+                            <div class="w-16 h-16 rounded-2xl bg-brand-orange/20 border border-brand-orange/40 flex items-center justify-center text-brand-orange text-2xl shadow-lg shadow-brand-orange/20">
+                                <i class="fa-solid fa-utensils"></i>
+                            </div>
+                            <h1 class="font-poppins text-xl sm:text-2xl font-black leading-tight text-white">
+                                Welcome to <br><span class="text-brand-orange">Canteen Express!</span>
+                            </h1>
+                            <p class="text-xs text-white/80 max-w-xs leading-relaxed">
+                                Order your favorite campus meals, snacks, and drinks fast and easy with our touch kiosk.
+                            </p>
                         </div>
-                        <h1 class="font-poppins text-2xl sm:text-3xl font-black leading-tight text-white">
-                            Welcome to <br><span class="text-brand-orange">Canteen Express!</span>
-                        </h1>
-                        <p class="text-xs sm:text-sm text-brand-slate max-w-xs leading-relaxed">
-                            Order your favorite campus meals, snacks, and drinks fast and easy with our touch kiosk.
-                        </p>
-                    </div>
 
-                    <!-- SLIDE 2 -->
-                    <div class="w-full shrink-0 flex flex-col items-center text-center space-y-4 px-2">
-                        <div class="w-20 h-20 rounded-3xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange text-3xl mb-2 shadow-lg shadow-brand-orange/5">
-                            <i class="fa-solid fa-bolt"></i>
+                        <!-- SLIDE 2 -->
+                        <div class="min-w-full w-full shrink-0 flex flex-col items-center justify-center text-center space-y-3 px-2 box-border">
+                            <div class="w-16 h-16 rounded-2xl bg-brand-orange/20 border border-brand-orange/40 flex items-center justify-center text-brand-orange text-2xl shadow-lg shadow-brand-orange/20">
+                                <i class="fa-solid fa-bolt"></i>
+                            </div>
+                            <h1 class="font-poppins text-xl sm:text-2xl font-black leading-tight text-white">
+                                Skip Long Lines & <br><span class="text-brand-orange">Save Your Time</span>
+                            </h1>
+                            <p class="text-xs text-white/80 max-w-xs leading-relaxed">
+                                Browse the daily menu, customize your order, and grab your food directly at the counter.
+                            </p>
                         </div>
-                        <h1 class="font-poppins text-2xl sm:text-3xl font-black leading-tight text-white">
-                            Skip Long Lines & <br><span class="text-brand-orange">Save Your Time</span>
-                        </h1>
-                        <p class="text-xs sm:text-sm text-brand-slate max-w-xs leading-relaxed">
-                            Browse the daily menu, customize your order, and grab your food directly at the counter.
-                        </p>
-                    </div>
 
-                    <!-- SLIDE 3 -->
-                    <div class="w-full shrink-0 flex flex-col items-center text-center space-y-4 px-2">
-                        <div class="w-20 h-20 rounded-3xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange text-3xl mb-2 shadow-lg shadow-brand-orange/5">
-                            <i class="fa-solid fa-heart-pulse"></i>
+                        <!-- SLIDE 3 -->
+                        <div class="min-w-full w-full shrink-0 flex flex-col items-center justify-center text-center space-y-3 px-2 box-border">
+                            <div class="w-16 h-16 rounded-2xl bg-brand-orange/20 border border-brand-orange/40 flex items-center justify-center text-brand-orange text-2xl shadow-lg shadow-brand-orange/20">
+                                <i class="fa-solid fa-heart-pulse"></i>
+                            </div>
+                            <h1 class="font-poppins text-xl sm:text-2xl font-black leading-tight text-white">
+                                Healthy & Custom <br><span class="text-brand-orange">Dietary Options</span>
+                            </h1>
+                            <p class="text-xs text-white/80 max-w-xs leading-relaxed">
+                                Choose specialized meal plans for diabetic, low-calorie, or keto preferences with ease.
+                            </p>
                         </div>
-                        <h1 class="font-poppins text-2xl sm:text-3xl font-black leading-tight text-white">
-                            Healthy & Custom <br><span class="text-brand-orange">Dietary Options</span>
-                        </h1>
-                        <p class="text-xs sm:text-sm text-brand-slate max-w-xs leading-relaxed">
-                            Choose specialized meal plans for diabetic, low-calorie, or keto preferences with ease.
-                        </p>
-                    </div>
 
+                    </div>
                 </div>
 
-                <!-- Slider Indicators / Pagination Dots -->
-                <div class="flex items-center justify-center gap-2 mt-8">
-                    <span id="dot-0" onclick="goToSlide(0)" class="w-7 h-2 rounded-full bg-brand-orange transition-all cursor-pointer"></span>
+                <!-- Pagination Dots -->
+                <div class="flex items-center justify-center gap-2 mt-4">
+                    <span id="dot-0" onclick="goToSlide(0)" class="w-6 h-2 rounded-full bg-brand-orange transition-all cursor-pointer"></span>
                     <span id="dot-1" onclick="goToSlide(1)" class="w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer"></span>
                     <span id="dot-2" onclick="goToSlide(2)" class="w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer"></span>
                 </div>
@@ -148,55 +209,122 @@
         </main>
 
 
-        <!-- ================= 3. GET STARTED & ROLE SELECTION ACTIONS ================= -->
-        <footer class="pb-6 space-y-3 text-center">
-            
-            <!-- Primary Action: Get Started -->
-            <a href="{% url 'customer_portal:kiosk_menu' %}" class="w-full bg-brand-orange hover:bg-orange-600 active:scale-95 text-white font-poppins font-extrabold text-sm sm:text-base py-4 rounded-2xl shadow-lg shadow-brand-orange/25 flex items-center justify-center gap-2 transition uppercase tracking-wider">
+        <!-- Action Buttons Footer -->
+        <footer class="pb-2 space-y-2 text-center shrink-0">
+            <a href="{% url 'customer_portal:kiosk_menu' %}?role=student" class="w-full bg-brand-orange hover:bg-orange-600 active:scale-95 text-white font-poppins font-extrabold text-xs sm:text-sm py-3.5 rounded-2xl shadow-xl shadow-brand-orange/30 flex items-center justify-center gap-2 transition uppercase tracking-wider cursor-pointer">
                 Get Started <i class="fa-solid fa-arrow-right"></i>
             </a>
-
-            <!-- Secondary Action: Change Role / Back to Landing Page -->
-            <a href="{% url 'accounts:landing' %}" class="w-full bg-brand-card hover:bg-white/10 border border-white/10 active:scale-95 text-white/90 font-poppins font-semibold text-xs sm:text-sm py-3.5 rounded-2xl flex items-center justify-center gap-2 transition uppercase tracking-wider">
+            <a href="{% url 'accounts:landing' %}" class="w-full bg-brand-card hover:bg-white/10 border border-white/10 active:scale-95 text-white/90 font-poppins font-semibold text-xs py-3 rounded-2xl flex items-center justify-center gap-2 transition uppercase tracking-wider">
                 <i class="fa-solid fa-user-gear text-brand-orange"></i> Change Role / Select Account
             </a>
-
-            <p class="text-[10px] text-brand-slate uppercase font-bold tracking-widest pt-1">
-                Touch anywhere or click to proceed
-            </p>
         </footer>
 
     </div>
 
 
-    <!-- ================= JAVASCRIPT CONTROLLER ================= -->
+    <!-- ================= 3. ROLE SELECTION MODAL ================= -->
+    <div id="role-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-2xl hidden flex items-center justify-center p-4 transition-all duration-300">
+        
+        <div class="bg-[#121215]/90 border border-white/20 rounded-[32px] p-6 max-w-md w-full text-center space-y-4 shadow-[0_30px_70px_rgba(0,0,0,0.95)] relative overflow-hidden ring-1 ring-white/10">
+            
+            <div class="absolute inset-0 z-0 pointer-events-none opacity-30 overflow-hidden flex flex-col justify-center gap-6 diagonal-wrapper">
+                <div class="animate-scroll-1 flex gap-4">
+                    <div class="flex gap-4 shrink-0">
+                        <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80" class="w-48 h-28 object-cover rounded-xl">
+                        <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80" class="w-48 h-28 object-cover rounded-xl">
+                        <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80" class="w-48 h-28 object-cover rounded-xl">
+                    </div>
+                </div>
+            </div>
+
+            <div class="absolute inset-0 bg-brand-dark/80 z-0"></div>
+
+            <div class="relative z-10 space-y-1">
+                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[10px] font-bold text-brand-orange uppercase tracking-widest backdrop-blur-md">
+                    <i class="fa-solid fa-hand-pointer text-[9px]"></i> Select Profile
+                </div>
+                <h3 class="text-xl sm:text-2xl font-black text-white font-poppins">Select Your Role</h3>
+                <p class="text-xs text-white/70">Choose your profile to customize menu options</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 relative z-10 pt-1">
+                
+                <!-- Student / Walk-In -->
+                <a href="{% url 'customer_portal:kiosk_menu' %}?role=student" class="aspect-square flex flex-col items-center justify-between p-4 rounded-[24px] bg-gradient-to-b from-white/[0.12] to-white/[0.04] hover:from-brand-orange/35 hover:to-brand-orange/10 border border-white/15 hover:border-brand-orange shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-95 group relative overflow-hidden backdrop-blur-md">
+                    <div class="w-12 h-12 rounded-xl bg-brand-orange/20 border border-brand-orange/40 text-brand-orange flex items-center justify-center text-xl group-hover:bg-brand-orange group-hover:text-white transition-all duration-300 mt-1">
+                        <i class="fa-solid fa-user-graduate"></i>
+                    </div>
+
+                    <div class="space-y-0.5 text-center my-auto">
+                        <span class="text-xs font-black text-white group-hover:text-brand-orange transition-colors block leading-tight">
+                            Students /<br>Walk-In
+                        </span>
+                    </div>
+
+                    <span class="text-[9px] font-bold uppercase tracking-widest text-white/70 group-hover:text-white flex items-center gap-1 transition-colors">
+                        Select <i class="fa-solid fa-chevron-right text-[7px]"></i>
+                    </span>
+                </a>
+
+                <!-- Faculty & Staff -->
+                <a href="{% url 'accounts:faculty_auth' %}" class="aspect-square flex flex-col items-center justify-between p-4 rounded-[24px] bg-gradient-to-b from-white/[0.12] to-white/[0.04] hover:from-brand-orange/35 hover:to-brand-orange/10 border border-white/15 hover:border-brand-orange shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-95 group relative overflow-hidden backdrop-blur-md">
+                    <div class="w-12 h-12 rounded-xl bg-brand-orange/20 border border-brand-orange/40 text-brand-orange flex items-center justify-center text-xl group-hover:bg-brand-orange group-hover:text-white transition-all duration-300 mt-1">
+                        <i class="fa-solid fa-id-badge"></i>
+                    </div>
+
+                    <div class="space-y-0.5 text-center my-auto">
+                        <span class="text-xs font-black text-white group-hover:text-brand-orange transition-colors block leading-tight">
+                            Faculty &<br>Staff
+                        </span>
+                    </div>
+
+                    <span class="text-[9px] font-bold uppercase tracking-widest text-white/70 group-hover:text-white flex items-center gap-1 transition-colors">
+                        Select <i class="fa-solid fa-chevron-right text-[7px]"></i>
+                    </span>
+                </a>
+
+            </div>
+
+            <div class="pt-1 relative z-10">
+                <button onclick="closeRoleModal()" class="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-extrabold text-white/80 hover:text-white uppercase tracking-widest transition border border-white/10 backdrop-blur-md cursor-pointer">
+                    Cancel
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- ================= CONTROLLER SCRIPT ================= -->
     <script>
-        // --- 1. SPLASH FADE CONTROLLER ---
         window.addEventListener('DOMContentLoaded', () => {
             const splash = document.getElementById('splash-screen');
-            
             setTimeout(() => {
                 splash.classList.add('opacity-0');
-                setTimeout(() => {
-                    splash.style.display = 'none';
-                }, 1000);
-            }, 2500);
+                setTimeout(() => { splash.style.display = 'none'; }, 1000);
+            }, 2000);
         });
 
-        // --- 2. AUTOMATIC 3-SLIDE CAROUSEL CONTROLLER ---
+        function openRoleModal() {
+            document.getElementById('role-modal').classList.remove('hidden');
+        }
+
+        function closeRoleModal() {
+            document.getElementById('role-modal').classList.add('hidden');
+        }
+
         let currentSlide = 0;
         const totalSlides = 3;
         const sliderContainer = document.getElementById('slider-container');
 
         function updateSliderUI() {
             sliderContainer.style.transform = `translateX(-${currentSlide * 100}%)`;
-
             for (let i = 0; i < totalSlides; i++) {
                 const dot = document.getElementById(`dot-${i}`);
-                if (i === currentSlide) {
-                    dot.className = "w-7 h-2 rounded-full bg-brand-orange transition-all cursor-pointer";
-                } else {
-                    dot.className = "w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer";
+                if (dot) {
+                    dot.className = (i === currentSlide) 
+                        ? "w-6 h-2 rounded-full bg-brand-orange transition-all cursor-pointer"
+                        : "w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer";
                 }
             }
         }
@@ -212,11 +340,11 @@
             resetAutoSlide();
         }
 
-        let slideInterval = setInterval(nextSlide, 3500);
+        let slideInterval = setInterval(nextSlide, 4000);
 
         function resetAutoSlide() {
             clearInterval(slideInterval);
-            slideInterval = setInterval(nextSlide, 3500);
+            slideInterval = setInterval(nextSlide, 4000);
         }
     </script>
 </body>

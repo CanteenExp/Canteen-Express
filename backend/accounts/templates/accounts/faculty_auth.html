@@ -4,176 +4,348 @@
 <head>
     <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Faculty Portal - Login & Sign Up</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        poppins: ['Poppins', 'sans-serif'],
+                        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            orange: '#FF6117',
+                            dark: '#0A0A0C',
+                            card: '#141416',
+                            slate: '#8E8E93',
+                            blue: '#3B82F6',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; height: 100dvh; overflow: hidden; }
+        .font-poppins { font-family: 'Poppins', sans-serif; }
+
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        @keyframes scroll-right {
+            0% { transform: translateX(-50%); }
+            100% { transform: translateX(0); }
+        }
+        .animate-scroll-1 {
+            display: flex;
+            width: 200%;
+            animation: scroll-left 42s linear infinite;
+        }
+        .animate-scroll-2 {
+            display: flex;
+            width: 200%;
+            animation: scroll-right 48s linear infinite;
+        }
+        .diagonal-wrapper {
+            transform: rotate(-12deg) scale(1.4);
+        }
+    </style>
 </head>
-<body class="bg-zinc-900 min-h-screen flex items-center justify-center p-4">
+<body class="bg-brand-dark text-white flex flex-col justify-between p-4 max-w-md mx-auto w-full relative select-none"
+      x-data="{ 
+        mode: '{{ mode|default:"login" }}',
+        showLoginPass: false,
+        showSignupPass: false,
+        rememberMe: false,
+        showTermsModal: false,
+        showForgotModal: false,
+        showLocationModal: false,
+        termsOpened: false,
+        agreedTerms: false,
+        lat: 9.7401,
+        lng: 118.7357,
+        initLocation() {
+            const savedLat = localStorage.getItem('canteen_faculty_lat');
+            const savedLng = localStorage.getItem('canteen_faculty_lng');
+            if (savedLat && savedLng) {
+                this.lat = parseFloat(savedLat);
+                this.lng = parseFloat(savedLng);
+                this.showLocationModal = false;
+            } else {
+                this.showLocationModal = true;
+            }
+        },
+        detectLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        this.lat = pos.coords.latitude;
+                        this.lng = pos.coords.longitude;
+                        localStorage.setItem('canteen_faculty_lat', this.lat);
+                        localStorage.setItem('canteen_faculty_lng', this.lng);
+                        this.showLocationModal = false;
+                    },
+                    (err) => {
+                        this.useDefaultLocation();
+                    },
+                    { enableHighAccuracy: false, timeout: 5000 }
+                );
+            } else {
+                this.useDefaultLocation();
+            }
+        },
+        useDefaultLocation() {
+            this.lat = 9.7401;
+            this.lng = 118.7357;
+            localStorage.setItem('canteen_faculty_lat', this.lat);
+            localStorage.setItem('canteen_faculty_lng', this.lng);
+            this.showLocationModal = false;
+        }
+      }"
+      x-init="initLocation()">
 
-    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 relative z-10" 
-         x-data="{ 
-            mode: '{{ mode|default:"login" }}',
-            showLoginPass: false,
-            showSignupPass: false,
-            rememberMe: false,
-            showTermsModal: false,
-            termsOpened: false,
-            agreedTerms: false
-         }">
-        
-        <!-- Progress Bar / Header -->
-        <div class="space-y-2">
-            <div class="flex justify-between text-xs font-extrabold text-zinc-400 uppercase tracking-wider">
-                <span class="text-orange-600">Faculty Verification</span>
-                <span x-text="mode === 'login' ? 'Existing Account' : 'New Account'"></span>
+    <!-- ================= DIAGONAL BACKGROUND FOOD CAROUSEL ================= -->
+    <div class="absolute inset-0 z-0 pointer-events-none opacity-35 overflow-hidden flex flex-col justify-center gap-10 diagonal-wrapper">
+        <div class="animate-scroll-1 flex gap-6">
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
             </div>
-            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
-                <div class="bg-orange-500 h-full w-full"></div>
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
             </div>
         </div>
-
-        <div class="text-center space-y-2">
-            <div class="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
-                <i class="fa-solid fa-graduation-cap text-2xl"></i>
+        <div class="animate-scroll-2 flex gap-6">
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
             </div>
-            <h2 class="text-2xl font-black text-zinc-900" x-text="mode === 'login' ? 'Faculty Sign In' : 'Faculty Sign Up'"></h2>
-            <p class="text-xs text-zinc-500 leading-relaxed">Use your official institutional email ending in @psu.palawan.edu.ph.</p>
-        </div>
-
-        {% if error %}
-        <div class="p-3 bg-red-50 border border-red-200 text-red-600 rounded-2xl text-xs font-bold flex items-center gap-2">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-            <span>{{ error }}</span>
-        </div>
-        {% endif %}
-
-        <!-- Tab Toggle Buttons -->
-        <div class="grid grid-cols-2 gap-2 bg-zinc-100 p-1.5 rounded-2xl">
-            <button type="button" @click="mode = 'login'" :class="mode === 'login' ? 'bg-orange-500 text-white font-black shadow-md' : 'text-zinc-500 font-bold'" class="py-2.5 rounded-xl text-xs transition uppercase tracking-wider cursor-pointer">
-                Sign In
-            </button>
-            <button type="button" @click="mode = 'signup'" :class="mode === 'signup' ? 'bg-orange-500 text-white font-black shadow-md' : 'text-zinc-500 font-bold'" class="py-2.5 rounded-xl text-xs transition uppercase tracking-wider cursor-pointer">
-                Sign Up
-            </button>
-        </div>
-
-        <!-- LOGIN FORM -->
-        <form method="POST" class="space-y-4" x-show="mode === 'login'">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="login">
-
-            <div>
-                <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Institutional Email</label>
-                <input type="email" name="email" required placeholder="faculty@psu.palawan.edu.ph"
-                    class="w-full px-4 py-3 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
             </div>
+        </div>
+    </div>
 
-            <div>
-                <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Password</label>
-                <div class="relative">
-                    <input :type="showLoginPass ? 'text' : 'password'" name="password" required placeholder="••••••••"
-                        class="w-full px-4 py-3 pr-10 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
-                    <button type="button" @click="showLoginPass = !showLoginPass" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 cursor-pointer">
-                        <i :class="showLoginPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
-                    </button>
+    <!-- Dark Gradient Overlay -->
+    <div class="absolute inset-0 bg-gradient-to-b from-brand-dark/80 via-brand-dark/75 to-brand-dark/90 z-0"></div>
+
+    <!-- Header Brand (Image 2) -->
+    <header class="flex justify-center pt-2 relative z-10 shrink-0">
+        <div class="flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full border border-white/15 backdrop-blur-md">
+            <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-6 w-auto object-contain">
+            <span class="text-xs font-bold uppercase tracking-[0.2em] text-white/90 font-poppins">CANTEEN EXPRESS</span>
+        </div>
+    </header>
+
+    <!-- Main Card Container (Larger & Roomier Form) -->
+    <main class="my-auto w-full max-w-md mx-auto relative z-10 shrink-0">
+        <div class="bg-[#121215]/90 border border-white/15 rounded-[32px] p-6 sm:p-7 space-y-4 backdrop-blur-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] ring-1 ring-white/10 text-white">
+            
+            <div class="text-center space-y-1.5">
+                <div class="w-14 h-14 bg-brand-orange/20 border border-brand-orange/40 text-brand-orange rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-brand-orange/20 text-xl">
+                    <i class="fa-solid fa-graduation-cap"></i>
                 </div>
+                <h2 class="text-2xl font-black text-white font-poppins" x-text="mode === 'login' ? 'Faculty Sign In' : 'Faculty Sign Up'"></h2>
+                <p class="text-xs text-white/70 leading-relaxed max-w-xs mx-auto">Use your official institutional email ending in @psu.palawan.edu.ph.</p>
             </div>
 
-            <!-- Remember Me Checkbox -->
-            <div class="flex items-center justify-between text-xs">
-                <label class="flex items-center gap-2 cursor-pointer select-none">
-                    <input type="checkbox" name="remember_me" class="w-4 h-4 rounded border-zinc-300 text-orange-500 focus:ring-orange-500 cursor-pointer">
-                    <span class="font-bold text-zinc-600">Remember Me</span>
-                </label>
+            {% if error %}
+            <div class="p-3 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl text-xs font-bold flex items-center gap-2 backdrop-blur-md">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <!-- Tab Toggle Buttons -->
+            <div class="grid grid-cols-2 gap-2 bg-white/5 border border-white/10 p-1.5 rounded-2xl">
+                <button type="button" @click="mode = 'login'" :class="mode === 'login' ? 'bg-brand-orange text-white font-black shadow-lg shadow-brand-orange/30' : 'text-white/60 font-bold hover:text-white'" class="py-2.5 rounded-xl text-xs transition uppercase tracking-wider cursor-pointer font-poppins">
+                    Sign In
+                </button>
+                <button type="button" @click="mode = 'signup'" :class="mode === 'signup' ? 'bg-brand-orange text-white font-black shadow-lg shadow-brand-orange/30' : 'text-white/60 font-bold hover:text-white'" class="py-2.5 rounded-xl text-xs transition uppercase tracking-wider cursor-pointer font-poppins">
+                    Sign Up
+                </button>
             </div>
 
-            <button type="submit" class="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl shadow-lg shadow-orange-500/25 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20">
-                <span>Sign In to Dashboard</span>
-                <i class="fa-solid fa-arrow-right text-xs"></i>
-            </button>
-        </form>
+            <!-- LOGIN FORM -->
+            <form method="POST" class="space-y-3.5" x-show="mode === 'login'">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="login">
+                <input type="hidden" name="latitude" x-model="lat">
+                <input type="hidden" name="longitude" x-model="lng">
 
-        <!-- SIGNUP FORM -->
-        <form method="POST" class="space-y-4" x-show="mode === 'signup'" style="display: none;">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="signup">
-
-            <div>
-                <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Full Name</label>
-                <input type="text" name="name" required placeholder="Prof. Juan Dela Cruz"
-                    class="w-full px-4 py-3 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
-            </div>
-
-            <div>
-                <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Institutional Email (@psu.palawan.edu.ph)</label>
-                <input type="email" name="email" required placeholder="juan.delacruz@psu.palawan.edu.ph"
-                    class="w-full px-4 py-3 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
-            </div>
-
-            <div>
-                <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Password</label>
-                <div class="relative">
-                    <input :type="showSignupPass ? 'text' : 'password'" name="password" required placeholder="••••••••"
-                        class="w-full px-4 py-3 pr-10 border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:outline-none text-xs text-zinc-800 font-bold">
-                    <button type="button" @click="showSignupPass = !showSignupPass" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 cursor-pointer">
-                        <i :class="showSignupPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
-                    </button>
+                <div>
+                    <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Institutional Email</label>
+                    <input type="email" name="email" required placeholder="faculty@psu.palawan.edu.ph"
+                        class="w-full px-4 py-3 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm text-white font-bold placeholder-white/30 backdrop-blur-md">
                 </div>
-            </div>
 
-            <!-- Terms and Conditions Agreement -->
-            <div class="space-y-2 pt-1">
-                <div class="flex items-start gap-2">
-                    <input type="checkbox" id="terms_check" x-model="agreedTerms" :disabled="!termsOpened" required
-                           class="mt-0.5 w-4 h-4 rounded border-zinc-300 text-orange-500 focus:ring-orange-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                    <label for="terms_check" class="text-xs text-zinc-600 font-medium select-none">
-                        I have read and agree to the 
-                        <button type="button" @click="showTermsModal = true; termsOpened = true;" class="text-orange-600 font-bold underline hover:text-orange-700 cursor-pointer">
-                            Terms and Conditions
+                <div>
+                    <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Password</label>
+                    <div class="relative">
+                        <input :type="showLoginPass ? 'text' : 'password'" name="password" required placeholder="••••••••"
+                            class="w-full px-4 py-3 pr-11 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm text-white font-bold placeholder-white/30 backdrop-blur-md">
+                        <button type="button" @click="showLoginPass = !showLoginPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white cursor-pointer text-sm">
+                            <i :class="showLoginPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
-                        <span class="block text-[10px] text-orange-500 font-bold" x-show="!termsOpened">*(Please open & read Terms first)*</span>
+                    </div>
+                </div>
+
+                <!-- Remember Me & Forgot Password -->
+                <div class="flex items-center justify-between text-xs pt-1">
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" name="remember_me" class="w-4 h-4 rounded border-white/20 bg-white/5 text-brand-orange focus:ring-brand-orange cursor-pointer">
+                        <span class="font-bold text-white/80 text-xs">Remember Me</span>
                     </label>
+                    <button type="button" @click="showForgotModal = true" class="text-brand-orange font-bold hover:underline cursor-pointer text-xs">
+                        Forgot Password?
+                    </button>
                 </div>
+
+                <button type="submit" class="w-full py-3.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl shadow-xl shadow-brand-orange/35 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20 font-poppins">
+                    <span>Sign In to Dashboard</span>
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </form>
+
+            <!-- SIGNUP FORM -->
+            <form method="POST" class="space-y-3.5" x-show="mode === 'signup'" style="display: none;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="signup">
+                <input type="hidden" name="latitude" x-model="lat">
+                <input type="hidden" name="longitude" x-model="lng">
+
+                <div>
+                    <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Full Name</label>
+                    <input type="text" name="name" required placeholder="Prof. Juan Dela Cruz"
+                        class="w-full px-4 py-3 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm text-white font-bold placeholder-white/30 backdrop-blur-md">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Institutional Email (@psu.palawan.edu.ph)</label>
+                    <input type="email" name="email" required placeholder="juan.delacruz@psu.palawan.edu.ph"
+                        class="w-full px-4 py-3 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm text-white font-bold placeholder-white/30 backdrop-blur-md">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Password</label>
+                    <div class="relative">
+                        <input :type="showSignupPass ? 'text' : 'password'" name="password" required placeholder="••••••••"
+                            class="w-full px-4 py-3 pr-11 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm text-white font-bold placeholder-white/30 backdrop-blur-md">
+                        <button type="button" @click="showSignupPass = !showSignupPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white cursor-pointer text-sm">
+                            <i :class="showSignupPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Terms and Conditions Agreement -->
+                <div class="space-y-1 pt-1">
+                    <div class="flex items-start gap-2">
+                        <input type="checkbox" id="terms_check" x-model="agreedTerms" :disabled="!termsOpened" required
+                               class="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/5 text-brand-orange focus:ring-brand-orange cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <label for="terms_check" class="text-xs text-white/80 font-medium select-none leading-snug">
+                            I have read and agree to the 
+                            <button type="button" @click="showTermsModal = true; termsOpened = true;" class="text-brand-orange font-bold underline hover:text-orange-400 cursor-pointer">
+                                Terms (Strictly No Cancel Order)
+                            </button>
+                            <span class="block text-[10px] text-brand-orange font-bold" x-show="!termsOpened">*(Please open & read Terms first)*</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" 
+                        :disabled="!termsOpened || !agreedTerms"
+                        :class="(!termsOpened || !agreedTerms) ? 'opacity-50 cursor-not-allowed bg-brand-orange/40' : 'bg-brand-orange hover:bg-orange-600 shadow-brand-orange/30 cursor-pointer'"
+                        class="w-full py-3.5 text-white font-black rounded-2xl shadow-lg transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 relative z-20 font-poppins">
+                    <span>Register & Continue</span>
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <!-- Footer / Back Link -->
+    <footer class="pb-2 text-center relative z-10 shrink-0">
+        <a href="{% url 'accounts:landing' %}" class="text-xs font-bold text-white/60 hover:text-white transition inline-flex items-center gap-1">
+            <i class="fa-solid fa-arrow-left text-xs"></i> Back to Role Selection
+        </a>
+    </footer>
+
+    <!-- Location Permission Modal -->
+    <div x-show="showLocationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4" style="display: none;" @click.away="useDefaultLocation()">
+        <div class="bg-[#141416] border border-white/20 w-full max-w-sm rounded-[32px] p-6 text-center space-y-4 shadow-2xl">
+            <div class="w-14 h-14 bg-brand-orange/20 border border-brand-orange/40 text-brand-orange rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg shadow-brand-orange/20">
+                <i class="fa-solid fa-location-crosshairs"></i>
             </div>
-
-            <button type="submit" 
-                    :disabled="!termsOpened || !agreedTerms"
-                    :class="(!termsOpened || !agreedTerms) ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/25 cursor-pointer'"
-                    class="w-full py-3.5 text-white font-black rounded-2xl shadow-lg transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 relative z-20">
-                <span>Register & Continue</span>
-                <i class="fa-solid fa-arrow-right text-xs"></i>
-            </button>
-        </form>
-
-        <!-- Terms & Conditions Modal -->
-        <div x-show="showTermsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" style="display: none;">
-            <div @click.away="showTermsModal = false" class="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-4 max-h-[80vh] flex flex-col">
-                <div class="flex justify-between items-center border-b border-zinc-100 pb-3">
-                    <h3 class="text-base font-black text-zinc-900">Canteen Express - Terms and Conditions</h3>
-                    <button @click="showTermsModal = false" class="text-zinc-400 hover:text-zinc-700 text-lg font-bold cursor-pointer">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-                <div class="overflow-y-auto text-xs text-zinc-600 space-y-3 leading-relaxed pr-2">
-                    <p><strong>1. Acceptance of Terms:</strong> By registering and using Canteen Express, you agree to comply with and be bound by these Terms and Conditions.</p>
-                    <p><strong>2. Institutional Account Use:</strong> Faculty and staff accounts require a valid Palawan State University institutional email ending in @psu.palawan.edu.ph. You are responsible for maintaining the confidentiality of your account credentials.</p>
-                    <p><strong>3. Ordering & Campus Deliveries:</strong> Delivery requests are processed within campus buildings and rooms. Convenience fees and delivery charges apply as stated during checkout.</p>
-                    <p><strong>4. Privacy Policy:</strong> Your personal data, contact number, and location information are collected solely for order processing, queuing, and delivery tracking purposes.</p>
-                    <p><strong>5. User Conduct:</strong> Any misuse of the platform, fraudulent ordering, or harassment of delivery riders and canteen staff will result in account restriction or ban.</p>
-                </div>
-                <div class="pt-3 border-t border-zinc-100 flex justify-end">
-                    <button type="button" @click="showTermsModal = false; termsOpened = true;" class="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-md">
-                        I Understand & Agree
-                    </button>
-                </div>
+            <h3 class="text-base font-black text-white font-poppins">Allow Location Access</h3>
+            <p class="text-xs text-white/70 leading-relaxed">
+                Canteen Express needs your office location to enable seamless campus deliveries. Please allow location access.
+            </p>
+            <div class="space-y-2 pt-2">
+                <button type="button" @click="detectLocation()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-crosshairs"></i> Allow & Detect Location
+                </button>
+                <button type="button" @click="useDefaultLocation()" class="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer border border-white/10 font-poppins">
+                    Use Campus Default Location
+                </button>
             </div>
         </div>
+    </div>
 
-        <div class="text-center pt-2 border-t border-zinc-100">
-            <a href="{% url 'accounts:faculty_location' %}" class="text-xs font-bold text-zinc-400 hover:text-zinc-700 transition">
-                <i class="fa-solid fa-arrow-left mr-1"></i> Back to Location Check
-            </a>
+    <!-- Terms & Conditions Modal -->
+    <div x-show="showTermsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-4" style="display: none;">
+        <div @click.away="showTermsModal = false" class="bg-[#141416] border border-white/20 w-full max-w-lg rounded-[32px] p-6 shadow-2xl space-y-3 max-h-[80vh] flex flex-col text-white">
+            <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                <h3 class="text-sm font-black text-white font-poppins">Terms & Conditions & No-Cancellation Policy</h3>
+                <button @click="showTermsModal = false" class="text-white/50 hover:text-white text-base font-bold cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="overflow-y-auto text-xs text-white/80 space-y-2.5 leading-relaxed pr-2">
+                <p><strong>1. Acceptance of Terms:</strong> By registering and using Canteen Express, you agree to comply with and be bound by these Terms and Conditions.</p>
+                <p><strong>2. Institutional Account Use:</strong> Faculty and staff accounts require a valid Palawan State University institutional email ending in @psu.palawan.edu.ph. You are responsible for maintaining the confidentiality of your account credentials.</p>
+                <p><strong>3. Ordering & Campus Deliveries:</strong> Delivery requests are processed within campus buildings and rooms. Convenience fees and delivery charges apply as stated during checkout.</p>
+                <p><strong>4. Strict No-Cancellation Policy (No Cancel Order):</strong> Once an order is placed and confirmed, <strong>cancellation is strictly prohibited</strong>. Kitchen preparation begins immediately upon order placement to ensure fast campus delivery times.</p>
+                <p><strong>5. Privacy Policy:</strong> Your personal data, contact number, and location information are collected solely for order processing, queuing, and delivery tracking purposes.</p>
+                <p><strong>6. User Conduct:</strong> Any misuse of the platform, fraudulent ordering, or harassment of delivery riders and canteen staff will result in account restriction or ban.</p>
+            </div>
+            <div class="pt-2 border-t border-white/10 flex justify-end">
+                <button type="button" @click="showTermsModal = false; termsOpened = true;" class="px-4 py-2 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins">
+                    I Understand & Agree
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div x-show="showForgotModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-4" style="display: none;">
+        <div @click.away="showForgotModal = false" class="bg-[#141416] border border-white/20 w-full max-w-sm rounded-[32px] p-6 text-center space-y-3 shadow-2xl">
+            <div class="w-12 h-12 bg-brand-orange/20 border border-brand-orange/40 text-brand-orange rounded-2xl flex items-center justify-center mx-auto text-lg">
+                <i class="fa-solid fa-key"></i>
+            </div>
+            <h3 class="text-base font-black text-white font-poppins">Reset Password</h3>
+            <p class="text-xs text-white/70 leading-relaxed">
+                Please contact the Canteen Administrator or IT Support Office at <span class="text-brand-orange font-bold">support@canteenexpress.com</span> to reset your faculty account password.
+            </p>
+            <button type="button" @click="showForgotModal = false" class="w-full py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins">
+                Got It
+            </button>
         </div>
     </div>
 

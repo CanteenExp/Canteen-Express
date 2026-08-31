@@ -5,72 +5,156 @@
     <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Faculty Onboarding - Step 1: Location</title>
+    <title>Faculty Onboarding - Location Verification</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-</head>
-<body class="bg-zinc-900 min-h-screen flex items-center justify-center p-4">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        poppins: ['Poppins', 'sans-serif'],
+                        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            orange: '#FF6117',
+                            dark: '#0A0A0C',
+                            card: '#141416',
+                            slate: '#8E8E93',
+                            blue: '#3B82F6',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-poppins { font-family: 'Poppins', sans-serif; }
 
-    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 relative z-10">
-        <!-- Step Progress Indicator -->
-        <div class="space-y-2">
-            <div class="flex justify-between text-xs font-extrabold text-zinc-400 uppercase tracking-wider">
-                <span>Location Check</span>
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        @keyframes scroll-right {
+            0% { transform: translateX(-50%); }
+            100% { transform: translateX(0); }
+        }
+        .animate-scroll-1 {
+            display: flex;
+            width: 200%;
+            animation: scroll-left 42s linear infinite;
+        }
+        .animate-scroll-2 {
+            display: flex;
+            width: 200%;
+            animation: scroll-right 48s linear infinite;
+        }
+        .diagonal-wrapper {
+            transform: rotate(-12deg) scale(1.4);
+        }
+    </style>
+</head>
+<body class="bg-brand-dark text-white min-h-screen flex items-center justify-center p-3 relative overflow-hidden select-none">
+
+    <!-- ================= DIAGONAL BACKGROUND FOOD CAROUSEL ================= -->
+    <div class="absolute inset-0 z-0 pointer-events-none opacity-35 overflow-hidden flex flex-col justify-center gap-10 diagonal-wrapper">
+        <div class="animate-scroll-1 flex gap-6">
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
             </div>
-            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
-                <div class="bg-orange-500 h-full w-1/5"></div>
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
             </div>
         </div>
-
-        <!-- Header -->
-        <div class="text-center space-y-2">
-            <div class="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
-                <i class="fa-solid fa-location-crosshairs text-2xl"></i>
+        <div class="animate-scroll-2 flex gap-6">
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
             </div>
-            <h2 class="text-2xl font-black text-zinc-900">Delivery Location Check</h2>
-            <p class="text-xs text-zinc-500 leading-relaxed">We verify your location to ensure seamless campus office deliveries.</p>
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+        </div>
+    </div>
+
+    <!-- Dark Gradient Overlay -->
+    <div class="absolute inset-0 bg-gradient-to-b from-brand-dark/80 via-brand-dark/75 to-brand-dark/90 z-0"></div>
+
+    <!-- Main Card Container -->
+    <div class="w-full max-w-md bg-[#121215]/90 border border-white/15 rounded-[28px] p-4 sm:p-5 space-y-3 relative z-10 backdrop-blur-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] ring-1 ring-white/10">
+        
+        <!-- Header -->
+        <div class="text-center space-y-1">
+            <div class="w-12 h-12 bg-brand-orange/20 border border-brand-orange/40 text-brand-orange rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-brand-orange/20 text-lg">
+                <i class="fa-solid fa-location-crosshairs"></i>
+            </div>
+            <h2 class="text-xl font-black text-white font-poppins">Delivery Location Check</h2>
+            <p class="text-[11px] text-white/70 leading-snug max-w-xs mx-auto">We verify your location to ensure seamless campus office deliveries.</p>
         </div>
 
         <!-- Form -->
-        <form method="POST" id="location-form" class="space-y-4">
+        <form method="POST" id="location-form" class="space-y-3">
             {% csrf_token %}
             
             <input type="hidden" name="latitude" id="latitude" value="9.7401">
             <input type="hidden" name="longitude" id="longitude" value="118.7357">
 
             <!-- Status Box -->
-            <div id="status-box" class="p-4 bg-zinc-50 border border-zinc-200 rounded-2xl text-center transition-all duration-300">
-                <i id="status-icon" class="fa-solid fa-map-pin text-3xl text-zinc-400 mb-2"></i>
-                <p id="status-text" class="text-xs font-semibold text-zinc-600">Click below to detect your location or proceed instantly.</p>
+            <div id="status-box" class="p-3 bg-white/5 border border-white/15 rounded-2xl text-center transition-all duration-300">
+                <i id="status-icon" class="fa-solid fa-map-pin text-2xl text-brand-orange mb-1"></i>
+                <p id="status-text" class="text-xs font-semibold text-white/80">Click below to detect your location or proceed instantly.</p>
             </div>
 
             <!-- Action Button -->
-            <button type="button" id="detect-btn" onclick="getLocation()" class="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl shadow-lg shadow-orange-500/25 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20">
+            <button type="button" id="detect-btn" onclick="getLocation()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl shadow-xl shadow-brand-orange/30 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20 font-poppins">
                 <i class="fa-solid fa-crosshairs"></i>
                 <span>Detect My Location</span>
             </button>
 
             <!-- Quick Bypass / Default Campus Location Button -->
-            <button type="button" onclick="useDefaultLocation()" class="w-full py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold rounded-2xl transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer">
+            <button type="button" onclick="useDefaultLocation()" class="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-2xl transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer border border-white/10">
                 <i class="fa-solid fa-building-columns"></i>
                 <span>Use Campus Default Location</span>
             </button>
 
             <!-- Submit Button (Hidden initially until location is obtained) -->
-            <button type="submit" id="next-btn" class="hidden w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-600/25 transition text-xs uppercase tracking-wider items-center justify-center gap-2 cursor-pointer relative z-25">
+            <button type="submit" id="next-btn" class="hidden w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-600/30 transition text-xs uppercase tracking-wider items-center justify-center gap-2 cursor-pointer relative z-25 font-poppins">
                 <span>Continue to Sign in / Sign up</span>
                 <i class="fa-solid fa-arrow-right"></i>
             </button>
         </form>
 
-        <div class="text-center pt-2 border-t border-zinc-100">
-            <a href="{% url 'accounts:landing' %}" class="text-xs font-bold text-zinc-400 hover:text-zinc-700 transition">
-                <i class="fa-solid fa-arrow-left mr-1"></i> Back to Role Selection
+        <div class="text-center pt-1 border-t border-white/10">
+            <a href="{% url 'accounts:landing' %}" class="text-xs font-bold text-white/60 hover:text-white transition flex items-center justify-center gap-1">
+                <i class="fa-solid fa-arrow-left"></i> Back to Role Selection
             </a>
         </div>
     </div>
 
     <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLat = localStorage.getItem('canteen_faculty_lat');
+            const savedLng = localStorage.getItem('canteen_faculty_lng');
+            if (savedLat && savedLng) {
+                setCoordinates(parseFloat(savedLat), parseFloat(savedLng), true);
+            }
+        });
+
         function getLocation() {
             const statusBox = document.getElementById('status-box');
             const statusText = document.getElementById('status-text');
@@ -80,7 +164,7 @@
 
             if (navigator.geolocation) {
                 statusText.innerText = "Locating your position...";
-                statusIcon.className = "fa-solid fa-spinner fa-spin text-3xl text-orange-500 mb-2";
+                statusIcon.className = "fa-solid fa-spinner fa-spin text-2xl text-brand-orange mb-1";
 
                 const geoOptions = {
                     enableHighAccuracy: false,
@@ -89,7 +173,6 @@
                 };
 
                 let geoTimeout = setTimeout(() => {
-                    // Fallback if GPS takes too long on tunnels
                     useDefaultLocation();
                 }, 6500);
 
@@ -98,7 +181,7 @@
                         clearTimeout(geoTimeout);
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
-                        setCoordinates(lat, lng);
+                        setCoordinates(lat, lng, false);
                     },
                     (error) => {
                         clearTimeout(geoTimeout);
@@ -113,13 +196,15 @@
         }
 
         function useDefaultLocation() {
-            // Default Campus Coordinates (Palawan State University / Main Canteen Area)
-            setCoordinates(9.7401, 118.7357);
+            setCoordinates(9.7401, 118.7357, false);
         }
 
-        function setCoordinates(lat, lng) {
+        function setCoordinates(lat, lng, isCached = false) {
             document.getElementById('latitude').value = lat;
             document.getElementById('longitude').value = lng;
+
+            localStorage.setItem('canteen_faculty_lat', lat);
+            localStorage.setItem('canteen_faculty_lng', lng);
 
             const statusBox = document.getElementById('status-box');
             const statusText = document.getElementById('status-text');
@@ -127,9 +212,10 @@
             const detectBtn = document.getElementById('detect-btn');
             const nextBtn = document.getElementById('next-btn');
 
-            statusBox.className = "p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center";
-            statusIcon.className = "fa-solid fa-circle-check text-3xl text-emerald-500 mb-2";
-            statusText.innerHTML = `<span class="text-emerald-700 font-bold">Location Verified!</span><br><span class="text-[11px] text-emerald-600">Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}</span>`;
+            statusBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-center backdrop-blur-md";
+            statusIcon.className = "fa-solid fa-circle-check text-2xl text-emerald-400 mb-1";
+            const message = isCached ? "Location Verified (Saved)!" : "Location Verified Successfully!";
+            statusText.innerHTML = `<span class="text-emerald-300 font-bold">${message}</span><br><span class="text-[11px] text-emerald-400/80">Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}</span>`;
 
             if (detectBtn) detectBtn.classList.add('hidden');
             if (nextBtn) {

@@ -4,22 +4,27 @@
 <head>
     <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Select Role - Canteen Express</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: {
+                        poppins: ['Poppins', 'sans-serif'],
+                        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
                     colors: {
                         brand: {
                             orange: '#FF6117',
-                            dark: '#121212',
-                            card: '#1E1E1E',
+                            dark: '#0A0A0C',
+                            card: '#141416',
                             slate: '#8E8E93',
+                            blue: '#3B82F6',
                         }
                     }
                 }
@@ -27,76 +32,132 @@
         }
     </script>
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; height: 100dvh; overflow: hidden; }
+        .font-poppins { font-family: 'Poppins', sans-serif; }
+
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        @keyframes scroll-right {
+            0% { transform: translateX(-50%); }
+            100% { transform: translateX(0); }
+        }
+        .animate-scroll-1 {
+            display: flex;
+            width: 200%;
+            animation: scroll-left 42s linear infinite;
+        }
+        .animate-scroll-2 {
+            display: flex;
+            width: 200%;
+            animation: scroll-right 48s linear infinite;
+        }
+        .diagonal-wrapper {
+            transform: rotate(-12deg) scale(1.4);
+        }
     </style>
 </head>
-<body class="bg-brand-dark text-white min-h-screen flex flex-col justify-between p-6 sm:p-8 max-w-md mx-auto w-full select-none relative">
+<body class="bg-brand-dark text-white flex flex-col justify-between p-4 max-w-md mx-auto w-full select-none relative">
+
+    <!-- ================= DIAGONAL BACKGROUND FOOD CAROUSEL ================= -->
+    <div class="absolute inset-0 z-0 pointer-events-none opacity-35 overflow-hidden flex flex-col justify-center gap-10 diagonal-wrapper">
+        <div class="animate-scroll-1 flex gap-6">
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+        </div>
+        <div class="animate-scroll-2 flex gap-6">
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+            <div class="flex gap-6 shrink-0">
+                <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+                <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=500&q=80" class="w-64 h-40 object-cover rounded-2xl shadow-xl border border-white/10">
+            </div>
+        </div>
+    </div>
+
+    <!-- Dark Gradient Overlay -->
+    <div class="absolute inset-0 bg-gradient-to-b from-brand-dark/80 via-brand-dark/75 to-brand-dark/90 z-0"></div>
 
     <!-- Header Brand -->
-    <header class="flex justify-center pt-2">
-        <div class="flex items-center gap-2">
-            <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-7 w-auto object-contain">
-            <span class="text-xs font-bold uppercase tracking-[0.2em] text-white/90">CANTEEN EXPRESS</span>
+    <header class="flex justify-center pt-2 relative z-10 shrink-0">
+        <div class="flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full border border-white/15 backdrop-blur-md">
+            <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-6 w-auto object-contain">
+            <span class="text-xs font-bold uppercase tracking-[0.2em] text-white/90 font-poppins">CANTEEN EXPRESS</span>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="my-auto py-6 space-y-6 text-center">
-        <div class="w-16 h-16 rounded-2xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange text-2xl mx-auto shadow-lg shadow-brand-orange/10">
+    <!-- Main Content Container Card -->
+    <main class="my-auto py-3 space-y-4 text-center relative z-10 bg-[#121215]/90 border border-white/15 rounded-[32px] p-6 backdrop-blur-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] ring-1 ring-white/10 shrink-0">
+        <div class="w-14 h-14 rounded-2xl bg-brand-orange/20 border border-brand-orange/40 flex items-center justify-center text-brand-orange text-2xl mx-auto shadow-lg shadow-brand-orange/20">
             <i class="fa-solid fa-users"></i>
         </div>
         
-        <div class="space-y-2">
-            <h1 class="text-2xl sm:text-3xl font-black leading-tight text-white">
+        <div class="space-y-1.5">
+            <h1 class="text-2xl font-black leading-tight text-white font-poppins">
                 Welcome to <br><span class="text-brand-orange">Canteen Express!</span>
             </h1>
-            <p class="text-xs sm:text-sm text-brand-slate max-w-xs mx-auto leading-relaxed">
+            <p class="text-xs text-white/70 max-w-xs mx-auto leading-relaxed">
                 Please select your account role to continue to the ordering portal
             </p>
         </div>
 
         <!-- Role Cards -->
-        <div class="space-y-3.5 pt-2">
+        <div class="space-y-3 pt-1">
             <!-- Student / Walk-in -->
-            <a href="{% url 'customer_portal:kiosk_welcome' %}" class="group block w-full bg-brand-card hover:bg-white/5 border border-white/10 hover:border-brand-orange/60 active:scale-[0.98] rounded-2xl p-4 transition-all duration-200 shadow-xl cursor-pointer relative z-20">
+            <a href="{% url 'customer_portal:kiosk_welcome' %}" class="group block w-full bg-white/5 hover:bg-brand-orange/20 border border-white/15 hover:border-brand-orange active:scale-[0.98] rounded-2xl p-4 transition-all duration-200 shadow-xl cursor-pointer relative z-20 backdrop-blur-md">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange group-hover:bg-brand-orange group-hover:text-white transition duration-200 shrink-0">
+                    <div class="w-12 h-12 rounded-xl bg-brand-orange/20 border border-brand-orange/40 flex items-center justify-center text-brand-orange group-hover:bg-brand-orange group-hover:text-white transition duration-200 shrink-0">
                         <i class="fa-solid fa-graduation-cap text-xl"></i>
                     </div>
                     <div class="text-left flex-1 min-w-0">
-                        <h3 class="font-extrabold text-sm sm:text-base text-white group-hover:text-brand-orange transition">Student / Walk-in</h3>
-                        <p class="text-xs text-brand-slate truncate">Direct order for Dine-In & Pickup</p>
+                        <h3 class="font-extrabold text-sm sm:text-base text-white group-hover:text-brand-orange transition font-poppins">Student / Walk-in</h3>
+                        <p class="text-xs text-white/70 truncate">Direct order for Dine-In & Pickup</p>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-xs text-brand-slate group-hover:text-brand-orange group-hover:translate-x-1 transition duration-200"></i>
+                    <i class="fa-solid fa-chevron-right text-xs text-white/50 group-hover:text-brand-orange group-hover:translate-x-1 transition duration-200"></i>
                 </div>
             </a>
 
             <!-- Faculty / Staff -->
-            <a href="{% url 'accounts:faculty_location' %}" class="group block w-full bg-brand-card hover:bg-white/5 border border-white/10 hover:border-brand-orange/60 active:scale-[0.98] rounded-2xl p-4 transition-all duration-200 shadow-xl cursor-pointer relative z-20">
+            <a href="{% url 'accounts:faculty_auth' %}" class="group block w-full bg-white/5 hover:bg-brand-orange/20 border border-white/15 hover:border-brand-orange active:scale-[0.98] rounded-2xl p-4 transition-all duration-200 shadow-xl cursor-pointer relative z-20 backdrop-blur-md">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-brand-orange/10 border border-brand-orange/20 flex items-center justify-center text-brand-orange group-hover:bg-brand-orange group-hover:text-white transition duration-200 shrink-0">
+                    <div class="w-12 h-12 rounded-xl bg-brand-orange/20 border border-brand-orange/40 flex items-center justify-center text-brand-orange group-hover:bg-brand-orange group-hover:text-white transition duration-200 shrink-0">
                         <i class="fa-solid fa-user-tie text-xl"></i>
                     </div>
                     <div class="text-left flex-1 min-w-0">
-                        <h3 class="font-extrabold text-sm sm:text-base text-white group-hover:text-brand-orange transition">Faculty / Staff</h3>
-                        <p class="text-xs text-brand-slate truncate">Unlocks Office Delivery features</p>
+                        <h3 class="font-extrabold text-sm sm:text-base text-white group-hover:text-brand-orange transition font-poppins">Faculty / Staff</h3>
+                        <p class="text-xs text-white/70 truncate">Unlocks Office Delivery features</p>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-xs text-brand-slate group-hover:text-brand-orange group-hover:translate-x-1 transition duration-200"></i>
+                    <i class="fa-solid fa-chevron-right text-xs text-white/50 group-hover:text-brand-orange group-hover:translate-x-1 transition duration-200"></i>
                 </div>
             </a>
         </div>
     </main>
 
     <!-- Footer -->
-    <footer class="pb-6 text-center space-y-2 border-t border-white/5 pt-4">
-        <p class="text-xs text-brand-slate">
+    <footer class="pb-2 text-center space-y-1 border-t border-white/10 pt-2 relative z-10 shrink-0">
+        <p class="text-xs text-white/70">
             Already registered staff? 
             <a href="{% url 'accounts:staff_login' %}" class="text-brand-orange font-bold hover:underline">Staff Login</a> | 
             <a href="{% url 'accounts:delivery_login' %}" class="text-brand-orange font-bold hover:underline">Rider Login</a>
         </p>
-        <p class="text-[10px] text-brand-slate/60 uppercase font-bold tracking-widest pt-1">
+        <p class="text-[10px] text-white/50 uppercase font-bold tracking-widest">
             Touch your role to proceed
         </p>
     </footer>

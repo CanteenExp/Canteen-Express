@@ -80,7 +80,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Database
-if os.getenv('USE_SQLITE', 'False').lower() == 'true':
+use_sqlite = os.getenv('USE_SQLITE', 'False').lower() == 'true'
+
+if use_sqlite:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -88,17 +90,46 @@ if os.getenv('USE_SQLITE', 'False').lower() == 'true':
         }
     }
 else:
+    db_host = os.getenv('DB_HOST', 'ep-shy-heart-ayghwl06-pooler.c-5.us-east-2.aws.neon.tech')
+    db_name = os.getenv('DB_NAME', 'neondb')
+    db_user = os.getenv('DB_USER', 'neondb_owner')
+    db_password = os.getenv('DB_PASSWORD')
+    db_port = os.getenv('DB_PORT', '5432')
+
+    # Wake up Neon serverless compute instance if suspended / cold start
+    import time
+    try:
+        import psycopg2
+        for attempt in range(3):
+            try:
+                conn = psycopg2.connect(
+                    dbname=db_name,
+                    user=db_user,
+                    password=db_password,
+                    host=db_host,
+                    port=db_port,
+                    connect_timeout=5,
+                    sslmode='require'
+                )
+                conn.close()
+                break
+            except Exception:
+                if attempt < 2:
+                    time.sleep(2.5)
+    except Exception:
+        pass
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME', 'neondb'),
-            'USER': os.getenv('DB_USER', 'neondb_owner'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'HOST': os.getenv('DB_HOST', 'ep-shy-heart-ayghwl06-pooler.c-5.us-east-2.aws.neon.tech'),
-            'PORT': os.getenv('DB_PORT', '5432'),
+            'NAME': db_name,
+            'USER': db_user,
+            'PASSWORD': db_password,
+            'HOST': db_host,
+            'PORT': db_port,
             'OPTIONS': {
                 'sslmode': 'require',
-                'connect_timeout': 10,
+                'connect_timeout': 20,
             },
         }
     }
