@@ -60,6 +60,47 @@ def category_delete(request, pk):
     return render(request, 'canteen_menu/category_confirm_delete.html', {'category': category})
 
 
+import os
+from django.conf import settings
+from django.utils.text import slugify
+
+def _auto_sync_menu_image(item):
+    """
+    Auto-syncs menu image from designated media/menu_items folder matching item name,
+    or falls back to smart keyword-based Unsplash photo if no local file is uploaded.
+    """
+    if item.image:
+        return  # Manually uploaded image takes precedence
+
+    slug_name = slugify(item.name)
+    clean_name = item.name.lower().replace(' ', '_').replace('-', '_')
+
+    media_menu_dir = os.path.join(settings.MEDIA_ROOT, 'menu_items')
+    if os.path.exists(media_menu_dir):
+        for filename in os.listdir(media_menu_dir):
+            base, ext = os.path.splitext(filename)
+            if base.lower() in [slug_name, clean_name]:
+                item.image = f'menu_items/{filename}'
+                return
+
+    # Smart Keyword Fallback
+    name_lower = item.name.lower()
+    if 'burger' in name_lower or 'sandwich' in name_lower:
+        item.image_url = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80"
+    elif 'chicken' in name_lower:
+        item.image_url = "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=600&q=80"
+    elif 'pork' in name_lower or 'silog' in name_lower or 'rice' in name_lower:
+        item.image_url = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80"
+    elif 'soup' in name_lower or 'noodles' in name_lower or 'ramen' in name_lower:
+        item.image_url = "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=600&q=80"
+    elif 'drink' in name_lower or 'coke' in name_lower or 'juice' in name_lower or 'tea' in name_lower:
+        item.image_url = "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=600&q=80"
+    elif 'dessert' in name_lower or 'cake' in name_lower or 'turon' in name_lower:
+        item.image_url = "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80"
+    else:
+        item.image_url = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80"
+
+
 def _generate_auto_desc(name):
     name_lower = name.lower()
     if 'turon' in name_lower or 'banana' in name_lower or 'meryenda' in name_lower:
@@ -79,8 +120,9 @@ def staff_menu_create(request):
             item = form.save(commit=False)
             if not item.description:
                 item.description = _generate_auto_desc(item.name)
+            _auto_sync_menu_image(item)
             item.save()
-            messages.success(request, "Bagong pagkain ay matagumpay na naidagdag na may automated description!")
+            messages.success(request, "Bagong pagkain ay matagumpay na naidagdag na may auto-synced image at initial stock!")
             return redirect('canteen_menu:staff_menu_list')
         else:
             messages.error(request, "May mali sa mga impormasyong inilagay. Paki-ayos ang mga fields na may error.")
