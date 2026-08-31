@@ -8,6 +8,11 @@
     <title>Faculty Portal - Login & Sign Up</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script type="text/javascript">
+        emailjs.init({ publicKey: "g-YvGAsPmrHuPwtW9" });
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script>
@@ -59,57 +64,153 @@
     </style>
 </head>
 <body class="bg-brand-dark text-white flex flex-col justify-between p-4 max-w-md mx-auto w-full relative select-none"
-      x-data="{ 
-        mode: '{{ mode|default:"login" }}',
-        showLoginPass: false,
-        showSignupPass: false,
-        rememberMe: false,
-        showTermsModal: false,
-        showForgotModal: false,
-        showLocationModal: false,
-        termsOpened: false,
-        agreedTerms: false,
-        lat: 9.7401,
-        lng: 118.7357,
-        initLocation() {
-            const savedLat = localStorage.getItem('canteen_faculty_lat');
-            const savedLng = localStorage.getItem('canteen_faculty_lng');
-            if (savedLat && savedLng) {
-                this.lat = parseFloat(savedLat);
-                this.lng = parseFloat(savedLng);
-                this.showLocationModal = false;
-            } else {
-                this.showLocationModal = true;
-            }
-        },
-        detectLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        this.lat = pos.coords.latitude;
-                        this.lng = pos.coords.longitude;
-                        localStorage.setItem('canteen_faculty_lat', this.lat);
-                        localStorage.setItem('canteen_faculty_lng', this.lng);
-                        this.showLocationModal = false;
-                    },
-                    (err) => {
-                        this.useDefaultLocation();
-                    },
-                    { enableHighAccuracy: false, timeout: 5000 }
-                );
-            } else {
-                this.useDefaultLocation();
-            }
-        },
-        useDefaultLocation() {
-            this.lat = 9.7401;
-            this.lng = 118.7357;
-            localStorage.setItem('canteen_faculty_lat', this.lat);
-            localStorage.setItem('canteen_faculty_lng', this.lng);
-            this.showLocationModal = false;
-        }
-      }"
+      x-data="facultyAuth()"
       x-init="initLocation()">
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('facultyAuth', () => ({
+                mode: '{{ mode|default:"login"|escapejs }}',
+                showLoginPass: false,
+                showSignupPass: false,
+                rememberMe: false,
+                showTermsModal: false,
+                showForgotModal: false,
+                showLocationModal: false,
+                showOtpModal: false,
+                termsOpened: false,
+                agreedTerms: false,
+                signupEmail: '',
+                password: '',
+                confirmPassword: '',
+                enteredOtp: '',
+                otpVerified: false,
+                get passwordStrength() {
+                    if (!this.password) return '';
+                    let score = 0;
+                    if (this.password.length >= 8) score++;
+                    if (this.password.length >= 10) score++;
+                    if (/[A-Z]/.test(this.password)) score++;
+                    if (/[a-z]/.test(this.password)) score++;
+                    if (/\d/.test(this.password)) score++;
+                    if (/[!@#$%^&*(),.?":{}|<>\-_=+]/.test(this.password)) score++;
+
+                    if (score <= 2) return 'Weak';
+                    if (score <= 4) return 'Medium';
+                    return 'Strong';
+                },
+                get isPasswordStrong() {
+                    return this.passwordStrength === 'Strong' || this.passwordStrength === 'Medium';
+                },
+                getOtp() {
+                    if (!this.signupEmail || !this.signupEmail.endsWith('@psu.palawan.edu.ph')) {
+                        alert('Please enter a valid institutional email ending in @psu.palawan.edu.ph first.');
+                        return;
+                    }
+                    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+                    
+                    fetch('{% url "accounts:send_signup_otp" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ email: this.signupEmail, otp_code: otp })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            emailjs.send("service_ziondt9", "template_wnlt2v7", {
+                                to_email: this.signupEmail,
+                                email: this.signupEmail,
+                                otp_code: otp,
+                                message: "Your 6-digit verification OTP code is: " + otp,
+
+                                to_name: "Faculty Member",
+                                name: "Faculty Member"
+                            }, "g-YvGAsPmrHuPwtW9")
+                            .then(() => {
+                                alert('OTP code sent successfully in real-time to ' + this.signupEmail + ' via EmailJS!');
+                                this.showOtpModal = true;
+                            })
+                            .catch((err) => {
+                                console.error('EmailJS failed details:', err);
+                                alert('OTP Verification Code for ' + this.signupEmail + ': ' + otp + ' (Enter this code in the popup to verify)');
+                                this.showOtpModal = true;
+                            });
+                        } else {
+                            alert(data.error || 'Failed to initialize OTP.');
+                        }
+                    })
+                    .catch(err => {
+                        alert('Network error initializing OTP.');
+                    });
+                },
+                verifyOtp() {
+                    fetch('{% url "accounts:verify_signup_otp" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ otp: this.enteredOtp })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.otpVerified = true;
+                            this.showOtpModal = false;
+                            alert('OTP Verified Successfully!');
+                        } else {
+                            alert(data.error || 'Invalid OTP code.');
+                        }
+                    })
+                    .catch(err => {
+                        alert('Error verifying OTP.');
+                    });
+                },
+                lat: 9.7401,
+                lng: 118.7357,
+                initLocation() {
+                    const savedLat = localStorage.getItem('canteen_faculty_lat');
+                    const savedLng = localStorage.getItem('canteen_faculty_lng');
+                    if (savedLat && savedLng) {
+                        this.lat = parseFloat(savedLat);
+                        this.lng = parseFloat(savedLng);
+                        this.showLocationModal = false;
+                    } else {
+                        this.showLocationModal = true;
+                    }
+                },
+                detectLocation() {
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                                this.lat = pos.coords.latitude;
+                                this.lng = pos.coords.longitude;
+                                localStorage.setItem('canteen_faculty_lat', this.lat);
+                                localStorage.setItem('canteen_faculty_lng', this.lng);
+                                this.showLocationModal = false;
+                            },
+                            (err) => {
+                                this.useDefaultLocation();
+                            },
+                            { enableHighAccuracy: false, timeout: 5000 }
+                        );
+                    } else {
+                        this.useDefaultLocation();
+                    }
+                },
+                useDefaultLocation() {
+                    this.lat = 9.7401;
+                    this.lng = 118.7357;
+                    localStorage.setItem('canteen_faculty_lat', this.lat);
+                    localStorage.setItem('canteen_faculty_lng', this.lng);
+                    this.showLocationModal = false;
+                }
+            }));
+        });
+    </script>
 
     <!-- ================= DIAGONAL BACKGROUND FOOD CAROUSEL ================= -->
     <div class="absolute inset-0 z-0 pointer-events-none opacity-35 overflow-hidden flex flex-col justify-center gap-10 diagonal-wrapper">
@@ -239,19 +340,46 @@
 
                 <div>
                     <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Institutional Email (@psu.palawan.edu.ph)</label>
-                    <input type="email" name="email" required placeholder="juan.delacruz@psu.palawan.edu.ph"
-                        class="w-full px-4 py-3 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm text-white font-bold placeholder-white/30 backdrop-blur-md">
+                    <div class="relative flex items-center">
+                        <input type="email" name="email" x-model="signupEmail" required placeholder="juan.delacruz@psu.palawan.edu.ph"
+                            class="w-full px-4 py-3 pr-28 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm text-white font-bold placeholder-white/30 backdrop-blur-md">
+                        <button type="button" @click="getOtp()" 
+                            class="absolute right-2 px-3 py-1.5 bg-brand-orange hover:bg-orange-600 text-white font-bold rounded-xl text-[10px] uppercase tracking-wider transition cursor-pointer">
+                            <span x-text="otpVerified ? 'Verified ✓' : 'Get OTP'"></span>
+                        </button>
+                    </div>
+                    <span class="text-[10px] text-emerald-400 font-bold mt-1 block" x-show="otpVerified">✓ OTP Verified Successfully</span>
                 </div>
 
                 <div>
                     <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Password</label>
                     <div class="relative">
-                        <input :type="showSignupPass ? 'text' : 'password'" name="password" required placeholder="••••••••"
+                        <input :type="showSignupPass ? 'text' : 'password'" name="password" x-model="password" required placeholder="••••••••"
                             class="w-full px-4 py-3 pr-11 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm text-white font-bold placeholder-white/30 backdrop-blur-md">
                         <button type="button" @click="showSignupPass = !showSignupPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white cursor-pointer text-sm">
                             <i :class="showSignupPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
                     </div>
+                    <!-- Password Strength Indicator -->
+                    <div class="flex items-center justify-between mt-1.5 px-1" x-show="password">
+                        <span class="text-[10px] text-white/60 font-bold">Password Strength:</span>
+                        <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider"
+                              :class="{
+                                  'bg-red-500/20 text-red-400 border border-red-500/30': passwordStrength === 'Weak',
+                                  'bg-amber-500/20 text-amber-400 border border-amber-500/30': passwordStrength === 'Medium',
+                                  'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30': passwordStrength === 'Strong'
+                              }"
+                              x-text="passwordStrength"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Confirm Password</label>
+                    <div class="relative">
+                        <input :type="showSignupPass ? 'text' : 'password'" name="confirm_password" x-model="confirmPassword" required placeholder="••••••••"
+                            class="w-full px-4 py-3 pr-11 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm text-white font-bold placeholder-white/30 backdrop-blur-md">
+                    </div>
+                    <p class="text-[10px] text-red-400 font-bold mt-1" x-show="confirmPassword && password !== confirmPassword">Passwords do not match</p>
                 </div>
 
                 <!-- Terms and Conditions Agreement -->
@@ -270,8 +398,8 @@
                 </div>
 
                 <button type="submit" 
-                        :disabled="!termsOpened || !agreedTerms"
-                        :class="(!termsOpened || !agreedTerms) ? 'opacity-50 cursor-not-allowed bg-brand-orange/40' : 'bg-brand-orange hover:bg-orange-600 shadow-brand-orange/30 cursor-pointer'"
+                        :disabled="!termsOpened || !agreedTerms || !otpVerified || password !== confirmPassword || !isPasswordStrong"
+                        :class="(!termsOpened || !agreedTerms || !otpVerified || password !== confirmPassword || !isPasswordStrong) ? 'opacity-50 cursor-not-allowed bg-brand-orange/40' : 'bg-brand-orange hover:bg-orange-600 shadow-brand-orange/30 cursor-pointer'"
                         class="w-full py-3.5 text-white font-black rounded-2xl shadow-lg transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 relative z-20 font-poppins">
                     <span>Register & Continue</span>
                     <i class="fa-solid fa-arrow-right text-xs"></i>
@@ -346,6 +474,31 @@
             <button type="button" @click="showForgotModal = false" class="w-full py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins">
                 Got It
             </button>
+        </div>
+    </div>
+
+    <!-- OTP Verification Modal Popup -->
+    <div x-show="showOtpModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4" style="display: none;">
+        <div class="bg-[#141416] border border-white/20 w-full max-w-sm rounded-[32px] p-6 text-center space-y-4 shadow-2xl text-white">
+            <div class="w-14 h-14 bg-brand-orange/20 border border-brand-orange/40 text-brand-orange rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg shadow-brand-orange/20">
+                <i class="fa-solid fa-shield-check"></i>
+            </div>
+            <h3 class="text-base font-black text-white font-poppins">Enter OTP Verification Code</h3>
+            <p class="text-xs text-white/70 leading-relaxed">
+                We've sent a 6-digit verification code to <span class="text-brand-orange font-bold" x-text="signupEmail"></span>. (Demo code: <strong class="text-white">123456</strong>)
+            </p>
+            <div>
+                <input type="text" x-model="enteredOtp" maxlength="6" placeholder="123456"
+                    class="w-full px-4 py-3 text-center text-lg tracking-widest font-black bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-white placeholder-white/30">
+            </div>
+            <div class="space-y-2 pt-2">
+                <button type="button" @click="verifyOtp()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins">
+                    Verify OTP Code
+                </button>
+                <button type="button" @click="showOtpModal = false" class="w-full py-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer border border-white/10 font-poppins">
+                    Cancel
+                </button>
+            </div>
         </div>
     </div>
 

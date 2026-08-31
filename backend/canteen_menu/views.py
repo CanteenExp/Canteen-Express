@@ -1,6 +1,7 @@
 import json
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib import messages
 from .models import MenuItem, Category
 from django.views.decorators.csrf import csrf_exempt
@@ -34,10 +35,7 @@ def category_create(request):
         if form.is_valid():
             form.save()
             messages.success(request, "New category added successfully!")
-            return redirect('canteen_menu:staff_dashboard')
-    else:
-        form = CategoryForm()
-    return render(request, 'canteen_menu/category_form.html', {'form': form, 'action_title': 'Add New Category'})
+    return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
 def category_update(request, pk):
     category = get_object_or_404(Category, pk=pk)
@@ -46,59 +44,68 @@ def category_update(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Category updated successfully!")
-            return redirect('canteen_menu:staff_dashboard')
-    else:
-        form = CategoryForm(instance=category)
-    return render(request, 'canteen_menu/category_form.html', {'form': form, 'action_title': 'Edit Category', 'category': category})
+    return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
 def category_delete(request, pk):
     category = get_object_or_404(Category, pk=pk)
     if request.method == 'POST':
         category.delete()
         messages.success(request, "Category deleted successfully!")
-        return redirect('canteen_menu:staff_dashboard')
-    return render(request, 'canteen_menu/category_confirm_delete.html', {'category': category})
+    return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
 
 import os
+import shutil
+import urllib.parse
 from django.conf import settings
 from django.utils.text import slugify
 
 def _auto_sync_menu_image(item):
     """
-    Auto-syncs menu image from designated media/menu_items folder matching item name,
-    or falls back to smart keyword-based Unsplash photo if no local file is uploaded.
+    Auto-syncs menu image from designated local folders matching item name (instant check without listing large dirs).
     """
     if item.image:
         return  # Manually uploaded image takes precedence
 
     slug_name = slugify(item.name)
     clean_name = item.name.lower().replace(' ', '_').replace('-', '_')
+    no_space_name = item.name.lower().replace(' ', '')
+    raw_name = item.name.lower()
+
+    candidates = [slug_name, clean_name, no_space_name, raw_name, item.name]
+    extensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
 
     media_menu_dir = os.path.join(settings.MEDIA_ROOT, 'menu_items')
-    if os.path.exists(media_menu_dir):
-        for filename in os.listdir(media_menu_dir):
-            base, ext = os.path.splitext(filename)
-            if base.lower() in [slug_name, clean_name]:
-                item.image = f'menu_items/{filename}'
-                return
+    os.makedirs(media_menu_dir, exist_ok=True)
 
-    # Smart Keyword Fallback
-    name_lower = item.name.lower()
-    if 'burger' in name_lower or 'sandwich' in name_lower:
-        item.image_url = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80"
-    elif 'chicken' in name_lower:
-        item.image_url = "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=600&q=80"
-    elif 'pork' in name_lower or 'silog' in name_lower or 'rice' in name_lower:
-        item.image_url = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80"
-    elif 'soup' in name_lower or 'noodles' in name_lower or 'ramen' in name_lower:
-        item.image_url = "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=600&q=80"
-    elif 'drink' in name_lower or 'coke' in name_lower or 'juice' in name_lower or 'tea' in name_lower:
-        item.image_url = "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=600&q=80"
-    elif 'dessert' in name_lower or 'cake' in name_lower or 'turon' in name_lower:
-        item.image_url = "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80"
-    else:
-        item.image_url = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80"
+    source_dirs = [
+        media_menu_dir,
+        "C:/Users/vince/Vince Projects/CAPSTONE PROJECT/CANTEEN EXPRESS GITHUB MERGE/TESTING/backend/media/menu_items",
+        "C:/Users/vince/Vince Projects/CAPSTONE PROJECT/CANTEEN EXPRESS GITHUB MERGE/TESTING/Biscuits & Beverages",
+        "C:/Users/vince/Vince Projects/CAPSTONE PROJECT/CANTEEN EXPRESS GITHUB MERGE/TESTING/Meryenda",
+        "C:/Users/vince/Vince Projects/CAPSTONE PROJECT/CANTEEN EXPRESS GITHUB MERGE/TESTING/Ulams",
+    ]
+
+    for s_dir in source_dirs:
+        if os.path.exists(s_dir):
+            for cand in candidates:
+                for ext in extensions:
+                    filename = f"{cand}{ext}"
+                    src_path = os.path.join(s_dir, filename)
+                    if os.path.exists(src_path):
+                        target_path = os.path.join(media_menu_dir, filename)
+                        if not os.path.exists(target_path) and os.path.abspath(src_path) != os.path.abspath(target_path):
+                            try:
+                                shutil.copy2(src_path, target_path)
+                            except Exception:
+                                pass
+                        item.image = f'menu_items/{filename}'
+                        item.image_url = ''
+                        return
+
+    # Automated API Food Photo Fallback matching item name
+    encoded_query = urllib.parse.quote(f"{item.name},food,dish,filipino food")
+    item.image_url = f"https://loremflickr.com/600/400/{encoded_query}"
 
 
 def _generate_auto_desc(name):
@@ -122,7 +129,7 @@ def staff_menu_create(request):
                 item.description = _generate_auto_desc(item.name)
             _auto_sync_menu_image(item)
             item.save()
-            messages.success(request, "Bagong pagkain ay matagumpay na naidagdag na may auto-synced image at initial stock!")
+            messages.success(request, f"Ang menu na '{item.name}' ay matagumpay na naidagdag na may auto-synced image!")
             return redirect('canteen_menu:staff_menu_list')
         else:
             messages.error(request, "May mali sa mga impormasyong inilagay. Paki-ayos ang mga fields na may error.")
@@ -155,8 +162,7 @@ def staff_menu_delete(request, pk):
     if request.method == 'POST':
         item.delete()
         messages.success(request, "Naipagbura na ang item!")
-        return redirect('canteen_menu:staff_menu_list')
-    return render(request, 'canteen_menu/menu_confirm_delete.html', {'item': item})
+    return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
 def counter_board(request):
     from customer_portal.models import Order
@@ -263,7 +269,7 @@ def staff_dashboard(request):
         if not description:
             description = _generate_auto_desc(name)
         
-        MenuItem.objects.create(
+        item = MenuItem(
             name=name,
             category=category,
             price=price,
@@ -273,8 +279,10 @@ def staff_dashboard(request):
             description=description,
             is_available=True
         )
-        messages.success(request, "New menu item added successfully!")
-        return redirect('canteen_menu:staff_dashboard')
+        _auto_sync_menu_image(item)
+        item.save()
+        messages.success(request, "New menu item added successfully with auto-synced image!")
+        return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
     staff_name = request.user.first_name if request.user.is_authenticated and request.user.first_name else (request.user.username if request.user.is_authenticated else 'Staff')
 
@@ -318,6 +326,8 @@ def staff_menu_edit_ajax(request):
             item.name = request.POST.get('name', item.name)
             item.price = request.POST.get('price', item.price)
             item.stock = request.POST.get('stock', item.stock)
+            if request.POST.get('description') is not None:
+                item.description = request.POST.get('description')
             category_id = request.POST.get('category')
             if category_id:
                 item.category = get_object_or_404(Category, pk=category_id)
@@ -325,11 +335,14 @@ def staff_menu_edit_ajax(request):
                 item.image_url = request.POST.get('image_url')
             if request.FILES.get('image'):
                 item.image = request.FILES.get('image')
+            
+            if not item.image and not item.image_url:
+                _auto_sync_menu_image(item)
             item.save()
             messages.success(request, f"Updated {item.name} successfully!")
         except Exception as e:
             messages.error(request, f"Error updating item: {str(e)}")
-    return redirect('canteen_menu:staff_dashboard')
+    return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
 def create_delivery_staff_view(request):
@@ -355,7 +368,7 @@ def create_delivery_staff_view(request):
                 account_status='active'
             )
             messages.success(request, f"Delivery staff {username} created successfully!")
-    return redirect('canteen_menu:staff_dashboard')
+    return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=deliveries')
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
 def update_delivery_staff_status_view(request, pk):
@@ -376,7 +389,7 @@ def update_delivery_staff_status_view(request, pk):
             rider.account_status = 'active' if rider.is_active else 'inactive'
             messages.success(request, f"Rider {rider.username} status toggled.")
         rider.save()
-    return redirect('canteen_menu:staff_dashboard')
+    return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=deliveries')
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
 def update_user_status_view(request, pk):
@@ -397,7 +410,7 @@ def update_user_status_view(request, pk):
             user.account_status = 'active'
             messages.success(request, f"User {user.username} activated.")
         user.save()
-    return redirect('canteen_menu:staff_dashboard')
+    return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=users')
 
 @csrf_exempt
 def process_barcode_api(request):

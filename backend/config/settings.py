@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load .env at mag-print ng diagnostic info
+# Load .env at mag-print ng diagnostic info (override=True so .env takes precedence)
 env_file = BASE_DIR / ".env"
-dotenv_loaded = load_dotenv(env_file)
+dotenv_loaded = load_dotenv(env_file, override=True)
 
 print("\n" + "="*40)
 print(f"Checking .env path: {env_file}")
@@ -171,9 +171,15 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Print emails to the console for testing during development
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'Canteen Express <no-reply@canteenexpress.com>'
+# Email Settings (Real-time SMTP Gmail SSL Port 465)
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 465))
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True') == 'True'
+EMAIL_USE_TLS = False
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'canteenexpress26@gmail.com')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'pwqhlcwxmkiizzwg')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Canteen Express <canteenexpress26@gmail.com>')
 
 
 CSRF_TRUSTED_ORIGINS = [

@@ -22,4 +22,6 @@ urlpatterns = [
     path('faculty/location/', views.faculty_location_view, name='faculty_location'),
     path('faculty/auth/', views.faculty_auth_view, name='faculty_auth'),
     path('faculty/dashboard/', views.faculty_dashboard_view, name='dashboard'),
+    path('send-otp/', views.send_signup_otp, name='send_signup_otp'),
+    path('verify-otp/', views.verify_signup_otp, name='verify_signup_otp'),
 ]
