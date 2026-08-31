@@ -52,6 +52,217 @@
                     <i class="fa-solid fa-right-from-bracket"></i> <span class="hidden sm:inline">Logout</span>
                 </a>
             </div>
+<<<<<<< HEAD
+=======
+        </div>
+    </header>
+
+    <!-- ================= MAIN CONTENT ================= -->
+    <main class="flex-1 max-w-7xl mx-auto w-full px-4 py-6 space-y-8">
+
+        <!-- Earnings Banner Card -->
+        <div class="bg-gradient-to-r from-emerald-950 via-rider-card to-rider-card border border-emerald-500/30 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 shadow-2xl relative overflow-hidden">
+            <div class="space-y-1.5 z-10">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                    <i class="fa-solid fa-wallet"></i> Performance & Earnings
+                </span>
+                <h2 class="text-2xl sm:text-3xl font-black text-white">Drive & Earn Daily 🛵</h2>
+                <p class="text-xs sm:text-sm text-zinc-400 max-w-md">Accept campus office deliveries from faculty members. Earn ₱30.00 commission per completed delivery.</p>
+            </div>
+
+            <div class="bg-black/40 border border-white/10 p-5 rounded-2xl flex items-center gap-4 z-10 shadow-lg shrink-0">
+                <div class="w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-xl font-black">
+                    ₱
+                </div>
+                <div>
+                    <span class="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider block">Total Earnings</span>
+                    <span class="text-2xl font-black text-emerald-400">₱{{ total_earnings|floatformat:2 }}</span>
+                    <span class="text-[10px] text-zinc-500 block">({{ completed_count }} completed deliveries)</span>
+                </div>
+            </div>
+            <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl"></div>
+        </div>
+
+        <!-- Incoming Delivery Requests -->
+        <div class="space-y-4">
+            <h3 class="text-xs font-black text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-bell text-orange-400"></i> Incoming Delivery Requests (Pending Acceptance)
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for d in pending_deliveries %}
+                <div class="bg-rider-card border border-rider-border rounded-3xl p-6 space-y-4 shadow-xl hover:border-emerald-500/50 transition">
+                    <div class="flex justify-between items-start border-b border-rider-border pb-3">
+                        <div>
+                            <span class="text-xs font-black text-orange-400 uppercase tracking-wider">Order {{ d.order.order_number }}</span>
+                            <h4 class="text-base font-black text-white mt-0.5"><i class="fa-solid fa-location-dot text-orange-400 mr-1"></i> {{ d.delivery_location }}</h4>
+                        </div>
+                        <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase">
+                            Searching Rider
+                        </span>
+                    </div>
+
+                    <div class="text-xs space-y-1 text-zinc-300">
+                        <p class="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Items Ordered:</p>
+                        {% for item in d.order.items.all %}
+                            <p>• {{ item.quantity }}x {{ item.item_name }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="pt-3 border-t border-rider-border space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-zinc-400 font-bold uppercase">Total Amount:</span>
+                            <span class="text-base font-black text-orange-400">₱{{ d.order.total_amount }}</span>
+                        </div>
+
+                        {% if active_deliveries_count >= 3 %}
+                        <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-400 text-xs font-bold text-center">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i> Max 3 active deliveries reached. Complete one first.
+                        </div>
+                        {% else %}
+                        <!-- Swipe to Accept Component -->
+                        <div class="relative w-full h-12 bg-zinc-900 rounded-2xl overflow-hidden flex items-center p-1 select-none border border-rider-border" x-data="{ dragging: false, startX: 0, currentX: 0 }">
+                            <span class="absolute inset-0 flex items-center justify-center text-[11px] font-black text-zinc-400 tracking-wider uppercase pointer-events-none">
+                                <i class="fa-solid fa-angles-right text-emerald-500 mr-1.5 animate-pulse"></i> Swipe Right to Accept (+₱30)
+                            </span>
+                            <div class="relative z-10 w-10 h-10 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl flex items-center justify-center cursor-pointer shadow-lg transition-transform"
+                                 :style="'transform: translateX(' + currentX + 'px);'"
+                                 @touchstart="startX = $event.touches[0].clientX; dragging = true"
+                                 @touchmove="if (dragging) { let diff = $event.touches[0].clientX - startX; currentX = Math.max(0, Math.min(diff, 220)); }"
+                                 @touchend="dragging = false; if (currentX > 150) { window.location.href = '{% url 'deliveries:accept_delivery' d.id %}'; } else { currentX = 0; }"
+                                 @mousedown="startX = $event.clientX; dragging = true"
+                                 @mousemove.window="if (dragging) { let diff = $event.clientX - startX; currentX = Math.max(0, Math.min(diff, 220)); }"
+                                 @mouseup.window="if (dragging) { dragging = false; if (currentX > 150) { window.location.href = '{% url 'deliveries:accept_delivery' d.id %}'; } else { currentX = 0; } }"
+                                 title="Slide to Accept">
+                                <i class="fa-solid fa-arrow-right text-xs"></i>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-span-full bg-rider-card border border-rider-border rounded-3xl p-16 text-center text-zinc-500 space-y-2">
+                    <i class="fa-solid fa-motorcycle text-4xl mb-2 text-zinc-600"></i>
+                    <p class="text-xs font-bold">No incoming delivery requests right now.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- My Active Deliveries -->
+        <div class="space-y-4 pt-4">
+            <h3 class="text-xs font-black text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-person-biking text-emerald-400"></i> My Active Deliveries & Live Chat
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for d in my_deliveries %}
+                <div class="bg-rider-card border border-emerald-500/40 rounded-3xl p-6 space-y-4 shadow-xl">
+                    <div class="flex justify-between items-start border-b border-rider-border pb-3">
+                        <div>
+                            <span class="text-xs font-black text-emerald-400 uppercase tracking-wider">Order {{ d.order.order_number }}</span>
+                            <h4 class="text-base font-black text-white mt-0.5"><i class="fa-solid fa-building text-emerald-400 mr-1"></i> {{ d.delivery_location }}</h4>
+                        </div>
+                        <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase">
+                            {{ d.status }}
+                        </span>
+                    </div>
+
+                    <div class="text-xs space-y-1 text-zinc-300">
+                        <p class="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Items:</p>
+                        {% for item in d.order.items.all %}
+                            <p>• {{ item.quantity }}x {{ item.item_name }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="pt-3 border-t border-rider-border flex items-center justify-between gap-2">
+                        <button @click="openChat({{ d.id }}, '{{ d.order.order_number }}')" class="bg-zinc-800 hover:bg-zinc-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-2 border border-white/10">
+                            <i class="fa-solid fa-comments text-emerald-400"></i> Chat with Customer
+                        </button>
+
+                        {% if d.status == 'ACCEPTED' %}
+                        <a href="{% url 'deliveries:complete_delivery' d.id %}" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-600/30 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-check-circle"></i> Mark as Delivered
+                        </a>
+                        {% else %}
+                        <span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-xl">Delivered Successfully ✓</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-span-full bg-rider-card border border-rider-border rounded-3xl p-16 text-center text-zinc-500 space-y-2">
+                    <i class="fa-solid fa-box-open text-4xl mb-2 text-zinc-600"></i>
+                    <p class="text-xs font-bold">You have not accepted any deliveries yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ================= RIDER FOOTER NAVIGATION ================= -->
+    <footer class="bg-rider-card border-t border-rider-border sticky bottom-0 z-40 shrink-0 shadow-2xl">
+        <div class="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between text-xs">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-black text-sm">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <div>
+                    <span class="text-[10px] text-zinc-400 uppercase tracking-widest block font-bold">Daily Earnings</span>
+                    <span class="font-black text-emerald-400 text-base">₱{{ total_earnings|floatformat:2 }}</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 text-center">
+                <div class="bg-zinc-900 border border-rider-border px-3.5 py-1.5 rounded-2xl">
+                    <span class="text-[9px] text-zinc-400 uppercase tracking-widest block font-bold">Delivered</span>
+                    <span class="font-black text-white text-sm">{{ completed_count }}</span>
+                </div>
+                <div class="bg-zinc-900 border border-rider-border px-3.5 py-1.5 rounded-2xl">
+                    <span class="text-[9px] text-orange-400 uppercase tracking-widest block font-bold">Active</span>
+                    <span class="font-black text-orange-400 text-sm">{{ active_deliveries_count }}/3</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ================= LIVE CHAT MODAL ================= -->
+    <div x-show="chatOpen" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4" style="display: none;">
+        <div class="bg-rider-card border border-rider-border rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col h-[500px] animate-fade-in">
+            <!-- Chat Header -->
+            <div class="bg-zinc-900 border-b border-rider-border p-4 flex items-center justify-between">
+                <div>
+                    <h3 class="font-black text-white text-sm" x-text="'Chat - Order ' + currentOrderNo"></h3>
+                    <p class="text-[10px] text-emerald-400 font-bold">Real-time messaging with faculty customer</p>
+                </div>
+                <button @click="chatOpen = false" class="text-zinc-400 hover:text-white p-1.5"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- Messages Box -->
+            <div id="chat-messages-box" class="flex-1 p-4 overflow-y-auto space-y-3 bg-black/40">
+                <template x-for="msg in messages" :key="msg.id">
+                    <div :class="(msg.sender_role === 'DELIVERY' || msg.is_me) ? 'flex justify-end' : 'flex justify-start'">
+                        <div :class="(msg.sender_role === 'DELIVERY' || msg.is_me) ? 'bg-emerald-600 text-white rounded-2xl rounded-tr-none px-4 py-2 text-xs max-w-[80%] shadow' : 'bg-zinc-800 text-zinc-100 border border-rider-border rounded-2xl rounded-tl-none px-4 py-2 text-xs max-w-[80%] shadow-sm'">
+                            <p x-text="msg.message"></p>
+                            <span class="text-[9px] opacity-70 block text-right mt-1" x-text="msg.time"></span>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="messages.length === 0" class="text-center py-20 text-zinc-500 text-xs">
+                    <i class="fa-solid fa-comments text-3xl mb-2 text-zinc-600 block"></i>
+                    No messages yet. Send a message to coordinate delivery!
+                </div>
+            </div>
+
+            <!-- Send Message Input -->
+            <div class="p-3 bg-zinc-900 border-t border-rider-border flex items-center gap-2">
+                <input type="text" x-model="newMessage" @keyup.enter="sendMessage()" placeholder="Type your message..."
+                    class="flex-1 px-4 py-3 bg-black/50 border border-rider-border rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 font-medium">
+                <button @click="sendMessage()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl text-xs font-black shadow transition">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+>>>>>>> pilot-testing
         </div>
     </header>
 

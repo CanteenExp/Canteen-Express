@@ -19,6 +19,11 @@ print("="*40 + "\n")
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-local-dev-key")
 
 DEBUG = True
+<<<<<<< HEAD
+=======
+
+ALLOWED_HOSTS = ['*']
+>>>>>>> pilot-testing
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '*']
 AUTH_USER_MODEL = 'accounts.CustomUser'
@@ -138,5 +143,11 @@ DEFAULT_FROM_EMAIL = 'Canteen Express <no-reply@canteenexpress.com>'
 
 CSRF_TRUSTED_ORIGINS = [
     'https://tiny-boats-win.loca.lt',
+<<<<<<< HEAD
     'https://*.loca.lt', 
 ]
+=======
+    # O kaya para mas madali habang nagte-test ka:
+    'https://*.loca.lt', 
+]
+>>>>>>> pilot-testing

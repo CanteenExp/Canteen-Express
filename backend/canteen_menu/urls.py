@@ -1,7 +1,12 @@
 from django.urls import path
 from . import views
+<<<<<<< HEAD
 from django.conf import settings
 from django.conf.urls.static import static
+=======
+from django.conf import settings             # <-- DAGDAG ITO (1)
+from django.conf.urls.static import static   # <-- DAGDAG ITO (2)
+>>>>>>> pilot-testing
 
 app_name = 'canteen_menu'
 
