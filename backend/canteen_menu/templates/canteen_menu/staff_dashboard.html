@@ -1234,17 +1234,29 @@
             <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 class="text-xl font-black text-dark-900">
-                        Sales Reports & Analytics
+                        Sales Reports, Analytics & Audit Logs
                     </h2>
                     <p class="text-xs text-gray-500 mt-0.5">
-                        Earnings breakdown per day, week, and month with visual graph.
+                        Overall financial summaries, visual charts (Bar, Line, Pie), and system audit reports.
                     </p>
                 </div>
-                <!-- Report Period Filter Buttons -->
-                <div class="flex bg-gray-100 p-1 rounded-2xl">
-                    <button @click="reportMode = 'daily'; switchChart('daily')" :class="reportMode === 'daily' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-4 py-2 rounded-xl text-xs transition cursor-pointer">Daily (7 Days)</button>
-                    <button @click="reportMode = 'weekly'; switchChart('weekly')" :class="reportMode === 'weekly' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-4 py-2 rounded-xl text-xs transition cursor-pointer">Weekly (4 Wks)</button>
-                    <button @click="reportMode = 'monthly'; switchChart('monthly')" :class="reportMode === 'monthly' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-4 py-2 rounded-xl text-xs transition cursor-pointer">Monthly (6 Mos)</button>
+                <!-- Export Dropdown & Filter Buttons -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="relative" x-data="{ exportOpen: false }">
+                        <button @click="exportOpen = !exportOpen" class="px-4 py-2.5 bg-black hover:bg-gray-800 text-white font-black rounded-2xl text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer transition shadow-md">
+                            <i class="fa-solid fa-download"></i> Download Report ▾
+                        </button>
+                        <div x-show="exportOpen" @click.away="exportOpen = false" class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-2xl shadow-2xl py-2 z-30" style="display: none;">
+                            <a href="{% url 'canteen_menu:export_report' 'excel' %}" class="block px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-orange-50 hover:text-orange-600"><i class="fa-solid fa-file-excel text-emerald-600 mr-2"></i> Excel (.csv)</a>
+                            <a href="{% url 'canteen_menu:export_report' 'pdf' %}" class="block px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-orange-50 hover:text-orange-600"><i class="fa-solid fa-file-pdf text-red-600 mr-2"></i> PDF Report (.pdf)</a>
+                            <a href="{% url 'canteen_menu:export_report' 'docx' %}" class="block px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-orange-50 hover:text-orange-600"><i class="fa-solid fa-file-word text-blue-600 mr-2"></i> Word Doc (.doc)</a>
+                        </div>
+                    </div>
+                    <div class="flex bg-gray-100 p-1 rounded-2xl">
+                        <button @click="reportMode = 'daily'; switchChart('daily')" :class="reportMode === 'daily' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3.5 py-2 rounded-xl text-xs transition cursor-pointer">Daily</button>
+                        <button @click="reportMode = 'weekly'; switchChart('weekly')" :class="reportMode === 'weekly' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3.5 py-2 rounded-xl text-xs transition cursor-pointer">Weekly</button>
+                        <button @click="reportMode = 'monthly'; switchChart('monthly')" :class="reportMode === 'monthly' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3.5 py-2 rounded-xl text-xs transition cursor-pointer">Monthly</button>
+                    </div>
                 </div>
             </div>
 
@@ -1267,88 +1279,90 @@
                 </div>
             </div>
 
-            <!-- Graph Section -->
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider" x-text="reportMode === 'daily' ? 'Daily Sales Trend (Last 7 Days)' : (reportMode === 'weekly' ? 'Weekly Sales Trend (Last 4 Weeks)' : 'Monthly Sales Trend (Last 6 Months)')"></h3>
-                    <span class="text-xs font-bold text-gray-400">Revenue in PHP (₱)</span>
+            <!-- Analytics Graphs Grid (Bar, Line, Pie) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Bar Graph -->
+                <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Sales Revenue (Bar Chart)</h3>
+                        <span class="text-xs font-bold text-gray-400">PHP (₱)</span>
+                    </div>
+                    <div class="h-64 w-full relative">
+                        <canvas id="salesChart"></canvas>
+                    </div>
                 </div>
-                <div class="h-72 w-full relative">
-                    <canvas id="salesChart"></canvas>
+
+                <!-- Line Graph -->
+                <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Order Volume Trend (Line Chart)</h3>
+                        <span class="text-xs font-bold text-gray-400">Order Count</span>
+                    </div>
+                    <div class="h-64 w-full relative">
+                        <canvas id="lineChart"></canvas>
+                    </div>
                 </div>
             </div>
 
-            <!-- Tables per Report Mode -->
+            <!-- Category Revenue Pie Chart & Breakdown -->
             <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
-                <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Detailed Financial Breakdown</h3>
-                
-                <!-- Daily Table -->
-                <div x-show="reportMode === 'daily'" class="overflow-x-auto">
-                    <table class="w-full text-left text-xs">
-                        <thead>
-                            <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
-                                <th class="py-3 px-4">Date</th>
-                                <th class="py-3 px-4">Total Orders</th>
-                                <th class="py-3 px-4 text-right">Revenue</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
-                            {% for row in daily_sales %}
-                            <tr class="hover:bg-gray-50">
-                                <td class="py-3.5 px-4 font-bold text-dark-900">{{ row.period|date:"F j, Y" }}</td>
-                                <td class="py-3.5 px-4">{{ row.count }} orders</td>
-                                <td class="py-3.5 px-4 text-right font-black text-brand-500">₱{{ row.total|floatformat:2 }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="3" class="py-6 text-center text-gray-400">No daily sales data available.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="flex justify-between items-center">
+                    <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Revenue Distribution by Category (Pie Chart)</h3>
+                    <span class="text-xs font-bold text-gray-400">Percentage Share</span>
                 </div>
-
-                <!-- Weekly Table -->
-                <div x-show="reportMode === 'weekly'" class="overflow-x-auto" style="display: none;">
-                    <table class="w-full text-left text-xs">
-                        <thead>
-                            <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
-                                <th class="py-3 px-4">Week Starting</th>
-                                <th class="py-3 px-4">Total Orders</th>
-                                <th class="py-3 px-4 text-right">Revenue</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
-                            {% for row in weekly_sales %}
-                            <tr class="hover:bg-gray-50">
-                                <td class="py-3.5 px-4 font-bold text-dark-900">Week of {{ row.period|date:"F j, Y" }}</td>
-                                <td class="py-3.5 px-4">{{ row.count }} orders</td>
-                                <td class="py-3.5 px-4 text-right font-black text-blue-600">₱{{ row.total|floatformat:2 }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="3" class="py-6 text-center text-gray-400">No weekly sales data available.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                    <div class="md:col-span-1 h-60 relative flex justify-center">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                    <div class="md:col-span-2 overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
+                                    <th class="py-3 px-4">Category</th>
+                                    <th class="py-3 px-4 text-right">Revenue Share</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 font-medium text-gray-700" id="categoryShareBody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+            </div>
 
-                <!-- Monthly Table -->
-                <div x-show="reportMode === 'monthly'" class="overflow-x-auto" style="display: none;">
+            <!-- Audit Reports Section -->
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">System Audit Reports & Activity Logs</h3>
+                        <p class="text-xs text-gray-400">Recent staff, customer orders, and registration events.</p>
+                    </div>
+                    <span class="px-3 py-1 bg-gray-100 text-gray-600 font-bold rounded-xl text-xs">Live Logs</span>
+                </div>
+                <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs">
                         <thead>
                             <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
-                                <th class="py-3 px-4">Month</th>
-                                <th class="py-3 px-4">Total Orders</th>
-                                <th class="py-3 px-4 text-right">Revenue</th>
+                                <th class="py-3 px-4">Timestamp</th>
+                                <th class="py-3 px-4">Event / Action</th>
+                                <th class="py-3 px-4">Actor / User</th>
+                                <th class="py-3 px-4">Type</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
-                            {% for row in monthly_sales %}
+                            {% for log in audit_logs %}
                             <tr class="hover:bg-gray-50">
-                                <td class="py-3.5 px-4 font-bold text-dark-900">{{ row.period|date:"F Y" }}</td>
-                                <td class="py-3.5 px-4">{{ row.count }} orders</td>
-                                <td class="py-3.5 px-4 text-right font-black text-emerald-600">₱{{ row.total|floatformat:2 }}</td>
+                                <td class="py-3 px-4 text-gray-500 font-mono text-[11px]">{{ log.timestamp|date:"M j, Y, g:i a" }}</td>
+                                <td class="py-3 px-4 font-bold text-dark-900">{{ log.action }}</td>
+                                <td class="py-3 px-4 font-semibold">{{ log.user }}</td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-black {% if log.type == 'ORDER' %}bg-orange-100 text-orange-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                                        {{ log.type }}
+                                    </span>
+                                </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="3" class="py-6 text-center text-gray-400">No monthly sales data available.</td></tr>
+                            <tr><td colspan="4" class="py-6 text-center text-gray-400">No audit logs recorded yet.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -1356,17 +1370,23 @@
             </div>
         </div>
 
-        <!-- Include Chart.js -->
+        <!-- Include Chart.js & Multi-Chart Init Script -->
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         {{ daily_chart_data|json_script:"daily-data-json" }}
         {{ weekly_chart_data|json_script:"weekly-data-json" }}
         {{ monthly_chart_data|json_script:"monthly-data-json" }}
+        {{ line_chart_data_json|json_script:"line-data-json" }}
+        {{ pie_chart_data_json|json_script:"pie-data-json" }}
         <script>
             let salesChart = null;
+            let lineChart = null;
+            let pieChart = null;
 
             const dailyData = JSON.parse(document.getElementById('daily-data-json').textContent);
             const weeklyData = JSON.parse(document.getElementById('weekly-data-json').textContent);
             const monthlyData = JSON.parse(document.getElementById('monthly-data-json').textContent);
+            const lineData = JSON.parse(document.getElementById('line-data-json').textContent);
+            const pieData = JSON.parse(document.getElementById('pie-data-json').textContent);
 
             function switchChart(mode) {
                 let dataset = dailyData;
@@ -1400,17 +1420,10 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        },
+                        plugins: { legend: { display: false } },
                         scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: 'rgba(0,0,0,0.05)' }
-                            },
-                            x: {
-                                grid: { display: false }
-                            }
+                            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                            x: { grid: { display: false } }
                         }
                     }
                 });
@@ -1419,6 +1432,72 @@
             document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     switchChart('daily');
+
+                    // Line Chart
+                    const lineCtx = document.getElementById('lineChart');
+                    if (lineCtx) {
+                        lineChart = new Chart(lineCtx, {
+                            type: 'line',
+                            data: {
+                                labels: lineData.labels,
+                                datasets: [{
+                                    label: 'Orders Count',
+                                    data: lineData.data,
+                                    borderColor: '#FF6117',
+                                    backgroundColor: 'rgba(255,97,23,0.1)',
+                                    borderWidth: 3,
+                                    fill: true,
+                                    tension: 0.3
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                                    x: { grid: { display: false } }
+                                }
+                            }
+                        });
+                    }
+
+                    // Pie Chart
+                    const pieCtx = document.getElementById('pieChart');
+                    if (pieCtx && pieData.labels) {
+                        const bgColors = ['#FF6117', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
+                        pieChart = new Chart(pieCtx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: pieData.labels,
+                                datasets: [{
+                                    data: pieData.data,
+                                    backgroundColor: bgColors.slice(0, pieData.labels.length),
+                                    borderWidth: 2,
+                                    borderColor: '#ffffff'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11, weight: 'bold' } } }
+                                }
+                            }
+                        });
+
+                        // Populate category share table
+                        const tbody = document.getElementById('categoryShareBody');
+                        if (tbody) {
+                            let totalSum = pieData.data.reduce((a, b) => a + b, 0) || 1;
+                            tbody.innerHTML = '';
+                            pieData.labels.forEach((lbl, idx) => {
+                                let val = pieData.data[idx];
+                                let pct = ((val / totalSum) * 100).toFixed(1);
+                                tbody.innerHTML += `<tr class="hover:bg-gray-50"><td class="py-3 px-4 font-bold text-dark-900">${lbl}</td><td class="py-3 px-4 text-right font-black text-brand-500">₱${val.toLocaleString('en-US', {minimumFractionDigits: 2})} (${pct}%)</td></tr>`;
+                            });
+                        }
+                    }
                 }, 200);
             });
         </script>
