@@ -169,8 +169,8 @@
                         alert('Error verifying OTP.');
                     });
                 },
-                lat: 9.7401,
-                lng: 118.7357,
+                lat: 9.77778,
+                lng: 118.73333,
                 initLocation() {
                     const savedLat = localStorage.getItem('canteen_faculty_lat');
                     const savedLng = localStorage.getItem('canteen_faculty_lng');
@@ -202,8 +202,8 @@
                     }
                 },
                 useDefaultLocation() {
-                    this.lat = 9.7401;
-                    this.lng = 118.7357;
+                    this.lat = 9.77778;
+                    this.lng = 118.73333;
                     localStorage.setItem('canteen_faculty_lat', this.lat);
                     localStorage.setItem('canteen_faculty_lng', this.lng);
                     this.showLocationModal = false;

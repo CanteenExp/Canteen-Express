@@ -38,6 +38,22 @@
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* Dark theme applied to ALL app maps (tile images only, markers stay true-color) */
+        #leaflet-map .leaflet-tile-pane .leaflet-layer,
+        #leaflet-map .leaflet-tile-pane .leaflet-tile,
+        #view-order-map .leaflet-tile-pane .leaflet-layer,
+        #view-order-map .leaflet-tile-pane .leaflet-tile,
+        #checkout-mini-map .leaflet-tile-pane .leaflet-layer,
+        #checkout-mini-map .leaflet-tile-pane .leaflet-tile {
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(88%);
+        }
+        /* Hide any map attribution text so no API/key notice ever shows */
+        #leaflet-map .leaflet-control-attribution,
+        #view-order-map .leaflet-control-attribution,
+        #checkout-mini-map .leaflet-control-attribution,
+        .leaflet-control-attribution { display: none !important; }
+        /* No white flash before tiles load */
+        #leaflet-map, #view-order-map, #checkout-mini-map { background: #1a1a1f !important; }
     </style>
 </head>
 <body class="bg-brand-dark text-brand-light h-screen flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative" x-data="facultyPortal()">
@@ -298,16 +314,16 @@
 
                     <!-- Quick Building Selectors -->
                     <div class="grid grid-cols-2 gap-1.5 pt-1">
-                        <button type="button" onclick="setBuildingLocation('Faculty Office Bldg, Room 204', 9.7392, 118.7353)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
+                        <button type="button" onclick="setBuildingLocation('Faculty Office Bldg, Room 204', 9.77750, 118.73400)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
                             <i class="fa-solid fa-building text-brand-orange"></i> Faculty Office Bldg
                         </button>
-                        <button type="button" onclick="setBuildingLocation('Administration Building, Rm 102', 9.7398, 118.7348)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
+                        <button type="button" onclick="setBuildingLocation('Administration Building, Rm 102', 9.77725, 118.73480)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
                             <i class="fa-solid fa-landmark text-brand-orange"></i> Administration Bldg
                         </button>
-                        <button type="button" onclick="setBuildingLocation('Engineering Building, Rm 305', 9.7385, 118.7360)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
+                        <button type="button" onclick="setBuildingLocation('Engineering Building, Rm 305', 9.77850, 118.73300)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
                             <i class="fa-solid fa-gears text-brand-orange"></i> Engineering Bldg
                         </button>
-                        <button type="button" onclick="setBuildingLocation('Science & Tech Bldg, Rm 112', 9.7380, 118.7345)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
+                        <button type="button" onclick="setBuildingLocation('Science & Tech Bldg, Rm 112', 9.77680, 118.73380)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
                             <i class="fa-solid fa-flask text-brand-orange"></i> Science & Tech Bldg
                         </button>
                     </div>
@@ -529,8 +545,8 @@
     let selectedItemForModal = null;
     let modalRiceQty = 0;
     let userPoints = 0.0;
-    let currentLat = 9.7392;
-    let currentLng = 118.7353;
+    let currentLat = 9.77778;
+    let currentLng = 118.73333;
     let locationText = "Detecting GPS...";
     let leafletMap = null;
     let leafletMarker = null;
@@ -697,9 +713,10 @@
 
         setTimeout(() => {
             if (!leafletMap) {
-                leafletMap = L.map('leaflet-map').setView([currentLat, currentLng], 16);
+                leafletMap = L.map('leaflet-map', { attributionControl: false }).setView([currentLat, currentLng], 16);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; OpenStreetMap contributors'
+                    maxZoom: 19, subdomains: 'abcd',
+                    attribution: ''
                 }).addTo(leafletMap);
                 leafletMarker = L.marker([currentLat, currentLng]).addTo(leafletMap)
                     .bindPopup('<b>Your Current Office Location</b><br>Faculty Delivery Zone').openPopup();
@@ -1135,9 +1152,10 @@
 
         setTimeout(() => {
             if (!viewOrderMap) {
-                viewOrderMap = L.map('view-order-map').setView([currentLat, currentLng], 16);
+                viewOrderMap = L.map('view-order-map', { attributionControl: false }).setView([currentLat, currentLng], 16);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; OpenStreetMap'
+                    maxZoom: 19, subdomains: 'abcd',
+                    attribution: ''
                 }).addTo(viewOrderMap);
                 viewOrderMarker = L.marker([currentLat, currentLng]).addTo(viewOrderMap)
                     .bindPopup('<b>Delivery Route & Rider Progress</b>').openPopup();
@@ -1164,9 +1182,10 @@
 
         setTimeout(() => {
             if (!checkoutMap) {
-                checkoutMap = L.map('checkout-mini-map').setView([currentLat, currentLng], 17);
+                checkoutMap = L.map('checkout-mini-map', { attributionControl: false }).setView([currentLat, currentLng], 17);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; OpenStreetMap'
+                    maxZoom: 19, subdomains: 'abcd',
+                    attribution: ''
                 }).addTo(checkoutMap);
                 checkoutMarker = L.marker([currentLat, currentLng]).addTo(checkoutMap)
                     .bindPopup('<b>Selected Delivery Location</b>').openPopup();
@@ -1270,7 +1289,9 @@
                 delivery_location: deliveryLoc,
                 payment_method: 'COD',
                 points_redeemed: pointsToUse,
-                points_earned: pointsEarned
+                points_earned: pointsEarned,
+                dest_lat: currentLat,
+                dest_lng: currentLng
             })
         })
         .then(res => res.json())

@@ -74,6 +74,19 @@ def process_checkout(request):
         if not cart_items:
             return JsonResponse({'success': False, 'message': 'Walang laman ang cart.'}, status=400)
 
+        # Campus-only scope: validate delivery destination BEFORE creating the order.
+        # If the customer's location (GPS or building preset) falls outside the PSU
+        # campus geofence, the whole order is rejected.
+        if is_delivery:
+            from deliveries.utils import is_within_campus
+            dest_lat = data.get('dest_lat')
+            dest_lng = data.get('dest_lng')
+            if not is_within_campus(dest_lat, dest_lng):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Delivery is only available within the Palawan State University campus. Please make sure your location is inside the campus and try again.'
+                }, status=422)
+
         order_number = f"#CE-{random.randint(1000, 9999)}"
         initial_status = 'pending' if is_delivery else 'unpaid'
 
@@ -122,10 +135,15 @@ def process_checkout(request):
 
         if is_delivery:
             from deliveries.models import DeliveryRequest
+            dest_lat = data.get('dest_lat')
+            dest_lng = data.get('dest_lng')
+            # Destination was already validated (inside campus) before the order was created.
             DeliveryRequest.objects.create(
                 order=order,
                 delivery_location=delivery_location,
-                status=DeliveryRequest.RequestStatus.SEARCHING
+                status=DeliveryRequest.RequestStatus.SEARCHING,
+                dest_lat=dest_lat,
+                dest_lng=dest_lng,
             )
 
         return JsonResponse({

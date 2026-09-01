@@ -26,6 +26,10 @@ class CustomUser(AbstractUser):
         ],
         default='active'
     )
+
+    # Rider availability
+    is_available = models.BooleanField(default=True)
+    availability_updated_at = models.DateTimeField(blank=True, null=True)
     
     # OTP Fields
     otp_code = models.CharField(max_length=6, blank=True, null=True)
