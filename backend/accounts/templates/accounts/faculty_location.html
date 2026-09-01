@@ -111,8 +111,8 @@
         <form method="POST" id="location-form" class="space-y-3">
             {% csrf_token %}
             
-            <input type="hidden" name="latitude" id="latitude" value="9.7401">
-            <input type="hidden" name="longitude" id="longitude" value="118.7357">
+            <input type="hidden" name="latitude" id="latitude" value="9.77778">
+            <input type="hidden" name="longitude" id="longitude" value="118.73333">
 
             <!-- Status Box -->
             <div id="status-box" class="p-3 bg-white/5 border border-white/15 rounded-2xl text-center transition-all duration-300">
@@ -196,7 +196,7 @@
         }
 
         function useDefaultLocation() {
-            setCoordinates(9.7401, 118.7357, false);
+            setCoordinates(9.77778, 118.73333, false);
         }
 
         function setCoordinates(lat, lng, isCached = false) {
