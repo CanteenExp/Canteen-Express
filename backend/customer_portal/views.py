@@ -72,7 +72,7 @@ def process_checkout(request):
         delivery_location = data.get('delivery_location', 'Faculty Office Building')
 
         if not cart_items:
-            return JsonResponse({'success': False, 'message': 'Walang laman ang cart.'}, status=400)
+            return JsonResponse({'success': False, 'message': 'Cart is empty.'}, status=400)
 
         order_number = f"#CE-{random.randint(1000, 9999)}"
         initial_status = 'pending' if is_delivery else 'unpaid'

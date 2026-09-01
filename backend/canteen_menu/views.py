@@ -280,7 +280,7 @@ def staff_dashboard(request):
     pie_labels = []
     pie_data = []
     for cat in Category.objects.all():
-        cat_items = cat.menu_items.values_list('name', flat=True)
+        cat_items = cat.items.values_list('name', flat=True)
         cat_rev = OrderItem.objects.filter(order__status__in=['ready', 'completed'], item_name__in=cat_items).aggregate(total=Sum('price'))['total'] or 0
         if cat_rev > 0:
             pie_labels.append(cat.name)
