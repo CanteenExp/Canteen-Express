@@ -15,6 +15,8 @@ class CustomUser(AbstractUser):
     is_email_verified = models.BooleanField(default=False)
     phone = models.CharField(max_length=20, blank=True, null=True)
     vehicle_plate = models.CharField(max_length=50, blank=True, null=True)
+    is_available = models.BooleanField(default=True)
+    availability_updated_at = models.DateTimeField(blank=True, null=True)
     account_status = models.CharField(
         max_length=20,
         choices=[

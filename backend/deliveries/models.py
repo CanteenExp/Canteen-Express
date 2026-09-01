@@ -22,11 +22,17 @@ class DeliveryRequest(models.Model):
     requested_at = models.DateTimeField(auto_now_add=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
+    rider_lat = models.FloatField(null=True, blank=True)
+    rider_lng = models.FloatField(null=True, blank=True)
+    dest_lat = models.FloatField(null=True, blank=True)
+    dest_lng = models.FloatField(null=True, blank=True)
+    location_updated_at = models.DateTimeField(null=True, blank=True)
 
 class DeliveryMessage(models.Model):
     delivery = models.ForeignKey(DeliveryRequest, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     message = models.TextField()
+    is_read = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
