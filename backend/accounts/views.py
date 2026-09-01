@@ -277,3 +277,62 @@ def verify_signup_otp(request):
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
     return JsonResponse({'success': False}, status=405)
+
+
+@ensure_csrf_cookie
+def send_password_reset_otp(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            email = data.get('email', '').strip().lower()
+            otp_code = data.get('otp_code') or f"{random.randint(100000, 999999)}"
+            
+            if not email.endswith('@psu.palawan.edu.ph'):
+                return JsonResponse({'success': False, 'error': 'Invalid institutional email. Must end with @psu.palawan.edu.ph'}, status=400)
+            
+            if not User.objects.filter(email=email).exists():
+                return JsonResponse({'success': False, 'error': 'No account found with this institutional email.'}, status=400)
+            
+            request.session['reset_otp'] = otp_code
+            request.session['reset_email'] = email
+            request.session['reset_otp_verified'] = False
+            
+            return JsonResponse({'success': True, 'otp_code': otp_code, 'message': 'Password reset OTP ready.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    return JsonResponse({'success': False}, status=405)
+
+
+@ensure_csrf_cookie
+def verify_and_reset_password(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            email = data.get('email', '').strip().lower()
+            entered_otp = data.get('otp', '').strip()
+            new_password = data.get('new_password')
+            
+            session_otp = request.session.get('reset_otp')
+            session_email = request.session.get('reset_email')
+            
+            if not session_email or session_email != email or not session_otp or entered_otp != session_otp:
+                return JsonResponse({'success': False, 'error': 'Invalid or expired OTP code.'}, status=400)
+            
+            if not is_strong_password(new_password):
+                return JsonResponse({'success': False, 'error': 'Password must be at least 8 characters and include uppercase, lowercase, numbers, and unique/special characters.'}, status=400)
+            
+            user = User.objects.filter(email=email).first()
+            if not user:
+                return JsonResponse({'success': False, 'error': 'User not found.'}, status=400)
+            
+            user.set_password(new_password)
+            user.save()
+            
+            request.session.pop('reset_otp', None)
+            request.session.pop('reset_email', None)
+            request.session.pop('reset_otp_verified', None)
+            
+            return JsonResponse({'success': True, 'message': 'Password successfully reset.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    return JsonResponse({'success': False}, status=405)

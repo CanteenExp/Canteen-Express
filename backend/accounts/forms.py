@@ -39,7 +39,7 @@ class FacultyStaffRegisterForm(forms.ModelForm):
     def clean_email(self):
         email = self.cleaned_data.get('email')
         if not email.endswith('@psu.palawan.edu.ph'):
-            raise forms.ValidationError("Corporate email lang (@psu.palawan.edu.ph) ang pwedeng gamitin sa Faculty/Staff registration.")
+            raise forms.ValidationError("Only institutional emails ending in @psu.palawan.edu.ph can be used for Faculty/Staff registration.")
         return email
 
     def clean(self):
@@ -48,5 +48,5 @@ class FacultyStaffRegisterForm(forms.ModelForm):
         confirm_password = cleaned_data.get("confirm_password")
 
         if password and confirm_password and password != confirm_password:
-            self.add_error('confirm_password', "Hindi magkatugma ang password.")
+            self.add_error('confirm_password', "Passwords do not match.")
         return cleaned_data

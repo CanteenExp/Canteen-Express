@@ -1,0 +1,157 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery History - Canteen Express</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { rider: { orange: '#FF6117', dark: '#08080b', card: '#121216', border: '#26262c' } },
+                    boxShadow: {
+                        'glow-orange': '0 0 25px rgba(255,97,23,0.35)',
+                        'glow-green': '0 0 25px rgba(34,197,94,0.35)',
+                        'glass': '0 8px 32px rgba(0,0,0,0.4)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass {
+            background: rgba(255,255,255,0.04);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .glass-strong {
+            background: rgba(18,18,24,0.65);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.09);
+        }
+        .bg-glow {
+            background:
+                radial-gradient(600px circle at 85% 0%, rgba(255,97,23,0.12), transparent 70%),
+                radial-gradient(500px circle at 0% 100%, rgba(255,97,23,0.08), transparent 70%),
+                #08080b;
+        }
+        .card-lift { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; }
+        .card-lift:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-glow text-zinc-100 min-h-screen flex flex-col selection:bg-orange-500 selection:text-white">
+
+    <header class="glass sticky top-0 z-40 shrink-0 border-b border-rider-border">
+        <div class="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 text-white flex items-center justify-center font-black text-xl shadow-glow-orange shrink-0">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-sm sm:text-lg font-black text-white leading-tight truncate">Delivery History</h1>
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-orange-400 mt-0.5 truncate">{{ request.user.get_full_name|default:request.user.username }}</p>
+                </div>
+            </div>
+            <a href="{% url 'deliveries:dashboard' %}" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-300 border border-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 active:scale-95 shrink-0">
+                <i class="fa-solid fa-arrow-left text-orange-400"></i> Back to Dashboard
+            </a>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl mx-auto w-full px-4 py-6 space-y-6 sm:pb-6 pb-28">
+
+        <!-- Summary banner -->
+        <div class="glass-strong rounded-3xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-orange-500/15 rounded-full blur-2xl"></div>
+            <div class="relative">
+                <h2 class="text-xl sm:text-2xl font-black text-white">Delivery History</h2>
+                <p class="text-xs text-zinc-400 mt-1">All your completed deliveries</p>
+            </div>
+            <div class="flex items-stretch gap-3 sm:gap-4 relative shrink-0">
+                <div class="bg-black/30 border border-white/10 rounded-2xl px-5 py-3 text-center">
+                    <span class="block text-[10px] text-zinc-400 uppercase tracking-widest font-bold">Delivered</span>
+                    <span class="block text-2xl font-black text-green-400">{{ completed_count }}</span>
+                </div>
+                <div class="bg-black/30 border border-white/10 rounded-2xl px-5 py-3 text-center">
+                    <span class="block text-[10px] text-zinc-400 uppercase tracking-widest font-bold">Earned</span>
+                    <span class="block text-2xl font-black text-orange-400">₱{{ total_earnings|floatformat:0 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- History list -->
+        <div class="space-y-3">
+            {% for d in history %}
+            <div class="card-lift glass rounded-2xl p-5 flex flex-col sm:flex-row justify-between gap-4">
+                <div class="space-y-1.5">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs font-black uppercase tracking-wider {% if d.status == 'DELIVERED' %}text-green-400{% elif d.status == 'ACCEPTED' %}text-orange-400{% else %}text-zinc-500{% endif %}">
+                            Order {{ d.order.order_number }}
+                        </span>
+                        <span class="text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase border {% if d.status == 'DELIVERED' %}bg-green-500/20 text-green-400 border-green-500/30{% elif d.status == 'ACCEPTED' %}bg-orange-500/20 text-orange-400 border-orange-500/30{% else %}bg-zinc-800/60 text-zinc-400 border-zinc-700{% endif %}">
+                            {{ d.get_status_display }}
+                        </span>
+                    </div>
+                    <p class="text-sm text-zinc-300"><i class="fa-solid fa-location-dot text-orange-400 mr-1"></i> {{ d.delivery_location }}</p>
+                    <div class="text-xs text-zinc-500 space-y-0.5">
+                        {% for item in d.order.items.all %}
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="inline">• {{ item.quantity }}x {{ item.item_name }}</p>
+                                <span class="text-zinc-500 font-bold shrink-0">₱{{ item.total_price }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="text-right space-y-1 sm:text-left shrink-0">
+                    {% if d.delivered_at %}
+                    <p class="text-xs text-zinc-400"><i class="fa-solid fa-calendar-day mr-1 text-green-400"></i> {{ d.delivered_at|date:"M d, Y h:i A" }}</p>
+                    <p class="text-xs font-black text-green-400"><i class="fa-solid fa-coins mr-1"></i> +₱30.00 earned</p>
+                    {% else %}
+                    <p class="text-xs text-zinc-500"><i class="fa-solid fa-calendar-day mr-1 text-orange-400"></i> {{ d.requested_at|date:"M d, Y h:i A" }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="glass rounded-3xl p-16 text-center text-zinc-500 space-y-2">
+                <i class="fa-solid fa-box-open text-4xl mb-2 text-zinc-600"></i>
+                <p class="text-xs font-bold">No delivery history yet.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <!-- ============ MOBILE BOTTOM NAV (glass, always visible) ============ -->
+    <footer class="sm:hidden glass-strong fixed bottom-0 left-0 right-0 z-50 shadow-glass border-t border-white/10">
+        <div class="max-w-7xl mx-auto px-4 pb-[env(safe-area-inset-bottom)] flex items-stretch justify-around">
+            <a href="{% url 'deliveries:dashboard' %}#" class="flex flex-col items-center justify-center gap-1 py-3.5 px-4 min-w-[72px] transition text-zinc-500 hover:text-white"
+               onclick="sessionStorage.setItem('ce_tab','incoming'); window.location.href='{% url 'deliveries:dashboard' %}'; return false;">
+                <span class="w-11 h-8 rounded-xl flex items-center justify-center transition bg-gradient-to-r from-orange-500 to-orange-600 shadow-glow-orange">
+                    <i class="fa-solid fa-inbox text-xl scale-110 text-white"></i>
+                </span>
+                <span class="text-[11px] font-black uppercase tracking-wide">Incoming</span>
+            </a>
+            <div class="flex flex-col items-center justify-center gap-1 py-3.5 px-4 min-w-[72px] text-zinc-400">
+                <span class="text-base font-black text-orange-400">₱{{ total_earnings|floatformat:0 }}</span>
+                <span class="text-[10px] font-black uppercase tracking-wide">Earnings</span>
+            </div>
+            <a href="{% url 'deliveries:dashboard' %}#" class="flex flex-col items-center justify-center gap-1 py-3.5 px-4 min-w-[72px] transition text-zinc-500 hover:text-white"
+               onclick="sessionStorage.setItem('ce_tab','active'); window.location.href='{% url 'deliveries:dashboard' %}'; return false;">
+                <span class="w-11 h-8 rounded-xl flex items-center justify-center transition bg-gradient-to-r from-green-500 to-green-600 shadow-glow-green">
+                    <i class="fa-solid fa-person-biking text-xl scale-110 text-white"></i>
+                </span>
+                <span class="text-[11px] font-black uppercase tracking-wide">Delivering</span>
+            </a>
+        </div>
+    </footer>
+
+</body>
+</html>

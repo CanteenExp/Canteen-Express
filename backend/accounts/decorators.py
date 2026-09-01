@@ -15,7 +15,7 @@ def role_required(allowed_roles=[]):
             if not request.user.is_authenticated and not is_faculty_session:
                 if is_ajax_or_api:
                     return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
-                messages.warning(request, "Mag-login muna para ma-access ang page na ito.")
+                messages.warning(request, "Please log in first to access this page.")
                 if 'DELIVERY' in allowed_roles:
                     return redirect('accounts:delivery_login')
                 elif 'STAFF' in allowed_roles or 'ADMIN' in allowed_roles:
@@ -30,7 +30,7 @@ def role_required(allowed_roles=[]):
             if is_ajax_or_api:
                 return JsonResponse({'success': False, 'message': 'Access Denied'}, status=403)
 
-            messages.error(request, "Access Denied: Bawal ka sa page na ito!")
+            messages.error(request, "Access Denied: You are not authorized to access this page!")
             
             if user_role in ['STUDENT', 'FACULTY']:
                 return redirect('customer_portal:kiosk_menu')

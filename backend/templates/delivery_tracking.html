@@ -1,0 +1,359 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Track {{ order_number }} - Canteen Express</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { rider: { orange: '#FF6117', dark: '#08080b', card: '#121216', border: '#26262c' } },
+                    boxShadow: {
+                        'glow-orange': '0 0 25px rgba(255,97,23,0.35)',
+                        'glow-green': '0 0 25px rgba(34,197,94,0.35)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .map-shell { position: relative; height: 100%; }
+        #map { height: 100%; width: 100%; z-index: 1; }
+        .bg-glow {
+            background:
+                radial-gradient(600px circle at 85% 0%, rgba(255,97,23,0.14), transparent 70%),
+                radial-gradient(500px circle at 0% 100%, rgba(34,197,94,0.09), transparent 70%),
+                #0a0a0c;
+        }
+
+        /* Rotating motorcycle icon */
+        .motor-icon {
+            display: flex; align-items: center; justify-content: center;
+            width: 46px; height: 46px; border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ff8a45, #ff6117 70%, #d94d0c);
+            color: #fff; font-size: 22px;
+            box-shadow: 0 4px 16px rgba(255,97,23,0.6);
+            will-change: transform;
+            transition: transform 1.2s cubic-bezier(.4,0,.2,1);
+        }
+        .motor-icon::after {
+            content: ''; position: absolute; top: -5px; left: 50%;
+            width: 2px; height: 12px; transform: translateX(-50%);
+            background: #fff; border-radius: 3px; opacity: 0.95;
+        }
+        .motor-icon-wrap { position: relative; width: 46px; height: 46px; }
+
+        @keyframes ping-ring { 0% { transform: scale(0.5); opacity: 0.7; } 100% { transform: scale(2.5); opacity: 0; } }
+        .ping-ring { animation: ping-ring 1.8s ease-out infinite; }
+
+        /* Floating Maxim-style bottom card slide up */
+        @keyframes slide-up { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .slide-up { animation: slide-up 0.4s ease; }
+
+        .glass-card {
+            background: rgba(16,16,20,0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        /* Dark theme applied to the map tiles only (markers/lines stay true-color) */
+        #map .leaflet-tile-pane .leaflet-layer,
+        #map .leaflet-tile-pane .leaflet-tile {
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(88%);
+        }
+        /* Ensure the map area never flashes white before tiles load */
+        #map { background: #0b0b0d !important; }
+    </style>
+</head>
+<body class="bg-glow text-zinc-100 h-dvh flex flex-col selection:bg-orange-500 selection:text-white overflow-hidden">
+
+    <!-- ===== HEADER (app-like) ===== -->
+    <header class="shrink-0 glass-card border-b border-white/5 z-20">
+        <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <a href="{% url 'deliveries:dashboard' %}" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 flex items-center justify-center shrink-0 active:scale-95 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <div class="min-w-0">
+                    <h1 class="text-sm font-black text-white leading-tight truncate">Track Delivery</h1>
+                    <p class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">{{ order_number }}</p>
+                </div>
+            </div>
+            <span id="status-badge" class="shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full uppercase border border-emerald-500/30 bg-emerald-500/20 text-emerald-400">
+                {{ status }}
+            </span>
+        </div>
+    </header>
+
+    <!-- ===== MAP (fills the middle) ===== -->
+    <div class="relative flex-1 min-h-0 w-full">
+        <div class="map-shell absolute inset-0">
+            <div id="map"></div>
+        </div>
+
+        <!-- Floating "moving" indicator (top-left over map) -->
+        <div id="moving-chip" class="hidden absolute top-3 left-3 z-[500] glass-card rounded-xl px-3 py-2 flex items-center gap-2 shadow-lg">
+            <span class="relative flex h-2.5 w-2.5">
+                <span class="ping-ring absolute inline-flex h-full w-full rounded-full bg-emerald-400"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span class="text-[11px] font-black text-white">Rider is moving</span>
+        </div>
+
+        <!-- Floating rider name + ETA chip (top-right over map) -->
+        <div class="absolute top-3 right-3 z-[500] glass-card rounded-xl px-3 py-2 text-right shadow-lg max-w-[55%]">
+            <p class="text-xs font-black text-white truncate">{{ rider_name|default:"Rider" }}</p>
+            <p class="text-[10px] text-emerald-400 font-bold">ETA <span id="eta-val">--</span></p>
+        </div>
+    </div>
+
+    <!-- ===== MAXIM-STYLE FLOATING BOTTOM CARD ===== -->
+    <div class="shrink-0 z-20">
+        <div class="max-w-3xl mx-auto px-4 pb-4">
+            <div class="glass-card rounded-3xl p-4 slide-up shadow-2xl space-y-3">
+
+                <!-- Delivery destination row -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-lg shrink-0">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Delivering to</p>
+                        <p class="text-sm font-black text-white truncate">{{ delivery_location }}</p>
+                    </div>
+                </div>
+
+                <!-- Speed + Distance / Remaining -->
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-black/30 border border-white/5 rounded-2xl p-3 text-center">
+                        <h2 id="speed-val" class="text-2xl font-black text-orange-400 tabular-nums">--</h2>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-0.5">Speed</p>
+                    </div>
+                    <div class="bg-black/30 border border-white/5 rounded-2xl p-3 text-center">
+                        <h2 id="dist-val" class="text-2xl font-black text-emerald-400 tabular-nums">--</h2>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-0.5">Distance</p>
+                    </div>
+                    <div class="bg-black/30 border border-white/5 rounded-2xl p-3 text-center">
+                        <h2 id="remain-val" class="text-2xl font-black text-white tabular-nums">--</h2>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-0.5">Remaining</p>
+                    </div>
+                </div>
+
+                <!-- Progress bar -->
+                <div class="space-y-1">
+                    <div class="h-2 w-full bg-zinc-800/80 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-gradient-to-r from-orange-500 to-emerald-500 rounded-full transition-all duration-700" style="width:0%"></div>
+                    </div>
+                    <div class="flex items-center justify-between text-[10px] text-zinc-500 font-bold">
+                        <span><i class="fa-solid fa-store mr-1 text-orange-400"></i> Canteen</span>
+                        <span id="progress-pct">0%</span>
+                        <span><i class="fa-solid fa-flag-checkered mr-1 text-emerald-400"></i> {{ delivery_location }}</span>
+                    </div>
+                </div>
+
+                <p id="status-msg" class="text-center text-[11px] text-zinc-400 font-bold"></p>
+                <p id="updated-at" class="text-center text-[9px] text-zinc-600 font-bold uppercase tracking-widest">--</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DELIVERY_ID = {{ delivery.id }};
+        // PSU Main Campus (Tiniguiban Heights) - campus-only delivery scope
+        const CAMPUS_CENTER = [9.77778, 118.73333];
+        const ZOOM = 15;
+        // Interactive campus map: starts zoomed in on the campus but lets the user
+        // pan and zoom freely. Uses free OpenStreetMap tiles rendered dark via a
+        // CSS invert filter, so no attribution text shows on screen.
+        const map = L.map('map', {
+            attributionControl: false,
+            zoomControl: true,
+            scrollWheelZoom: true
+        }).setView(CAMPUS_CENTER, ZOOM);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+        // Free standard tiles (requires no credentials)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            minZoom: 13,
+            attribution: ''
+        }).addTo(map);
+
+        // Campus-only delivery zone as an irregular polygon that hugs the actual
+        // PSU Main Campus footprint (instead of a perfect circle).
+        const CAMPUS_BOUNDS = [
+            [9.7815, 118.7310],
+            [9.7820, 118.7340],
+            [9.7805, 118.7375],
+            [9.7780, 118.7385],
+            [9.7755, 118.7370],
+            [9.7745, 118.7340],
+            [9.7755, 118.7315],
+            [9.7790, 118.7300],
+        ];
+        L.polygon(CAMPUS_BOUNDS, {
+            color: '#FF6117', fillColor: '#FF6117',
+            fillOpacity: 0.06, dashArray: '6 6', weight: 1.6,
+        }).addTo(map).bindTooltip('PSU Main Campus', { permanent: false, direction: 'center' });
+
+        // ===== Animated, rotating motorcycle marker =====
+        function makeMotorIcon(angle) {
+            return L.divIcon({
+                className: '',
+                iconSize: [46, 46],
+                iconAnchor: [23, 23],
+                html: `<div class="motor-icon-wrap"><div class="motor-icon" style="transform:rotate(${angle}deg)"><i class="fa-solid fa-motorcycle"></i></div></div>`
+            });
+        }
+
+        let riderMarker = null;
+        let riderIconEl = null;
+        let prevLatLng = null;
+        let destMarker = null;
+        let routeLine = null;
+        let currentHeading = 0;
+
+        // Smoothly animate the marker from its current position to a target latlng
+        function animateMarker(marker, targetLatLng, ms) {
+            const start = marker.getLatLng();
+            const t0 = performance.now();
+            function step(now) {
+                const p = Math.min(1, (now - t0) / ms);
+                const ease = 1 - Math.pow(1 - p, 3);
+                marker.setLatLng([
+                    start.lat + (targetLatLng.lat - start.lat) * ease,
+                    start.lng + (targetLatLng.lng - start.lng) * ease
+                ]);
+                if (p < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
+        function updateMap() {
+            fetch(`/deliveries/api/location/${DELIVERY_ID}/`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) return;
+
+                    // Destination pin
+                    if (data.dest_lat != null && data.dest_lng != null && !destMarker) {
+                        destMarker = L.marker([data.dest_lat, data.dest_lng], {
+                            icon: L.divIcon({
+                                className: '',
+                                html: '<div class="text-3xl"><i class="fa-solid fa-location-dot text-emerald-500" style="text-shadow:0 0 14px rgba(34,197,94,0.9)"></i></div>',
+                                iconSize: [30, 30], iconAnchor: [15, 28]
+                            })
+                        }).addTo(map);
+                    }
+
+                    // Rider marker: rotate icon + animate movement
+                    let hasNewPos = false;
+                    if (data.lat != null && data.lng != null) {
+                        const target = L.latLng(data.lat, data.lng);
+                        const moving = ((data.speed_kmh || 0) > 0.5);
+
+                        if (!riderMarker) {
+                            riderMarker = L.marker(target, { icon: makeMotorIcon(0) }).addTo(map);
+                            // cache the rotating element
+                            riderMarker._icon && (riderIconEl = riderMarker._icon.querySelector('.motor-icon'));
+                            prevLatLng = target;
+                        } else {
+                            // Rotate to heading (direction of travel)
+                            if (data.heading != null) {
+                                currentHeading = data.heading;
+                            }
+                            if (riderIconEl) {
+                                riderIconEl.style.transform = `rotate(${currentHeading}deg)`;
+                            }
+                            // Animate movement toward the new point (use fixed duration when moving)
+                            animateMarker(riderMarker, target, moving ? 1500 : 600);
+                        }
+                        hasNewPos = true;
+                    }
+
+                    // "moving" chip visibility
+                    const chip = document.getElementById('moving-chip');
+                    if (hasNewPos && (data.speed_kmh || 0) > 0.5) {
+                        chip.classList.remove('hidden');
+                    } else {
+                        chip.classList.add('hidden');
+                    }
+
+                    // Live route line: connects the rider to the pinned customer destination.
+                    // Updates every poll so the rider visibly "approaches" the customer's pin.
+                    if (hasNewPos && data.dest_lat != null && data.dest_lng != null) {
+                        const pts = [[data.lat, data.lng], [data.dest_lat, data.dest_lng]];
+                        if (!routeLine) {
+                            routeLine = L.polyline(pts, {
+                                color: '#FF6117', weight: 3, opacity: 0.8,
+                                dashArray: '7 6'
+                            }).addTo(map);
+                        } else {
+                            routeLine.setLatLngs(pts);
+                        }
+                    }
+
+                    // Stats
+                    document.getElementById('speed-val').textContent = formatSpeed(data.speed_kmh);
+                    document.getElementById('dist-val').textContent = formatDist(data.total_distance_km);
+                    document.getElementById('remain-val').textContent = formatDist(data.remaining_km);
+                    document.getElementById('eta-val').textContent = formatEta(data.eta_minutes);
+
+                    // Progress
+                    const traveled = data.total_distance_km || 0;
+                    const remaining = data.remaining_km;
+                    if (remaining != null && (traveled + remaining) > 0) {
+                        const pct = Math.min(100, Math.round((traveled / (traveled + remaining)) * 100));
+                        document.getElementById('progress-bar').style.width = pct + '%';
+                        document.getElementById('progress-pct').textContent = pct + '%';
+                    } else if (data.status === 'DELIVERED') {
+                        document.getElementById('progress-bar').style.width = '100%';
+                        document.getElementById('progress-pct').textContent = '100%';
+                    }
+
+                    // Status
+                    const badge = document.getElementById('status-badge');
+                    const msg = document.getElementById('status-msg');
+                    const updated = document.getElementById('updated-at');
+                    updated.textContent = data.updated_at ? 'Updated ' + data.updated_at : '--';
+
+                    if (data.status === 'DELIVERED') {
+                        msg.textContent = 'Delivery completed!';
+                        badge.textContent = 'Delivered';
+                        badge.className = 'shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full uppercase border border-emerald-500/30 bg-emerald-500/20 text-emerald-400';
+                    } else if (hasNewPos) {
+                        msg.textContent = 'Rider heading to ' + (data.delivery_location || 'your location');
+                    } else {
+                        msg.textContent = 'Waiting for rider location...';
+                        document.getElementById('speed-val').textContent = '--';
+                        document.getElementById('eta-val').textContent = '--';
+                    }
+                });
+        }
+
+        function formatSpeed(v) { return v == null ? '--' : v.toFixed(0) + ''; }
+        function formatDist(v) {
+            if (v == null) return '--';
+            return (v < 1 ? (v * 1000).toFixed(0) + ' m' : v.toFixed(1) + ' km');
+        }
+        function formatEta(mins) {
+            if (mins == null) return '--';
+            if (mins < 1) return '< 1m';
+            if (mins < 60) return Math.ceil(mins) + 'm';
+            return Math.floor(mins / 60) + 'h ' + Math.round(mins % 60) + 'm';
+        }
+
+        updateMap();
+        setInterval(updateMap, 4000);
+    </script>
+</body>
+</html>
