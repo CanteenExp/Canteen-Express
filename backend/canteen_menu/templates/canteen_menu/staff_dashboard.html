@@ -280,25 +280,23 @@
     <!-- ========================================= -->
     <main class="flex-1 md:ml-64 p-4 sm:p-6 md:p-8 overflow-y-auto space-y-6 bg-gray-50/50">
 
-        <!-- MESSAGES -->
+        <!-- FLOATING TOAST NOTIFICATIONS -->
         {% if messages %}
-        <div class="space-y-2">
-
+        <div class="fixed top-6 right-6 z-50 space-y-2 max-w-sm w-full pointer-events-none" x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)">
             {% for message in messages %}
-
-            <div class="p-4 rounded-2xl text-xs font-bold
+            <div class="pointer-events-auto p-4 rounded-2xl text-xs font-bold shadow-2xl backdrop-blur-md transition
                 {% if message.tags == 'error' %}
-                    bg-red-50 text-red-700 border border-red-200
+                    bg-red-900/95 text-white border border-red-700
                 {% else %}
-                    bg-emerald-50 text-emerald-700 border border-emerald-200
-                {% endif %}">
-
-                {{ message }}
-
+                    bg-emerald-900/95 text-white border border-emerald-700
+                {% endif %} flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid {% if message.tags == 'error' %}fa-circle-exclamation text-red-300{% else %}fa-circle-check text-emerald-300{% endif %} text-base"></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button @click="show = false" class="text-white/70 hover:text-white font-bold text-sm cursor-pointer">&times;</button>
             </div>
-
             {% endfor %}
-
         </div>
         {% endif %}
 

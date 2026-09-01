@@ -72,7 +72,7 @@ def process_checkout(request):
         delivery_location = data.get('delivery_location', 'Faculty Office Building')
 
         if not cart_items:
-            return JsonResponse({'success': False, 'message': 'Walang laman ang cart.'}, status=400)
+            return JsonResponse({'success': False, 'message': 'Cart is empty.'}, status=400)
 
         # Campus-only scope: validate delivery destination BEFORE creating the order.
         # If the customer's location (GPS or building preset) falls outside the PSU
