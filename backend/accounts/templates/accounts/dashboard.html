@@ -425,13 +425,19 @@
         <div class="bg-brand-card border border-white/10 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col h-[500px]">
             <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
                 <div>
-                    <h3 class="font-black text-white text-sm">In-App Chat with Rider</h3>
-                    <p id="chat-rider-subtitle" class="text-[10px] text-brand-orange font-bold">Order & Rider info</p>
+                    <h3 id="chat-order-title" class="font-black text-white text-sm">Chat - Order</h3>
+                    <p id="chat-rider-subtitle" class="text-[10px] text-brand-orange font-bold">Rider info</p>
                 </div>
                 <button onclick="closeRiderChatModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <div id="chat-messages-list" class="flex-1 p-4 overflow-y-auto space-y-3 bg-black/40">
                 <!-- Messages -->
+            </div>
+            <div class="px-3 pt-2 bg-brand-dark flex gap-1.5 overflow-x-auto no-scrollbar whitespace-nowrap">
+                <button onclick="sendQuickMsg('Please drop it at my room/desk 🏢')" class="px-2.5 py-1 bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">🏢 Drop at room</button>
+                <button onclick="sendQuickMsg('I am coming down to meet you 🏃')" class="px-2.5 py-1 bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">🏃 Coming down</button>
+                <button onclick="sendQuickMsg('Please call me upon arrival 📞')" class="px-2.5 py-1 bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">📞 Call me</button>
+                <button onclick="sendQuickMsg('Thank you so much! 🙏')" class="px-2.5 py-1 bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">🙏 Thank you</button>
             </div>
             <div class="p-3 border-t border-white/10 bg-brand-dark flex items-center gap-2">
                 <input type="text" id="chat-input-msg" placeholder="Type message to rider..." onkeyup="if(event.key==='Enter') sendRiderMessage()"
@@ -632,7 +638,7 @@
         document.getElementById('rider-chat-modal').classList.remove('hidden');
         loadRiderMessages();
         if (chatInterval) clearInterval(chatInterval);
-        chatInterval = setInterval(loadRiderMessages, 3000);
+        chatInterval = setInterval(loadRiderMessages, 2000);
     }
 
     function closeRiderChatModal() {
@@ -654,13 +660,13 @@
                         return;
                     }
                     data.messages.forEach(m => {
-                        const isRider = (m.sender_role === 'DELIVERY' || m.sender_role === 'RIDER');
+                        const isMe = m.is_me;
                         const bubble = document.createElement('div');
-                        bubble.className = `flex flex-col ${isRider ? 'items-start' : 'items-end'}`;
+                        bubble.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
                         bubble.innerHTML = `
-                            <div class="max-w-[80%] px-3.5 py-2 rounded-2xl text-xs ${isRider ? 'bg-emerald-600 text-white rounded-bl-none' : 'bg-brand-orange text-white rounded-br-none'}">
-                                <p class="font-bold text-[9px] opacity-75 mb-0.5">${m.sender} (${m.time})</p>
-                                <p>${m.message}</p>
+                            <div class="max-w-[80%] px-3.5 py-2 rounded-2xl text-xs ${isMe ? 'bg-brand-orange text-white rounded-br-none shadow-md' : 'bg-emerald-600 text-white rounded-bl-none'}">
+                                <p class="font-bold text-[9px] opacity-75 mb-0.5">${escapeHTML(m.sender)} (${escapeHTML(m.time)})</p>
+                                <p>${escapeHTML(m.message)}</p>
                             </div>
                         `;
                         list.appendChild(bubble);
@@ -670,30 +676,46 @@
             });
     }
 
+    function sendQuickMsg(text) {
+        document.getElementById('chat-input-msg').value = text;
+        sendRiderMessage();
+    }
+
+    function escapeHTML(str) {
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
     function sendRiderMessage() {
         const input = document.getElementById('chat-input-msg');
         const text = input.value.trim();
         if (!text || !activeChatDeliveryId) return;
 
-        // Optimistic UI update for instant feedback (0ms delay)
-        const list = document.getElementById('chat-messages-list');
-        const tempBubble = document.createElement('div');
-        tempBubble.className = "flex flex-col items-end";
-        tempBubble.innerHTML = `
-            <div class="max-w-[80%] px-3.5 py-2 rounded-2xl text-xs bg-brand-orange text-white rounded-br-none shadow-md">
-                <p class="font-bold text-[9px] opacity-75 mb-0.5">You (Just now)</p>
-                <p>${text}</p>
-            </div>
-        `;
-        list.appendChild(tempBubble);
-        list.scrollTop = list.scrollHeight;
         input.value = '';
+
+        const csrf = getCookie('csrftoken') || '{{ csrf_token }}';
 
         fetch(`/deliveries/messages/${activeChatDeliveryId}/send/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
+                'X-CSRFToken': csrf
             },
             body: JSON.stringify({ message: text })
         })

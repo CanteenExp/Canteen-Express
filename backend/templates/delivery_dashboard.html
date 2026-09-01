@@ -38,6 +38,16 @@
             -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(255,255,255,0.09);
         }
+        .glass-chat {
+            background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02) 40%, rgba(18,18,24,0.55));
+            backdrop-filter: blur(26px);
+            -webkit-backdrop-filter: blur(26px);
+            border: 1px solid rgba(255,255,255,0.10);
+            box-shadow: 0 30px 70px -18px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .shadow-glass { box-shadow: 0 24px 60px -16px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.035); }
+        .shadow-glow-orange { box-shadow: 0 8px 22px -6px rgba(255,97,23,0.45); }
+        .shadow-glow-green { box-shadow: 0 8px 22px -6px rgba(34,197,94,0.5); }
         /* --- Ambient gradient glow blobs in background --- */
         .bg-glow {
             background:
@@ -439,7 +449,7 @@
 
     <!-- ============ CHAT MODAL (glass) ============ -->
     <div x-show="chatOpen" x-cloak class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4">
-        <div class="glass-strong rounded-3xl max-w-md w-full overflow-hidden shadow-glass flex flex-col h-[540px]">
+        <div class="glass-chat rounded-3xl max-w-md w-full overflow-hidden flex flex-col h-[540px] border-green-500/20">
             <div class="border-b border-white/10 p-4 flex items-center justify-between">
                 <div>
                     <h3 class="font-black text-white text-sm" x-text="'Chat - Order ' + currentOrderNo"></h3>
@@ -448,10 +458,10 @@
                 <button @click="closeChat()" class="text-zinc-400 hover:text-white p-1.5"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
 
-            <div id="chat-messages-box" class="flex-1 p-4 overflow-y-auto space-y-3 bg-black/20">
+            <div id="chat-messages-box" class="flex-1 p-4 overflow-y-auto space-y-3 bg-white/[0.03] border-y border-white/5">
                 <template x-for="msg in messages" :key="msg.id">
                     <div :class="msg.is_me ? 'flex justify-end' : 'flex justify-start'">
-                        <div :class="msg.is_me ? 'bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl rounded-tr-none px-4 py-2 text-xs max-w-[80%] shadow' : 'glass text-zinc-100 rounded-2xl rounded-tl-none px-4 py-2 text-xs max-w-[80%]'">
+                        <div :class="msg.is_me ? 'bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl rounded-tr-none px-4 py-2 text-xs max-w-[80%] shadow-glow-green' : 'bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-2xl rounded-tl-none px-4 py-2 text-xs max-w-[80%] shadow-glow-orange'">
                             <p x-text="msg.message"></p>
                             <span class="text-[9px] opacity-70 block text-right mt-1" x-text="msg.time"></span>
                         </div>
@@ -463,10 +473,16 @@
                 </div>
             </div>
 
+            <div class="px-3 pt-2 bg-black/30 flex gap-1.5 overflow-x-auto no-scrollbar whitespace-nowrap border-t border-white/5">
+                <button @click="newMessage = 'On my way to your location 🏍️'; sendMessage()" class="px-2.5 py-1 bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">🏍️ On my way</button>
+                <button @click="newMessage = 'Arrived at your building 🏢'; sendMessage()" class="px-2.5 py-1 bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">🏢 Arrived</button>
+                <button @click="newMessage = 'Please meet me at the lobby 📍'; sendMessage()" class="px-2.5 py-1 bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">📍 At lobby</button>
+                <button @click="newMessage = 'Thank you! Enjoy your meal 🍽️'; sendMessage()" class="px-2.5 py-1 bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">🍽️ Enjoy meal</button>
+            </div>
             <div class="p-3 border-t border-white/10 flex items-center gap-2">
                 <input type="text" x-model="newMessage" @keyup.enter="sendMessage()" placeholder="Type your message..."
                     class="flex-1 px-4 py-3 glass rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500/50 font-medium">
-                <button @click="sendMessage()" class="btn-shine bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-5 py-3 rounded-xl text-xs font-black shadow-glow-orange transition active:scale-95">
+                <button @click="sendMessage()" class="btn-shine bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-3 rounded-xl text-xs font-black shadow-glow-green transition active:scale-95">
                     <i class="fa-solid fa-paper-plane"></i>
                 </button>
             </div>
@@ -644,7 +660,7 @@
                 if (this.unread[deliveryId]) { this.unread[deliveryId] = 0; }
                 this.fetchMessages();
                 if (this.pollInterval) clearInterval(this.pollInterval);
-                this.pollInterval = setInterval(() => { if (this.chatOpen) this.fetchMessages(); }, 3000);
+                this.pollInterval = setInterval(() => { if (this.chatOpen) this.fetchMessages(); }, 2000);
             },
             closeChat() {
                 this.chatOpen = false;
@@ -672,9 +688,26 @@
                 this.messages.push({ id: Date.now(), sender_role: 'DELIVERY', is_me: true, message: text, time: 'Just now' });
                 this.newMessage = '';
                 this.scrollToBottom();
+
+                function getCookie(name) {
+                    let cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                        const cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            const cookie = cookies[i].trim();
+                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
+                        }
+                    }
+                    return cookieValue;
+                }
+                const csrf = getCookie('csrftoken') || '{{ csrf_token }}';
+
                 fetch(`/deliveries/messages/${this.currentDeliveryId}/send/`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
                     body: JSON.stringify({ message: text })
                 })
                 .then(res => res.json())
