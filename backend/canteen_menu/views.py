@@ -257,6 +257,44 @@ def staff_dashboard(request):
     month_start = today.replace(day=1)
     sales_month = valid_orders.filter(created_at__date__gte=month_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
 
+    # Audit Logs & Reports Data
+    from customer_portal.models import OrderItem
+    audit_logs = []
+    for o in Order.objects.all().order_by('-created_at')[:15]:
+        audit_logs.append({
+            'timestamp': o.created_at,
+            'action': f"Order {o.order_number} ({o.status}) - ₱{o.total_amount}",
+            'user': o.customer.username if o.customer else 'Guest / Walk-in',
+            'type': 'ORDER'
+        })
+    for u in User.objects.all().order_by('-date_joined')[:10]:
+        audit_logs.append({
+            'timestamp': u.date_joined if hasattr(u, 'date_joined') else timezone.now(),
+            'action': f"User account registered: {u.username} ({getattr(u, 'role', 'STUDENT')})",
+            'user': u.username,
+            'type': 'USER'
+        })
+    audit_logs = sorted(audit_logs, key=lambda x: x['timestamp'], reverse=True)[:20]
+
+    # Category Sales for Pie Chart
+    pie_labels = []
+    pie_data = []
+    for cat in Category.objects.all():
+        cat_items = cat.menu_items.values_list('name', flat=True)
+        cat_rev = OrderItem.objects.filter(order__status__in=['ready', 'completed'], item_name__in=cat_items).aggregate(total=Sum('price'))['total'] or 0
+        if cat_rev > 0:
+            pie_labels.append(cat.name)
+            pie_data.append(float(cat_rev))
+    if not pie_labels:
+        pie_labels = ['General Meals']
+        pie_data = [float(sales_today or 100)]
+
+    pie_chart_data = {'labels': pie_labels, 'data': pie_data}
+    line_chart_data = {
+        'labels': daily_chart_data['labels'],
+        'data': [row['count'] for row in reversed(daily_sales)] if daily_sales else [1, 2, 3]
+    }
+
     if request.method == 'POST' and 'add_menu_item' in request.POST:
         name = request.POST.get('name')
         price = request.POST.get('price')
@@ -307,8 +345,95 @@ def staff_dashboard(request):
         'sales_today': sales_today,
         'sales_week': sales_week,
         'sales_month': sales_month,
+        'audit_logs': audit_logs,
+        'pie_chart_data': pie_chart_data,
+        'line_chart_data': line_chart_data,
+        'pie_chart_data_json': json.dumps(pie_chart_data),
+        'line_chart_data_json': json.dumps(line_chart_data),
     }
     return render(request, 'canteen_menu/staff_dashboard.html', context)
+
+
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
+def export_report_view(request, format_type):
+    from django.http import HttpResponse
+    from customer_portal.models import Order
+    from django.utils import timezone
+    
+    valid_orders = Order.objects.filter(status__in=['ready', 'completed'])
+    total_rev = valid_orders.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_count = valid_orders.count()
+    
+    if format_type == 'excel':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="canteen_overall_sales_report.csv"'
+        response.write("Canteen Express - Overall Sales & Financial Report\n")
+        response.write(f"Generated On,{timezone.now().strftime('%Y-%m-%d %H:%M')}\n\n")
+        response.write(f"Total Completed/Ready Orders,{total_count}\n")
+        response.write(f"Total Revenue (PHP),{total_rev:.2f}\n\n")
+        response.write("Order ID,Customer,Total Amount,Status,Date\n")
+        for o in valid_orders.order_by('-created_at'):
+            cust = o.customer.username if o.customer else 'Guest'
+            response.write(f"{o.order_number},{cust},{o.total_amount},{o.status},{o.created_at.strftime('%Y-%m-%d %H:%M')}\n")
+        return response
+
+    elif format_type == 'docx':
+        html_content = f"""
+        <html>
+        <head><meta charset="utf-8"><title>Canteen Express Overall Report</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <h1 style="color: #FF6117; text-align: center;">Canteen Express - Overall Report</h1>
+            <p style="text-align: center; color: #666;">Generated on {timezone.now().strftime('%B %d, %Y %H:%M')}</p>
+            <hr/>
+            <h2>Executive Summary</h2>
+            <p><strong>Total Revenue:</strong> ₱{total_rev:,.2f}</p>
+            <p><strong>Total Completed Orders:</strong> {total_count}</p>
+            <hr/>
+            <h2>Recent Completed/Ready Orders</h2>
+            <table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse: collapse;">
+                <tr style="background-color: #f2f2f2;"><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr>
+        """
+        for o in valid_orders.order_by('-created_at')[:50]:
+            cust = o.customer.username if o.customer else 'Guest'
+            html_content += f"<tr><td>{o.order_number}</td><td>{cust}</td><td>₱{o.total_amount:,.2f}</td><td>{o.status}</td><td>{o.created_at.strftime('%Y-%m-%d %H:%M')}</td></tr>"
+        html_content += "</table></body></html>"
+        
+        response = HttpResponse(html_content, content_type='application/msword')
+        response['Content-Disposition'] = 'attachment; filename="canteen_overall_report.doc"'
+        return response
+
+    elif format_type == 'pdf':
+        html_content = f"""
+        <html>
+        <head><meta charset="utf-8"><title>Canteen Express Overall Report PDF</title></head>
+        <body style="font-family: Helvetica, Arial, sans-serif; padding: 30px; color: #333;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="color: #FF6117; margin: 0;">CANTEEN EXPRESS</h1>
+                <p style="font-size: 14px; color: #555; margin: 5px 0;">Official Overall Sales & Analytics Report</p>
+                <p style="font-size: 11px; color: #888;">Generated on {timezone.now().strftime('%B %d, %Y %H:%M')}</p>
+            </div>
+            <hr style="border: 1px solid #ddd; margin-bottom: 20px;"/>
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="margin-top: 0; color: #111;">Summary Metrics</h3>
+                <p><strong>Total Revenue:</strong> ₱{total_rev:,.2f}</p>
+                <p><strong>Total Successful Orders:</strong> {total_count}</p>
+            </div>
+            <h3>Detailed Orders List</h3>
+            <table border="1" cellpadding="6" cellspacing="0" style="width:100%; border-collapse: collapse; font-size: 12px;">
+                <tr style="background-color: #333; color: white;"><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr>
+        """
+        for o in valid_orders.order_by('-created_at')[:50]:
+            cust = o.customer.username if o.customer else 'Guest'
+            html_content += f"<tr><td>{o.order_number}</td><td>{cust}</td><td>₱{o.total_amount:,.2f}</td><td>{o.status}</td><td>{o.created_at.strftime('%Y-%m-%d %H:%M')}</td></tr>"
+        html_content += """
+            </table>
+            <script>window.onload = function() { window.print(); }</script>
+        </body></html>
+        """
+        response = HttpResponse(html_content, content_type='text/html')
+        return response
+
+    return redirect('canteen_menu:staff_dashboard')
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
 def staff_menu_toggle_ajax(request, pk):

@@ -25,4 +25,5 @@ urlpatterns = [
     path('delivery-staff/create/', views.create_delivery_staff_view, name='create_delivery_staff'),
     path('delivery-staff/<int:pk>/status/', views.update_delivery_staff_status_view, name='update_delivery_staff_status'),
     path('users/<int:pk>/status/', views.update_user_status_view, name='update_user_status'),
+    path('reports/export/<str:format_type>/', views.export_report_view, name='export_report'),
 ]
