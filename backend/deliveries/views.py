@@ -12,7 +12,20 @@ REQUEST_TIMEOUT_MINUTES = 5
 
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
-def delivery_dashboard(request):
+def delivery_dashboard(request, token=None):
+    import uuid
+    from django.urls import reverse
+    session_token = request.session.get('rider_secure_token')
+    if not session_token:
+        session_token = uuid.uuid4().hex[:12]
+        request.session['rider_secure_token'] = session_token
+
+    if not token or token != session_token:
+        query_string = request.META.get('QUERY_STRING', '')
+        redirect_url = reverse('deliveries:dashboard_hashed', kwargs={'token': session_token})
+        if query_string:
+            redirect_url += f'?{query_string}'
+        return redirect(redirect_url)
     expire_stale_requests()
 
     pending_deliveries = DeliveryRequest.objects.filter(

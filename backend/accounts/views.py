@@ -120,7 +120,21 @@ def faculty_auth_view(request):
     return render(request, 'accounts/faculty_auth.html', {'error': error, 'mode': mode})
 
 # STEP 3: Faculty Dashboard
-def faculty_dashboard_view(request):
+def faculty_dashboard_view(request, token=None):
+    import uuid
+    from django.urls import reverse
+    session_token = request.session.get('faculty_secure_token')
+    if not session_token:
+        session_token = uuid.uuid4().hex[:12]
+        request.session['faculty_secure_token'] = session_token
+
+    if not token or token != session_token:
+        query_string = request.META.get('QUERY_STRING', '')
+        redirect_url = reverse('accounts:dashboard_hashed', kwargs={'token': session_token})
+        if query_string:
+            redirect_url += f'?{query_string}'
+        return redirect(redirect_url)
+
     from canteen_menu.models import MenuItem, Category
     import json
     menu_items = MenuItem.objects.filter(is_available=True)

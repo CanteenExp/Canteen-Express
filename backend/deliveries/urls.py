@@ -5,6 +5,7 @@ app_name = 'deliveries'
 
 urlpatterns = [
     path('dashboard/', views.delivery_dashboard, name='dashboard'),
+    path('<str:token>/dashboard/', views.delivery_dashboard, name='dashboard_hashed'),
     path('history/', views.delivery_history, name='history'),
     path('toggle-availability/', views.toggle_availability, name='toggle_availability'),
     path('accept/<int:delivery_id>/', views.accept_delivery, name='accept_delivery'),

@@ -183,7 +183,20 @@ def counter_board(request):
 from accounts.decorators import role_required
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
-def staff_dashboard(request):
+def staff_dashboard(request, token=None):
+    import uuid
+    session_token = request.session.get('staff_secure_token')
+    if not session_token:
+        session_token = uuid.uuid4().hex[:12]
+        request.session['staff_secure_token'] = session_token
+
+    if not token or token != session_token:
+        query_string = request.META.get('QUERY_STRING', '')
+        redirect_url = reverse('canteen_menu:staff_dashboard_hashed', kwargs={'token': session_token})
+        if query_string:
+            redirect_url += f'?{query_string}'
+        return redirect(redirect_url)
+
     from django.utils import timezone
     from customer_portal.models import Order
     from deliveries.models import DeliveryRequest
@@ -359,6 +372,7 @@ def export_report_view(request, format_type):
     from django.http import HttpResponse
     from customer_portal.models import Order
     from django.utils import timezone
+    from django.db.models import Sum
     
     valid_orders = Order.objects.filter(status__in=['ready', 'completed'])
     total_rev = valid_orders.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
@@ -478,9 +492,14 @@ def create_delivery_staff_view(request):
         phone = request.POST.get('phone')
         vehicle_plate = request.POST.get('vehicle_plate')
         from django.contrib.auth import get_user_model
+        from accounts.views import is_strong_password
         User = get_user_model()
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already exists.")
+        elif email and User.objects.filter(email=email).exists():
+            messages.error(request, "Email already exists.")
+        elif not is_strong_password(password):
+            messages.error(request, "Password must be at least 8 characters and include uppercase, lowercase, numbers, and special characters (!@#$...).")
         else:
             User.objects.create_user(
                 username=username,
