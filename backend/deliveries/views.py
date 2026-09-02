@@ -162,6 +162,12 @@ def expire_stale_requests():
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
 def get_delivery_messages(request, delivery_id):
     delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    user = request.user
+    is_rider = delivery.rider == user
+    is_customer = delivery.order.customer == user
+    is_privileged = user.role in ('STAFF', 'ADMIN')
+    if not (is_rider or is_customer or is_privileged):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
     messages_qs = delivery.messages.all().order_by('timestamp')
     # Mark incoming messages as read now that the user has the chat open
     unread_ids = delivery.messages.filter(is_read=False).exclude(sender=request.user).count()
@@ -182,6 +188,12 @@ def send_delivery_message(request, delivery_id):
     if request.method == 'POST':
         try:
             delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+            user = request.user
+            is_rider = delivery.rider == user
+            is_customer = delivery.order.customer == user
+            is_privileged = user.role in ('STAFF', 'ADMIN')
+            if not (is_rider or is_customer or is_privileged):
+                return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
             data = json.loads(request.body)
             text = data.get('message', '').strip()
             if text:

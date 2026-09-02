@@ -22,11 +22,6 @@ class DeliveryRequest(models.Model):
     requested_at = models.DateTimeField(auto_now_add=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
-    rider_lat = models.FloatField(null=True, blank=True)
-    rider_lng = models.FloatField(null=True, blank=True)
-    dest_lat = models.FloatField(null=True, blank=True)
-    dest_lng = models.FloatField(null=True, blank=True)
-    location_updated_at = models.DateTimeField(null=True, blank=True)
 
     # Live rider tracking
     rider_lat = models.FloatField(null=True, blank=True)
@@ -58,7 +53,9 @@ class DeliveryMessage(models.Model):
     message = models.TextField()
     is_read = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['timestamp']
 
     def __str__(self):
         return f"{self.sender.username}: {self.message[:30]}"
