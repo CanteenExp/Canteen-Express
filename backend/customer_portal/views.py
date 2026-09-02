@@ -89,10 +89,12 @@ def process_checkout(request):
 
         order_number = f"#CE-{random.randint(1000, 9999)}"
         initial_status = 'pending' if is_delivery else 'unpaid'
+        delivery_fee = 30.00 if is_delivery else 0.00
 
         order = Order.objects.create(
             order_number=order_number,
             total_amount=total_amount,
+            delivery_fee=delivery_fee,
             status=initial_status,
             customer=request.user if request.user.is_authenticated else None
         )
