@@ -1,6 +1,7 @@
 import json
+import time
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -138,6 +139,70 @@ def kitchen_display(request):
         'staff_name': request.user.first_name or request.user.username,
     }
     return render(request, 'kitchen_dashboard.html', context)
+
+
+@role_required(allowed_roles=['STAFF'])
+def kitchen_live_stream(request):
+    """
+    Real-time Server-Sent Events (SSE) stream for the Kitchen Display board.
+
+    Replaces the previous full-page reload-every-5s pattern. The client keeps a
+    long-lived SSE connection open and only receives an event when the order
+    boards actually change (a new order lands, or a status moves pending ->
+    preparing -> ready), so cards update in place with zero latency and no page
+    reload.
+    """
+    import hashlib
+    from django.db.models import Q
+
+    def order_map(o, is_delivery):
+        return {
+            'id': o.id,
+            'order_number': o.order_number,
+            'status': o.status,
+            'is_delivery': is_delivery,
+            'customer': o.customer.get_full_name() if (o.customer and o.customer.get_full_name()) else (o.customer.username if o.customer else 'Walk-in Guest'),
+            'created_at': o.created_at.strftime('%H:%M'),
+            'items': [{'qty': it.quantity, 'name': it.item_name, 'total': str(it.total_price)} for it in o.items.all()],
+            'total_amount': str(o.total_amount),
+            'delivery_fee': str(o.delivery_fee),
+            'total_payment': str(o.total_payment),
+        }
+
+    def boards():
+        kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status='completed').exclude(status='ready').exclude(status='unpaid').order_by('created_at')
+        delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status='completed').exclude(status='ready').order_by('created_at')
+        ready_orders = Order.objects.filter(status='ready').order_by('created_at')
+        return {
+            'kiosk': [order_map(o, False) for o in kiosk_orders],
+            'delivery': [order_map(o, True) for o in delivery_orders],
+            'ready': [order_map(o, DeliveryRequest.objects.filter(order=o).exists()) for o in ready_orders],
+        }
+
+    def event_stream():
+        last_hash = None
+        while True:
+            try:
+                payload = {'success': True, 'boards': boards()}
+                body = json.dumps(payload)
+                digest = hashlib.md5(body.encode('utf-8')).hexdigest()
+                if digest != last_hash:
+                    last_hash = digest
+                    yield f"data: {body}\n\n"
+            except Exception:
+                pass
+            yield ": ping\n\n"
+            time.sleep(2)
+
+    return StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive',
+        },
+    )
 
 
 @role_required(allowed_roles=['STAFF'])

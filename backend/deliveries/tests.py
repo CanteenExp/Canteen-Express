@@ -199,3 +199,95 @@ class DeliveryRiderFeatureTestCase(TestCase):
         )
         self.assertEqual(resp2.status_code, 200)
         self.assertTrue(resp2.json()['success'])
+
+
+class DeliverySyncTestCase(TestCase):
+    """Covers the order->rider synchronization fixes: acceptance race, release
+    back to pool, and offline rider enforcement."""
+
+    def setUp(self):
+        self.client = Client()
+        self.rider_a = CustomUser.objects.create_user(
+            username='riderA', password='password123', role='DELIVERY',
+            is_available=True
+        )
+        self.rider_b = CustomUser.objects.create_user(
+            username='riderB', password='password123', role='DELIVERY',
+            is_available=True
+        )
+        self.faculty = CustomUser.objects.create_user(
+            username='facultySync', password='password123', role='FACULTY'
+        )
+        self.order = Order.objects.create(
+            order_number='#CE-5555', total_amount=120.00, status='pending',
+            customer=self.faculty
+        )
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, delivery_location='Admin Bldg, Rm 1',
+            status=DeliveryRequest.RequestStatus.SEARCHING,
+            dest_lat=9.77760, dest_lng=118.73400
+        )
+
+    def _login(self, username):
+        self.client.login(username=username, password='password123')
+
+    def test_release_back_to_pool_returns_to_searching(self):
+        """A canceled ACCEPTED delivery must return to the shared SEARCHING pool
+        (not become permanently invisible via REJECTED)."""
+        self.delivery.status = DeliveryRequest.RequestStatus.ACCEPTED
+        self.delivery.rider = self.rider_a
+        self.delivery.accepted_at = None
+        self.delivery.save()
+
+        self._login('riderA')
+        resp = self.client.get(reverse('deliveries:cancel_delivery', args=[self.delivery.id]))
+        self.assertEqual(resp.status_code, 302)  # redirect back to dashboard
+
+        self.delivery.refresh_from_db()
+        self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.SEARCHING)
+        self.assertIsNone(self.delivery.rider)
+
+        # The released delivery is visible again in the incoming pool.
+        pending_ids = list(DeliveryRequest.objects.filter(
+            status=DeliveryRequest.RequestStatus.SEARCHING).values_list('id', flat=True))
+        self.assertIn(self.delivery.id, pending_ids)
+
+    def test_race_condition_only_one_rider_accepts(self):
+        """Two riders cannot both accept the same SEARCHING delivery; the first
+        wins and the second is blocked (no double assignment)."""
+        self._login('riderA')
+        resp_a = self.client.get(reverse('deliveries:accept_delivery', args=[self.delivery.id]))
+        self.assertEqual(resp_a.status_code, 302)
+
+        self.delivery.refresh_from_db()
+        self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.ACCEPTED)
+        self.assertEqual(self.delivery.rider, self.rider_a)
+
+        # Second rider tries to accept the same (now ACCEPTED) delivery.
+        self.client.logout()
+        self._login('riderB')
+        resp_b = self.client.get(reverse('deliveries:accept_delivery', args=[self.delivery.id]))
+        # Should not reassign to rider B; rider A still owns it.
+        self.delivery.refresh_from_db()
+        self.assertEqual(self.delivery.rider, self.rider_a)
+        self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.ACCEPTED)
+
+    def test_offline_rider_cannot_accept(self):
+        """An offline rider must not be able to accept an incoming request."""
+        self.rider_b.is_available = False
+        self.rider_b.save(update_fields=['is_available'])
+        self._login('riderB')
+
+        resp = self.client.get(reverse('deliveries:accept_delivery', args=[self.delivery.id]))
+        self.assertEqual(resp.status_code, 302)  # redirect with error
+
+        self.delivery.refresh_from_db()
+        # Not assigned to the offline rider, still SEARCHING in the pool.
+        self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.SEARCHING)
+        self.assertIsNone(self.delivery.rider)
+
+    def test_raw_status_property_present(self):
+        """DeliveryRequest exposes raw_status for the dashboard labels."""
+        self.assertEqual(self.delivery.raw_status, DeliveryRequest.RequestStatus.SEARCHING)
+        self.delivery.status = DeliveryRequest.RequestStatus.ACCEPTED
+        self.assertEqual(self.delivery.raw_status, DeliveryRequest.RequestStatus.ACCEPTED)

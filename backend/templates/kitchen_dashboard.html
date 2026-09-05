@@ -34,7 +34,7 @@
         <div class="bg-white p-5 rounded-3xl border border-gray-200/80 shadow-sm flex justify-between items-center">
             <div>
                 <span class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Kiosk Accepted</span>
-                <p class="text-2xl font-black text-brand-500 mt-0.5">{{ kiosk_orders|length }} Active</p>
+                <p class="text-2xl font-black text-brand-500 mt-0.5"><span id="stat-kiosk">{{ kiosk_orders|length }}</span> Active</p>
             </div>
             <span class="text-xl bg-brand-50 text-brand-500 p-3 rounded-2xl border border-brand-100">
                 <i class="fa-solid fa-store"></i>
@@ -44,7 +44,7 @@
         <div class="bg-white p-5 rounded-3xl border border-gray-200/80 shadow-sm flex justify-between items-center">
             <div>
                 <span class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Delivery</span>
-                <p class="text-2xl font-black text-orange-600 mt-0.5">{{ delivery_orders|length }} Pending</p>
+                <p class="text-2xl font-black text-orange-600 mt-0.5"><span id="stat-delivery">{{ delivery_orders|length }}</span> Pending</p>
             </div>
             <span class="text-xl bg-orange-50 text-orange-600 p-3 rounded-2xl border border-orange-100">
                 <i class="fa-solid fa-motorcycle"></i>
@@ -54,11 +54,22 @@
         <div class="bg-white p-5 rounded-3xl border border-gray-200/80 shadow-sm flex justify-between items-center">
             <div>
                 <span class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Orders Ready</span>
-                <p class="text-2xl font-black text-emerald-600 mt-0.5">{{ ready_orders|length }} Ready</p>
+                <p class="text-2xl font-black text-emerald-600 mt-0.5"><span id="stat-ready">{{ ready_orders|length }}</span> Ready</p>
             </div>
             <span class="text-xl bg-emerald-50 text-emerald-600 p-3 rounded-2xl border border-emerald-100">
                 <i class="fa-solid fa-circle-check"></i>
             </span>
+        </div>
+    </div>
+
+    <!-- Live Toast / Sound notification fired on incoming orders -->
+    <div id="live-toast" class="hidden fixed top-4 right-4 z-50 max-w-sm bg-white rounded-3xl border-2 border-emerald-500 shadow-2xl p-5 space-y-2 animate-pulse">
+        <div class="flex items-center gap-3">
+            <span class="text-3xl text-emerald-600"><i class="fa-solid fa-bell"></i></span>
+            <div>
+                <p class="font-black text-dark-900 text-sm" id="live-toast-title">New Order</p>
+                <p class="text-xs text-gray-500 font-medium" id="live-toast-msg">A new order just arrived.</p>
+            </div>
         </div>
     </div>
 
@@ -71,11 +82,12 @@
                 <h2 class="text-xs font-extrabold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-brand-500"></span> Kiosk Accepted
                 </h2>
-                <span class="text-xs font-bold bg-brand-100 text-brand-700 px-2.5 py-0.5 rounded-full">{{ kiosk_orders|length }}</span>
+                <span class="count-pill text-xs font-bold bg-brand-100 text-brand-700 px-2.5 py-0.5 rounded-full" data-count-for="kiosk">{{ kiosk_orders|length }}</span>
             </div>
 
+            <div data-board="kiosk">
             {% for order in kiosk_orders %}
-            <div class="bg-white rounded-3xl p-6 border-2 border-emerald-500 shadow-md space-y-4 relative" id="order-card-{{ order.id }}">
+            <div class="bg-white rounded-3xl p-6 border-2 border-emerald-500 shadow-md space-y-4 relative" id="order-card-{{ order.id }}" data-order-row="{{ order.id }}">
                 <div class="flex justify-between items-start border-b border-gray-100 pb-3">
                     <div>
                         <span class="text-lg font-black text-emerald-600 uppercase tracking-wider">
@@ -100,7 +112,7 @@
 
                 <div class="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
                     <span class="text-gray-400 font-medium">
-                        <i class="fa-regular fa-clock mr-1"></i> {{ order.created_at|timesince }} ago
+                        <i class="fa-regular fa-clock mr-1"></i> <span class="time-ago">{{ order.created_at|time:"H:i" }}</span>
                     </span>
                     <button data-order-id="{{ order.id }}" data-status="ready" class="status-btn bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 py-2.5 rounded-xl text-xs shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5">
                         <i class="fa-solid fa-check"></i> Done (Ready)
@@ -108,10 +120,11 @@
                 </div>
             </div>
             {% empty %}
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 text-center text-gray-400 text-sm">
+            <div class="empty-state bg-white rounded-3xl p-6 border border-gray-200 text-center text-gray-400 text-sm">
                 No kiosk orders right now.
             </div>
             {% endfor %}
+            </div>
         </div>
 
         <!-- Column 2: Delivery -->
@@ -120,11 +133,12 @@
                 <h2 class="text-xs font-extrabold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span> Delivery
                 </h2>
-                <span class="text-xs font-bold bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full">{{ delivery_orders|length }}</span>
+                <span class="count-pill text-xs font-bold bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full" data-count-for="delivery">{{ delivery_orders|length }}</span>
             </div>
 
+            <div data-board="delivery">
             {% for order in delivery_orders %}
-            <div class="bg-white rounded-3xl p-6 border-2 border-orange-500 shadow-md space-y-4" id="order-card-{{ order.id }}">
+            <div class="bg-white rounded-3xl p-6 border-2 border-orange-500 shadow-md space-y-4" id="order-card-{{ order.id }}" data-order-row="{{ order.id }}">
                 <div class="flex justify-between items-start border-b border-gray-100 pb-3">
                     <div>
                         <span class="text-[11px] font-black text-orange-600 uppercase tracking-wider">
@@ -150,7 +164,7 @@
 
                 <div class="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
                     <span class="text-gray-400 font-medium">
-                        <i class="fa-regular fa-clock mr-1"></i> {{ order.created_at|timesince }} ago
+                        <i class="fa-regular fa-clock mr-1"></i> <span class="time-ago">{{ order.created_at|time:"H:i" }}</span>
                     </span>
                     <button data-order-id="{{ order.id }}" data-status="ready" class="status-btn bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5">
                         <i class="fa-solid fa-check"></i> Mark Ready
@@ -158,10 +172,11 @@
                 </div>
             </div>
             {% empty %}
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 text-center text-gray-400 text-sm">
+            <div class="empty-state bg-white rounded-3xl p-6 border border-gray-200 text-center text-gray-400 text-sm">
                 No delivery orders right now.
             </div>
             {% endfor %}
+            </div>
         </div>
 
         <!-- Column 3: Orders Ready -->
@@ -170,11 +185,12 @@
                 <h2 class="text-xs font-extrabold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Orders Ready
                 </h2>
-                <span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full">{{ ready_orders|length }}</span>
+                <span class="count-pill text-xs font-bold bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full" data-count-for="ready">{{ ready_orders|length }}</span>
             </div>
 
+            <div data-board="ready">
             {% for order in ready_orders %}
-            <div class="bg-gray-50 rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4" id="order-card-{{ order.id }}">
+            <div class="bg-gray-50 rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4" id="order-card-{{ order.id }}" data-order-row="{{ order.id }}">
                 <div class="flex justify-between items-start border-b border-gray-200 pb-3">
                     <div>
                         <span class="text-[11px] font-black text-emerald-600 uppercase tracking-wider">
@@ -214,7 +230,7 @@
 
                 <div class="pt-3 border-t border-gray-200 flex items-center justify-between text-xs">
                     <span class="text-gray-400 font-medium">
-                        <i class="fa-regular fa-clock mr-1"></i> {{ order.created_at|timesince }} ago
+                        <i class="fa-regular fa-clock mr-1"></i> <span class="time-ago">{{ order.created_at|time:"H:i" }}</span>
                     </span>
                     <button data-order-id="{{ order.id }}" data-status="COMPLETED" class="status-btn bg-dark-900 hover:bg-black text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5">
                         <i class="fa-solid fa-box-archive"></i> Complete
@@ -222,10 +238,11 @@
                 </div>
             </div>
             {% empty %}
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 text-center text-gray-400 text-sm">
+            <div class="empty-state bg-white rounded-3xl p-6 border border-gray-200 text-center text-gray-400 text-sm">
                 No orders ready for pickup/delivery.
             </div>
             {% endfor %}
+            </div>
         </div>
 
     </div>
@@ -247,36 +264,165 @@ function getCSRFToken() {
     return cookieValue;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.status-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const orderId = this.getAttribute('data-order-id');
-            const newStatus = this.getAttribute('data-status');
-            
-            fetch(`/kitchen/order/${orderId}/update-status/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken(),
-                },
-                body: JSON.stringify({ status: newStatus })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    alert('Error: ' + (data.error || 'Failed to update order status.'));
-                }
-            })
-            .catch(error => console.error('Error:', error));
-        });
-    });
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+}
 
-    // Real-time auto-refresh every 5 seconds
-    setInterval(() => {
-        window.location.reload();
-    }, 5000);
+const EMPTY_MSG = {
+    kiosk: 'No kiosk orders right now.',
+    delivery: 'No delivery orders right now.',
+    ready: 'No orders ready for pickup/delivery.',
+};
+
+const CARD_STYLE = {
+    kiosk: { card: 'bg-white rounded-3xl p-6 border-2 border-emerald-500 shadow-md space-y-4 relative', badge: 'bg-emerald-100 text-emerald-800 border-emerald-300', badgeLabel: 'Walk-in Kiosk', badgeIcon: 'fa-store', label: 'font-black text-emerald-600' },
+    delivery: { card: 'bg-white rounded-3xl p-6 border-2 border-orange-500 shadow-md space-y-4', badge: 'bg-orange-100 text-orange-800 border-orange-300', badgeLabel: 'Campus Delivery', badgeIcon: 'fa-motorcycle', label: 'font-black text-orange-600' },
+    ready: { card: 'bg-gray-50 rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4', badge: '', badgeLabel: '', badgeIcon: '', label: 'font-black text-emerald-600', footer: 'COMPLETED' },
+};
+
+function cardHTML(board, o) {
+    const st = CARD_STYLE[board];
+    const itemsHtml = (o.items && o.items.length)
+        ? o.items.map(it => `<div class="flex justify-between items-center"><span>${it.qty}x ${escapeHtml(it.name)}</span><span class="font-bold text-dark-900">₱${escapeHtml(it.total)}</span></div>`).join('')
+        : '<p class="text-xs text-gray-400">No items found.</p>';
+
+    const badgeHtml = st.badge
+        ? `<span class="text-[10px] ${st.badge} font-extrabold px-2.5 py-1 rounded-lg border flex items-center gap-1"><i class="fa-solid ${st.badgeIcon}"></i> ${st.badgeLabel}</span>`
+        : (o.is_delivery
+            ? '<span class="text-[10px] bg-orange-100 text-orange-800 font-extrabold px-2.5 py-1 rounded-lg border border-orange-300 flex items-center gap-1"><i class="fa-solid fa-motorcycle"></i> Delivery Ready</span>'
+            : '<span class="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2.5 py-1 rounded-lg border border-emerald-300 flex items-center gap-1"><i class="fa-solid fa-store"></i> Counter Ready</span>');
+
+    const footerBtn = board === 'ready'
+        ? `<button data-order-id="${o.id}" data-status="COMPLETED" class="status-btn bg-dark-900 hover:bg-black text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5"><i class="fa-solid fa-box-archive"></i> Complete</button>`
+        : `<button data-order-id="${o.id}" data-status="ready" class="status-btn bg-emerald-600 hover:bg-emerald-700 text-white font-black px-4 py-2 rounded-xl text-xs shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5"><i class="fa-solid fa-check"></i> ${board === 'kiosk' ? 'Done (Ready)' : 'Mark Ready'}</button>`;
+
+    const readyNote = board === 'ready'
+        ? `<p class="text-xs text-gray-500 font-medium">${o.is_delivery ? 'Awaiting assigned delivery rider.' : 'Awaiting customer at Counter 1.'}</p>`
+        : '';
+
+    const nameHtml = board === 'ready'
+        ? `<h3 class="text-base font-black text-dark-900">${escapeHtml(o.customer) || 'Walk-in Guest'}</h3>`
+        : (board === 'delivery'
+            ? `<h3 class="text-base font-black text-dark-900">${escapeHtml(o.customer) || 'Walk-in Guest'}</h3>`
+            : '');
+
+    return `<div class="${st.card}" id="order-card-${o.id}" data-order-row="${o.id}">
+        <div class="flex justify-between items-start border-b ${board === 'ready' ? 'border-gray-200' : 'border-gray-100'} pb-3">
+            <div>
+                <span class="text-[11px] ${st.label} uppercase tracking-wider">Order #${o.id} (${escapeHtml(o.order_number)})</span>
+                ${nameHtml}
+            </div>
+            ${badgeHtml}
+        </div>
+        <div class="space-y-2 text-sm text-gray-700 font-medium">${itemsHtml}</div>
+        ${Number(o.delivery_fee) > 0 ? `<div class="pt-2 space-y-1 text-xs">
+            <div class="flex justify-between items-center"><span class="text-gray-400 font-medium"><i class="fa-solid fa-motorcycle mr-1"></i> Delivery Fee (Rider)</span><span class="font-bold text-orange-600">₱${Number(o.delivery_fee).toFixed(2)}</span></div>
+            <div class="flex justify-between items-center pt-1 border-t border-gray-100"><span class="text-gray-500 font-bold uppercase tracking-wider">Total Payment</span><span class="font-black text-dark-900">₱${Number(o.total_payment).toFixed(2)}</span></div>
+        </div>` : `<div class="pt-2 flex justify-between items-center text-xs">
+            <span class="text-gray-500 font-bold uppercase tracking-wider">Total</span><span class="font-black text-dark-900">₱${Number(o.total_amount).toFixed(2)}</span>
+        </div>`}
+        ${readyNote}
+        <div class="pt-3 border-t ${board === 'ready' ? 'border-gray-200' : 'border-gray-100'} flex items-center justify-between text-xs">
+            <span class="text-gray-400 font-medium"><i class="fa-regular fa-clock mr-1"></i> ${escapeHtml(o.created_at)}</span>
+            ${footerBtn}
+        </div>
+    </div>`;
+}
+
+function renderBoard(board, arr) {
+    const container = document.querySelector(`[data-board="${board}"]`);
+    if (!container) return;
+    const countPill = document.querySelector(`[data-count-for="${board}"]`);
+    if (countPill) countPill.textContent = arr.length;
+    const statEl = document.getElementById(`stat-${board}`);
+    if (statEl) statEl.textContent = arr.length;
+    if (!arr.length) {
+        container.innerHTML = `<div class="empty-state bg-white rounded-3xl p-6 border border-gray-200 text-center text-gray-400 text-sm">${EMPTY_MSG[board]}</div>`;
+        return;
+    }
+    container.innerHTML = arr.map(o => cardHTML(board, o)).join('');
+    container.querySelectorAll('.status-btn').forEach(bindStatusBtn);
+}
+
+function bindStatusBtn(button) {
+    button.addEventListener('click', function () {
+        const orderId = this.getAttribute('data-order-id');
+        const newStatus = this.getAttribute('data-status');
+        fetch(`/kitchen/order/${orderId}/update-status/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+            body: JSON.stringify({ status: newStatus })
+        })
+        .then(r => r.json())
+        .then(data => { if (!data.success) alert('Error: ' + (data.error || 'Failed to update order status.')); })
+        .catch(error => console.error('Error:', error));
+    });
+}
+
+function playChime() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    } catch (e) { /* audio unavailable */ }
+}
+
+function showToast(title, msg) {
+    const toast = document.getElementById('live-toast');
+    document.getElementById('live-toast-title').textContent = title;
+    document.getElementById('live-toast-msg').textContent = msg;
+    toast.classList.remove('hidden');
+    playChime();
+    clearTimeout(window.__toastT);
+    window.__toastT = setTimeout(() => toast.classList.add('hidden'), 6000);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.status-btn').forEach(bindStatusBtn);
+
+    let knownIds = new Set(
+        Array.from(document.querySelectorAll('[data-board] [data-order-row]'))
+            .map(el => Number(el.dataset.orderRow))
+    );
+
+    const csvSuccess = (data) => {
+        const boards = data.boards || {};
+        const allIds = [...(boards.kiosk || []), ...(boards.delivery || [])]
+            .map(o => Number(o.id));
+        const fresh = allIds.filter(id => !knownIds.has(id));
+        allIds.forEach(id => knownIds.add(id));
+
+        // Fall back to a soft reload if the boards diverge beyond our JS capability
+        // (e.g. an order was edited by staff). Keeps the card mark-up in sync cheaply.
+        renderBoard('kiosk', boards.kiosk || []);
+        renderBoard('delivery', boards.delivery || []);
+        renderBoard('ready', boards.ready || []);
+
+        if (fresh.length) {
+            const label = (boards.kiosk || []).some(o => fresh.includes(Number(o.id)))
+                ? 'Walk-in Kiosk' : 'Campus Delivery';
+            showToast('New Order', `Order #${fresh[0]} just arrived (${label}).`);
+        }
+    };
+
+    const sse = new EventSource('/kitchen/kitchen-live-stream/');
+    sse.onmessage = (ev) => {
+        try {
+            const data = JSON.parse(ev.data);
+            if (data.success) csvSuccess(data);
+        } catch (e) { /* ignore malformed pings */ }
+    };
+    sse.onerror = () => { /* EventSource auto-reconnects */ };
 });
 </script>
 {% endblock %}

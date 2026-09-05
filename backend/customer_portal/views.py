@@ -1,5 +1,7 @@
 import json
 import random
+from django.db import transaction
+from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
@@ -67,18 +69,28 @@ def process_checkout(request):
     try:
         data = json.loads(request.body)
         cart_items = data.get('cart', [])
-        total_amount = data.get('total_amount', 0)
         is_delivery = data.get('is_delivery', False)
         delivery_location = data.get('delivery_location', 'Faculty Office Building')
 
         if not cart_items:
             return JsonResponse({'success': False, 'message': 'Cart is empty.'}, status=400)
 
+        # Server-authoritative subtotal: recomputed from the cart payload so the
+        # stored total, delivery fee, and final payment can never drift from each
+        # other (a client-sent total_amount is ignored on purpose).
+        try:
+            subtotal = sum(
+                round(float(item.get('price', 0)) * int(item.get('qty', 0)), 2)
+                for item in cart_items
+            )
+        except (TypeError, ValueError):
+            return JsonResponse({'success': False, 'message': 'Invalid cart item price or quantity.'}, status=400)
+
         # Campus-only scope: validate delivery destination BEFORE creating the order.
         # If the customer's location (GPS or building preset) falls outside the PSU
         # campus geofence, the whole order is rejected.
         if is_delivery:
-            from deliveries.utils import is_within_campus
+            from deliveries.utils import is_within_campus, delivery_fee_for_order
             dest_lat = data.get('dest_lat')
             dest_lng = data.get('dest_lng')
             if not is_within_campus(dest_lat, dest_lng):
@@ -87,70 +99,95 @@ def process_checkout(request):
                     'message': 'Delivery is only available within the Palawan State University campus. Please make sure your location is inside the campus and try again.'
                 }, status=422)
 
-        order_number = f"#CE-{random.randint(1000, 9999)}"
+        # Generate a unique order number that avoids colliding with existing
+        # orders (the column is UNIQUE, and a 4-digit random can repeat ~1/9000).
+        def _unique_order_number():
+            while True:
+                candidate = f"#CE-{random.randint(1000, 9999)}"
+                if not Order.objects.filter(order_number=candidate).exists():
+                    return candidate
+
+        order_number = _unique_order_number()
         initial_status = 'pending' if is_delivery else 'unpaid'
 
-        order = Order.objects.create(
-            order_number=order_number,
-            total_amount=total_amount,
-            status=initial_status,
-            customer=request.user if request.user.is_authenticated else None
-        )
+        # Delivery fee = rider earning: ₱15 per ₱300 block of the order subtotal.
+        # It is a separate line from the food total and belongs to the rider.
+        delivery_fee = delivery_fee_for_order(subtotal) if is_delivery else 0.0
 
-        from queuing.models import DigitalQueueSlip
-        try:
-            DigitalQueueSlip.objects.get_or_create(
-                order=order,
-                defaults={'queue_number': order_number}
-            )
-        except Exception:
-            pass
-
-        for item in cart_items:
-            qty = int(item.get('qty', 1))
-            item_name = item.get('name', '')
-            item_id = item.get('id')
-
-            OrderItem.objects.create(
-                order=order,
-                item_name=item_name,
-                price=item.get('price', 0),
-                quantity=qty
+        # Wrap the whole order pipeline in a transaction so a failure anywhere
+        # rolls back everything: no orphaned Order without its DeliveryRequest
+        # (which would be invisible to riders in the incoming pool).
+        with transaction.atomic():
+            order = Order.objects.create(
+                order_number=order_number,
+                total_amount=subtotal,
+                delivery_fee=delivery_fee,
+                status=initial_status,
+                customer=request.user if request.user.is_authenticated else None
             )
 
-            menu_item = None
-            if item_id:
-                menu_item = MenuItem.objects.filter(id=item_id).first()
-            if not menu_item and item_name:
-                menu_item = MenuItem.objects.filter(name__iexact=item_name).first()
+            from queuing.models import DigitalQueueSlip
+            try:
+                DigitalQueueSlip.objects.get_or_create(
+                    order=order,
+                    defaults={'queue_number': order_number}
+                )
+            except Exception:
+                pass
 
-            if menu_item:
-                if menu_item.stock >= qty:
-                    menu_item.stock -= qty
-                else:
-                    menu_item.stock = 0
-                if menu_item.stock <= 0:
-                    menu_item.is_available = False
-                menu_item.save()
+            for item in cart_items:
+                qty = int(item.get('qty', 1))
+                item_name = item.get('name', '')
+                item_id = item.get('id')
 
-        if is_delivery:
-            from deliveries.models import DeliveryRequest
-            dest_lat = data.get('dest_lat')
-            dest_lng = data.get('dest_lng')
-            # Destination was already validated (inside campus) before the order was created.
-            DeliveryRequest.objects.create(
-                order=order,
-                delivery_location=delivery_location,
-                status=DeliveryRequest.RequestStatus.SEARCHING,
-                dest_lat=dest_lat,
-                dest_lng=dest_lng,
-            )
+                OrderItem.objects.create(
+                    order=order,
+                    item_name=item_name,
+                    price=item.get('price', 0),
+                    quantity=qty
+                )
+
+                menu_item = None
+                if item_id:
+                    menu_item = MenuItem.objects.filter(id=item_id).first()
+                if not menu_item and item_name:
+                    menu_item = MenuItem.objects.filter(name__iexact=item_name).first()
+
+                if menu_item:
+                    if menu_item.stock >= qty:
+                        menu_item.stock -= qty
+                    else:
+                        menu_item.stock = 0
+                    if menu_item.stock <= 0:
+                        menu_item.is_available = False
+                    menu_item.save()
+
+            if is_delivery:
+                from deliveries.models import DeliveryRequest
+                from deliveries.utils import pick_next_available_rider
+                dest_lat = data.get('dest_lat')
+                dest_lng = data.get('dest_lng')
+                # Destination was already validated (inside campus) before the order was created.
+                # Round-robin: assign the new delivery to the next available rider
+                # right away so one specific rider is offered it first.
+                next_rider = pick_next_available_rider()
+                DeliveryRequest.objects.create(
+                    order=order,
+                    delivery_location=delivery_location,
+                    status=DeliveryRequest.RequestStatus.SEARCHING,
+                    assigned_to=next_rider,
+                    assigned_at=timezone.now() if next_rider else None,
+                    dest_lat=dest_lat,
+                    dest_lng=dest_lng,
+                )
 
         return JsonResponse({
             'success': True,
             'order_number': order.order_number,
             'order_id': order.id,
-            'is_delivery': is_delivery
+            'is_delivery': is_delivery,
+            'delivery_fee': float(order.delivery_fee),
+            'total_payment': float(order.total_payment),
         })
 
     except Exception as e:

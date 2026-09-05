@@ -1,5 +1,6 @@
 import json
-from django.http import JsonResponse
+import time
+from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib import messages
@@ -179,6 +180,56 @@ def counter_board(request):
         'done_today_count': done_today_count,
     }
     return render(request, 'canteen_menu/counter_board.html', context)
+
+def counter_live_stream(request):
+    """
+    Real-time SSE stream for the Counter Board.
+
+    Replaces the constant reload-every-5s pattern. Emits an event only when the
+    pending/preparing/ready queue actually changes, so the board soft-refreshes
+    in place instead of reloading the whole page every few seconds.
+    """
+    import hashlib
+    from django.utils import timezone
+    from customer_portal.models import Order
+
+    def state():
+        pending_ids = list(Order.objects.filter(status='pending').order_by('created_at').values_list('id', flat=True))
+        preparing_ids = list(Order.objects.filter(status='preparing').order_by('created_at').values_list('id', flat=True))
+        ready_ids = list(Order.objects.filter(status='ready').order_by('created_at').values_list('id', flat=True))
+        return {
+            'pending_count': len(pending_ids),
+            'preparing_count': len(preparing_ids),
+            'ready_count': len(ready_ids),
+            'pending_ids': pending_ids,
+            'preparing_ids': preparing_ids,
+            'ready_ids': ready_ids,
+        }
+
+    def event_stream():
+        last_hash = None
+        while True:
+            try:
+                payload = {'success': True, 'orders': state()}
+                body = json.dumps(payload)
+                digest = hashlib.md5(body.encode('utf-8')).hexdigest()
+                if digest != last_hash:
+                    last_hash = digest
+                    yield f"data: {body}\n\n"
+            except Exception:
+                pass
+            yield ": ping\n\n"
+            time.sleep(2)
+
+    return StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive',
+        },
+    )
 
 from accounts.decorators import role_required
 
