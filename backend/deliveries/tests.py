@@ -291,3 +291,51 @@ class DeliverySyncTestCase(TestCase):
         self.assertEqual(self.delivery.raw_status, DeliveryRequest.RequestStatus.SEARCHING)
         self.delivery.status = DeliveryRequest.RequestStatus.ACCEPTED
         self.assertEqual(self.delivery.raw_status, DeliveryRequest.RequestStatus.ACCEPTED)
+
+    def test_auto_assign_when_rider_comes_online(self):
+        """A SEARCHING order with no assigned rider must be handed instantly to
+        the first rider who comes online -- no manual hunting required."""
+        self.delivery.assigned_to = None
+        self.delivery.assigned_at = None
+        self.delivery.save(update_fields=['assigned_to', 'assigned_at'])
+
+        # riderB starts offline; going online should immediately pull the
+        # waiting order into their own pool.
+        self.rider_b.is_available = False
+        self.rider_b.save(update_fields=['is_available'])
+        self._login('riderB')
+        resp = self.client.post(reverse('deliveries:toggle_availability'))
+        self.assertTrue(resp.json()['success'])
+        self.assertEqual(resp.json()['assigned_order'], self.delivery.order.order_number)
+
+        self.delivery.refresh_from_db()
+        self.assertEqual(self.delivery.assigned_to, self.rider_b)
+        self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.SEARCHING)
+
+    def test_auto_assign_does_not_steal_assigned_order(self):
+        """Auto-assign must only pull orders with NO assigned rider; it must
+        never take an order another rider is already deciding on."""
+        self.delivery.assigned_to = self.rider_a
+        self.delivery.assigned_at = None
+        self.delivery.save(update_fields=['assigned_to', 'assigned_at'])
+
+        self.rider_b.is_available = False
+        self.rider_b.save(update_fields=['is_available'])
+        self._login('riderB')
+        self.client.post(reverse('deliveries:toggle_availability'))
+
+        self.delivery.refresh_from_db()
+        self.assertEqual(self.delivery.assigned_to, self.rider_a)
+
+    def test_serializer_exposes_assigned_rider(self):
+        """The faculty payload must reveal who the order is assigned to the
+        instant a rider is found, even before the rider accepts."""
+        from .utils import serialize_delivery
+        self.delivery.assigned_to = self.rider_a
+        self.delivery.save(update_fields=['assigned_to'])
+
+        data = serialize_delivery(self.delivery)
+        self.assertEqual(data['raw_status'], DeliveryRequest.RequestStatus.SEARCHING)
+        self.assertEqual(data['assigned_rider_name'], self.rider_a.username)
+        self.assertIsNotNone(data['dest_lat'])
+        self.assertIsNotNone(data['dest_lng'])

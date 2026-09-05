@@ -19,16 +19,25 @@ def delivery_dashboard(request):
 
     # Incoming pool: only orders assigned to THIS rider show up (round-robin).
     # Orders with no assignment (no online riders / rotation exhausted) are shown
-    # to everyone so they are not stuck invisible.
-    pending_deliveries = DeliveryRequest.objects.filter(
-        status=DeliveryRequest.RequestStatus.SEARCHING
-    ).filter(
-        models.Q(assigned_to=request.user) | models.Q(assigned_to__isnull=True)
-    ).order_by('-requested_at')
+    # to everyone so they are not stuck invisible. A rider's own assigned orders
+    # are always pushed to the top of the list.
+    from .utils import pending_pool_for_rider
+    pending_deliveries = pending_pool_for_rider(request.user)
 
     my_deliveries = DeliveryRequest.objects.filter(
         rider=request.user
     ).exclude(status=DeliveryRequest.RequestStatus.REJECTED).order_by('-requested_at')
+
+    # Split the rider's work into clearly separate groups: orders the rider is
+    # CURRENTLY delivering (accepted, in transit) vs. ones already DELIVERED so
+    # the dashboard never mixes "being delivered" with "already delivered".
+    in_transit_deliveries = DeliveryRequest.objects.filter(
+        rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED
+    ).order_by('-requested_at')
+
+    completed_deliveries = DeliveryRequest.objects.filter(
+        rider=request.user, status=DeliveryRequest.RequestStatus.DELIVERED
+    ).order_by('-delivered_at')[:15]
 
     completed_count = DeliveryRequest.objects.filter(
         rider=request.user, status=DeliveryRequest.RequestStatus.DELIVERED
@@ -44,6 +53,8 @@ def delivery_dashboard(request):
     context = {
         'pending_deliveries': pending_deliveries,
         'my_deliveries': my_deliveries,
+        'in_transit_deliveries': in_transit_deliveries,
+        'completed_deliveries': completed_deliveries,
         'completed_count': completed_count,
         'total_earnings': total_earnings,
         'active_deliveries_count': active_deliveries_count,
@@ -51,6 +62,23 @@ def delivery_dashboard(request):
         'reachable_loc_count': pending_deliveries.count(),
     }
     return render(request, 'delivery_dashboard.html', context)
+
+
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
+def pending_cards(request):
+    """HTML fragment of the incoming-pool grid used by the rider dashboard so a
+    brand-new faculty order can be re-rendered instantly (no page reload) via SSE.
+    """
+    expire_stale_requests()
+    from .utils import pending_pool_for_rider
+    pending_deliveries = pending_pool_for_rider(request.user)
+    active_deliveries_count = DeliveryRequest.objects.filter(
+        rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED
+    ).count()
+    return render(request, 'partials/pending_delivery_cards.html', {
+        'pending_deliveries': pending_deliveries,
+        'active_deliveries_count': active_deliveries_count,
+    })
 
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
@@ -78,10 +106,23 @@ def delivery_history(request):
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
 def toggle_availability(request):
     user = request.user
-    user.is_available = not getattr(user, 'is_available', True)
+    was_available = getattr(user, 'is_available', True)
+    user.is_available = not was_available
     user.availability_updated_at = timezone.now()
     user.save(update_fields=['is_available', 'availability_updated_at'])
-    return JsonResponse({'success': True, 'is_available': user.is_available})
+
+    # The instant a rider goes ONLINE, hand them the oldest waiting order so it
+    # never sits idle -- no manual hunting for new requests.
+    from .utils import assign_next_searching_order
+    assignment = None
+    if user.is_available and not was_available:
+        assignment = assign_next_searching_order(user)
+
+    return JsonResponse({
+        'success': True,
+        'is_available': user.is_available,
+        'assigned_order': assignment.order.order_number if assignment else None,
+    })
 
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
@@ -497,6 +538,10 @@ def rider_live_stream(request):
         last_hash = None
         last_chat_hash = None
         last_expire = 0.0
+        # Fresh dashboard connection (page load / reconnect): instantly assign
+        # the oldest unassigned order to this rider instead of making them hunt.
+        from .utils import assign_next_searching_order
+        assign_next_searching_order(request.user)
         while True:
             try:
                 # Throttle the timeout-expiry writes (they only matter on a ~5-min
@@ -506,11 +551,7 @@ def rider_live_stream(request):
                     expire_stale_requests()
                     last_expire = now
 
-                pending_ids = list(DeliveryRequest.objects.filter(
-                    status=DeliveryRequest.RequestStatus.SEARCHING
-                ).filter(
-                    models.Q(assigned_to=request.user) | models.Q(assigned_to__isnull=True)
-                ).values_list('id', flat=True))
+                pending_ids = list(pending_pool_for_rider(request.user).values_list('id', flat=True))
 
                 my_deliveries = DeliveryRequest.objects.filter(
                     rider=request.user).exclude(

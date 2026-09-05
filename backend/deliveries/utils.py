@@ -1,6 +1,6 @@
 import math
 
-from django.db.models import Count
+from django.db.models import Count, Q, Case, When, Value, IntegerField
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
@@ -49,6 +49,60 @@ def pick_next_available_rider(exclude_id=None):
     candidates.sort(key=lambda r: (count_map.get(r.id, 0),
                                    r.availability_updated_at or r.date_joined))
     return candidates[0]
+
+
+def pending_pool_for_rider(user):
+    """SEARCHING orders a rider may see, ordered so that orders auto-assigned to
+    THIS rider come first, then unassigned pool orders, then orders other riders
+    are deciding on."""
+    return (DeliveryRequest.objects
+            .filter(status=DeliveryRequest.RequestStatus.SEARCHING)
+            .filter(Q(assigned_to=user) | Q(assigned_to__isnull=True))
+            .annotate(
+                pool_rank=Case(
+                    When(assigned_to=user, then=Value(0)),
+                    When(assigned_to__isnull=True, then=Value(1)),
+                    default=Value(2),
+                    output_field=IntegerField(),
+                )
+            )
+            .order_by('pool_rank', '-requested_at'))
+
+
+def assign_next_searching_order(rider):
+    """Auto-assign the oldest waiting (unassigned) SEARCHING order to a rider the
+    moment they come online, so a queued order never idles waiting for a manual
+    pick. Atomic (row-locked) so two riders going online at the exact same time
+    can never both grab the same order.
+
+    Returns the assigned DeliveryRequest, or None if nothing to hand out.
+    """
+    from django.db import transaction
+
+    if rider.role not in ('RIDER', 'DELIVERY'):
+        return None
+    if not getattr(rider, 'is_available', False) or rider.account_status != 'active':
+        return None
+
+    active_count = DeliveryRequest.objects.filter(
+        rider=rider, status=DeliveryRequest.RequestStatus.ACCEPTED
+    ).count()
+    if active_count >= 3:
+        return None
+
+    with transaction.atomic():
+        candidate = (DeliveryRequest.objects
+                     .select_for_update(skip_locked=True)
+                     .filter(status=DeliveryRequest.RequestStatus.SEARCHING,
+                             assigned_to__isnull=True)
+                     .order_by('requested_at')
+                     .first())
+        if candidate is None:
+            return None
+        candidate.assigned_to = rider
+        candidate.assigned_at = timezone.now()
+        candidate.save(update_fields=['assigned_to', 'assigned_at'])
+        return candidate
 
 
 def rotate_to_next_rider(delivery, exclude_id=None):
@@ -115,6 +169,8 @@ def serialize_delivery(d):
         'raw_status': d.status,
         'location': d.delivery_location,
         'rider_name': d.rider.get_full_name() or d.rider.username if d.rider else 'Searching for Rider...',
+        'assigned_rider_name': (d.assigned_to.get_full_name() or d.assigned_to.username
+                                if d.assigned_to else None),
         'total_amount': float(d.order.total_amount),
         'delivery_fee': float(d.order.delivery_fee),
         'total_payment': float(d.order.total_amount) + float(d.order.delivery_fee),
@@ -122,6 +178,8 @@ def serialize_delivery(d):
         'created_at': d.requested_at.strftime('%H:%M %p'),
         'rider_lat': d.rider_lat,
         'rider_lng': d.rider_lng,
+        'dest_lat': d.dest_lat,
+        'dest_lng': d.dest_lng,
         'location_updated_at': d.location_updated_at.strftime('%H:%M %p') if d.location_updated_at else None,
         'items': [{'name': i.item_name, 'qty': i.quantity, 'price': float(i.price)} for i in d.order.items.all()]
     }

@@ -318,6 +318,7 @@ function cardHTML(board, o) {
         </div>
         <div class="space-y-2 text-sm text-gray-700 font-medium">${itemsHtml}</div>
         ${Number(o.delivery_fee) > 0 ? `<div class="pt-2 space-y-1 text-xs">
+            <div class="flex justify-between items-center"><span class="text-gray-400 font-medium"><i class="fa-solid fa-basket-shopping mr-1"></i> Subtotal</span><span class="font-bold text-dark-900">₱${Number(o.total_amount).toFixed(2)}</span></div>
             <div class="flex justify-between items-center"><span class="text-gray-400 font-medium"><i class="fa-solid fa-motorcycle mr-1"></i> Delivery Fee (Rider)</span><span class="font-bold text-orange-600">₱${Number(o.delivery_fee).toFixed(2)}</span></div>
             <div class="flex justify-between items-center pt-1 border-t border-gray-100"><span class="text-gray-500 font-bold uppercase tracking-wider">Total Payment</span><span class="font-black text-dark-900">₱${Number(o.total_payment).toFixed(2)}</span></div>
         </div>` : `<div class="pt-2 flex justify-between items-center text-xs">

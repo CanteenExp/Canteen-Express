@@ -1,0 +1,74 @@
+<div id="pending-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    {% for d in pending_deliveries %}
+    <div class="card-lift glass rounded-3xl p-6 space-y-4 shadow-glass hover:!border-orange-500/40 flex flex-col">
+        <div class="flex justify-between items-start border-b border-white/5 pb-3">
+            <button @click="openDetail({{ d.id }})" class="text-left group" title="View order details">
+                <span class="text-xs font-black text-orange-400 uppercase tracking-wider group-hover:underline">Order {{ d.order.order_number }} <i class="fa-solid fa-up-right-from-square text-[9px] opacity-60"></i></span>
+                <h4 class="text-base font-black text-white mt-0.5"><i class="fa-solid fa-location-dot text-orange-400 mr-1"></i> {{ d.delivery_location }}</h4>
+                <p class="text-[11px] text-zinc-400 flex items-center gap-1.5 mt-1">
+                    <i class="fa-solid fa-user-tie text-[9px] text-orange-400/70"></i>
+                    Customer: <span class="font-bold text-white">{{ d.order.customer.get_full_name|default:d.order.customer.username|default:'Guest' }}</span>
+                </p>
+            </button>
+            {% if d.assigned_to == request.user %}
+            <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase shrink-0 animate-pulse">Assigned to you</span>
+            {% else %}
+            <span class="bg-orange-500/15 text-orange-400 border border-orange-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase shrink-0 animate-pulse">Searching</span>
+            {% endif %}
+        </div>
+
+        <div class="text-xs space-y-1.5 text-zinc-300">
+            <p class="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Items</p>
+            {% for item in d.order.items.all %}
+                <div class="flex items-center justify-between gap-2">
+                    <span>• {{ item.quantity }}x {{ item.item_name }}</span>
+                    <span class="text-zinc-400 font-bold shrink-0">₱{{ item.total_price }}</span>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="pt-2 text-xs space-y-1 text-zinc-400 border-t border-white/5">
+            <div class="flex justify-between items-center">
+                <span>Subtotal</span>
+                <span class="font-bold text-zinc-300">₱{{ d.order.total_amount }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span>Delivery Fee (Rider)</span>
+                <span class="font-bold text-orange-400">₱{{ d.order.delivery_fee }}</span>
+            </div>
+            <div class="flex justify-between items-center pt-1 border-t border-white/5">
+                <span class="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Total Payment</span>
+                <span class="font-black text-orange-400 bg-orange-500/15 border border-orange-500/30 px-2.5 py-0.5 rounded-lg">₱{{ d.order.total_payment }}</span>
+            </div>
+        </div>
+
+        <div class="pt-3 border-t border-white/5 flex items-center justify-between gap-2 mt-auto">
+            <div>
+                <span class="text-[10px] text-zinc-500 font-bold uppercase">Collect</span>
+                <span class="block text-base font-black text-white">₱{{ d.order.total_payment }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button @click="openDetail({{ d.id }})" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-300 border border-rider-border px-3 py-2.5 rounded-xl text-xs font-bold transition active:scale-95" title="View details">
+                    <i class="fa-solid fa-receipt"></i>
+                </button>
+                {% if active_deliveries_count < 3 %}
+                <a href="{% url 'deliveries:accept_delivery' d.id %}"
+                   class="btn-shine bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-black px-4 py-2.5 rounded-xl text-xs shadow-glow-orange transition active:scale-95 flex items-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> Accept
+                </a>
+                <button @click="confirmAction('{% url 'deliveries:reject_delivery' d.id %}', 'Reject this request?', 'This delivery will be returned to the pool.', 'reject')"
+                        class="bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-400 border border-rider-border px-3 py-2.5 rounded-xl text-xs font-bold transition active:scale-95" title="Reject request">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full glass rounded-3xl p-16 text-center text-zinc-500 space-y-2">
+        <i class="fa-solid fa-inbox text-4xl mb-2 text-zinc-600"></i>
+        <p class="text-xs font-bold">No incoming requests right now.</p>
+        <p class="text-[10px] text-zinc-600">New requests appear here when faculty place orders.</p>
+    </div>
+    {% endfor %}
+</div>

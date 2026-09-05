@@ -210,6 +210,7 @@
                                 <th class="py-3 px-3">Customer</th>
                                 <th class="py-3 px-3">Amount</th>
                                 <th class="py-3 px-3">Delivery Fee</th>
+                                <th class="py-3 px-3">Total Payment</th>
                                 <th class="py-3 px-3">Status</th>
                                 <th class="py-3 px-3 text-right">Time</th>
                             </tr>
@@ -223,6 +224,7 @@
                                 <td class="py-3.5 px-3">
                                     {% if order.delivery_fee %}<span class="font-bold text-brand-600">₱{{ order.delivery_fee }}</span>{% else %}<span class="text-gray-300">—</span>{% endif %}
                                 </td>
+                                <td class="py-3.5 px-3 font-black text-dark-900">₱{{ order.total_payment }}</td>
                                 <td class="py-3.5 px-3">
                                     <span class="px-2.5 py-1 rounded-full font-bold text-[10px] uppercase {% if order.status == 'pending' %}bg-brand-50 text-brand-600 border border-brand-200{% elif order.status == 'preparing' %}bg-blue-50 text-blue-600 border border-blue-200{% else %}bg-emerald-50 text-emerald-600 border border-emerald-200{% endif %}">
                                         {{ order.status }}

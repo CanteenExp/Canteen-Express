@@ -212,7 +212,7 @@
                 <i class="fa-solid fa-person-biking"></i>
                 My Deliveries
                 <span class="px-1.5 py-0.5 rounded-md text-[9px] font-black"
-                      :class="activeTab === 'active' ? 'bg-white/25 text-white' : 'bg-green-500/20 text-green-400'">{{ my_deliveries|length }}</span>
+                      :class="activeTab === 'active' ? 'bg-white/25 text-white' : 'bg-green-500/20 text-green-400'">{{ in_transit_deliveries|length }}</span>
             </button>
         </div>
 
@@ -231,140 +231,152 @@
                 </div>
                 {% endif %}
 
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {% for d in pending_deliveries %}
-                    <div class="card-lift glass rounded-3xl p-6 space-y-4 shadow-glass hover:!border-orange-500/40 flex flex-col">
-                        <div class="flex justify-between items-start border-b border-white/5 pb-3">
-                            <button @click="openDetail({{ d.id }})" class="text-left group" title="View order details">
-                                <span class="text-xs font-black text-orange-400 uppercase tracking-wider group-hover:underline">Order {{ d.order.order_number }} <i class="fa-solid fa-up-right-from-square text-[9px] opacity-60"></i></span>
-                                <h4 class="text-base font-black text-white mt-0.5"><i class="fa-solid fa-location-dot text-orange-400 mr-1"></i> {{ d.delivery_location }}</h4>
-                            </button>
-                            <span class="bg-orange-500/15 text-orange-400 border border-orange-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase shrink-0 animate-pulse">Searching</span>
-                        </div>
-
-                        <div class="text-xs space-y-1.5 text-zinc-300">
-                            <p class="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Items</p>
-                            {% for item in d.order.items.all %}
-                                <div class="flex items-center justify-between gap-2">
-                                    <span>• {{ item.quantity }}x {{ item.item_name }}</span>
-                                    <span class="text-zinc-400 font-bold shrink-0">₱{{ item.total_price }}</span>
-                                </div>
-                            {% endfor %}
-                        </div>
-
-                        <div class="pt-3 border-t border-white/5 flex items-center justify-between gap-2 mt-auto">
-                            <div>
-                                <span class="text-[10px] text-zinc-500 font-bold uppercase">Delivery Fee</span>
-                                <span class="block text-base font-black text-orange-400">₱{{ d.order.delivery_fee }}</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <button @click="openDetail({{ d.id }})" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-300 border border-rider-border px-3 py-2.5 rounded-xl text-xs font-bold transition active:scale-95" title="View details">
-                                    <i class="fa-solid fa-receipt"></i>
-                                </button>
-                                {% if active_deliveries_count < 3 %}
-                                <a href="{% url 'deliveries:accept_delivery' d.id %}"
-                                   class="btn-shine bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-black px-4 py-2.5 rounded-xl text-xs shadow-glow-orange transition active:scale-95 flex items-center gap-1.5">
-                                    <i class="fa-solid fa-check"></i> Accept
-                                </a>
-                                <button @click="confirmAction('{% url 'deliveries:reject_delivery' d.id %}', 'Reject this request?', 'This delivery will be returned to the pool.', 'reject')"
-                                        class="bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-400 border border-rider-border px-3 py-2.5 rounded-xl text-xs font-bold transition active:scale-95" title="Reject request">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="col-span-full glass rounded-3xl p-16 text-center text-zinc-500 space-y-2">
-                        <i class="fa-solid fa-inbox text-4xl mb-2 text-zinc-600"></i>
-                        <p class="text-xs font-bold">No incoming requests right now.</p>
-                        <p class="text-[10px] text-zinc-600">New requests appear here when faculty place orders.</p>
-                    </div>
-                    {% endfor %}
-                </div>
+                {% include "partials/pending_delivery_cards.html" %}
             </div>
         </div>
 
         <!-- ===== ACTIVE TAB ===== -->
         <div x-show="activeTab === 'active'" x-cloak x-transition.opacity class="tab-fade">
-            <div class="space-y-4">
+            <div class="space-y-6">
                 <div class="flex items-center justify-between">
                     <h3 class="text-xs font-black text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                         <i class="fa-solid fa-person-biking text-green-400"></i> Active Deliveries
                     </h3>
-                    <span class="text-[10px] text-green-400 font-bold uppercase tracking-wider">{{ my_deliveries|length }} total</span>
+                    <span class="text-[10px] text-green-400 font-bold uppercase tracking-wider">{{ in_transit_deliveries|length }} in transit • {{ completed_deliveries|length }} delivered</span>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {% for d in my_deliveries %}
-                    <div class="card-lift glass rounded-3xl p-6 space-y-4 shadow-glass hover:!border-green-500/40 flex flex-col !border-green-500/30" data-location-id="{{ d.id }}">
-                        <div class="flex justify-between items-start border-b border-white/5 pb-3">
-                            <button @click="openDetail({{ d.id }})" class="text-left group" title="View order details">
-                                <span class="text-xs font-black text-green-400 uppercase tracking-wider group-hover:underline">Order {{ d.order.order_number }} <i class="fa-solid fa-up-right-from-square text-[9px] opacity-60"></i></span>
-                                <h4 class="text-base font-black text-white mt-0.5"><i class="fa-solid fa-building text-green-400 mr-1"></i> {{ d.delivery_location }}</h4>
-                            </button>
-                            <span class="bg-green-500/15 text-green-400 border border-green-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase shrink-0"
-                          data-delivery-status="{{ d.raw_status }}"
-                          x-text="liveStatus({{ d.id }})"></span>
-                        </div>
+                <!-- ==== IN TRANSIT (rider is currently delivering) ==== -->
+                <div class="space-y-3">
+                    <h4 class="flex items-center gap-2 text-[10px] font-black text-zinc-500 uppercase tracking-wider">
+                        <i class="fa-solid fa-route text-green-400"></i> Being Delivered
+                        <span class="px-1.5 py-0.5 rounded-md bg-green-500/20 text-green-400 text-[9px] font-black">{{ in_transit_deliveries|length }}</span>
+                    </h4>
 
-                        <div class="text-xs space-y-1.5 text-zinc-300">
-                            <p class="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Items</p>
-                            {% for item in d.order.items.all %}
-                                <div class="flex items-center justify-between gap-2">
-                                    <span>• {{ item.quantity }}x {{ item.item_name }}</span>
-                                    <span class="text-zinc-400 font-bold shrink-0">₱{{ item.total_price }}</span>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {% for d in in_transit_deliveries %}
+                        <div class="card-lift glass rounded-3xl p-6 space-y-4 shadow-glass hover:!border-green-500/40 flex flex-col !border-green-500/30" data-location-id="{{ d.id }}">
+                            <div class="flex justify-between items-start border-b border-white/5 pb-3">
+                                <button @click="openDetail({{ d.id }})" class="text-left group" title="View order details">
+                                    <span class="text-xs font-black text-green-400 uppercase tracking-wider group-hover:underline">Order {{ d.order.order_number }} <i class="fa-solid fa-up-right-from-square text-[9px] opacity-60"></i></span>
+                                    <h4 class="text-base font-black text-white mt-0.5"><i class="fa-solid fa-building text-green-400 mr-1"></i> {{ d.delivery_location }}</h4>
+                                    <p class="text-[11px] text-zinc-400 flex items-center gap-1.5 mt-1">
+                                        <i class="fa-solid fa-user-tie text-[9px] text-green-400/70"></i>
+                                        Customer: <span class="font-bold text-white">{{ d.order.customer.get_full_name|default:d.order.customer.username|default:'Guest' }}</span>
+                                    </p>
+                                </button>
+                                <span class="bg-green-500/15 text-green-400 border border-green-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase shrink-0"
+                              data-delivery-status="{{ d.raw_status }}"
+                              x-text="liveStatus({{ d.id }})"></span>
+                            </div>
+
+                            <div class="text-xs space-y-1.5 text-zinc-300">
+                                <p class="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Items</p>
+                                {% for item in d.order.items.all %}
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span>• {{ item.quantity }}x {{ item.item_name }}</span>
+                                        <span class="text-zinc-400 font-bold shrink-0">₱{{ item.total_price }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="pt-2 text-xs space-y-1 text-zinc-400">
+                                <div class="flex justify-between items-center">
+                                    <span>Subtotal</span>
+                                    <span class="font-bold text-zinc-300">₱{{ d.order.total_amount }}</span>
                                 </div>
-                            {% endfor %}
-                        </div>
+                                <div class="flex justify-between items-center">
+                                    <span>Delivery Fee (Rider)</span>
+                                    <span class="font-black text-orange-400">₱{{ d.order.delivery_fee }}</span>
+                                </div>
+<div class="flex justify-between items-center pt-1 border-t border-white/5">
+                                    <span class="text-zinc-500 font-bold uppercase tracking-wider">Total Payment</span>
+                                    <span class="font-black text-orange-400 bg-orange-500/15 border border-orange-500/30 px-2.5 py-0.5 rounded-lg">₱{{ d.order.total_payment }}</span>
+                                </div>
 
-                        <div class="pt-2 text-xs space-y-1 text-zinc-400">
-                            <div class="flex justify-between items-center">
-                                <span>Delivery Fee (Rider)</span>
-                                <span class="font-black text-orange-400">₱{{ d.order.delivery_fee }}</span>
-                            </div>
-                            <div class="flex justify-between items-center pt-1 border-t border-white/5">
-                                <span class="text-zinc-500 font-bold uppercase tracking-wider">Total Payment</span>
-                                <span class="font-black text-white">₱{{ d.order.total_payment }}</span>
+                            <div class="pt-3 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap mt-auto">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <button @click="openChat({{ d.id }}, '{{ d.order.order_number }}', '{{ d.order.customer.get_full_name|default:d.order.customer.username|default:'Guest'|escapejs }}')" class="relative bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center gap-2 border border-white/10 active:scale-95">
+                                        <i class="fa-solid fa-comments text-green-400"></i> Chat
+                                        <span x-show="(unread[{{ d.id }}] || 0) > 0"
+                                              x-text="unread[{{ d.id }}] || 0"
+                                              class="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border border-white/30"></span>
+                                    </button>
+                                    <a href="{% url 'deliveries:track_order' d.id %}" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center gap-2 border border-white/10 active:scale-95">
+                                        <i class="fa-solid fa-location-crosshairs text-orange-400"></i> Track
+                                    </a>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    <a href="{% url 'deliveries:complete_delivery' d.id %}" class="btn-shine bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-black px-3.5 py-2.5 rounded-xl text-xs shadow-glow-green transition active:scale-95 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-check-circle"></i> Delivered
+                                    </a>
+                                    <button @click="confirmAction('{% url 'deliveries:cancel_delivery' d.id %}', 'Release this delivery?', 'It will be returned to the pool for another rider.', 'release')"
+                                            class="bg-red-500/15 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-3 py-2.5 rounded-xl text-xs font-bold transition active:scale-95" title="Release back to pool">
+                                        <i class="fa-solid fa-rotate-left"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-
-                        <div class="pt-3 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap mt-auto">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <button @click="openChat({{ d.id }}, '{{ d.order.order_number }}')" class="relative bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center gap-2 border border-white/10 active:scale-95">
-                                    <i class="fa-solid fa-comments text-green-400"></i> Chat
-                                    <span x-show="(unread[{{ d.id }}] || 0) > 0"
-                                          x-text="unread[{{ d.id }}] || 0"
-                                          class="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border border-white/30"></span>
-                                </button>
-                                <a href="{% url 'deliveries:track_order' d.id %}" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center gap-2 border border-white/10 active:scale-95">
-                                    <i class="fa-solid fa-location-crosshairs text-orange-400"></i> Track
-                                </a>
-                            </div>
-
-                            {% if d.status == 'ACCEPTED' %}
-                            <div class="flex items-center gap-2">
-                                <a href="{% url 'deliveries:complete_delivery' d.id %}" class="btn-shine bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-black px-3.5 py-2.5 rounded-xl text-xs shadow-glow-green transition active:scale-95 flex items-center gap-1.5">
-                                    <i class="fa-solid fa-check-circle"></i> Delivered
-                                </a>
-                                <button @click="confirmAction('{% url 'deliveries:cancel_delivery' d.id %}', 'Release this delivery?', 'It will be returned to the pool for another rider.', 'release')"
-                                        class="bg-red-500/15 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-3 py-2.5 rounded-xl text-xs font-bold transition active:scale-95" title="Release back to pool">
-                                    <i class="fa-solid fa-rotate-left"></i>
-                                </button>
-                            </div>
-                            {% else %}
-                            <span class="text-xs font-bold text-green-400 bg-green-500/10 border border-green-500/30 px-3 py-1.5 rounded-xl">Delivered <i class="fa-solid fa-check"></i></span>
-                            {% endif %}
+                        {% empty %}
+                        <div class="col-span-full glass rounded-3xl p-16 text-center text-zinc-500 space-y-2">
+                            <i class="fa-solid fa-box-open text-4xl mb-2 text-zinc-600"></i>
+                            <p class="text-xs font-bold">No active deliveries yet.</p>
+                            <p class="text-[10px] text-zinc-600">Accept a request from the Incoming tab to start earning.</p>
                         </div>
+                        {% endfor %}
                     </div>
-                    {% empty %}
-                    <div class="col-span-full glass rounded-3xl p-16 text-center text-zinc-500 space-y-2">
-                        <i class="fa-solid fa-box-open text-4xl mb-2 text-zinc-600"></i>
-                        <p class="text-xs font-bold">No active deliveries yet.</p>
-                        <p class="text-[10px] text-zinc-600">Accept a request from the Incoming tab to start earning.</p>
-                    </div>
-                    {% endfor %}
                 </div>
+
+                <!-- ==== ALREADY DELIVERED (history snapshot, visually muted) ==== -->
+                {% if completed_deliveries %}
+                <div class="space-y-3">
+                    <h4 class="flex items-center gap-2 text-[10px] font-black text-zinc-500 uppercase tracking-wider">
+                        <i class="fa-solid fa-circle-check text-emerald-400"></i> Delivered
+                        <span class="px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[9px] font-black">{{ completed_deliveries|length }}</span>
+                    </h4>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {% for d in completed_deliveries %}
+                        <div class="card-lift glass rounded-3xl p-6 space-y-4 shadow-glass hover:!border-emerald-500/30 flex flex-col opacity-70 !border-emerald-500/20">
+                            <div class="flex justify-between items-start border-b border-white/5 pb-3">
+                                <button @click="openDetail({{ d.id }})" class="text-left group" title="View order details">
+                                    <span class="text-xs font-black text-emerald-400 uppercase tracking-wider group-hover:underline">Order {{ d.order.order_number }} <i class="fa-solid fa-up-right-from-square text-[9px] opacity-60"></i></span>
+                                    <h4 class="text-base font-black text-white mt-0.5"><i class="fa-solid fa-building text-emerald-400 mr-1"></i> {{ d.delivery_location }}</h4>
+                                </button>
+                                <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase shrink-0">Delivered <i class="fa-solid fa-check ml-0.5"></i></span>
+                            </div>
+
+                            <div class="flex items-center justify-between text-[11px] text-zinc-500">
+                                <span><i class="fa-regular fa-clock mr-1.5"></i>{{ d.delivered_at|date:"d M h:i A"|default:"Completed" }}</span>
+                                <span class="font-black text-emerald-400"><i class="fa-solid fa-wallet mr-1"></i>+₱{{ d.order.delivery_fee }}</span>
+                            </div>
+
+                            <div class="pt-2 text-xs space-y-1 text-zinc-400 border-t border-white/5">
+                                <div class="flex justify-between items-center">
+                                    <span>Subtotal</span>
+                                    <span class="font-bold text-zinc-300">₱{{ d.order.total_amount }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span>Delivery Fee (Rider)</span>
+                                    <span class="font-black text-orange-400">₱{{ d.order.delivery_fee }}</span>
+                                </div>
+                                <div class="flex justify-between items-center pt-1 border-t border-white/5">
+                                    <span class="text-zinc-500 font-bold uppercase tracking-wider">Total Payment</span>
+                                    <span class="font-black text-white">₱{{ d.order.total_payment }}</span>
+                                </div>
+                            </div>
+
+                            <div class="pt-3 border-t border-white/5 flex items-center justify-between gap-2 mt-auto">
+                                <span class="text-[11px] font-bold text-emerald-400"><i class="fa-solid fa-circle-check mr-1.5"></i>Completed</span>
+                                <button @click="openDetail({{ d.id }})" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-300 border border-rider-border px-3 py-2 rounded-xl text-xs font-bold transition active:scale-95" title="View details">
+                                    <i class="fa-solid fa-receipt"></i> Details
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -382,10 +394,6 @@
                 </span>
                 <span class="text-[11px] font-black uppercase tracking-wide">Incoming</span>
             </button>
-            <div class="flex flex-col items-center justify-center gap-1 py-3.5 px-4 min-w-[72px] text-zinc-400">
-                <span class="text-base font-black text-orange-400">₱<span id="earnings-total-nav">0</span></span>
-                <span class="text-[10px] font-black uppercase tracking-wide">Earnings</span>
-            </div>
             <button @click="activeTab = 'active'"
                     class="flex flex-col items-center justify-center gap-1 py-3.5 px-4 min-w-[72px] transition"
                     :class="activeTab === 'active' ? 'text-white' : 'text-zinc-500'">
@@ -484,7 +492,7 @@
             <div class="border-b border-white/10 p-4 flex items-center justify-between">
                 <div>
                     <h3 class="font-black text-white text-sm" x-text="'Chat - Order ' + currentOrderNo"></h3>
-                    <p class="text-[10px] text-green-400 font-bold">Messaging with faculty customer</p>
+                    <p class="text-[10px] text-green-400 font-bold" x-text="'Messaging with ' + (currentCustomerName || 'faculty customer')"></p>
                 </div>
                 <button @click="closeChat()" class="text-zinc-400 hover:text-white p-1.5"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
@@ -492,9 +500,14 @@
             <div id="chat-messages-box" class="flex-1 p-4 overflow-y-auto space-y-3 bg-white/[0.03] border-y border-white/5">
                 <template x-for="msg in messages" :key="msg.id">
                     <div :class="msg.is_me ? 'flex justify-end' : 'flex justify-start'">
-                        <div :class="msg.is_me ? 'bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl rounded-tr-none px-4 py-2 text-xs max-w-[80%] shadow-glow-green' : 'bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-2xl rounded-tl-none px-4 py-2 text-xs max-w-[80%] shadow-glow-orange'">
-                            <p x-text="msg.message"></p>
-                            <span class="text-[9px] opacity-70 block text-right mt-1" x-text="msg.time"></span>
+                        <div :class="'max-w-[82%] px-3.5 py-2 rounded-2xl text-xs text-white ' + (msg.is_me
+                            ? 'bg-gradient-to-br from-green-500 to-green-600 rounded-tr-none shadow-glow-green'
+                            : 'bg-zinc-800 border border-white/10 rounded-tl-none')">
+                            <p class="font-bold text-[9px] mb-0.5" :class="msg.is_me ? 'text-green-200' : 'text-orange-400'">
+                                <span x-text="msg.is_me ? 'You' : ((msg.sender ? msg.sender + ' (Faculty)' : 'Faculty Customer'))"></span>
+                                <span class="opacity-60" x-text="msg.time ? ' • ' + msg.time : ' • now'"></span>
+                            </p>
+                            <p class="whitespace-pre-wrap break-words" x-text="msg.message"></p>
                         </div>
                     </div>
                 </template>
@@ -540,7 +553,7 @@
                 .then(r => r.json())
                 .then(data => {
                     if (!data.success) return;
-                    const earnEls = document.querySelectorAll('#earnings-total, #earnings-total-nav');
+                    const earnEls = document.querySelectorAll('#earnings-total');
                     earnEls.forEach(el => { el.innerText = Number(data.total_earnings).toFixed(0); });
                     const cntEl = document.getElementById('delivered-count');
                     if (cntEl) cntEl.innerText = data.completed_count;
@@ -614,6 +627,7 @@
             chatOpen: false,
             currentDeliveryId: null,
             currentOrderNo: '',
+            currentCustomerName: '',
             messages: [],
             newMessage: '',
             pollInterval: null,
@@ -633,6 +647,11 @@
             // sound an alert the moment a new request or message arrives.
             knownPending: null,
             lastChatDigest: '',
+
+            // Signature of the pending-id list so we can re-render the incoming
+            // cards the instant the pool changes (new order / expiry / rotation).
+            pendingSignature: '',
+            pendingRefreshing: false,
 
             // Order detail
             detailOpen: false,
@@ -729,9 +748,19 @@
                     data.active.forEach(a => { map[a.id] = a.raw_status; });
                     this.statusMap = { ...this.statusMap, ...map };
                 }
+                // Live-refresh the incoming pool cards the instant the pool
+                // changes (a new faculty order lands, or one expires/rotates).
+                // The count-based chime above alerts; this re-renders the cards.
+                if (Array.isArray(data.pending_ids)) {
+                    const sig = data.pending_ids.join(',');
+                    if (this.pendingSignature !== '' && sig !== this.pendingSignature) {
+                        this.refreshPendingCards();
+                    }
+                    this.pendingSignature = sig;
+                }
                 // Live earnings.
                 if (typeof data.total_earnings === 'number') {
-                    const earnEls = document.querySelectorAll('#earnings-total, #earnings-total-nav');
+                    const earnEls = document.querySelectorAll('#earnings-total');
                     earnEls.forEach(el => { el.innerText = data.total_earnings.toFixed(0); });
                     const cntEl = document.getElementById('delivered-count');
                     if (cntEl) cntEl.innerText = data.completed_count;
@@ -751,7 +780,35 @@
                         // stream handles re-rendering the actual cards); no hard
                         // page reload -- avoids flicker and keeps the UI smooth.
                         this.lastPendingCount = data.pending_count;
+                        if (Array.isArray(data.pending_ids)) {
+                            const sig = data.pending_ids.join(',');
+                            if (this.pendingSignature !== '' && sig !== this.pendingSignature) {
+                                this.refreshPendingCards();
+                            }
+                            this.pendingSignature = sig;
+                        }
                     });
+            },
+
+            // Re-render the incoming pool cards from fresh server HTML so a new
+            // faculty order appears instantly. Alpine's mutation observer picks
+            // up the injected @click/@confirmAction bindings automatically.
+            refreshPendingCards() {
+                if (this.pendingRefreshing) return;
+                this.pendingRefreshing = true;
+                fetch('{% url "deliveries:pending_cards" %}')
+                    .then(res => res.text())
+                    .then(html => {
+                        const grid = document.getElementById('pending-grid');
+                        if (grid && html) {
+                            const wrapper = document.createElement('div');
+                            wrapper.innerHTML = html.trim();
+                            const fresh = wrapper.querySelector('#pending-grid');
+                            if (fresh) grid.outerHTML = fresh.outerHTML;
+                        }
+                    })
+                    .catch(() => { /* next SSE/poll tick will retry */ })
+                    .finally(() => { this.pendingRefreshing = false; });
             },
 
             openDetail(deliveryId) {
@@ -802,9 +859,10 @@
                 .catch(() => this.addToast('error', 'Error', 'Could not update availability.'));
             },
 
-            openChat(deliveryId, orderNo) {
+            openChat(deliveryId, orderNo, customerName) {
                 this.currentDeliveryId = deliveryId;
                 this.currentOrderNo = orderNo;
+                this.currentCustomerName = customerName || 'faculty customer';
                 this.chatOpen = true;
                 if (this.unread[deliveryId]) { this.unread[deliveryId] = 0; }
                 this.fetchMessages();

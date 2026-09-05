@@ -54,6 +54,13 @@
         .leaflet-control-attribution { display: none !important; }
         /* No white flash before tiles load */
         #leaflet-map, #view-order-map, #checkout-mini-map { background: #1a1a1f !important; }
+        /* Order-placed confirmation animations */
+        .modal-pop { animation: modalPop 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes modalPop { from { opacity: 0; transform: scale(0.92) translateY(14px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .confirm-ring { animation: confirmRing 1.8s ease-out infinite; }
+        @keyframes confirmRing { 0% { box-shadow: 0 0 0 0 rgba(255,97,23,0.45); } 70% { box-shadow: 0 0 0 18px rgba(255,97,23,0); } 100% { box-shadow: 0 0 0 0 rgba(255,97,23,0); } }
+        .confirm-check { animation: confirmCheck 0.55s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes confirmCheck { 0% { transform: scale(0); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body class="bg-brand-dark text-brand-light h-screen flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative" x-data="facultyPortal()">
@@ -508,9 +515,9 @@
                         <span>Delivery Fee (Rider)</span>
                         <span id="view-order-fee" class="font-bold text-brand-orange">₱0.00</span>
                     </div>
-                    <div class="flex justify-between text-white font-black pt-2 border-t border-white/10">
-                        <span>Total Payment</span>
-                        <span id="view-order-total" class="text-brand-orange">₱0.00</span>
+                    <div class="flex justify-between text-white font-black pt-2 border-t border-white/10 items-center">
+                        <span class="uppercase tracking-wider text-xs">Total Payment</span>
+                        <span id="view-order-total" class="text-orange-400 text-lg bg-orange-500/15 border border-orange-500/30 px-3 py-1 rounded-xl shadow-glow-orange">₱0.00</span>
                     </div>
                 </div>
 
@@ -522,11 +529,60 @@
             </div>
 
             <div class="p-4 bg-brand-dark border-t border-white/10 flex justify-between items-center text-xs">
-                <button onclick="closeViewOrderModal(); openActiveRiderChat()" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
+                <button id="view-order-chat-btn" onclick="closeViewOrderModal(); openActiveRiderChat()" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
                     <i class="fa-solid fa-comments"></i> Chat with Rider
                 </button>
                 <button onclick="closeViewOrderModal()" class="bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2 rounded-xl transition">
                     Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= ORDER PLACED CONFIRMATION MODAL ================= -->
+    <div id="order-placed-modal" class="fixed inset-0 z-[70] bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="modal-pop bg-brand-card border border-white/10 rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl text-center">
+            <div class="relative mx-auto w-20 h-20">
+                <div class="confirm-ring absolute inset-0 rounded-full bg-brand-orange/20"></div>
+                <div class="confirm-check relative w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 via-brand-orange to-orange-600 text-white flex items-center justify-center text-3xl shadow-lg">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+            </div>
+
+            <div class="space-y-1.5">
+                <h3 class="text-xl font-black text-white">Delivery Order Placed!</h3>
+                <p class="text-[11px] font-black text-brand-orange uppercase tracking-wider">Order <span id="place-order-number">#CE-0000</span></p>
+            </div>
+
+            <div class="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2 text-xs text-left">
+                <div class="flex justify-between gap-4 text-brand-slate">
+                    <span><i class="fa-solid fa-location-dot text-brand-orange mr-1.5"></i>Delivery To</span>
+                    <span id="place-order-location" class="font-bold text-white text-right">--</span>
+                </div>
+                <div class="flex justify-between gap-4 text-brand-slate">
+                    <span><i class="fa-solid fa-motorcycle text-brand-orange mr-1.5"></i>Delivery Fee (Rider)</span>
+                    <span id="place-order-fee" class="font-bold text-brand-orange">₱0.00</span>
+                </div>
+                <div class="flex justify-between gap-4 text-brand-slate">
+                    <span><i class="fa-solid fa-credit-card text-brand-orange mr-1.5"></i>Total Payment</span>
+                    <span id="place-order-total" class="font-black text-orange-400 text-lg bg-orange-500/15 border border-orange-500/30 px-3 py-1 rounded-xl shadow-glow-orange">₱0.00</span>
+                </div>
+                <div class="flex justify-between gap-4 text-brand-slate pt-2 border-t border-white/10">
+                    <span><i class="fa-solid fa-coins text-amber-400 mr-1.5"></i>Loyalty Points Earned</span>
+                    <span id="place-order-points" class="font-bold text-amber-400">+0 pts</span>
+                </div>
+            </div>
+
+            <p class="text-[11px] text-brand-slate leading-relaxed">
+                A rider will be assigned to your order shortly. Track your rider's live location below.
+            </p>
+
+            <div class="grid grid-cols-2 gap-2.5">
+                <button onclick="closeOrderPlacedModal()" class="py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider transition">
+                    Continue Shopping
+                </button>
+                <button onclick="closeOrderPlacedModal(); openViewOrderModal();" class="py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-location-dot"></i> Track Order
                 </button>
             </div>
         </div>
@@ -546,6 +602,32 @@
     const ongoingDeliveriesData = JSON.parse('{{ ongoing_deliveries_json|escapejs }}');
     let activeChatDeliveryId = null;
     let chatInterval = null;
+
+    // A delivery still blocks a new faculty order while it is offered/accepted.
+    // Once it is DELIVERED (or REJECTED/TIMEOUT) the faculty can order again.
+    function isOngoingDelivery(d) {
+        return d.raw_status === 'SEARCHING' || d.raw_status === 'ACCEPTED';
+    }
+    // Chat only makes sense once a rider has actually accepted the delivery.
+    function hasAssignedRider(d) {
+        return d.raw_status === 'ACCEPTED';
+    }
+    // Clear human-readable delivery status for the faculty UI, e.g. the moment a
+    // rider accepts, show that the rider is now out for delivery.
+    function deliveryStatusLabel(d) {
+        if (d.raw_status === 'ACCEPTED') {
+            const rider = (d.rider_name && d.rider_name !== 'Searching for Rider...') ? d.rider_name : 'Rider';
+            return rider + ' accepted • Out for delivery';
+        }
+        if (d.raw_status === 'SEARCHING') {
+            if (d.assigned_rider_name) return 'Rider assigned to ' + d.assigned_rider_name;
+            return 'Processing (Finding rider)';
+        }
+        if (d.raw_status === 'DELIVERED') return 'Delivered ✓';
+        if (d.raw_status === 'REJECTED') return 'Rejected';
+        if (d.raw_status === 'TIMEOUT') return 'No rider available';
+        return d.status || 'Processing';
+    }
 
     let menuData = rawMenuData.map(item => ({
         id: item.id,
@@ -592,7 +674,7 @@
 
     function updateOngoingBadge() {
         const badge = document.getElementById('ongoing-badge');
-        const activeCount = ongoingDeliveriesData.filter(d => d.raw_status !== 'DELIVERED').length;
+        const activeCount = ongoingDeliveriesData.filter(isOngoingDelivery).length;
         if (badge) {
             if (activeCount > 0) {
                 badge.innerText = activeCount;
@@ -672,6 +754,11 @@
                 </div>`;
         } else {
             ongoingDeliveriesData.forEach(d => {
+                const stColor = d.raw_status === 'ACCEPTED'
+                    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                    : (d.raw_status === 'DELIVERED'
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                        : 'bg-amber-500/20 text-amber-400 border-amber-500/30');
                 const card = document.createElement('div');
                 card.className = "bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3";
                 card.innerHTML = `
@@ -680,8 +767,8 @@
                             <span class="text-xs font-black text-brand-orange">${d.order_number}</span>
                             <h4 class="text-xs font-bold text-white mt-0.5">Location: ${d.location}</h4>
                         </div>
-                        <span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-black px-2.5 py-1 rounded-full uppercase">
-                            ${d.status}
+                        <span class="${stColor} text-[10px] font-black px-2.5 py-1 rounded-full uppercase">
+                            ${deliveryStatusLabel(d)}
                         </span>
                     </div>
                     <div class="text-[11px] text-brand-slate flex justify-between items-center">
@@ -689,9 +776,10 @@
                         <span class="text-brand-orange font-bold">₱${(d.total_payment || d.total_amount || 0).toFixed(2)}</span>
                     </div>
                     <div class="pt-2 border-t border-white/5 flex justify-end">
+                        ${hasAssignedRider(d) ? `
                         <button onclick="openRiderChat(${d.id}, '${d.order_number}', '${d.rider_name}')" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md">
                             <i class="fa-solid fa-comments"></i> In-App Chat with Rider
-                        </button>
+                        </button>` : ''}
                     </div>
                 `;
                 container.appendChild(card);
@@ -710,10 +798,10 @@
         document.getElementById('rider-chat-modal').classList.remove('hidden');
         loadRiderMessages();
         // Real-time: the SSE stream pushes a `chat_updated` signal the instant a
-        // message arrives, so loadRiderMessages fires instantly. Keep a slow
+        // message arrives, so loadRiderMessages fires instantly. Keep a lighter
         // fallback poll only as a safety net while the stream reconnects.
         if (chatInterval) clearInterval(chatInterval);
-        chatInterval = setInterval(loadRiderMessages, 10000);
+        chatInterval = setInterval(loadRiderMessages, 2500);
     }
 
     function closeRiderChatModal() {
@@ -722,33 +810,40 @@
         activeChatDeliveryId = null;
     }
 
+    function makeChatBubble(m) {
+        const isMe = m.is_me === true;
+        const who = isMe ? 'You' : (m.sender || 'Rider');
+        const initial = (who.charAt(0) || 'R').toUpperCase();
+        const wrap = document.createElement('div');
+        wrap.className = 'flex justify-' + (isMe ? 'end' : 'start');
+        wrap.innerHTML = `
+            <div class="flex items-end gap-1.5 max-w-[82%] ${isMe ? 'flex-row-reverse' : ''}">
+                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black text-white shrink-0 ${isMe ? 'bg-gradient-to-br from-orange-500 to-orange-600' : 'bg-gradient-to-br from-emerald-500 to-emerald-600'}">${escapeHTML(initial)}</div>
+                <div class="px-3.5 py-2 rounded-2xl text-xs text-white shadow-md ${isMe ? 'bg-gradient-to-br from-orange-500 to-orange-600 rounded-br-none' : 'bg-zinc-800 border border-white/10 rounded-bl-none'}">
+                    <p class="font-bold text-[9px] mb-0.5 ${isMe ? 'text-orange-200' : 'text-emerald-400'}">${escapeHTML(who)}${isMe ? '' : ' • Rider'} <span class="opacity-60 font-semibold">${escapeHTML(m.time)}</span></p>
+                    <p class="whitespace-pre-wrap break-words">${escapeHTML(m.message)}</p>
+                </div>
+            </div>
+        `;
+        return wrap;
+    }
+
     function loadRiderMessages() {
         if (!activeChatDeliveryId) return;
         fetch(`/deliveries/messages/${activeChatDeliveryId}/get/`)
             .then(res => res.json())
             .then(data => {
-                if (data.success) {
-                    const list = document.getElementById('chat-messages-list');
-                    list.innerHTML = '';
-                    if (data.messages.length === 0) {
-                        list.innerHTML = `<div class="text-center py-10 text-brand-slate text-[11px]">No messages yet. Say hello to your rider!</div>`;
-                        return;
-                    }
-                    data.messages.forEach(m => {
-                        const isMe = m.is_me;
-                        const bubble = document.createElement('div');
-                        bubble.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
-                        bubble.innerHTML = `
-                            <div class="max-w-[80%] px-3.5 py-2 rounded-2xl text-xs ${isMe ? 'bg-brand-orange text-white rounded-br-none shadow-md' : 'bg-emerald-600 text-white rounded-bl-none'}">
-                                <p class="font-bold text-[9px] opacity-75 mb-0.5">${escapeHTML(m.sender)} (${escapeHTML(m.time)})</p>
-                                <p>${escapeHTML(m.message)}</p>
-                            </div>
-                        `;
-                        list.appendChild(bubble);
-                    });
-                    list.scrollTop = list.scrollHeight;
+                if (!data.success) return;
+                const list = document.getElementById('chat-messages-list');
+                list.innerHTML = '';
+                if (data.messages.length === 0) {
+                    list.innerHTML = `<div class="text-center py-10 text-brand-slate text-[11px]">No messages yet. Say hello to your rider!</div>`;
+                    return;
                 }
-            });
+                data.messages.forEach(m => list.appendChild(makeChatBubble(m)));
+                list.scrollTop = list.scrollHeight;
+            })
+            .catch(() => {});
     }
 
     function sendQuickMsg(text) {
@@ -784,6 +879,15 @@
 
         input.value = '';
 
+        // Optimistic bubble: the message appears instantly on the faculty side
+        // while the request is in flight, then re-syncs with the real record.
+        const list = document.getElementById('chat-messages-list');
+        const emptyHint = list.querySelector('.text-center');
+        if (emptyHint) emptyHint.remove();
+        list.appendChild(makeChatBubble({ is_me: true, sender: 'You', time: 'now', message: text }));
+        list.scrollTop = list.scrollHeight;
+        input.focus();
+
         const csrf = getCookie('csrftoken') || '{{ csrf_token }}';
 
         fetch(`/deliveries/messages/${activeChatDeliveryId}/send/`, {
@@ -796,10 +900,11 @@
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                loadRiderMessages();
-            }
-        });
+            if (!data.success) return;
+            // Replace the optimistic bubble ordering with the real timestamp/ID.
+            loadRiderMessages();
+        })
+        .catch(() => loadRiderMessages());
     }
 
     // Open Real-time Leaflet Map Modal
@@ -1113,7 +1218,8 @@
     function refreshCartButtonState(count) {
         const nextBtn = document.getElementById('next-btn');
         const nextText = document.getElementById('next-btn-text');
-        const activeD = ongoingDeliveriesData.find(d => d.raw_status !== 'DELIVERED');
+        const activeD = ongoingDeliveriesData.find(isOngoingDelivery);
+        const chatD = ongoingDeliveriesData.find(hasAssignedRider);
         const floatingMsg = document.getElementById('floating-msg-btn');
         const keys = Object.keys(cart);
         if (typeof count === 'undefined') {
@@ -1121,7 +1227,7 @@
         }
 
         if (activeD) {
-            if (floatingMsg) floatingMsg.style.display = 'block';
+            if (chatD && floatingMsg) floatingMsg.style.display = 'block';
             nextBtn.disabled = false;
             nextBtn.onclick = openViewOrderModal; // View Order opens Order Details & Live Tracking Modal
             nextText.innerHTML = `<i class="fa-solid fa-box-open mr-1"></i> View Order (${activeD.order_number})`;
@@ -1205,9 +1311,9 @@
     }
 
     function openActiveRiderChat() {
-        const activeD = ongoingDeliveriesData.find(d => d.raw_status !== 'DELIVERED');
+        const activeD = ongoingDeliveriesData.find(hasAssignedRider);
         if (!activeD) {
-            alert('Wala pang active delivery chat sa ngayon.');
+            alert('Wala pang rider na nakapag-accept ng delivery para sa chat.');
             return;
         }
         openRiderChat(activeD.id, activeD.order_number, activeD.rider_name);
@@ -1223,37 +1329,90 @@
 
     let viewOrderMap = null;
     let viewOrderMarker = null;
+    let viewOrderDestMarker = null;
+    let viewOrderRouteLine = null;
     let viewOrderDeliveryId = null;
 
     // Live-track the rider's actual position inside the view-order modal.
     // Called on open and then on every SSE push so the rider's pin moves in
-    // real-time and the status badge stays fresh.
+    // real-time and the status badge stays fresh. The delivery destination is
+    // pinned too so the faculty can always see where the order is heading.
     function refreshViewOrderTracking(d) {
         const statusEl = document.getElementById('view-order-status');
-        if (statusEl) statusEl.innerText = `Status: ${d.status}`;
+        if (statusEl) statusEl.innerText = `Status: ${deliveryStatusLabel(d)}`;
+
+        const chatBtn = document.getElementById('view-order-chat-btn');
+        if (chatBtn) chatBtn.style.display = hasAssignedRider(d) ? '' : 'none';
 
         if (typeof L === 'undefined') return;
         const hasPos = typeof d.rider_lat === 'number' && typeof d.rider_lng === 'number';
+        const hasDest = typeof d.dest_lat === 'number' && typeof d.dest_lng === 'number';
 
         if (!viewOrderMap) {
-            const init = hasPos ? [d.rider_lat, d.rider_lng] : [currentLat, currentLng];
-            viewOrderMap = L.map('view-order-map', { attributionControl: false }).setView(init, 16);
+            const init = (hasPos && hasDest)
+                ? [(d.rider_lat + d.dest_lat) / 2, (d.rider_lng + d.dest_lng) / 2]
+                : (hasPos ? [d.rider_lat, d.rider_lng] : [currentLat, currentLng]);
+            viewOrderMap = L.map('view-order-map', { attributionControl: false }).setView(init, 15);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19, subdomains: 'abcd', attribution: ''
             }).addTo(viewOrderMap);
-            viewOrderMarker = L.marker(init).addTo(viewOrderMap)
-                .bindPopup('<b>Rider Live Location</b>').openPopup();
-        } else {
             if (hasPos) {
-                viewOrderMarker.setLatLng([d.rider_lat, d.rider_lng]);
+                viewOrderMarker = L.marker([d.rider_lat, d.rider_lng], {
+                    icon: L.divIcon({
+                        className: '',
+                        html: '<div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center text-lg shadow-xl border-2 border-white/30"><i class="fa-solid fa-motorcycle"></i></div>',
+                        iconSize: [40, 40], iconAnchor: [20, 20]
+                    })
+                }).addTo(viewOrderMap).bindPopup('<b>Rider Live Location</b>').openPopup();
+            }
+            if (hasDest) {
+                viewOrderDestMarker = L.marker([d.dest_lat, d.dest_lng], {
+                    icon: L.divIcon({
+                        className: '',
+                        html: '<div class="text-3xl"><i class="fa-solid fa-location-dot text-emerald-500" style="text-shadow:0 0 14px rgba(34,197,94,0.9)"></i></div>',
+                        iconSize: [30, 30], iconAnchor: [15, 28]
+                    })
+                }).addTo(viewOrderMap).bindPopup('<b>Delivery Destination</b><br>' + (d.location || '')).openPopup();
+            }
+            if (viewOrderMap) viewOrderMap.invalidateSize();
+        } else {
+            if (hasPos) viewOrderMarker.setLatLng([d.rider_lat, d.rider_lng]);
+            if (hasDest && viewOrderDestMarker) viewOrderDestMarker.setLatLng([d.dest_lat, d.dest_lng]);
+
+            // Route line from rider to the pinned destination (out-for-delivery view).
+            if (hasPos && hasDest) {
+                const pts = [[d.rider_lat, d.rider_lng], [d.dest_lat, d.dest_lng]];
+                if (!viewOrderRouteLine) {
+                    viewOrderRouteLine = L.polyline(pts, { color: '#FF6117', weight: 3, opacity: 0.8, dashArray: '7 6' }).addTo(viewOrderMap);
+                } else {
+                    viewOrderRouteLine.setLatLngs(pts);
+                }
+            }
+
+            if (hasPos && hasDest) {
+                viewOrderMap.fitBounds([[d.rider_lat, d.rider_lng], [d.dest_lat, d.dest_lng]], { padding: [35, 35] });
+            } else if (hasPos) {
                 viewOrderMap.setView([d.rider_lat, d.rider_lng], 16);
             }
             viewOrderMap.invalidateSize();
         }
     }
 
+    // Pro-level success screen shown right after an order is placed.
+    function openOrderPlacedModal(data, location, pointsEarned) {
+        document.getElementById('place-order-number').innerText = data.order_number;
+        document.getElementById('place-order-location').innerText = location || data.delivery_location || 'On Campus';
+        document.getElementById('place-order-fee').innerText = `₱${(data.delivery_fee || 0).toFixed(2)}`;
+        document.getElementById('place-order-total').innerText = `₱${(data.total_payment || data.total_amount || 0).toFixed(2)}`;
+        document.getElementById('place-order-points').innerText = `+${(Number(pointsEarned) || Number(data.points_earned) || 0)} pts`;
+        document.getElementById('order-placed-modal').classList.remove('hidden');
+    }
+    function closeOrderPlacedModal() {
+        document.getElementById('order-placed-modal').classList.add('hidden');
+    }
+
     function openViewOrderModal() {
-        const activeD = ongoingDeliveriesData.find(d => d.raw_status !== 'DELIVERED');
+        const activeD = ongoingDeliveriesData.find(isOngoingDelivery);
         if (!activeD) {
             alert('Wala kang active order sa ngayon.');
             return;
@@ -1261,7 +1420,7 @@
         viewOrderDeliveryId = activeD.id;
 
         document.getElementById('view-order-no').innerText = `Order Details & Live Tracking (${activeD.order_number})`;
-        document.getElementById('view-order-status').innerText = `Status: ${activeD.status}`;
+        document.getElementById('view-order-status').innerText = `Status: ${deliveryStatusLabel(activeD)}`;
         document.getElementById('view-order-rider').innerText = activeD.rider_name;
         document.getElementById('view-order-location').innerText = activeD.location;
         document.getElementById('view-order-subtotal').innerText = `₱${(activeD.total_amount || 0).toFixed(2)}`;
@@ -1371,7 +1530,7 @@
     }
 
     function submitFacultyOrder() {
-        const activeD = ongoingDeliveriesData.find(d => d.raw_status !== 'DELIVERED');
+        const activeD = ongoingDeliveriesData.find(isOngoingDelivery);
         if (activeD) {
             alert('Hindi ka pwedeng mag-checkout dahil mayroon ka pang ongoing delivery order (' + activeD.order_number + '). Hintayin muna itong maihatid.');
             const submitBtn = document.getElementById('checkout-submit-btn');
@@ -1437,7 +1596,7 @@
                 updateCartUI();
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
-                alert(`Delivery order successfully placed! Order Number: ${data.order_number}\nDelivery Fee (Rider): ₱${data.delivery_fee.toFixed(2)}\nTotal Payment: ₱${data.total_payment.toFixed(2)}\nYou earned ${pointsEarned} loyalty points!`);
+                openOrderPlacedModal(data, deliveryLoc, pointsEarned);
             } else {
                 alert('Checkout error: ' + (data.message || 'Unknown error'));
                 submitBtn.disabled = false;
