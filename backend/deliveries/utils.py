@@ -1,5 +1,132 @@
 import math
 
+from django.db.models import Count
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+
+from .models import DeliveryRequest
+
+
+def pick_next_available_rider(exclude_id=None):
+    """Round-robin: pick the online DELIVERY rider with the fewest active
+    deliveries (most idle) to receive the next order. Ties broken by the
+    earliest availability-update / earliest join (oldest first). Excludes an
+    optional rider id (used when rotating away from a declining rider).
+
+    Returns a CustomUser for a rider, or None if no online rider is available.
+    """
+    User = get_user_model()
+    MAX_ACTIVE = 3
+
+    online = User.objects.filter(
+        role='DELIVERY',
+        is_available=True,
+        account_status='active',
+    )
+    if exclude_id:
+        online = online.exclude(id=exclude_id)
+
+    # Annotate with the rider's current active (ACCEPTED) delivery count.
+    active_counts = (
+        DeliveryRequest.objects
+        .filter(status=DeliveryRequest.RequestStatus.ACCEPTED)
+        .values('rider_id')
+        .annotate(cnt=Count('id'))
+    )
+    count_map = {c['rider_id']: c['cnt'] for c in active_counts}
+
+    candidates = [
+        r for r in online
+        if count_map.get(r.id, 0) < MAX_ACTIVE
+    ]
+
+    if not candidates:
+        return None
+
+    # Sort by fewest active deliveries first, then oldest availability update /
+    # earliest registration (so riders who have been idle/online longest get
+    # the next order -- "first-in" fairness).
+    candidates.sort(key=lambda r: (count_map.get(r.id, 0),
+                                   r.availability_updated_at or r.date_joined))
+    return candidates[0]
+
+
+def rotate_to_next_rider(delivery, exclude_id=None):
+    """Re-assign an unaccepted delivery to the next available rider in the
+    round-robin. Returns True if reassigned to someone, False if none left."""
+    from .models import DeliveryRequest
+
+    if delivery.status != DeliveryRequest.RequestStatus.SEARCHING:
+        return False
+
+    next_rider = pick_next_available_rider(exclude_id=exclude_id)
+    if next_rider is None:
+        delivery.assigned_to = None
+        delivery.assigned_at = None
+        delivery.save(update_fields=['assigned_to', 'assigned_at'])
+        return False
+
+    delivery.assigned_to = next_rider
+    delivery.assigned_at = timezone.now()
+    delivery.save(update_fields=['assigned_to', 'assigned_at'])
+    return True
+
+
+def _clean_amount(amount):
+    """Return a float rounded to 2 decimals (peso-cents) to avoid float drift."""
+    import math
+    if amount is None:
+        return 0.0
+    return round(float(amount), 2)
+
+
+def delivery_fee_for_order(total_amount):
+    """Delivery fee / rider earning: ₱15 base fee per order, +₱15 per ₱300 block.
+
+    The ₱15 base covers the 0-300 range, then +₱15 for each additional ₱300:
+    ₱0-300 -> ₱15, ₱300.01-600 -> ₱30, ₱600.01-900 -> ₱45, etc.
+
+    Uses a tiny epsilon so a float-summed subtotal of exactly ₱300.00 is never
+    bumped into the ₱30 bracket by rounding noise.
+    """
+    import math
+    amount = _clean_amount(total_amount)
+    if amount is None:
+        return 15.0
+    if amount <= 0:
+        return 15.0
+    return float(max(15, math.ceil((amount - 1e-6) / 300) * 15))
+
+
+# Keep old name as alias for backward compat
+delivery_earning_for_order = delivery_fee_for_order
+
+
+def serialize_delivery(d):
+    """Shared serializer for a DeliveryRequest shown to the faculty customer side.
+
+    Includes the rider's live position so a single faculty SSE payload carries
+    both the order status and the rider's real-time GPS location.
+    """
+    return {
+        'id': d.id,
+        'order_number': d.order.order_number,
+        'status': d.get_status_display(),
+        'raw_status': d.status,
+        'location': d.delivery_location,
+        'rider_name': d.rider.get_full_name() or d.rider.username if d.rider else 'Searching for Rider...',
+        'total_amount': float(d.order.total_amount),
+        'delivery_fee': float(d.order.delivery_fee),
+        'total_payment': float(d.order.total_amount) + float(d.order.delivery_fee),
+        'customer_name': d.order.customer.get_full_name() or d.order.customer.username if d.order.customer else 'Guest',
+        'created_at': d.requested_at.strftime('%H:%M %p'),
+        'rider_lat': d.rider_lat,
+        'rider_lng': d.rider_lng,
+        'location_updated_at': d.location_updated_at.strftime('%H:%M %p') if d.location_updated_at else None,
+        'items': [{'name': i.item_name, 'qty': i.quantity, 'price': float(i.price)} for i in d.order.items.all()]
+    }
+
+
 # Palawan State University Main Campus (Tiniguiban Heights, Puerto Princesa) -
 # delivery scope is campus only.
 # Official Main Campus center (9.77778, 118.73333 per Wikipedia/Wikidata).

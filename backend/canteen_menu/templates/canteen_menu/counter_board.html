@@ -336,49 +336,93 @@
             return cookieValue;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.status-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    const orderId = this.getAttribute('data-order-id');
-                    const newStatus = this.getAttribute('data-status');
-                    
-                    fetch(`/kitchen/order/${orderId}/update-status/`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCSRFToken(),
-                        },
-                        body: JSON.stringify({ status: newStatus })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            window.location.reload();
-                        } else {
-                            alert('Error: ' + (data.error || 'Failed to update order status.'));
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
+document.addEventListener('DOMContentLoaded', () => {
+                // Status buttons: move orders between columns via AJAX, then reload
+                document.querySelectorAll('.status-btn').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const orderId = this.getAttribute('data-order-id');
+                        const newStatus = this.getAttribute('data-status');
+                        fetch(`/kitchen/order/${orderId}/update-status/`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCSRFToken(),
+                            },
+                            body: JSON.stringify({ status: newStatus })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                window.location.reload();
+                            } else {
+                                alert('Error: ' + (data.error || 'Failed to update order status.'));
+                            }
+                        })
+                        .catch(error => console.error('Error:', error));
+                    });
                 });
+
+                // Live clock in the header
+                function updateClock() {
+                    const now = new Date();
+                    let hours = now.getHours();
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    const seconds = String(now.getSeconds()).padStart(2, '0');
+                    const ampm = hours >= 12 ? 'PM' : 'AM';
+                    hours = hours % 12 || 12;
+                    const strTime = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+                    document.getElementById('live-clock').textContent = strTime;
+                }
+                setInterval(updateClock, 1000);
+                updateClock();
+
+                // Local column counts shown on initial render, used to detect changes
+                const known = {
+                    pending: {{ incoming_orders|length }},
+                    preparing: {{ preparing_orders|length }},
+                    ready: {{ ready_orders|length }},
+                };
+
+                function playChime() {
+                    try {
+                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = 990;
+                        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+                        osc.connect(gain).connect(ctx.destination);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.4);
+                    } catch (e) {}
+                }
+
+                // Only reload the page when the order queues actually change.
+                // This replaces the old blind reload-every-5s behaviour.
+                let reloading = false;
+                const sse = new EventSource('/canteen/counter-live-stream/');
+                sse.onmessage = (ev) => {
+                    if (reloading) return;
+                    try {
+                        const data = JSON.parse(ev.data);
+                        if (!data.success || !data.orders) return;
+                        const o = data.orders;
+                        const changed = o.pending_count !== known.pending
+                            || o.preparing_count !== known.preparing
+                            || o.ready_count !== known.ready;
+                        if (o.pending_count > known.pending) {
+                            playChime(); // new incoming order just landed
+                        }
+                        if (changed) {
+                            reloading = true;
+                            window.location.reload();
+                        }
+                    } catch (e) { /* ignore pings */ }
+                };
+                sse.onerror = () => { /* EventSource auto-reconnects */ };
             });
-
-            function updateClock() {
-                const now = new Date();
-                let hours = now.getHours();
-                const minutes = String(now.getMinutes()).padStart(2, '0');
-                const seconds = String(now.getSeconds()).padStart(2, '0');
-                const ampm = hours >= 12 ? 'PM' : 'AM';
-                hours = hours % 12 || 12;
-                const strTime = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
-                document.getElementById('live-clock').textContent = strTime;
-            }
-            setInterval(updateClock, 1000);
-            updateClock();
-
-            // Real-time auto-refresh every 5 seconds
-            setInterval(() => {
-                window.location.reload();
-            }, 5000);
         });
     </script>
 </body>

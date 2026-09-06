@@ -209,6 +209,7 @@
                                 <th class="py-3 px-3">Order Number</th>
                                 <th class="py-3 px-3">Customer</th>
                                 <th class="py-3 px-3">Amount</th>
+                                <th class="py-3 px-3">Delivery Fee</th>
                                 <th class="py-3 px-3">Status</th>
                                 <th class="py-3 px-3 text-right">Time</th>
                             </tr>
@@ -220,6 +221,9 @@
                                 <td class="py-3.5 px-3 text-gray-800">{% if order.customer %}{{ order.customer.get_full_name|default:order.customer.username }}{% else %}Walk-in Guest{% endif %}</td>
                                 <td class="py-3.5 px-3 font-bold text-gray-900">₱{{ order.total_amount }}</td>
                                 <td class="py-3.5 px-3">
+                                    {% if order.delivery_fee %}<span class="font-bold text-brand-600">₱{{ order.delivery_fee }}</span>{% else %}<span class="text-gray-300">—</span>{% endif %}
+                                </td>
+                                <td class="py-3.5 px-3">
                                     <span class="px-2.5 py-1 rounded-full font-bold text-[10px] uppercase {% if order.status == 'pending' %}bg-brand-50 text-brand-600 border border-brand-200{% elif order.status == 'preparing' %}bg-blue-50 text-blue-600 border border-blue-200{% else %}bg-emerald-50 text-emerald-600 border border-emerald-200{% endif %}">
                                         {{ order.status }}
                                     </span>
@@ -228,7 +232,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" class="py-8 text-center text-gray-400">No active orders right now.</td>
+                                <td colspan="6" class="py-8 text-center text-gray-400">No active orders right now.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -484,9 +488,9 @@
                                 <th class="py-3 px-3 text-right">Status</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100 font-medium">
+                        <tbody class="divide-y divide-gray-100 font-medium" id="dispatch-tbody">
                             {% for d in delivery_requests %}
-                            <tr class="hover:bg-gray-50 transition">
+                            <tr class="hover:bg-gray-50 transition" data-dispatch-row>
                                 <td class="py-3.5 px-3 font-black text-dark-900">#DEL-{{ d.id }}</td>
                                 <td class="py-3.5 px-3 font-bold text-gray-800">{{ d.order.order_number }}</td>
                                 <td class="py-3.5 px-3 text-gray-600">{{ d.delivery_location }}</td>
@@ -712,6 +716,62 @@
                     switchChart('daily');
                 }, 200);
             });
+        </script>
+
+        <!-- Live dispatch table: refresh in place via SSE (no page reload) -->
+        <script>
+        (function () {
+            const tbody = document.getElementById('dispatch-tbody');
+            if (!tbody || typeof EventSource === 'undefined') return;
+
+            function playChime() {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = 1244;
+                    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+                    osc.connect(gain).connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.35);
+                } catch (e) {}
+            }
+
+            // The dispatches tab can be toggled away; only refresh when visible.
+            let lastIds = Array.from(document.querySelectorAll('[data-dispatch-row]'))
+                .map(r => { const tds = r.children; return tds[0] ? Number(tds[0].textContent.replace(/\D/g, '')) : 0; });
+
+            const esc = (s) => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+
+            const sse = new EventSource('/deliveries/api/staff-dispatch-stream/');
+            sse.onmessage = (ev) => {
+                try {
+                    const data = JSON.parse(ev.data);
+                    if (!data.success) return;
+                    const rows = data.dispatches || [];
+                    const ids = rows.map(r => r.id);
+                    const hasNew = ids.some(id => lastIds.indexOf(id) === -1);
+                    if (hasNew) playChime();
+                    lastIds = ids;
+                    if (!rows.length) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-gray-400">No active delivery requests at the moment.</td></tr>';
+                        return;
+                    }
+                    tbody.innerHTML = rows.map(r => `
+                        <tr class="hover:bg-gray-50 transition" data-dispatch-row>
+                            <td class="py-3.5 px-3 font-black text-dark-900">#DEL-${r.id}</td>
+                            <td class="py-3.5 px-3 font-bold text-gray-800">${esc(r.order_number)}</td>
+                            <td class="py-3.5 px-3 text-gray-600">${esc(r.location)}</td>
+                            <td class="py-3.5 px-3 text-gray-800">${esc(r.rider)}</td>
+                            <td class="py-3.5 px-3 text-right"><span class="bg-brand-50 text-brand-700 font-bold px-2.5 py-1 rounded-full text-[10px] uppercase">${esc(r.status)}</span></td>
+                        </tr>`).join('');
+                } catch (e) {}
+            };
+            sse.onerror = () => {};
+        })();
         </script>
 
     </main>

@@ -17,6 +17,13 @@ class DeliveryRequest(models.Model):
         null=True, blank=True,
         related_name='deliveries'
     )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='assigned_deliveries'
+    )
+    assigned_at = models.DateTimeField(null=True, blank=True)
     delivery_location = models.CharField(max_length=255, help_text="Building & Room Number")
     status = models.CharField(max_length=20, choices=RequestStatus.choices, default=RequestStatus.SEARCHING)
     requested_at = models.DateTimeField(auto_now_add=True)
@@ -31,6 +38,18 @@ class DeliveryRequest(models.Model):
     # Delivery destination coordinates (captured from customer at checkout)
     dest_lat = models.FloatField(null=True, blank=True)
     dest_lng = models.FloatField(null=True, blank=True)
+
+    @property
+    def raw_status(self):
+        """Raw status code string (e.g. 'ACCEPTED') for templates/JSON labeling."""
+        return self.status
+
+    @property
+    def earning(self):
+        """Rider earning = delivery fee for this order: ₱15 per ₱300 block (any portion counts)."""
+        if self.order is None or self.order.delivery_fee is None:
+            return 0.0
+        return float(self.order.delivery_fee)
 
 class RiderLocationPoint(models.Model):
     """History of the rider's GPS positions used to compute speed & distance."""

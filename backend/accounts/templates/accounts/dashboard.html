@@ -213,7 +213,7 @@
                         <span id="drawer-subtotal" class="font-bold text-white">₱0.00</span>
                     </div>
                     <div class="flex justify-between">
-                        <span>Convenience Fee (Delivery)</span>
+                        <span>Delivery Fee (Rider)</span>
                         <span id="drawer-convenience-fee" class="font-bold text-white">₱0.00</span>
                     </div>
                 </div>
@@ -298,7 +298,7 @@
             <div class="space-y-4 text-xs">
                 <div class="p-3.5 rounded-2xl bg-brand-orange/10 border border-brand-orange/30 text-brand-orange font-bold flex items-center gap-2">
                     <i class="fa-solid fa-motorcycle text-base"></i>
-                    <span>Mode: Campus Delivery (Convenience Fee Applies)</span>
+                    <span>Mode: Campus Delivery (Delivery Fee Applies)</span>
                 </div>
 
                 <div class="space-y-1.5">
@@ -366,7 +366,7 @@
                         <span id="summary-subtotal" class="font-bold text-white">₱0.00</span>
                     </div>
                     <div class="flex justify-between text-brand-slate">
-                        <span>Convenience Fee (₱15 per ₱300 block)</span>
+                        <span>Delivery Fee (₱15 per ₱300 block)</span>
                         <span id="summary-convenience-fee" class="font-bold text-white">₱0.00</span>
                     </div>
                     <div class="flex justify-between text-amber-400" id="summary-discount-row" style="display: none;">
@@ -475,6 +475,9 @@
                         <i class="fa-solid fa-box-open text-brand-orange"></i> Order Details & Live Tracking
                     </h3>
                     <p id="view-order-status" class="text-[10px] text-brand-orange font-bold uppercase tracking-wider mt-0.5">Status: Processing</p>
+                    <p id="view-order-customer" class="text-[11px] text-white font-black mt-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-user text-brand-orange"></i> <span>{{ request.user.get_full_name|default:request.user.username }}</span>
+                    </p>
                 </div>
                 <button onclick="closeViewOrderModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
@@ -497,8 +500,16 @@
                         <span>Assigned Rider</span>
                         <span id="view-order-rider" class="font-bold text-white">--</span>
                     </div>
+                    <div class="flex justify-between text-brand-slate pt-2 border-t border-white/10">
+                        <span>Subtotal</span>
+                        <span id="view-order-subtotal" class="font-bold text-white">₱0.00</span>
+                    </div>
+                    <div class="flex justify-between text-brand-slate">
+                        <span>Delivery Fee (Rider)</span>
+                        <span id="view-order-fee" class="font-bold text-brand-orange">₱0.00</span>
+                    </div>
                     <div class="flex justify-between text-white font-black pt-2 border-t border-white/10">
-                        <span>Total Amount</span>
+                        <span>Total Payment</span>
                         <span id="view-order-total" class="text-brand-orange">₱0.00</span>
                     </div>
                 </div>
@@ -581,13 +592,75 @@
 
     function updateOngoingBadge() {
         const badge = document.getElementById('ongoing-badge');
-        if (badge && ongoingDeliveriesData.length > 0) {
-            badge.innerText = ongoingDeliveriesData.length;
-            badge.style.display = 'flex';
+        const activeCount = ongoingDeliveriesData.filter(d => d.raw_status !== 'DELIVERED').length;
+        if (badge) {
+            if (activeCount > 0) {
+                badge.innerText = activeCount;
+                badge.style.display = 'flex';
+            } else {
+                badge.innerText = '0';
+                badge.style.display = 'none';
+            }
         }
     }
 
+    // Real-time sync via Server-Sent Events: the instant a rider marks an order
+    // DELIVERED, the server pushes the updated data and the faculty can reorder.
+    // An HTTP poll is kept as a lightweight fallback if SSE is unavailable.
+    function applyFacultyDeliveries(deliveries) {
+        if (!Array.isArray(deliveries)) return;
+        ongoingDeliveriesData.length = 0;
+        Array.prototype.push.apply(ongoingDeliveriesData, deliveries);
+        updateOngoingBadge();
+        renderOngoingOrdersList();
+        populateNotificationsList();
+        refreshCartButtonState();
+    }
+
+    function syncFacultyDeliveries() {
+        fetch('/deliveries/api/faculty-delivery-status/')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) applyFacultyDeliveries(data.deliveries);
+            })
+            .catch(() => {});
+    }
+
+    if (window.EventSource) {
+        const es = new EventSource('/deliveries/api/faculty-delivery-stream/');
+        es.onmessage = (e) => {
+            try {
+                const msg = JSON.parse(e.data);
+                applyFacultyDeliveries(msg.deliveries);
+                // Real-time chat: refresh messages the instant a new one arrives.
+                if (msg.chat_updated && activeChatDeliveryId) loadRiderMessages();
+                // Live-refresh the view-order modal if it is open on a delivery.
+                if (viewOrderDeliveryId && msg.deliveries) {
+                    const viewed = msg.deliveries.find(d => d.id === viewOrderDeliveryId);
+                    if (viewed && typeof refreshViewOrderTracking === 'function') {
+                        refreshViewOrderTracking(viewed);
+                        if (viewed.raw_status === 'DELIVERED') {
+                            // The delivery completed: release the live view state.
+                            viewOrderDeliveryId = null;
+                        }
+                    }
+                }
+            } catch (err) {}
+        };
+        es.onerror = () => {
+            // Fall back to polling while the stream is reconnecting.
+            syncFacultyDeliveries();
+        };
+    } else {
+        setInterval(syncFacultyDeliveries, 4000);
+    }
+
     function openOngoingOrdersModal() {
+        renderOngoingOrdersList();
+        document.getElementById('ongoing-orders-modal').classList.remove('hidden');
+    }
+
+    function renderOngoingOrdersList() {
         const container = document.getElementById('ongoing-orders-container');
         container.innerHTML = '';
 
@@ -613,7 +686,7 @@
                     </div>
                     <div class="text-[11px] text-brand-slate flex justify-between items-center">
                         <span>Rider: <strong class="text-white">${d.rider_name}</strong></span>
-                        <span class="text-brand-orange font-bold">₱${d.total_amount.toFixed(2)}</span>
+                        <span class="text-brand-orange font-bold">₱${(d.total_payment || d.total_amount || 0).toFixed(2)}</span>
                     </div>
                     <div class="pt-2 border-t border-white/5 flex justify-end">
                         <button onclick="openRiderChat(${d.id}, '${d.order_number}', '${d.rider_name}')" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md">
@@ -624,7 +697,6 @@
                 container.appendChild(card);
             });
         }
-        document.getElementById('ongoing-orders-modal').classList.remove('hidden');
     }
 
     function closeOngoingOrdersModal() {
@@ -637,8 +709,11 @@
         document.getElementById('ongoing-orders-modal').classList.add('hidden');
         document.getElementById('rider-chat-modal').classList.remove('hidden');
         loadRiderMessages();
+        // Real-time: the SSE stream pushes a `chat_updated` signal the instant a
+        // message arrives, so loadRiderMessages fires instantly. Keep a slow
+        // fallback poll only as a safety net while the stream reconnects.
         if (chatInterval) clearInterval(chatInterval);
-        chatInterval = setInterval(loadRiderMessages, 2000);
+        chatInterval = setInterval(loadRiderMessages, 10000);
     }
 
     function closeRiderChatModal() {
@@ -983,9 +1058,9 @@
     }
 
     function getConvenienceFee(subtotal) {
-        if (subtotal <= 0) return 0;
+        if (subtotal <= 0) return 15;
         let blocks = Math.ceil(subtotal / 300);
-        return blocks * 15;
+        return Math.max(15, blocks * 15);
     }
 
     function updateCartUI() {
@@ -1032,10 +1107,18 @@
         document.getElementById('drawer-convenience-fee').innerText = `₱${fee.toFixed(2)}`;
         document.getElementById('drawer-total-amount').innerText = `₱${total.toFixed(2)}`;
 
+        refreshCartButtonState(count);
+    }
+
+    function refreshCartButtonState(count) {
         const nextBtn = document.getElementById('next-btn');
         const nextText = document.getElementById('next-btn-text');
         const activeD = ongoingDeliveriesData.find(d => d.raw_status !== 'DELIVERED');
         const floatingMsg = document.getElementById('floating-msg-btn');
+        const keys = Object.keys(cart);
+        if (typeof count === 'undefined') {
+            count = keys.reduce((s, k) => s + (cart[k].qty || 0), 0);
+        }
 
         if (activeD) {
             if (floatingMsg) floatingMsg.style.display = 'block';
@@ -1140,6 +1223,34 @@
 
     let viewOrderMap = null;
     let viewOrderMarker = null;
+    let viewOrderDeliveryId = null;
+
+    // Live-track the rider's actual position inside the view-order modal.
+    // Called on open and then on every SSE push so the rider's pin moves in
+    // real-time and the status badge stays fresh.
+    function refreshViewOrderTracking(d) {
+        const statusEl = document.getElementById('view-order-status');
+        if (statusEl) statusEl.innerText = `Status: ${d.status}`;
+
+        if (typeof L === 'undefined') return;
+        const hasPos = typeof d.rider_lat === 'number' && typeof d.rider_lng === 'number';
+
+        if (!viewOrderMap) {
+            const init = hasPos ? [d.rider_lat, d.rider_lng] : [currentLat, currentLng];
+            viewOrderMap = L.map('view-order-map', { attributionControl: false }).setView(init, 16);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19, subdomains: 'abcd', attribution: ''
+            }).addTo(viewOrderMap);
+            viewOrderMarker = L.marker(init).addTo(viewOrderMap)
+                .bindPopup('<b>Rider Live Location</b>').openPopup();
+        } else {
+            if (hasPos) {
+                viewOrderMarker.setLatLng([d.rider_lat, d.rider_lng]);
+                viewOrderMap.setView([d.rider_lat, d.rider_lng], 16);
+            }
+            viewOrderMap.invalidateSize();
+        }
+    }
 
     function openViewOrderModal() {
         const activeD = ongoingDeliveriesData.find(d => d.raw_status !== 'DELIVERED');
@@ -1147,12 +1258,15 @@
             alert('Wala kang active order sa ngayon.');
             return;
         }
+        viewOrderDeliveryId = activeD.id;
 
         document.getElementById('view-order-no').innerText = `Order Details & Live Tracking (${activeD.order_number})`;
         document.getElementById('view-order-status').innerText = `Status: ${activeD.status}`;
         document.getElementById('view-order-rider').innerText = activeD.rider_name;
         document.getElementById('view-order-location').innerText = activeD.location;
-        document.getElementById('view-order-total').innerText = `₱${activeD.total_amount.toFixed(2)}`;
+        document.getElementById('view-order-subtotal').innerText = `₱${(activeD.total_amount || 0).toFixed(2)}`;
+        document.getElementById('view-order-fee').innerText = `₱${(activeD.delivery_fee || 0).toFixed(2)}`;
+        document.getElementById('view-order-total').innerText = `₱${(activeD.total_payment || activeD.total_amount || 0).toFixed(2)}`;
 
         const itemsContainer = document.getElementById('view-order-items-list');
         itemsContainer.innerHTML = '';
@@ -1172,25 +1286,12 @@
 
         document.getElementById('view-order-modal').classList.remove('hidden');
 
-        setTimeout(() => {
-            if (!viewOrderMap) {
-                viewOrderMap = L.map('view-order-map', { attributionControl: false }).setView([currentLat, currentLng], 16);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19, subdomains: 'abcd',
-                    attribution: ''
-                }).addTo(viewOrderMap);
-                viewOrderMarker = L.marker([currentLat, currentLng]).addTo(viewOrderMap)
-                    .bindPopup('<b>Delivery Route & Rider Progress</b>').openPopup();
-            } else {
-                viewOrderMap.setView([currentLat, currentLng], 16);
-                viewOrderMarker.setLatLng([currentLat, currentLng]);
-                viewOrderMap.invalidateSize();
-            }
-        }, 150);
+        setTimeout(() => refreshViewOrderTracking(activeD), 150);
     }
 
     function closeViewOrderModal() {
         document.getElementById('view-order-modal').classList.add('hidden');
+        viewOrderDeliveryId = null;
     }
 
     // Checkout Modal & Mini Map Integration
@@ -1306,7 +1407,8 @@
             },
             body: JSON.stringify({
                 cart: cartArray,
-                total_amount: finalPayable,
+                subtotal: subtotal,
+                total_amount: subtotal,
                 is_delivery: true,
                 delivery_location: deliveryLoc,
                 payment_method: 'COD',
@@ -1326,7 +1428,8 @@
                     raw_status: 'SEARCHING',
                     location: deliveryLoc,
                     rider_name: 'Searching for Rider...',
-                    total_amount: finalPayable,
+                    total_amount: data.total_payment - data.delivery_fee,
+                    total_payment: data.total_payment,
                     created_at: 'Just now'
                 });
                 cart = {};
@@ -1334,7 +1437,7 @@
                 updateCartUI();
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
-                alert(`Delivery order successfully placed! Order Number: ${data.order_number}\nYou earned ${pointsEarned} loyalty points!`);
+                alert(`Delivery order successfully placed! Order Number: ${data.order_number}\nDelivery Fee (Rider): ₱${data.delivery_fee.toFixed(2)}\nTotal Payment: ₱${data.total_payment.toFixed(2)}\nYou earned ${pointsEarned} loyalty points!`);
             } else {
                 alert('Checkout error: ' + (data.message || 'Unknown error'));
                 submitBtn.disabled = false;
