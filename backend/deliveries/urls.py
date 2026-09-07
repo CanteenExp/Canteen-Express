@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/pool-status/', views.pool_status, name='pool_status'),
     path('api/rider-earnings-summary/', views.rider_earnings_summary, name='rider_earnings_summary'),
     path('api/rider-live-stream/', views.rider_live_stream, name='rider_live_stream'),
+    path('api/pending-cards/', views.pending_cards, name='pending_cards'),
     path('api/faculty-delivery-status/', views.faculty_delivery_status, name='faculty_delivery_status'),
     path('api/faculty-delivery-stream/', views.faculty_delivery_stream, name='faculty_delivery_stream'),
     path('api/staff-dispatch-stream/', views.staff_dispatch_stream, name='staff_dispatch_stream'),
