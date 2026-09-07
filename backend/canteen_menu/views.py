@@ -4,6 +4,7 @@ from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib import messages
+from django.core.cache import cache
 from .models import MenuItem, Category
 from django.views.decorators.csrf import csrf_exempt
 
@@ -130,6 +131,7 @@ def staff_menu_create(request):
                 item.description = _generate_auto_desc(item.name)
             _auto_sync_menu_image(item)
             item.save()
+            cache.delete('formatted_menu_active_kiosk')
             messages.success(request, f"Menu item '{item.name}' added successfully with auto-synced image!")
             return redirect('canteen_menu:staff_menu_list')
         else:
@@ -147,6 +149,7 @@ def staff_menu_update(request, pk):
         form = MenuItemForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
             form.save()
+            cache.delete('formatted_menu_active_kiosk')
             messages.success(request, "Menu item updated successfully!")
             return redirect('canteen_menu:staff_menu_list')
         else:
@@ -162,6 +165,7 @@ def staff_menu_delete(request, pk):
     item = get_object_or_404(MenuItem, pk=pk)
     if request.method == 'POST':
         item.delete()
+        cache.delete('formatted_menu_active_kiosk')
         messages.success(request, "Menu item deleted successfully!")
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
