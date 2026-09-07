@@ -8,6 +8,7 @@ class MenuItem(models.Model):
         ('beverages', 'Beverages'),
         ('meryenda', 'Meryenda'),
         ('dietary', 'Dietary Plans'),
+        ('candies', 'Candies'),
     ]
 
     name = models.CharField(max_length=120)
