@@ -543,26 +543,33 @@ def create_delivery_staff_view(request):
         phone = request.POST.get('phone')
         vehicle_plate = request.POST.get('vehicle_plate')
         from django.contrib.auth import get_user_model
-        from accounts.views import is_strong_password
         User = get_user_model()
-        if User.objects.filter(username=username).exists():
-            messages.error(request, "Username already exists.")
+        
+        if not username or not password:
+            messages.error(request, "Username and password are required.")
+        elif User.objects.filter(username=username).exists():
+            messages.error(request, f"Username '{username}' already exists.")
         elif email and User.objects.filter(email=email).exists():
-            messages.error(request, "Email already exists.")
-        elif not is_strong_password(password):
-            messages.error(request, "Password must be at least 8 characters and include uppercase, lowercase, numbers, and special characters (!@#$...).")
+            messages.error(request, f"Email '{email}' already exists.")
+        elif len(password) < 6:
+            messages.error(request, "Password must be at least 6 characters long.")
         else:
-            User.objects.create_user(
-                username=username,
-                email=email,
-                password=password,
-                first_name=request.POST.get('first_name', 'Rider'),
-                role='DELIVERY',
-                phone=phone,
-                vehicle_plate=vehicle_plate,
-                account_status='active'
-            )
-            messages.success(request, f"Delivery staff {username} created successfully!")
+            final_email = email if email else f"{username.lower()}@canteen.express"
+            try:
+                User.objects.create_user(
+                    username=username,
+                    email=final_email,
+                    password=password,
+                    first_name=request.POST.get('first_name', 'Rider'),
+                    role='DELIVERY',
+                    phone=phone,
+                    vehicle_plate=vehicle_plate,
+                    account_status='active',
+                    is_active=True
+                )
+                messages.success(request, f"Delivery staff '{username}' created successfully!")
+            except Exception as e:
+                messages.error(request, f"Error creating account: {str(e)}")
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=deliveries')
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
