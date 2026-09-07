@@ -93,7 +93,9 @@ def process_checkout(request):
             from deliveries.utils import is_within_campus, delivery_fee_for_order
             dest_lat = data.get('dest_lat')
             dest_lng = data.get('dest_lng')
-            if not is_within_campus(dest_lat, dest_lng):
+            # TEMPORARY: campus geofence disabled so the owner can QA the full
+            # order flow while off-campus. REVERT before going live.
+            if False and not is_within_campus(dest_lat, dest_lng):
                 return JsonResponse({
                     'success': False,
                     'message': 'Delivery is only available within the Palawan State University campus. Please make sure your location is inside the campus and try again.'
@@ -109,9 +111,10 @@ def process_checkout(request):
 
         order_number = _unique_order_number()
         initial_status = 'pending' if is_delivery else 'unpaid'
-
+        
         # Delivery fee = rider earning: ₱15 per ₱300 block of the order subtotal.
         # It is a separate line from the food total and belongs to the rider.
+        from deliveries.utils import delivery_fee_for_order
         delivery_fee = delivery_fee_for_order(subtotal) if is_delivery else 0.0
 
         # Wrap the whole order pipeline in a transaction so a failure anywhere
@@ -154,13 +157,14 @@ def process_checkout(request):
                     menu_item = MenuItem.objects.filter(name__iexact=item_name).first()
 
                 if menu_item:
-                    if menu_item.stock >= qty:
-                        menu_item.stock -= qty
-                    else:
-                        menu_item.stock = 0
-                    if menu_item.stock <= 0:
-                        menu_item.is_available = False
-                    menu_item.save()
+                    if hasattr(menu_item, 'stock') and menu_item.stock is not None:
+                        if menu_item.stock >= qty:
+                            menu_item.stock -= qty
+                        else:
+                            menu_item.stock = 0
+                        if menu_item.stock <= 0:
+                            menu_item.is_available = False
+                        menu_item.save()
 
             if is_delivery:
                 from deliveries.models import DeliveryRequest

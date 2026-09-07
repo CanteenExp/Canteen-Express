@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Repository Overview & Working Directory
-- **Backend framework:** Django 6.0.7 (Python 3.10+, recommended 3.12)
+- **Backend framework:** Django 6.1 (Python 3.10+, recommended 3.12)
 - **Active working directory:** Django app root is inside `backend/` (`backend/manage.py`). Always run Django commands relative to `backend/` or set `workdir="backend"`.
 - **Virtual environment:** Located at `venv/`. Activate using `.\venv\Scripts\Activate.ps1` (Windows PowerShell) or `source venv/bin/activate` (POSIX).
 
@@ -12,10 +12,12 @@
 - **Run tests:** `python manage.py test --keepdb` (ALWAYS use `--keepdb` to avoid slow/flaky Neon Cloud PostgreSQL test DB recreation prompts).
 - **Run specific app test:** `python manage.py test deliveries customer_portal`
 - **Interactive shell:** `python manage.py shell`
+- **Reset orders (testing):** Run in `python manage.py shell`: `from customer_portal.models import Order, OrderItem; OrderItem.objects.all().delete(); Order.objects.all().delete()`
 
-## Operational Gotchas & Quirks
-- **Environment variables:** `.env` file must be located directly inside `backend/` alongside `manage.py`.
-- **Database fallback:** Configured for Neon Cloud PostgreSQL (`sslmode='require'`). Falls back or connects via `.env` credentials.
+## Operational Gotchas & Environment Setup
+- **Environment variables:** `.env` file must be located directly inside `backend/` alongside `manage.py`. Key keys: `SECRET_KEY`, `DEBUG`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.
+- **Database fallback:** Configured for Neon Cloud PostgreSQL (`sslmode='require'`). Falls back to SQLite (`db.sqlite3`) if `.env` is absent or connection fails.
+- **Media files:** `MEDIA_ROOT` points to `backend/media`. Media URL routes served conditionally when `DEBUG=True` via `config/urls.py`.
 - **Campus Geofence:** Official center `9.77778, 118.73333` (PSU Tiniguiban Heights), radius `0.8` km (`deliveries/utils.py`). Out-of-campus orders or missing destination coordinates reject checkout with HTTP `422`.
 - **Dark Maps:** Leaflet maps use free OSM tiles with CSS invert filter on `.leaflet-tile-pane` for dark mode (no API keys required).
 - **Windows CP1252 encoding error:** Avoid complex Unicode emojis in backend print statements/management commands. Use FontAwesome icons in HTML templates instead.
