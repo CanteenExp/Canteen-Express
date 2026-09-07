@@ -223,16 +223,10 @@
 
 
     <!-- ================= VIDEO LOGO LOADING OVERLAY ================= -->
-    <div id="video-loading-overlay" class="fixed inset-0 z-[100] bg-brand-dark flex flex-col items-center justify-center p-6 hidden opacity-0 transition-opacity duration-300">
-        <div class="flex flex-col items-center space-y-4 max-w-xs text-center">
-            <video autoplay muted loop playsinline class="w-36 h-36 sm:w-44 sm:h-44 object-contain rounded-2xl drop-shadow-[0_15px_30px_rgba(255,97,23,0.3)]">
-                <source src="{% static 'logo-animation.mp4' %}" type="video/mp4">
-            </video>
-            <div class="space-y-1">
-                <h3 class="font-poppins text-lg font-black text-white">Loading Canteen Express...</h3>
-                <p class="text-xs text-brand-orange animate-pulse font-medium tracking-wider uppercase">Preparing fresh menu for you</p>
-            </div>
-        </div>
+    <div id="video-loading-overlay" class="fixed inset-0 z-[100] bg-[#0A0A0C] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <video autoplay muted loop playsinline class="w-48 h-48 sm:w-60 sm:h-60 object-contain">
+            <source src="{% static 'logo-animation.mp4' %}" type="video/mp4">
+        </video>
     </div>
 
 
