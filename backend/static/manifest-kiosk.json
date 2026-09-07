@@ -1,0 +1,15 @@
+{
+  "name": "Canteen Express Kiosk",
+  "short_name": "Canteen Kiosk",
+  "start_url": "/kiosk/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#f97316",
+  "icons": [
+    {
+      "src": "/static/customer_portal/images/canteen-express-logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ]
+}

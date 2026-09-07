@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: canteen-express
+    env: python
+    region: singapore
+    plan: free
+    buildCommand: |
+      pip install -r backend/requirements.txt
+      python backend/manage.py collectstatic --noinput
+      python backend/manage.py migrate
+    startCommand: gunicorn --chdir backend config.wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: DEBUG
+        value: False
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DB_NAME
+        value: neondb
+      - key: DB_USER
+        value: neondb_owner
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_HOST
+        value: ep-shy-heart-ayghwl06-pooler.c-5.us-east-2.aws.neon.tech
+      - key: DB_PORT
+        value: 5432

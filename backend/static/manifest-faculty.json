@@ -1,0 +1,15 @@
+{
+  "name": "Canteen Express Faculty Portal",
+  "short_name": "CanEx Faculty",
+  "start_url": "/accounts/dashboard/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#f97316",
+  "icons": [
+    {
+      "src": "/static/Student.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -130,10 +130,10 @@ def staff_menu_create(request):
                 item.description = _generate_auto_desc(item.name)
             _auto_sync_menu_image(item)
             item.save()
-            messages.success(request, f"Ang menu na '{item.name}' ay matagumpay na naidagdag na may auto-synced image!")
+            messages.success(request, f"Menu item '{item.name}' added successfully with auto-synced image!")
             return redirect('canteen_menu:staff_menu_list')
         else:
-            messages.error(request, "May mali sa mga impormasyong inilagay. Paki-ayos ang mga fields na may error.")
+            messages.error(request, "Please correct the errors in the form.")
     else:
         form = MenuItemForm()
         
@@ -147,10 +147,10 @@ def staff_menu_update(request, pk):
         form = MenuItemForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
             form.save()
-            messages.success(request, "Nabaguhan na ang detalye ng pagkain!")
+            messages.success(request, "Menu item updated successfully!")
             return redirect('canteen_menu:staff_menu_list')
         else:
-            messages.error(request, "May mali sa pag-update ng item. Paki-check ang form.")
+            messages.error(request, "Error updating item. Please check the form.")
     else:
         form = MenuItemForm(instance=item)
         
@@ -162,7 +162,7 @@ def staff_menu_delete(request, pk):
     item = get_object_or_404(MenuItem, pk=pk)
     if request.method == 'POST':
         item.delete()
-        messages.success(request, "Naipagbura na ang item!")
+        messages.success(request, "Menu item deleted successfully!")
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
 def counter_board(request):

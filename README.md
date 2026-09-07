@@ -7,8 +7,13 @@ Welcome to the **Canteen Express** project! A comprehensive Django web applicati
 ## Latest System Updates & Features
 - **Official Favicon Integration:**
   - The official Canteen Express logo is linked as the browser favicon (`<link rel="icon" ... />`) across all web pages and templates in the system.
-- **Dark Theme Login Portals:**
+- **Dark Theme Login & Portals with Light Mode:**
   - The **Canteen Staff Portal** and **Delivery Personnel Portal** login pages feature a dark theme (`bg-brand-dark`), matching the exact brand color palette.
+  - The **Kiosk Menu** supports a seamless Light Mode / Dark Mode toggle, with ads/promo carousels properly excluded from color inversion so promotions retain their vibrant dark gradients and high-contrast readability.
+- **English Notifications & Alerts:**
+  - All pop-up notifications, alerts, form validations, and status messages on the Canteen Staff and Admin dashboards are in clear, standardized English.
+- **Smart Category-Based Customization:**
+  - In the Kiosk Menu, **Steamed Rice Portions** (₱15.00/serving) are available exclusively for **Rice Meals**, ensuring non-rice items (beverages, biscuits, meryenda) do not show unnecessary rice add-ons.
 - **Kitchen Display Kanban Board & Dashboards:**
   - 3-column workflow: **Kiosk Accepted** (Walk-in Kiosk), **Delivery** (Campus Delivery), and **Orders Ready** (Orders finished and ready for pickup/dispatch).
   - Robust null-safety handling for walk-in kiosk orders without registered customer accounts.
@@ -16,6 +21,8 @@ Welcome to the **Canteen Express** project! A comprehensive Django web applicati
   - Interactive Chart.js bar graphs with filter tabs for **Daily (7 Days)**, **Weekly (4 Weeks)**, and **Monthly (6 Months)** sales reports and financial breakdown tables.
 - **Convenience Fee & Loyalty Points:**
   - Automatically calculates convenience fees (**₱15 per ₱300 purchase block**) for campus deliveries and loyalty points for faculty and staff.
+- **Delivery Staff Management:**
+  - Staff & Admins can easily create delivery rider accounts with optional email auto-generation (`username@canteen.express`), phone numbers, and vehicle plate tracking.
 
 ---
 

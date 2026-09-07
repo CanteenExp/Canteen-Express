@@ -3,6 +3,15 @@
 <html lang="en">
 <head>
     <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
+    <link rel="manifest" href="{% static 'manifest-faculty.json' %}">
+    <meta name="theme-color" content="#f97316">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js').catch(err => console.log('SW error:', err));
+            });
+        }
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Faculty & Staff Portal - Canteen Express</title>

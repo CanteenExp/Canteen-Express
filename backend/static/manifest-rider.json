@@ -1,0 +1,15 @@
+{
+  "name": "Canteen Express Rider Hub",
+  "short_name": "CanEx Rider",
+  "start_url": "/deliveries/dashboard/",
+  "display": "standalone",
+  "background_color": "#08080b",
+  "theme_color": "#FF6117",
+  "icons": [
+    {
+      "src": "/static/Rider.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ]
+}
