@@ -16,6 +16,7 @@ urlpatterns = [
     path('categories/<int:pk>/edit/', views.category_update, name='category_update'),
     path('categories/<int:pk>/delete/', views.category_delete, name='category_delete'),
     path('counter-board/', views.counter_board, name='counter_board'),
+    path('counter-live-stream/', views.counter_live_stream, name='counter_live_stream'),
     path('dashboard/', views.staff_dashboard, name='staff_dashboard'),
     path('api/process-barcode/', views.process_barcode_api, name='process_barcode_api'),
     path('counter/pos/', views.counter_pos_view, name='counter_pos'),

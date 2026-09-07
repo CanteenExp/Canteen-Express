@@ -159,22 +159,14 @@ def faculty_dashboard_view(request):
         })
 
     from deliveries.models import DeliveryRequest
+    from deliveries.utils import serialize_delivery
     if request.user.is_authenticated:
-        ongoing_deliveries = DeliveryRequest.objects.filter(order__customer=request.user).exclude(status='DELIVERED').order_by('-requested_at')[:5]
+        ongoing_deliveries = DeliveryRequest.objects.filter(
+            order__customer=request.user).order_by('-requested_at')[:5]
     else:
         ongoing_deliveries = []
 
-    ongoing_data = [{
-        'id': d.id,
-        'order_number': d.order.order_number,
-        'status': d.get_status_display(),
-        'raw_status': d.status,
-        'location': d.delivery_location,
-        'rider_name': d.rider.get_full_name() or d.rider.username if d.rider else 'Searching for Rider...',
-        'total_amount': float(d.order.total_amount),
-        'created_at': d.requested_at.strftime('%H:%M %p'),
-        'items': [{'name': i.item_name, 'qty': i.quantity, 'price': float(i.price)} for i in d.order.items.all()]
-    } for d in ongoing_deliveries]
+    ongoing_data = [serialize_delivery(d) for d in ongoing_deliveries]
 
     context = {
         'menu_items': menu_items,
