@@ -471,6 +471,11 @@
                         <span>Cancel Order</span>
                     </button>
                 </div>
+
+                <button onclick="closeQueueSlipModal()" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider text-[11px] transition border border-white/10 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-xmark"></i>
+                    <span>Close / Back to Menu</span>
+                </button>
             </div>
 
         </div>
@@ -1054,10 +1059,24 @@ function checkPendingOrderOnLoad() {
     if (saved) {
         try {
             currentPendingOrder = JSON.parse(saved);
-            showPendingBanner();
-            openQueueSlipModal();
+            fetch(`/kiosk/api/order-status/${currentPendingOrder.order_number}/`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.exists && (data.status === 'unpaid' || data.status === 'pending')) {
+                        showPendingBanner();
+                        openQueueSlipModal();
+                    } else {
+                        localStorage.removeItem('canteen_pending_order');
+                        document.getElementById('dining-option-modal').classList.remove('hidden');
+                    }
+                })
+                .catch(() => {
+                    showPendingBanner();
+                    openQueueSlipModal();
+                });
         } catch (e) {
             localStorage.removeItem('canteen_pending_order');
+            document.getElementById('dining-option-modal').classList.remove('hidden');
         }
     } else {
         document.getElementById('dining-option-modal').classList.remove('hidden');

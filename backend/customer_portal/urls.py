@@ -9,4 +9,5 @@ urlpatterns = [
     path('menu/', views.kiosk_menu, name='kiosk_menu'),
     path('api/menu/', views.get_kiosk_menu_api, name='get_kiosk_menu_api'),
     path('api/checkout/', views.process_checkout, name='process_checkout'),
+    path('api/order-status/<str:order_num>/', views.check_order_status_api, name='check_order_status_api'),
 ]

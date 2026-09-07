@@ -203,3 +203,11 @@ def process_checkout(request):
 
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+def check_order_status_api(request, order_num):
+    clean_num = order_num.replace('#', '').strip()
+    try:
+        order = Order.objects.get(order_number__iexact=clean_num)
+        return JsonResponse({'exists': True, 'status': order.status})
+    except Order.DoesNotExist:
+        return JsonResponse({'exists': False})
