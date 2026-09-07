@@ -2,6 +2,7 @@ import json
 import random
 from django.db import transaction
 from django.utils import timezone
+from django.core.cache import cache
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
@@ -11,8 +12,13 @@ from canteen_menu.models import MenuItem
 from .models import Order, OrderItem
 
 
-# Helper function to format active DB menu items for Kiosk JSON
+# Helper function to format active DB menu items for Kiosk JSON (with in-memory caching for lightning fast performance)
 def _get_formatted_menu():
+    cache_key = 'formatted_menu_active_kiosk'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     db_items = MenuItem.objects.filter(is_available=True).order_by('-id')
     formatted_menu = []
     for item in db_items:
@@ -40,6 +46,7 @@ def _get_formatted_menu():
             'isSiomai': getattr(item, 'is_siomai', False) or getattr(item, 'isSiomai', False),
             'img': img_url
         })
+    cache.set(cache_key, formatted_menu, 60)
     return formatted_menu
 
 
