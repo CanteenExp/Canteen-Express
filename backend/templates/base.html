@@ -48,7 +48,15 @@
     {% block header %}
     <header class="bg-black text-white sticky top-0 z-40 shadow-lg border-b border-gray-800">
         <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+           {% if not user.is_authenticated %}
            <a href="{% url 'customer_portal:kiosk_menu' %}" class="flex items-center space-x-2.5">
+           {% elif user.role|upper == 'STAFF' or user.role|upper == 'ADMIN' or user.is_staff %}
+           <a href="{% url 'canteen_menu:staff_dashboard' %}" class="flex items-center space-x-2.5">
+           {% elif user.role|upper == 'DELIVERY' %}
+           <a href="{% url 'deliveries:dashboard' %}" class="flex items-center space-x-2.5">
+           {% else %}
+           <a href="{% url 'customer_portal:kiosk_menu' %}" class="flex items-center space-x-2.5">
+           {% endif %}
                 <span class="bg-brand-500 text-white font-bold p-2 rounded-xl text-lg shadow-md shadow-brand-500/30">
                     <i class="fa-solid font-black fa-utensils"></i>
                 </span>
@@ -59,22 +67,30 @@
 
             {% if user.is_authenticated %}
                 <div class="flex items-center space-x-3">
-                    {% if user.role == 'student' %}
+                    {% if user.role|upper == 'STUDENT' %}
                         <span class="bg-gray-800 text-orange-400 text-xs px-3 py-1 rounded-full font-bold border border-orange-500/30">
                             🎓 Student
                         </span>
-                    {% elif user.role == 'faculty' %}
+                    {% elif user.role|upper == 'FACULTY' %}
                         <span class="bg-brand-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-sm">
                             👨‍🏫 Faculty
                         </span>
+                    {% elif user.role|upper == 'STAFF' or user.role|upper == 'ADMIN' or user.is_staff %}
+                        <span class="bg-brand-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-sm">
+                            🍳 Canteen Staff
+                        </span>
+                    {% elif user.role|upper == 'DELIVERY' %}
+                        <span class="bg-emerald-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-sm">
+                            🏍️ Delivery Rider
+                        </span>
                     {% endif %}
-                    <a href="{% url 'accounts:logout' %}" class="text-gray-400 hover:text-red-500 text-sm font-medium transition">
+                    <a href="{% url 'accounts:logout' %}" class="text-gray-400 hover:text-red-500 text-sm font-medium transition" title="Logout">
                         <i class="fa-solid fa-right-from-bracket"></i>
                     </a>
                 </div>
             {% else %}
-                <a href="{% url 'accounts:login' %}" class="bg-brand-500 hover:bg-brand-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition shadow-md shadow-brand-500/20">
-                    Login
+                <a href="{% url 'accounts:landing' %}" class="bg-brand-500 hover:bg-brand-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition shadow-md shadow-brand-500/20">
+                    Get Started
                 </a>
             {% endif %}
         </div>
@@ -110,23 +126,50 @@
     {% if user.is_authenticated %}
     <nav class="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 z-50 md:hidden shadow-2xl">
         <div class="flex justify-around items-center py-2.5">
+            {% if user.role|upper == 'STAFF' or user.role|upper == 'ADMIN' or user.is_staff %}
+            <a href="{% url 'canteen_menu:staff_dashboard' %}" class="flex flex-col items-center text-brand-500 font-bold text-xs">
+                <i class="fa-solid fa-gauge-high text-lg mb-1"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{% url 'kitchen_display:kitchen_board' %}" class="flex flex-col items-center text-gray-400 hover:text-brand-500 text-xs font-medium">
+                <i class="fa-solid fa-fire-burner text-lg mb-1"></i>
+                <span>Kitchen</span>
+            </a>
+            <a href="{% url 'canteen_menu:counter_pos' %}" class="flex flex-col items-center text-gray-400 hover:text-brand-500 text-xs font-medium">
+                <i class="fa-solid fa-barcode text-lg mb-1"></i>
+                <span>POS</span>
+            </a>
+            <a href="{% url 'accounts:staff_logout' %}" class="flex flex-col items-center text-gray-400 hover:text-brand-500 text-xs font-medium">
+                <i class="fa-solid fa-right-from-bracket text-lg mb-1"></i>
+                <span>Logout</span>
+            </a>
+            {% elif user.role|upper == 'DELIVERY' %}
+            <a href="{% url 'deliveries:dashboard' %}" class="flex flex-col items-center text-brand-500 font-bold text-xs">
+                <i class="fa-solid fa-gauge-high text-lg mb-1"></i>
+                <span>Dispatch</span>
+            </a>
+            <a href="{% url 'deliveries:history' %}" class="flex flex-col items-center text-gray-400 hover:text-brand-500 text-xs font-medium">
+                <i class="fa-solid fa-clock-rotate-left text-lg mb-1"></i>
+                <span>History</span>
+            </a>
+            <a href="{% url 'accounts:delivery_logout' %}" class="flex flex-col items-center text-gray-400 hover:text-brand-500 text-xs font-medium">
+                <i class="fa-solid fa-right-from-bracket text-lg mb-1"></i>
+                <span>Logout</span>
+            </a>
+            {% else %}
             <a href="{% url 'customer_portal:kiosk_menu' %}" class="flex flex-col items-center text-brand-500 font-bold text-xs">
                 <i class="fa-solid fa-utensils text-lg mb-1"></i>
                 <span>Menu</span>
             </a>
-            <a href="#" class="flex flex-col items-center text-gray-400 hover:text-brand-500 text-xs font-medium">
-                <i class="fa-solid fa-receipt text-lg mb-1"></i>
-                <span>Orders</span>
+            <a href="{% url 'customer_portal:kiosk_welcome' %}" class="flex flex-col items-center text-gray-400 hover:text-brand-500 text-xs font-medium">
+                <i class="fa-solid fa-house text-lg mb-1"></i>
+                <span>Home</span>
             </a>
-            <a href="#" class="flex flex-col items-center text-gray-400 hover:text-brand-500 text-xs font-medium relative">
-                <i class="fa-solid fa-cart-shopping text-lg mb-1"></i>
-                <span>Cart</span>
-                <span class="absolute -top-1.5 right-1.5 bg-brand-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-extrabold">0</span>
+            <a href="{% url 'accounts:faculty_logout' %}" class="flex flex-col items-center text-gray-400 hover:text-brand-500 text-xs font-medium">
+                <i class="fa-solid fa-right-from-bracket text-lg mb-1"></i>
+                <span>Logout</span>
             </a>
-            <a href="#" class="flex flex-col items-center text-gray-400 hover:text-brand-500 text-xs font-medium">
-                <i class="fa-solid fa-user text-lg mb-1"></i>
-                <span>Profile</span>
-            </a>
+            {% endif %}
         </div>
     </nav>
     {% endif %}

@@ -17,6 +17,16 @@
             {% endif %}
         </div>
 
+        <div class="flex flex-wrap items-center gap-1.5">
+            {% if d.order.status == 'ready' %}
+            <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase">Food Ready · Ready to Deliver</span>
+            {% elif d.order.status == 'preparing' %}
+            <span class="bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase">Preparing</span>
+            {% else %}
+            <span class="bg-sky-500/15 text-sky-400 border border-sky-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase">Order Placed</span>
+            {% endif %}
+        </div>
+
         <div class="text-xs space-y-1.5 text-zinc-300">
             <p class="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Items</p>
             {% for item in d.order.items.all %}

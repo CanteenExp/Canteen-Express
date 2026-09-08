@@ -108,6 +108,7 @@ def staff_dashboard(request):
         'menu_items': menu_items,
         'users_list': users_list,
         'delivery_requests': delivery_requests,
+        'delivery_staff_list': User.objects.filter(role__in=['RIDER', 'DELIVERY']),
         'staff_name': staff_name,
         'daily_sales': daily_sales,
         'weekly_sales': weekly_sales,
@@ -181,8 +182,17 @@ def kitchen_live_stream(request):
 
     def event_stream():
         last_hash = None
+        last_expire = 0.0
         while True:
             try:
+                # Keep the delivery assignment sweep running while the kitchen
+                # board is open, so waiting orders are offered to online riders
+                # even if a rider's dashboard isn't actively streaming.
+                now = time.time()
+                if now - last_expire >= 10:
+                    from deliveries.views import expire_stale_requests
+                    expire_stale_requests()
+                    last_expire = now
                 payload = {'success': True, 'boards': boards()}
                 body = json.dumps(payload)
                 digest = hashlib.md5(body.encode('utf-8')).hexdigest()
@@ -208,7 +218,12 @@ def kitchen_live_stream(request):
 @role_required(allowed_roles=['STAFF'])
 @require_POST
 def update_order_status(request, order_id):
-    """API endpoint to update order status via AJAX."""
+    """API endpoint to update order status via AJAX.
+
+    The instant a delivery order is marked READY, it is auto-assigned to the
+    next online rider (if any) so it lands in the rider's incoming queue as
+    ready-for-delivery without waiting for the rider's dashboard to poll.
+    """
     try:
         data = json.loads(request.body)
         new_status = data.get('status', '').lower()
@@ -216,6 +231,12 @@ def update_order_status(request, order_id):
         order = Order.objects.get(id=order_id)
         order.status = new_status
         order.save()
+
+        if new_status == 'ready' and DeliveryRequest.objects.filter(order=order).exists():
+            # Fast-track: offer this (and any other waiting) delivery to the
+            # next online rider right now. Idempotent if the rider already has it.
+            from deliveries.views import expire_stale_requests
+            expire_stale_requests()
 
         return JsonResponse({'success': True, 'message': 'Status updated successfully'})
     except Order.DoesNotExist:

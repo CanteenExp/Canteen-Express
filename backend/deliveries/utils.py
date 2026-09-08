@@ -1,63 +1,22 @@
 import math
 
-from django.db.models import Count, Q, Case, When, Value, IntegerField
-from django.contrib.auth import get_user_model
+from django.db.models import Case, When, Value, IntegerField
 from django.utils import timezone
 
 from .models import DeliveryRequest
 
 
-def pick_next_available_rider(exclude_id=None):
-    """Round-robin: pick the online DELIVERY rider with the fewest active
-    deliveries (most idle) to receive the next order. Ties broken by the
-    earliest availability-update / earliest join (oldest first). Excludes an
-    optional rider id (used when rotating away from a declining rider).
-
-    Returns a CustomUser for a rider, or None if no online rider is available.
-    """
-    User = get_user_model()
-    MAX_ACTIVE = 3
-
-    online = User.objects.filter(
-        role='DELIVERY',
-        is_available=True,
-        account_status='active',
-    )
-    if exclude_id:
-        online = online.exclude(id=exclude_id)
-
-    # Annotate with the rider's current active (ACCEPTED) delivery count.
-    active_counts = (
-        DeliveryRequest.objects
-        .filter(status=DeliveryRequest.RequestStatus.ACCEPTED)
-        .values('rider_id')
-        .annotate(cnt=Count('id'))
-    )
-    count_map = {c['rider_id']: c['cnt'] for c in active_counts}
-
-    candidates = [
-        r for r in online
-        if count_map.get(r.id, 0) < MAX_ACTIVE
-    ]
-
-    if not candidates:
-        return None
-
-    # Sort by fewest active deliveries first, then oldest availability update /
-    # earliest registration (so riders who have been idle/online longest get
-    # the next order -- "first-in" fairness).
-    candidates.sort(key=lambda r: (count_map.get(r.id, 0),
-                                   r.availability_updated_at or r.date_joined))
-    return candidates[0]
-
-
 def pending_pool_for_rider(user):
-    """SEARCHING orders a rider may see, ordered so that orders auto-assigned to
-    THIS rider come first, then unassigned pool orders, then orders other riders
-    are deciding on."""
+    """SEARCHING deliveries visible to a rider -- every proposal in the shared
+    pool. There is no pre-assigned rider until one accepts: whoever taps Accept
+    first claims the order (atomic guard in accept_delivery).
+
+    Ordered FIFO by how long each order has been waiting so the queue stays
+    fair: the longest-waiting delivery is the one riders see first. pool_rank
+    still surfaces any legacy assigned_to offer to that rider first without
+    hiding the rest of the pool."""
     return (DeliveryRequest.objects
             .filter(status=DeliveryRequest.RequestStatus.SEARCHING)
-            .filter(Q(assigned_to=user) | Q(assigned_to__isnull=True))
             .annotate(
                 pool_rank=Case(
                     When(assigned_to=user, then=Value(0)),
@@ -66,64 +25,7 @@ def pending_pool_for_rider(user):
                     output_field=IntegerField(),
                 )
             )
-            .order_by('pool_rank', '-requested_at'))
-
-
-def assign_next_searching_order(rider):
-    """Auto-assign the oldest waiting (unassigned) SEARCHING order to a rider the
-    moment they come online, so a queued order never idles waiting for a manual
-    pick. Atomic (row-locked) so two riders going online at the exact same time
-    can never both grab the same order.
-
-    Returns the assigned DeliveryRequest, or None if nothing to hand out.
-    """
-    from django.db import transaction
-
-    if rider.role not in ('RIDER', 'DELIVERY'):
-        return None
-    if not getattr(rider, 'is_available', False) or rider.account_status != 'active':
-        return None
-
-    active_count = DeliveryRequest.objects.filter(
-        rider=rider, status=DeliveryRequest.RequestStatus.ACCEPTED
-    ).count()
-    if active_count >= 3:
-        return None
-
-    with transaction.atomic():
-        candidate = (DeliveryRequest.objects
-                     .select_for_update(skip_locked=True)
-                     .filter(status=DeliveryRequest.RequestStatus.SEARCHING,
-                             assigned_to__isnull=True)
-                     .order_by('requested_at')
-                     .first())
-        if candidate is None:
-            return None
-        candidate.assigned_to = rider
-        candidate.assigned_at = timezone.now()
-        candidate.save(update_fields=['assigned_to', 'assigned_at'])
-        return candidate
-
-
-def rotate_to_next_rider(delivery, exclude_id=None):
-    """Re-assign an unaccepted delivery to the next available rider in the
-    round-robin. Returns True if reassigned to someone, False if none left."""
-    from .models import DeliveryRequest
-
-    if delivery.status != DeliveryRequest.RequestStatus.SEARCHING:
-        return False
-
-    next_rider = pick_next_available_rider(exclude_id=exclude_id)
-    if next_rider is None:
-        delivery.assigned_to = None
-        delivery.assigned_at = None
-        delivery.save(update_fields=['assigned_to', 'assigned_at'])
-        return False
-
-    delivery.assigned_to = next_rider
-    delivery.assigned_at = timezone.now()
-    delivery.save(update_fields=['assigned_to', 'assigned_at'])
-    return True
+            .order_by('pool_rank', 'requested_at'))
 
 
 def _clean_amount(amount):

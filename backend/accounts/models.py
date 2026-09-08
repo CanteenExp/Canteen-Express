@@ -5,6 +5,10 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 
 class CustomUser(AbstractUser):
+    # A rider is only considered truly "online" if their rider dashboard
+    # (SSE stream) reported a heartbeat within this window.
+    RIDER_ONLINE_TIMEOUT = timedelta(seconds=90)
+
     ROLE_CHOICES = (
         ('STUDENT', 'Student'),
         ('FACULTY', 'Faculty'),
@@ -43,6 +47,17 @@ class CustomUser(AbstractUser):
         self.otp_created_at = timezone.now()
         self.save()
         return code
+
+    @property
+    def is_really_online(self):
+        """True only while the rider's dashboard is actually connected.
+
+        is_available is just the rider's GO/STOP intent; presence additionally
+        requires a fresh heartbeat (availability_updated_at) so staff dashboards
+        stop showing "Online · Ready" for riders who closed the app."""
+        if not self.is_available or self.availability_updated_at is None:
+            return False
+        return (timezone.now() - self.availability_updated_at) <= self.RIDER_ONLINE_TIMEOUT
 
     def is_otp_valid(self, input_code):
         # OTP is valid for 10 minutes

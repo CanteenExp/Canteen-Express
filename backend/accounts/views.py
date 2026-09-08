@@ -27,6 +27,19 @@ def is_strong_password(password):
 def landing_view(request):
     return render(request, 'accounts/landing.html')
 
+
+def access_denied_view(request):
+    """Shown when a logged-in user opens a page meant for a different role."""
+    user_role = getattr(request.user, 'role', '')
+    portal_url = None
+    if user_role in ('STAFF', 'ADMIN') or request.user.is_staff:
+        portal_url = 'canteen_menu:staff_dashboard'
+    elif user_role == 'DELIVERY':
+        portal_url = 'deliveries:dashboard'
+    elif user_role in ('STUDENT', 'FACULTY'):
+        portal_url = 'customer_portal:kiosk_menu'
+    return render(request, 'accounts/access_denied.html', {'portal_url': portal_url})
+
 # STEP 1: Faculty Location Check
 @ensure_csrf_cookie
 def faculty_location_view(request):

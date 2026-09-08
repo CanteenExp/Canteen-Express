@@ -175,19 +175,18 @@ def process_checkout(request):
 
             if is_delivery:
                 from deliveries.models import DeliveryRequest
-                from deliveries.utils import pick_next_available_rider
                 dest_lat = data.get('dest_lat')
                 dest_lng = data.get('dest_lng')
                 # Destination was already validated (inside campus) before the order was created.
-                # Round-robin: assign the new delivery to the next available rider
-                # right away so one specific rider is offered it first.
-                next_rider = pick_next_available_rider()
+                # Proposal-only: the request enters the shared SEARCHING pool
+                # (no pre-assigned rider); every online rider sees it and the
+                # first to Accept claims it.
                 DeliveryRequest.objects.create(
                     order=order,
                     delivery_location=delivery_location,
                     status=DeliveryRequest.RequestStatus.SEARCHING,
-                    assigned_to=next_rider,
-                    assigned_at=timezone.now() if next_rider else None,
+                    assigned_to=None,
+                    assigned_at=None,
                     dest_lat=dest_lat,
                     dest_lng=dest_lng,
                 )

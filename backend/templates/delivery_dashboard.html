@@ -232,7 +232,7 @@
                     <h3 class="text-xs font-black text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                         <i class="fa-solid fa-inbox text-orange-400"></i> Incoming Requests
                     </h3>
-                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider"><i class="fa-solid fa-clock mr-1 text-orange-400"></i>Auto-expires in 2 min</span>                </div>
+                    <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-wider"><i class="fa-solid fa-clock mr-1 text-orange-400"></i>Offers rotate if not accepted</span>                </div>
 
                 {% if active_deliveries_count >= 3 %}
                 <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-400 text-xs font-bold text-center">
@@ -304,7 +304,7 @@
 
                             <div class="pt-3 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap mt-auto">
                                 <div class="flex items-center gap-2 flex-wrap">
-                                     <button @click="openChat({{ d.id }}, '{{ d.order.order_number }}', '{% if d.order.customer %}{{ d.order.customer.get_full_name|default:d.order.customer.username|escapejs }}{% else %}Guest{% endif %}')" class="relative bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center gap-2 border border-white/10 active:scale-95">
+                                    <button @click="openChat({{ d.id }}, '{{ d.order.order_number }}', '{% if d.order.customer %}{{ d.order.customer.get_full_name|default:d.order.customer.username|escapejs }}{% else %}Guest{% endif %}')" class="relative bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center gap-2 border border-white/10 active:scale-95">
                                         <i class="fa-solid fa-comments text-green-400"></i> Chat
                                         <span x-show="(unread[{{ d.id }}] || 0) > 0"
                                               x-text="unread[{{ d.id }}] || 0"
