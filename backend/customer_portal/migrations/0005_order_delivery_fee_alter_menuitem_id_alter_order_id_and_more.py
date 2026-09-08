@@ -10,11 +10,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='order',
-            name='delivery_fee',
-            field=models.DecimalField(decimal_places=2, default=0, max_digits=10),
-        ),
         migrations.AlterField(
             model_name='menuitem',
             name='id',
