@@ -1,13 +1,14 @@
-from django.contrib import admin
-from django.urls import path, include
-from django.shortcuts import redirect
-from django.http import HttpResponse
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
+from django.http import HttpResponse
+from django.shortcuts import redirect
+from django.urls import include, path
+
 
 urlpatterns = [
     # Health Check for UptimeRobot / Keep-Alive
-    path('healthz/', lambda request: HttpResponse("OK")),
+    path('healthz/', lambda request: HttpResponse('OK')),
 
     # Redirect root URL to Accounts Landing (Role Selection)
     path('', lambda request: redirect('accounts:landing')),

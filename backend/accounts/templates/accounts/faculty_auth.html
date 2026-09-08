@@ -101,47 +101,43 @@
                 forgotOtpSent: false,
                 forgotOtpCountdown: 0,
                 forgotOtpTimer: null,
+                toastMessage: '',
+                toastType: 'success',
+                showToast: false,
+                triggerToast(msg, type = 'success') {
+                    this.toastMessage = msg;
+                    this.toastType = type;
+                    this.showToast = true;
+                    setTimeout(() => {
+                        this.showToast = false;
+                    }, 4000);
+                },
                 get passwordStrength() {
                     if (!this.password) return '';
-                    let score = 0;
-                    if (this.password.length >= 8) score++;
-                    if (this.password.length >= 10) score++;
-                    if (/[A-Z]/.test(this.password)) score++;
-                    if (/[a-z]/.test(this.password)) score++;
-                    if (/\d/.test(this.password)) score++;
-                    if (/[!@#$%^&*(),.?":{}|<>\-_=+]/.test(this.password)) score++;
-
-                    if (score <= 2) return 'Weak';
-                    if (score <= 4) return 'Medium';
-                    return 'Strong';
+                    if (this.password.length >= 8) return 'Strong';
+                    if (this.password.length >= 6) return 'Medium';
+                    return 'Weak';
                 },
                 get isPasswordStrong() {
-                    return this.passwordStrength === 'Strong' || this.passwordStrength === 'Medium';
+                    return this.password.length >= 6;
                 },
                 get forgotPasswordStrength() {
                     if (!this.forgotNewPassword) return '';
-                    let score = 0;
-                    if (this.forgotNewPassword.length >= 8) score++;
-                    if (this.forgotNewPassword.length >= 10) score++;
-                    if (/[A-Z]/.test(this.forgotNewPassword)) score++;
-                    if (/[a-z]/.test(this.forgotNewPassword)) score++;
-                    if (/\d/.test(this.forgotNewPassword)) score++;
-                    if (/[!@#$%^&*(),.?":{}|<>\-_=+]/.test(this.forgotNewPassword)) score++;
-                    if (score <= 2) return 'Weak';
-                    if (score <= 4) return 'Medium';
-                    return 'Strong';
+                    if (this.forgotNewPassword.length >= 8) return 'Strong';
+                    if (this.forgotNewPassword.length >= 6) return 'Medium';
+                    return 'Weak';
                 },
                 get isForgotPassStrong() {
-                    return this.forgotPasswordStrength === 'Strong' || this.forgotPasswordStrength === 'Medium';
+                    return this.forgotNewPassword.length >= 6;
                 },
                 getForgotOtp() {
                     if (this.forgotOtpCountdown > 0) return;
                     if (!this.forgotEmail || !this.forgotEmail.endsWith('@psu.palawan.edu.ph')) {
-                        alert('Please enter a valid institutional email ending in @psu.palawan.edu.ph first.');
+                        this.triggerToast('Please enter a valid institutional email ending in @psu.palawan.edu.ph first.', 'error');
                         return;
                     }
                     if (!this.forgotNewPassword || this.forgotNewPassword !== this.forgotConfirmPassword || !this.isForgotPassStrong) {
-                        alert('Please enter a valid, matching, and strong new password first.');
+                        this.triggerToast('Please enter a valid, matching, and strong new password first.', 'error');
                         return;
                     }
                     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -175,25 +171,25 @@
                                 name: "Faculty Member"
                             }, "g-YvGAsPmrHuPwtW9")
                             .then(() => {
-                                alert('Password reset OTP sent to ' + this.forgotEmail + ' via EmailJS!');
+                                this.triggerToast('Password reset OTP sent to ' + this.forgotEmail + ' via EmailJS!', 'success');
                                 this.forgotOtpSent = true;
                             })
                             .catch((err) => {
                                 console.error('EmailJS failed:', err);
-                                alert('Password Reset OTP for ' + this.forgotEmail + ': ' + otp + ' (Enter this code to confirm)');
+                                this.triggerToast('Password Reset OTP: ' + otp, 'info');
                                 this.forgotOtpSent = true;
                             });
                         } else {
-                            alert(data.error || 'Failed to initialize password reset OTP.');
+                            this.triggerToast(data.error || 'Failed to initialize password reset OTP.', 'error');
                         }
                     })
                     .catch(err => {
-                        alert('Network error initializing password reset.');
+                        this.triggerToast('Network error initializing password reset.', 'error');
                     });
                 },
                 submitPasswordReset() {
                     if (!this.forgotEmail || !this.forgotOtp || !this.forgotNewPassword) {
-                        alert('Please complete all fields and enter OTP.');
+                        this.triggerToast('Please complete all fields and enter OTP.', 'error');
                         return;
                     }
                     fetch('{% url "accounts:reset_password_confirm" %}', {
@@ -211,7 +207,7 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.success) {
-                            alert('Password reset successful! Please sign in with your new password.');
+                            this.triggerToast('Password reset successful! Please sign in with your new password.', 'success');
                             this.showForgotModal = false;
                             this.mode = 'login';
                             this.forgotEmail = '';
@@ -220,17 +216,17 @@
                             this.forgotOtp = '';
                             this.forgotOtpSent = false;
                         } else {
-                            alert(data.error || 'Failed to reset password.');
+                            this.triggerToast(data.error || 'Failed to reset password.', 'error');
                         }
                     })
                     .catch(err => {
-                        alert('Error submitting password reset.');
+                        this.triggerToast('Error submitting password reset.', 'error');
                     });
                 },
                 getOtp() {
                     if (this.otpCountdown > 0) return;
                     if (!this.signupEmail || !this.signupEmail.endsWith('@psu.palawan.edu.ph')) {
-                        alert('Please enter a valid institutional email ending in @psu.palawan.edu.ph first.');
+                        this.triggerToast('Please enter a valid institutional email ending in @psu.palawan.edu.ph first.', 'error');
                         return;
                     }
                     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -266,20 +262,20 @@
                                 name: "Faculty Member"
                             }, "g-YvGAsPmrHuPwtW9")
                             .then(() => {
-                                alert('OTP code sent successfully in real-time to ' + this.signupEmail + ' via EmailJS!');
+                                this.triggerToast('OTP code sent successfully in real-time to ' + this.signupEmail + ' via EmailJS!', 'success');
                                 this.showOtpModal = true;
                             })
                             .catch((err) => {
                                 console.error('EmailJS failed details:', err);
-                                alert('OTP Verification Code for ' + this.signupEmail + ': ' + otp + ' (Enter this code in the popup to verify)');
+                                this.triggerToast('OTP Verification Code: ' + otp, 'info');
                                 this.showOtpModal = true;
                             });
                         } else {
-                            alert(data.error || 'Failed to initialize OTP.');
+                            this.triggerToast(data.error || 'Failed to initialize OTP.', 'error');
                         }
                     })
                     .catch(err => {
-                        alert('Network error initializing OTP.');
+                        this.triggerToast('Network error initializing OTP.', 'error');
                     });
                 },
                 verifyOtp() {
@@ -296,13 +292,13 @@
                         if (data.success) {
                             this.otpVerified = true;
                             this.showOtpModal = false;
-                            alert('OTP Verified Successfully!');
+                            this.triggerToast('OTP Verified Successfully!', 'success');
                         } else {
-                            alert(data.error || 'Invalid OTP code.');
+                            this.triggerToast(data.error || 'Invalid OTP code.', 'error');
                         }
                     })
                     .catch(err => {
-                        alert('Error verifying OTP.');
+                        this.triggerToast('Error verifying OTP.', 'error');
                     });
                 },
                 lat: 9.77778,
@@ -712,5 +708,38 @@
             }
         }
     </script>
+
+    <!-- Custom In-Page Toast Notification -->
+    <div x-show="showToast"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-4"
+         class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-11/12 max-w-sm px-4 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-md"
+         :class="{
+            'bg-emerald-950/90 border-emerald-500/30 text-emerald-200': toastType === 'success',
+            'bg-rose-950/90 border-rose-500/30 text-rose-200': toastType === 'error',
+            'bg-blue-950/90 border-blue-500/30 text-blue-200': toastType === 'info'
+         }"
+         style="display: none;">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+             :class="{
+                'bg-emerald-500/20 text-emerald-400': toastType === 'success',
+                'bg-rose-500/20 text-rose-400': toastType === 'error',
+                'bg-blue-500/20 text-blue-400': toastType === 'info'
+             }">
+            <i class="fas" :class="{
+                'fa-check': toastType === 'success',
+                'fa-exclamation-triangle': toastType === 'error',
+                'fa-info-circle': toastType === 'info'
+            }"></i>
+        </div>
+        <div class="text-xs font-semibold flex-1" x-text="toastMessage"></div>
+        <button @click="showToast = false" class="text-white/60 hover:text-white p-1 cursor-pointer">
+            <i class="fas fa-times text-xs"></i>
+        </button>
+    </div>
 </body>
 </html>
