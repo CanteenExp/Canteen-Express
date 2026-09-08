@@ -27,11 +27,25 @@ class MenuItem(models.Model):
 
     @property
     def get_image_src(self):
+        import os
+        import urllib.parse
         if self.image:
             try:
-                return self.image.url
+                if self.image.storage.exists(self.image.name):
+                    return self.image.url
+                base_name = os.path.basename(self.image.name)
+                alt_name = os.path.join('menu_items', base_name.replace('_', ' '))
+                if self.image.storage.exists(alt_name):
+                    return self.image.storage.url(alt_name)
+                alt_name2 = os.path.join('menu_items', base_name.replace(' ', '_'))
+                if self.image.storage.exists(alt_name2):
+                    return self.image.storage.url(alt_name2)
             except Exception:
                 pass
         if self.image_url:
             return self.image_url
-        return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80"
+        try:
+            encoded_query = urllib.parse.quote(f"{self.name},food,dish,filipino food")
+            return f"https://loremflickr.com/600/400/{encoded_query}"
+        except Exception:
+            return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80"
