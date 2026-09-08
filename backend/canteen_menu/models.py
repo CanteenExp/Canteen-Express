@@ -31,18 +31,16 @@ class MenuItem(models.Model):
         import urllib.parse
         if self.image:
             try:
-                if self.image.storage.exists(self.image.name):
+                name = self.image.name
+                if self.image.storage.exists(name):
                     return self.image.url
-                base_name = os.path.basename(self.image.name)
-                alt_name = os.path.join('menu_items', base_name.replace('_', ' '))
-                if self.image.storage.exists(alt_name):
-                    return self.image.storage.url(alt_name)
-                alt_name2 = os.path.join('menu_items', base_name.replace(' ', '_'))
-                if self.image.storage.exists(alt_name2):
-                    return self.image.storage.url(alt_name2)
+                base_name = os.path.basename(name)
+                for alt in [os.path.join('menu_items', base_name.replace('_', ' ')), os.path.join('menu_items', base_name.replace(' ', '_'))]:
+                    if self.image.storage.exists(alt):
+                        return self.image.storage.url(alt)
             except Exception:
                 pass
-        if self.image_url:
+        if self.image_url and self.image_url.startswith('http'):
             return self.image_url
         try:
             encoded_query = urllib.parse.quote(f"{self.name},food,dish,filipino food")
