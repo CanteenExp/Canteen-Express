@@ -1,96 +1,89 @@
-# Canteen Express - Django Web Application & Setup Guide
+# Canteen Express - Django Web Application & PWA Suite
 
-Welcome to the **Canteen Express** project! A comprehensive Django web application designed for Canteen Ordering, Counter POS, Kitchen Display, Digital Queuing, and Campus Delivery.
-
----
-
-## Latest System Updates & Features
-- **Official Favicon Integration:**
-  - The official Canteen Express logo is linked as the browser favicon (`<link rel="icon" ... />`) across all web pages and templates in the system.
-- **Dark Theme Login & Portals with Light Mode:**
-  - The **Canteen Staff Portal** and **Delivery Personnel Portal** login pages feature a dark theme (`bg-brand-dark`), matching the exact brand color palette.
-  - The **Kiosk Menu** supports a seamless Light Mode / Dark Mode toggle, with ads/promo carousels properly excluded from color inversion so promotions retain their vibrant dark gradients and high-contrast readability.
-- **English Notifications & Alerts:**
-  - All pop-up notifications, alerts, form validations, and status messages on the Canteen Staff and Admin dashboards are in clear, standardized English.
-- **Smart Category-Based Customization:**
-  - In the Kiosk Menu, **Steamed Rice Portions** (₱15.00/serving) are available exclusively for **Rice Meals**, ensuring non-rice items (beverages, biscuits, meryenda) do not show unnecessary rice add-ons.
-- **Kitchen Display Kanban Board & Dashboards:**
-  - 3-column workflow: **Kiosk Accepted** (Walk-in Kiosk), **Delivery** (Campus Delivery), and **Orders Ready** (Orders finished and ready for pickup/dispatch).
-  - Robust null-safety handling for walk-in kiosk orders without registered customer accounts.
-- **Sales Reports & Analytics with Charts:**
-  - Interactive Chart.js bar graphs with filter tabs for **Daily (7 Days)**, **Weekly (4 Weeks)**, and **Monthly (6 Months)** sales reports and financial breakdown tables.
-- **Convenience Fee & Loyalty Points:**
-  - Automatically calculates convenience fees (**₱15 per ₱300 purchase block**) for campus deliveries and loyalty points for faculty and staff.
-- **Delivery Staff Management:**
-  - Staff & Admins can easily create delivery rider accounts with optional email auto-generation (`username@canteen.express`), phone numbers, and vehicle plate tracking.
+Welcome to the **Canteen Express** project! A comprehensive, enterprise-grade Django web application and Progressive Web App (PWA) suite designed for automated Canteen Ordering, Counter POS, Kitchen Display, Digital Queuing, and Campus Delivery.
 
 ---
 
-## Prerequisites
+## 📱 Progressive Web App (PWA) Support by Role
 
-Before starting, ensure you have the following installed on your computer:
+Canteen Express is fully optimized as a Progressive Web App across all user tiers, enabling offline caching, standalone app installation, and native-like performance:
 
-- **Python 3.10+**  
-  - Recommended: **Python 3.12**
+1. **Customer Student / Walk-in Kiosk (`manifest-kiosk.json`)**
+   - **Start URL:** `/kiosk/`
+   - **Theme:** Dark theme (`#121212`, accent `#f97316`)
+   - **Features:** Self-service kiosk ordering, guest/student ordering, QR/barcode queue slip generation, smart category-based customization (e.g., Steamed Rice add-ons exclusively for Rice Meals).
+2. **Customer Faculty / Staff (`manifest-faculty.json`)**
+   - **Start URL:** `/accounts/dashboard/`
+   - **Theme:** Dark theme (`#121212`, accent `#f97316`)
+   - **Features:** Authenticated faculty/staff ordering (`@psu.palawan.edu.ph`), loyalty points accumulation, order history, and delivery tracking.
+3. **Canteen Staff / Admin Portal (`manifest-staff.json`)**
+   - **Start URL:** `/canteen/staff/`
+   - **Theme:** Light/Brand dark (`#f97316` theme)
+   - **Features:** Counter POS screen (`counter_pos.html`), barcode & queue slip scanning API (`/canteen/api/process-barcode/`), menu item management, delivery rider creation, and comprehensive sales reports.
+4. **Delivery Personnel / Rider Hub (`manifest-rider.json`)**
+   - **Start URL:** `/deliveries/dashboard/`
+   - **Theme:** Dark brand theme (`#08080b`, accent `#FF6117`)
+   - **Features:** Real-time delivery dispatch, accept/update delivery status, live GPS tracking (`navigator.geolocation.watchPosition`), and real-time customer chat (`DeliveryMessage`).
+
+---
+
+## 🚀 Core System Modules & Features
+
+- **Kitchen Display Kanban Board (`kitchen_display`)**
+  - Real-time 3-column workflow: **Kiosk Accepted** (Walk-in Kiosk), **Delivery** (Campus Delivery), and **Orders Ready** (Ready for pickup/dispatch).
+  - AJAX status updates (`/kitchen/order/<id>/update-status/`) with robust null-safety for walk-in kiosk orders.
+- **Campus Geofence Enforcement (`deliveries`)**
+  - Official campus center: `9.77778, 118.73333` (PSU Tiniguiban Heights).
+  - Strict radius check: `0.8` km (`deliveries/utils.py`). Out-of-campus delivery orders or missing destination coordinates are automatically rejected at checkout with HTTP `422 Unprocessable Entity`.
+- **Sales Reports & Analytics (`analytics_reports`, `admin_dashboard`)**
+  - Interactive Chart.js bar graphs with filter tabs for **Daily (7 Days)**, **Weekly (4 Weeks)**, and **Monthly (6 Months)** sales performance and financial breakdown tables.
+- **Convenience Fee & Loyalty Points**
+  - Automatically calculates convenience fees (**₱15 per ₱300 purchase block**) for campus deliveries and loyalty points for faculty and staff accounts.
+- **Dark Map Integration**
+  - Leaflet maps use free OpenStreetMap tiles with CSS invert filters on `.leaflet-tile-pane` for seamless dark-mode map rendering without paid API keys.
+
+---
+
+## 📋 Prerequisites
+
+Ensure you have the following installed on your system:
+- **Python 3.10+** (Recommended: **Python 3.12**)
 - **Git**
-- **VS Code** or any code editor
 
 ---
 
-## Quick Start
+## 🛠️ Quick Start Guide
 
 ### 1. Clone the Repository & Navigate to Backend
-
-Open your **Terminal / PowerShell** and run:
-
 ```bash
 git clone https://github.com/CanteenExp/Canteen-Express.git
 cd "Canteen-Express/backend"
 ```
 
----
-
 ### 2. Create and Activate Virtual Environment
-
 #### Windows - PowerShell
 ```powershell
 python -m venv venv
-.\venv\Scripts\Activate
+.\venv\Scripts\Activate.ps1
 ```
-
-#### Windows - Command Prompt (CMD)
-```cmd
-python -m venv venv
-venv\Scripts\activate.bat
-```
-
 #### Mac / Linux
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
----
-
 ### 3. Install Dependencies
-
-Install all required packages using:
-
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-### 4. Setup Environment Variables
-
-Create a `.env` file inside the `backend/` folder alongside `manage.py`:
-
+### 4. Configure Environment Variables (`.env`)
+Create a `.env` file directly inside the `backend/` folder alongside `manage.py`:
 ```env
 SECRET_KEY="django-insecure-your-secret-key-here"
 DEBUG=True
 
-# Neon Cloud Database Credentials
+# Neon Cloud Database Credentials (falls back to local SQLite if absent or unreachable)
 DB_NAME="neondb"
 DB_USER="neondb_owner"
 DB_PASSWORD="<YOUR_DB_PASSWORD>"
@@ -98,62 +91,43 @@ DB_HOST="ep-shy-heart-ayghwl06-pooler.c-5.us-east-2.aws.neon.tech"
 DB_PORT="5432"
 ```
 
----
-
 ### 5. Run Database Migrations
-
-Ensure database tables are up to date:
-
 ```bash
 python manage.py migrate
 ```
 
----
-
-### 6. Create Admin Account (Optional)
-
-If you need access to the **Django Admin Dashboard**, create a superuser:
-
+### 6. Create Superuser (Optional)
 ```bash
 python manage.py createsuperuser
 ```
 
----
-
 ### 7. Run Development Server
-
-Start the Django development server:
-
 ```bash
 python manage.py runserver
 ```
-
-Open in your browser:
-
-```text
-http://127.0.0.1:8000/
-```
+Access the application in your browser at: `http://127.0.0.1:8000/`
 
 ---
 
-## Common Commands & Order Reset
+## 🧪 Testing & Common Commands
 
-| Command | Purpose |
-|---|---|
-| `python manage.py runserver` | Start development server |
-| `python manage.py makemigrations` | Create migrations from model changes |
-| `python manage.py migrate` | Apply migrations |
-| `python manage.py createsuperuser` | Create admin account |
-| `python manage.py shell` | Open Django interactive shell |
-| `pip install -r requirements.txt` | Install project dependencies |
+Always run Django tests inside the `backend/` directory with `--keepdb` to avoid slow/flaky Neon Cloud PostgreSQL test DB recreation prompts:
 
-### Reset / Clear All Orders (Testing Command)
-To reset or clear all orders in the database for testing:
-1. Open the Django shell:
+```bash
+# Run all tests (preserving test database)
+python manage.py test --keepdb
+
+# Run specific app tests
+python manage.py test deliveries customer_portal
+```
+
+### Reset / Clear All Orders (Testing Utility)
+To clear all orders and order items in the database for testing:
+1. Open Django interactive shell:
    ```bash
    python manage.py shell
    ```
-2. Run the following Python commands:
+2. Run:
    ```python
    from customer_portal.models import Order, OrderItem
    OrderItem.objects.all().delete()
@@ -163,44 +137,44 @@ To reset or clear all orders in the database for testing:
 
 ---
 
-## System APIs & Endpoints
-
-The system includes key API endpoints for real-time POS scanning, kitchen board updates, and delivery tracking:
+## 🔌 Key API Endpoints
 
 1. **Barcode & Queue Slip Processing API (`canteen_menu`)**
    - **Endpoint:** `/canteen/api/process-barcode/`
    - **Method:** `POST`
-   - **Payload:** `{"queue_slip": "#CE-1001"}` (or scanned barcode string)
-   - **Purpose:** Searches the database for the kiosk queue slip, converts its status from `unpaid` to `pending` (marked as paid), and confirms counter payment.
-
+   - **Payload:** `{"queue_slip": "#CE-1001"}`
+   - **Purpose:** Converts queue slip status from `unpaid` to `pending` (marks order as paid at the counter POS).
 2. **Kitchen Order Status Update API (`kitchen_display`)**
    - **Endpoint:** `/kitchen/order/<int:order_id>/update-status/`
    - **Method:** `POST`
    - **Payload:** `{"status": "ready"}` or `{"status": "completed"}`
-   - **Purpose:** Real-time AJAX endpoint to update order status on the kitchen board (Kiosk Accepted/Delivery -> Orders Ready -> Completed).
-
+   - **Purpose:** Updates order workflow status on the kitchen Kanban board in real time.
 3. **Customer Kiosk & Ordering APIs (`customer_portal`)**
-   - **Endpoint:** `/kiosk/` and associated menu/cart endpoints.
+   - **Endpoint:** `/kiosk/`
    - **Method:** `GET`, `POST`
-   - **Purpose:** Retrieves daily menu items, manages carts, and processes new kiosk or delivery orders generating queue slips and QR/barcodes.
-
+   - **Purpose:** Manages kiosk menu items, cart sessions, and order checkout with geofence validation.
 4. **Delivery & Live Chat APIs (`deliveries`)**
    - **Endpoints:** `/deliveries/...`
    - **Method:** `GET`, `POST`
-   - **Purpose:** Allows delivery riders to accept delivery requests, update GPS/status, and chat in real time with faculty/staff customers.
+   - **Purpose:** Rider delivery assignment, GPS coordinate updates (`watchPosition`), and real-time messaging (`DeliveryMessage`).
 
 ---
 
-## Backend Structure
+## 📂 Project Directory Structure
 
 ```text
-CANTEEN EXPRESS/
+CANTEEN-EXPRESS/
 │
 ├── backend/
 │   ├── manage.py
 │   ├── .env
 │   ├── requirements.txt
 │   ├── static/
+│   │   ├── sw.js
+│   │   ├── manifest-kiosk.json
+│   │   ├── manifest-faculty.json
+│   │   ├── manifest-staff.json
+│   │   └── manifest-rider.json
 │   ├── templates/
 │   ├── config/
 │   ├── accounts/
@@ -220,24 +194,9 @@ CANTEEN EXPRESS/
 
 ---
 
-## Troubleshooting
+## 💡 Troubleshooting & Notes
 
-### `ModuleNotFoundError`
-Ensure your virtual environment is activated and dependencies are installed:
-```powershell
-.\venv\Scripts\Activate
-pip install -r requirements.txt
-```
-
-### Database Connection Error
-Check your `.env` file to ensure `DB_HOST`, `DB_USER`, and `DB_PASSWORD` are correct. If no `.env` is present, it will fall back to local SQLite (`db.sqlite3`).
-
----
-
-## Ready to Develop!
-
-```text
-http://127.0.0.1:8000/
-```
+- **Windows CP1252 Encoding Error:** Avoid complex Unicode emojis in backend print statements and management commands; use FontAwesome icons in HTML templates instead.
+- **Database Fallback:** If the `.env` file is missing or Neon Cloud PostgreSQL is unreachable, the system automatically falls back to local SQLite (`backend/db.sqlite3`).
 
 **Happy coding, team!**

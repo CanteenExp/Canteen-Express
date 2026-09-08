@@ -7,7 +7,7 @@
   "theme_color": "#f97316",
   "icons": [
     {
-      "src": "/static/customer_portal/images/canteen-express-logo.png",
+      "src": "/static/Student.png",
       "sizes": "192x192 512x512",
       "type": "image/png"
     }
