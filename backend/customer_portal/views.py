@@ -100,9 +100,9 @@ def process_checkout(request):
             from deliveries.utils import is_within_campus, delivery_fee_for_order
             dest_lat = data.get('dest_lat')
             dest_lng = data.get('dest_lng')
-            # TEMPORARY: campus geofence disabled so the owner can QA the full
-            # order flow while off-campus. REVERT before going live.
-            if False and not is_within_campus(dest_lat, dest_lng):
+            from django.conf import settings
+            enforce_geofence = getattr(settings, 'ENFORCE_GEOFENCE', True)
+            if enforce_geofence and not is_within_campus(dest_lat, dest_lng):
                 return JsonResponse({
                     'success': False,
                     'message': 'Delivery is only available within the Palawan State University campus. Please make sure your location is inside the campus and try again.'

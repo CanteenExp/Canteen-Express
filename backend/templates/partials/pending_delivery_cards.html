@@ -7,7 +7,7 @@
                 <h4 class="text-base font-black text-white mt-0.5"><i class="fa-solid fa-location-dot text-orange-400 mr-1"></i> {{ d.delivery_location }}</h4>
                 <p class="text-[11px] text-zinc-400 flex items-center gap-1.5 mt-1">
                     <i class="fa-solid fa-user-tie text-[9px] text-orange-400/70"></i>
-                    Customer: <span class="font-bold text-white">{{ d.order.customer.get_full_name|default:d.order.customer.username|default:'Guest' }}</span>
+                    Customer: <span class="font-bold text-white">{% if d.order.customer %}{{ d.order.customer.get_full_name|default:d.order.customer.username }}{% else %}Guest{% endif %}</span>
                 </p>
             </button>
             {% if d.assigned_to == request.user %}

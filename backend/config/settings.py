@@ -80,38 +80,28 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# Database
-use_sqlite = os.getenv('USE_SQLITE', 'False').lower() == 'true'
-
-if use_sqlite:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
+# Database (Strict Supabase PostgreSQL + SQLite backup source)
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME', 'postgres'),
+        'USER': os.getenv('DB_USER', 'postgres.hchqdkuijbpihraagetz'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'dmo8k8cwArgFlIAL'),
+        'HOST': os.getenv('DB_HOST', 'aws-0-ap-southeast-1.pooler.supabase.com'),
+        'PORT': os.getenv('DB_PORT', '6543'),
+        'CONN_MAX_AGE': 600,
+        'OPTIONS': {
+            'sslmode': 'require',
+            'connect_timeout': 5,
+        },
+    },
+    'sqlite_backup': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
-else:
-    db_host = os.getenv('DB_HOST', 'ep-shy-heart-ayghwl06-pooler.c-5.us-east-2.aws.neon.tech')
-    db_name = os.getenv('DB_NAME', 'neondb')
-    db_user = os.getenv('DB_USER', 'neondb_owner')
-    db_password = os.getenv('DB_PASSWORD')
-    db_port = os.getenv('DB_PORT', '5432')
+}
 
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': db_name,
-            'USER': db_user,
-            'PASSWORD': db_password,
-            'HOST': db_host,
-            'PORT': db_port,
-            'CONN_MAX_AGE': 600,
-            'OPTIONS': {
-                'sslmode': 'require',
-                'connect_timeout': 5,
-            },
-        }
-    }
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Password validation
@@ -168,3 +158,5 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.loca.lt',
     'https://*.onrender.com',
 ]
+
+ENFORCE_GEOFENCE = os.getenv('ENFORCE_GEOFENCE', 'True').lower() == 'true'

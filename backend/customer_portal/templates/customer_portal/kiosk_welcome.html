@@ -290,7 +290,7 @@
             <div class="grid grid-cols-2 gap-3 relative z-10 pt-1">
                 
                 <!-- Student / Walk-In -->
-                <a href="{% url 'customer_portal:kiosk_menu' %}?role=student" class="aspect-square flex flex-col items-center justify-between p-4 rounded-[24px] bg-gradient-to-b from-white/[0.12] to-white/[0.04] hover:from-brand-orange/35 hover:to-brand-orange/10 border border-white/15 hover:border-brand-orange shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-95 group relative overflow-hidden backdrop-blur-md">
+                <a href="{% url 'customer_portal:kiosk_menu' %}?role=student" onclick="showLogoLoading(event, this.href)" class="aspect-square flex flex-col items-center justify-between p-4 rounded-[24px] bg-gradient-to-b from-white/[0.12] to-white/[0.04] hover:from-brand-orange/35 hover:to-brand-orange/10 border border-white/15 hover:border-brand-orange shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-95 group relative overflow-hidden backdrop-blur-md">
                     <div class="w-12 h-12 rounded-xl bg-brand-orange/20 border border-brand-orange/40 text-brand-orange flex items-center justify-center text-xl group-hover:bg-brand-orange group-hover:text-white transition-all duration-300 mt-1">
                         <i class="fa-solid fa-user-graduate"></i>
                     </div>
@@ -307,7 +307,7 @@
                 </a>
 
                 <!-- Faculty & Staff -->
-                <a href="{% url 'accounts:faculty_auth' %}" class="aspect-square flex flex-col items-center justify-between p-4 rounded-[24px] bg-gradient-to-b from-white/[0.12] to-white/[0.04] hover:from-brand-orange/35 hover:to-brand-orange/10 border border-white/15 hover:border-brand-orange shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-95 group relative overflow-hidden backdrop-blur-md">
+                <a href="{% url 'accounts:faculty_auth' %}" onclick="showLogoLoading(event, this.href)" class="aspect-square flex flex-col items-center justify-between p-4 rounded-[24px] bg-gradient-to-b from-white/[0.12] to-white/[0.04] hover:from-brand-orange/35 hover:to-brand-orange/10 border border-white/15 hover:border-brand-orange shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-95 group relative overflow-hidden backdrop-blur-md">
                     <div class="w-12 h-12 rounded-xl bg-brand-orange/20 border border-brand-orange/40 text-brand-orange flex items-center justify-center text-xl group-hover:bg-brand-orange group-hover:text-white transition-all duration-300 mt-1">
                         <i class="fa-solid fa-id-badge"></i>
                     </div>
@@ -394,7 +394,7 @@
             setTimeout(() => { overlay.classList.remove('opacity-0'); }, 10);
             setTimeout(() => {
                 window.location.href = targetUrl;
-            }, 1000);
+            }, 200);
         }
     </script>
 </body>

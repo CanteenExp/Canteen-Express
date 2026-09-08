@@ -6,7 +6,6 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('customer_portal', '0005_order_delivery_fee'),
         ('customer_portal', '0005_order_delivery_fee_alter_menuitem_id_alter_order_id_and_more'),
     ]
 

@@ -6,7 +6,6 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('deliveries', '0007_deliverymessage_is_read_deliveryrequest_dest_lat_and_more'),
         ('deliveries', '0011_deliveryrequest_assigned_at'),
     ]
 

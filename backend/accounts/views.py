@@ -141,14 +141,12 @@ def faculty_dashboard_view(request, token=None):
     categories = Category.objects.all()
     
     email = request.session.get('faculty_email', '') or getattr(request.user, 'email', '')
-    if email:
-        local_part = email.split('@')[0]
-        name_parts = local_part.replace('.', ' ').replace('_', ' ').split()
-        faculty_display_name = ' '.join([p.capitalize() for p in name_parts])
-    elif request.user.is_authenticated and request.user.first_name:
-        faculty_display_name = request.user.first_name
+    if request.user.is_authenticated and request.user.username:
+        faculty_display_name = request.user.username
+    elif email:
+        faculty_display_name = email.split('@')[0]
     else:
-        faculty_display_name = 'Professor'
+        faculty_display_name = 'User'
 
     formatted_menu = []
     for item in menu_items:
