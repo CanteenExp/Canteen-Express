@@ -11,11 +11,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AddField(
-            model_name='deliverymessage',
-            name='is_read',
-            field=models.BooleanField(default=False),
-        ),
-        migrations.AddField(
             model_name='deliveryrequest',
             name='dest_lat',
             field=models.FloatField(blank=True, null=True),
@@ -23,21 +18,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='deliveryrequest',
             name='dest_lng',
-            field=models.FloatField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='deliveryrequest',
-            name='location_updated_at',
-            field=models.DateTimeField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='deliveryrequest',
-            name='rider_lat',
-            field=models.FloatField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='deliveryrequest',
-            name='rider_lng',
             field=models.FloatField(blank=True, null=True),
         ),
     ]

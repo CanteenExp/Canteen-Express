@@ -2,7 +2,6 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.utils import timezone
 from django.http import JsonResponse, StreamingHttpResponse
-from django.db import models
 import json
 import time
 from datetime import timedelta
@@ -10,7 +9,8 @@ from accounts.decorators import role_required
 from .models import DeliveryRequest, DeliveryMessage, RiderLocationPoint
 from .utils import haversine_km, distance_from_points, compute_speed_kmh, compute_bearing, is_within_campus
 
-REQUEST_TIMEOUT_MINUTES = 2
+# How long a delivery waits as a proposal with NO online rider before timing out.
+UNASSIGNED_TIMEOUT_MINUTES = 5
 
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
@@ -30,10 +30,8 @@ def delivery_dashboard(request, token=None):
         return redirect(redirect_url)
     expire_stale_requests()
 
-    # Incoming pool: only orders assigned to THIS rider show up (round-robin).
-    # Orders with no assignment (no online riders / rotation exhausted) are shown
-    # to everyone so they are not stuck invisible. A rider's own assigned orders
-    # are always pushed to the top of the list.
+    # Incoming pool: every SEARCHING proposal in the shared pool. Nothing is
+    # pre-assigned -- whichever online rider accepts first claims the order.
     from .utils import pending_pool_for_rider
     pending_deliveries = pending_pool_for_rider(request.user)
 
@@ -124,17 +122,17 @@ def toggle_availability(request):
     user.availability_updated_at = timezone.now()
     user.save(update_fields=['is_available', 'availability_updated_at'])
 
-    # The instant a rider goes ONLINE, hand them the oldest waiting order so it
-    # never sits idle -- no manual hunting for new requests.
-    from .utils import assign_next_searching_order
-    assignment = None
+    # Coming online only makes the rider part of the pool -- proposals (the
+    # shared SEARCHING queue) are never handed to a specific rider in advance.
+    # The sweep still runs so any ready delivery that timed out revives for
+    # everyone to see.
     if user.is_available and not was_available:
-        assignment = assign_next_searching_order(user)
+        expire_stale_requests()
 
     return JsonResponse({
         'success': True,
         'is_available': user.is_available,
-        'assigned_order': assignment.order.order_number if assignment else None,
+        'assigned_order': None,
     })
 
 
@@ -152,12 +150,6 @@ def accept_delivery(request, delivery_id):
     with transaction.atomic():
         delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
 
-        # Round-robin: only the rider this order is assigned to may accept it.
-        if delivery.status == DeliveryRequest.RequestStatus.SEARCHING and delivery.assigned_to is not None:
-            if delivery.assigned_to != request.user:
-                messages.error(request, 'This request is assigned to another rider.')
-                return redirect('deliveries:dashboard')
-
         active_count = DeliveryRequest.objects.filter(
             rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED
         ).count()
@@ -173,8 +165,9 @@ def accept_delivery(request, delivery_id):
             delivery.save()
 
             order = delivery.order
-            order.status = 'pending'
-            order.save()
+            if order.status != 'ready':
+                order.status = 'pending'
+                order.save()
             messages.success(request, f'Delivery {delivery.order.order_number} accepted!')
 
     return redirect('deliveries:dashboard')
@@ -183,18 +176,16 @@ def accept_delivery(request, delivery_id):
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
 def reject_delivery(request, delivery_id):
     from django.db import transaction
-    from .utils import rotate_to_next_rider
 
-    # Only the assigned rider (or staff) can reject; rotating moves the order
-    # to the next rider in the round-robin instead of making it invisible.
+    # Under the proposal-only model nothing is pre-assigned; rejecting just
+    # drops any stale "offered" rider so the order stays visible to everyone
+    # in the shared pool. Staff can always dismiss a proposal.
     with transaction.atomic():
         delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
-        if delivery.status == DeliveryRequest.RequestStatus.SEARCHING and (
-            delivery.assigned_to == request.user or request.user.role in ('STAFF', 'ADMIN')
-        ):
-            # If a next rider is available, re-assign; otherwise return to a
-            # general (unassigned) pool so it is not stuck.
-            rotate_to_next_rider(delivery, exclude_id=request.user.id if delivery.assigned_to == request.user else None)
+        if delivery.status == DeliveryRequest.RequestStatus.SEARCHING:
+            delivery.assigned_to = None
+            delivery.assigned_at = None
+            delivery.save(update_fields=['assigned_to', 'assigned_at'])
 
     return redirect('deliveries:dashboard')
 
@@ -219,53 +210,78 @@ def complete_delivery(request, delivery_id):
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
 def cancel_delivery(request, delivery_id):
     from django.db import transaction
-    from .utils import rotate_to_next_rider
 
-    # Releasing an accepted delivery returns it to the pool and reassigns it to
-    # the next rider in the round-robin (or back to a general pool if none).
+    # Releasing an accepted delivery returns it to the shared pool as a fresh
+    # proposal for every online rider (no pre-assignment to a specific rider).
     with transaction.atomic():
         delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id, rider=request.user)
         if delivery.status == DeliveryRequest.RequestStatus.ACCEPTED:
             delivery.status = DeliveryRequest.RequestStatus.SEARCHING
             delivery.rider = None
+            delivery.assigned_to = None
+            delivery.assigned_at = None
             delivery.accepted_at = None
             delivery.save()
 
             order = delivery.order
-            order.status = 'pending'
-            order.save()
+            if order.status != 'ready':
+                order.status = 'pending'
+                order.save()
 
-            rotate_to_next_rider(delivery, exclude_id=request.user.id)
     return redirect('deliveries:dashboard')
 
 
 def expire_stale_requests():
-    from .utils import pick_next_available_rider
-    cutoff = timezone.now() - timedelta(minutes=REQUEST_TIMEOUT_MINUTES)
-    # Each rider gets a fresh offer window measured from their assignment time
-    # (assigned_at) so rotating to a new rider doesn't instantly expire the order;
-    # orders never accepted by anyone fall back to their request time.
-    from django.db.models import Q
-    expired = DeliveryRequest.objects.filter(
+    """Keep the search phase honest under a PROPOSE-ONLY model.
+
+    A SEARCHING delivery is a *proposal* displayed to every online rider; it is
+    never assigned to a specific rider until one taps Accept. So:
+
+    0) REVIVE: a delivery whose food is READY but that timed out while no rider
+       was online comes back to life the moment any rider shows up -- ready
+       meals never stay stranded. The fresh clock gives it a full search window.
+    1) PROPOSE-ONLY: sweep away any legacy pre-assigned offer on a SEARCHING
+       order so nothing reads as "assigned" before it is actually accepted.
+    2) PRUNE: only a true orphan (a proposal nobody could accept because NO rider
+       is online for a long while) is dropped to TIMEOUT. While riders are
+       online the proposal simply stays -- whoever accepts first wins.
+    """
+    now = timezone.now()
+
+    # 0) REVIVE ready deliveries that timed out while no rider was around.
+    DeliveryRequest.objects.filter(
+        status=DeliveryRequest.RequestStatus.TIMEOUT,
+        order__status__in=['ready', 'preparing'],
+    ).update(
         status=DeliveryRequest.RequestStatus.SEARCHING,
-    ).filter(
-        Q(assigned_at__lte=cutoff) | (Q(assigned_at__isnull=True) & Q(requested_at__lte=cutoff))
+        requested_at=now,
+        assigned_to=None,
+        assigned_at=None,
     )
-    if not expired.exists():
-        return
-    for delivery in expired:
-        # If the assigned rider never accepted in time, try to rotate to the
-        # next available rider before giving up.
-        next_rider = pick_next_available_rider(
-            exclude_id=delivery.assigned_to_id
-        )
-        if next_rider is not None and delivery.assigned_to != next_rider:
-            delivery.assigned_to = next_rider
-            delivery.assigned_at = timezone.now()
-            delivery.save(update_fields=['assigned_to', 'assigned_at'])
-        elif next_rider is None:
-            delivery.status = DeliveryRequest.RequestStatus.TIMEOUT
-            delivery.save(update_fields=['status'])
+
+    # 1) Proposal-only: no pre-assigned rider until one accepts.
+    DeliveryRequest.objects.filter(
+        status=DeliveryRequest.RequestStatus.SEARCHING,
+        assigned_to__isnull=False,
+    ).update(assigned_to=None, assigned_at=None)
+
+    # 2) True orphans only: no rider online at all for a while.
+    from django.contrib.auth import get_user_model
+    from accounts.models import CustomUser
+    User = get_user_model()
+    any_online = User.objects.filter(
+        role__in=['RIDER', 'DELIVERY'],
+        is_available=True,
+        account_status='active',
+        availability_updated_at__gte=now - CustomUser.RIDER_ONLINE_TIMEOUT,
+    ).exists()
+    if not any_online:
+        orphan_cutoff = now - timedelta(minutes=UNASSIGNED_TIMEOUT_MINUTES)
+        DeliveryRequest.objects.filter(
+            status=DeliveryRequest.RequestStatus.SEARCHING,
+            assigned_to__isnull=True,
+            requested_at__lte=orphan_cutoff,
+        ).update(status=DeliveryRequest.RequestStatus.TIMEOUT)
 
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
@@ -321,12 +337,9 @@ def send_delivery_message(request, delivery_id):
 def pool_status(request):
     """Lightweight status used by the dashboard to live-refresh the incoming pool."""
     expire_stale_requests()
-    # Incoming pool: orders assigned to THIS rider, plus unassigned fallback.
-    pending_ids = list(DeliveryRequest.objects.filter(
-        status=DeliveryRequest.RequestStatus.SEARCHING
-    ).filter(
-        models.Q(assigned_to=request.user) | models.Q(assigned_to__isnull=True)
-    ).values_list('id', flat=True))
+    # Incoming pool: every SEARCHING order, visible to all online riders.
+    from .utils import pending_pool_for_rider
+    pending_ids = list(pending_pool_for_rider(request.user).values_list('id', flat=True))
 
     active_ids = list(DeliveryRequest.objects.filter(
         rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED
@@ -551,18 +564,30 @@ def rider_live_stream(request):
         last_hash = None
         last_chat_hash = None
         last_expire = 0.0
-        # Fresh dashboard connection (page load / reconnect): instantly assign
-        # the oldest unassigned order to this rider instead of making them hunt.
-        from .utils import assign_next_searching_order
-        assign_next_searching_order(request.user)
+        last_heartbeat = 0.0
+        # Proposal-only pool: nothing is pre-assigned to this rider. The stream
+        # just reports the shared SEARCHING queue; accepting happens in
+        # accept_delivery, not automatically.
         while True:
             try:
-                # Throttle the timeout-expiry writes (they only matter on a ~5-min
-                # cadence) so the real-time read loop stays light on the DB.
+                # Throttle the assignment/expiry writes (they only matter on a
+                # short cadence) so the real-time read loop stays light on the DB.
                 now = time.time()
-                if now - last_expire >= 30:
+                if now - last_expire >= 10:
                     expire_stale_requests()
                     last_expire = now
+
+                # Presence heartbeat: while this SSE stream is alive the rider is
+                # genuinely "online". A fresh timestamp keeps is_really_online True
+                # on staff dashboards; when the connection drops, no more
+                # heartbeats arrive and the rider drops back to Offline within
+                # RIDER_ONLINE_TIMEOUT.
+                if now - last_heartbeat >= 30:
+                    last_heartbeat = now
+                    from django.contrib.auth import get_user_model
+                    get_user_model().objects.filter(
+                        pk=request.user.pk, is_available=True
+                    ).update(availability_updated_at=timezone.now())
 
                 pending_ids = list(pending_pool_for_rider(request.user).values_list('id', flat=True))
 
@@ -710,13 +735,19 @@ def staff_dispatch_stream(request):
     created, accepted, or delivered -- no page reload, no blind 5s polling.
     """
     import hashlib
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
 
     def dispatch_map(d):
+        # A rider is 'offered' an order (assigned_to) before they accept it
+        # (rider). Show whichever applies so the dispatch table never reads
+        # "Unassigned" while an online rider already has the offer.
+        rider = d.rider or d.assigned_to
         return {
             'id': d.id,
             'order_number': d.order.order_number if d.order else '—',
             'location': d.delivery_location,
-            'rider': d.rider.get_full_name() if (d.rider and d.rider.get_full_name()) else (d.rider.username if d.rider else 'Unassigned'),
+            'rider': rider.get_full_name() if (rider and rider.get_full_name()) else (rider.username if rider else 'Unassigned'),
             'status': d.status,
         }
 
@@ -725,7 +756,23 @@ def staff_dispatch_stream(request):
         while True:
             try:
                 requests = DeliveryRequest.objects.all().order_by('-requested_at')[:20]
-                payload = {'success': True, 'dispatches': [dispatch_map(d) for d in requests]}
+                # Live rider availability so the staff portal always shows the
+                # true "online = ready for assignment" status, not the account
+                # status.
+                riders = User.objects.filter(role__in=['RIDER', 'DELIVERY'])
+                payload = {
+                    'success': True,
+                    'dispatches': [dispatch_map(d) for d in requests],
+                    'riders': [{
+                        'id': r.id,
+                        'username': r.username,
+                        'name': r.get_full_name() or r.username,
+                        'is_available': r.is_available,
+                        'online': r.is_really_online,
+                        'is_active': r.is_active,
+                        'account_status': r.account_status,
+                    } for r in riders],
+                }
                 body = json.dumps(payload)
                 digest = hashlib.md5(body.encode('utf-8')).hexdigest()
                 if digest != last_hash:

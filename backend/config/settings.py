@@ -61,6 +61,11 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 
+# Role-aware post-login fallback (the dedicated role login views redirect explicitly,
+# this only guards the generic /accounts/login/ page from dumping users on a dead URL).
+LOGIN_REDIRECT_URL = 'accounts:landing'
+LOGIN_URL = 'accounts:staff_login'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

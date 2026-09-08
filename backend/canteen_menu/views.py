@@ -271,8 +271,8 @@ def staff_dashboard(request, token=None):
     recent_orders = Order.objects.exclude(status='completed').exclude(status='unpaid').order_by('-created_at')[:5]
     menu_items = MenuItem.objects.all().order_by('category__name', 'name')
     categories = Category.objects.all().order_by('name')
-    users_list = User.objects.exclude(role='DELIVERY').order_by('-date_joined')[:30] if hasattr(User, 'date_joined') else User.objects.exclude(role='DELIVERY')[:30]
-    delivery_staff_list = User.objects.filter(role='DELIVERY')
+    users_list = User.objects.exclude(role__in=['DELIVERY', 'RIDER']).order_by('-date_joined')[:30] if hasattr(User, 'date_joined') else User.objects.exclude(role__in=['DELIVERY', 'RIDER'])[:30]
+    delivery_staff_list = User.objects.filter(role__in=['RIDER', 'DELIVERY'])
     
     try:
         delivery_requests = DeliveryRequest.objects.all().order_by('-requested_at')[:20]

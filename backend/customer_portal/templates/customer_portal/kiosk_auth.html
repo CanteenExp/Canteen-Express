@@ -54,10 +54,10 @@
             <!-- Top Controls (Back, Home, Badge, Skip) -->
             <div class="flex items-center justify-between w-full mb-4">
                 <div class="flex items-center gap-2">
-                    <a href="{% url 'kiosk_welcome' %}" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition active:scale-95 border border-white/10">
+                    <a href="{% url 'customer_portal:kiosk_welcome' %}" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition active:scale-95 border border-white/10">
                         <i class="fa-solid fa-arrow-left text-xs"></i>
                     </a>
-                    <a href="{% url 'kiosk_welcome' %}" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition active:scale-95 border border-white/10">
+                    <a href="{% url 'customer_portal:kiosk_welcome' %}" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition active:scale-95 border border-white/10">
                         <i class="fa-solid fa-house text-xs"></i>
                     </a>
                 </div>
@@ -142,7 +142,7 @@
             </div>
 
             <!-- LOGIN FORM -->
-            <form action="{% url 'kiosk_home' %}" method="GET" class="w-full space-y-3.5">
+            <form action="{% url 'customer_portal:kiosk_menu' %}" method="GET" class="w-full space-y-3.5">
                 
                 <!-- Username Input -->
                 <div>

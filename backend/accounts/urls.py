@@ -8,6 +8,7 @@ app_name = 'accounts'
 
 urlpatterns = [
     path('', views.landing_view, name='landing'),
+    path('access-denied/', views.access_denied_view, name='access_denied'),
     
     path('login/', auth_views.LoginView.as_view(template_name='accounts/login.html'), name='login'),
     path('staff-login/', views.staff_login_view, name='staff_login'),

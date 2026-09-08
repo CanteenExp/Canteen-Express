@@ -292,29 +292,35 @@ class DeliverySyncTestCase(TestCase):
         self.delivery.status = DeliveryRequest.RequestStatus.ACCEPTED
         self.assertEqual(self.delivery.raw_status, DeliveryRequest.RequestStatus.ACCEPTED)
 
-    def test_auto_assign_when_rider_comes_online(self):
-        """A SEARCHING order with no assigned rider must be handed instantly to
-        the first rider who comes online -- no manual hunting required."""
+    def test_going_online_does_not_preassign_order(self):
+        """Going online must NOT hand the order to the rider: SEARCHING
+        deliveries are shared proposals in the pool, and only accepting assigns
+        one."""
         self.delivery.assigned_to = None
         self.delivery.assigned_at = None
         self.delivery.save(update_fields=['assigned_to', 'assigned_at'])
 
-        # riderB starts offline; going online should immediately pull the
-        # waiting order into their own pool.
+        # riderB starts offline; going online should make the order VISIBLE,
+        # not assigned to them.
         self.rider_b.is_available = False
         self.rider_b.save(update_fields=['is_available'])
         self._login('riderB')
         resp = self.client.post(reverse('deliveries:toggle_availability'))
         self.assertTrue(resp.json()['success'])
-        self.assertEqual(resp.json()['assigned_order'], self.delivery.order.order_number)
+        self.assertIsNone(resp.json()['assigned_order'])
 
         self.delivery.refresh_from_db()
-        self.assertEqual(self.delivery.assigned_to, self.rider_b)
+        self.assertIsNone(self.delivery.assigned_to)
         self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.SEARCHING)
 
-    def test_auto_assign_does_not_steal_assigned_order(self):
-        """Auto-assign must only pull orders with NO assigned rider; it must
-        never take an order another rider is already deciding on."""
+        # Still visible to every rider in the shared proposal pool.
+        from .utils import pending_pool_for_rider
+        self.rider_b.refresh_from_db()
+        self.assertEqual(self.delivery.id, pending_pool_for_rider(self.rider_b).first().id)
+
+    def test_going_online_does_not_steal_assigned_order(self):
+        """Going online must never reassign an order another rider is still
+        deciding on (proposal-only model)."""
         self.delivery.assigned_to = self.rider_a
         self.delivery.assigned_at = None
         self.delivery.save(update_fields=['assigned_to', 'assigned_at'])
@@ -325,7 +331,10 @@ class DeliverySyncTestCase(TestCase):
         self.client.post(reverse('deliveries:toggle_availability'))
 
         self.delivery.refresh_from_db()
-        self.assertEqual(self.delivery.assigned_to, self.rider_a)
+        # The order is still a shared proposal: either rider may see it, but the
+        # direct assignment reference is only legacy and the next sweep clears
+        # it -- nobody 'owns' it before accepting.
+        self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.SEARCHING)
 
     def test_serializer_exposes_assigned_rider(self):
         """The faculty payload must reveal who the order is assigned to the
@@ -339,3 +348,84 @@ class DeliverySyncTestCase(TestCase):
         self.assertEqual(data['assigned_rider_name'], self.rider_a.username)
         self.assertIsNotNone(data['dest_lat'])
         self.assertIsNotNone(data['dest_lng'])
+
+    def test_expire_never_preassigns_order(self):
+        """A SEARCHING delivery stays an unassigned proposal after the sweep --
+        no rider is designated before accepting."""
+        from django.utils import timezone as tz
+        from .views import expire_stale_requests
+        self.delivery.assigned_to = None
+        self.delivery.assigned_at = None
+        self.delivery.requested_at = tz.now() - tz.timedelta(minutes=1)
+        self.delivery.save(update_fields=['assigned_to', 'assigned_at', 'requested_at'])
+
+        expire_stale_requests()
+
+        self.delivery.refresh_from_db()
+        self.assertIsNone(self.delivery.assigned_to)
+        self.assertIsNone(self.delivery.assigned_at)
+        self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.SEARCHING)
+
+    def test_expire_clears_stale_offer_keeps_proposal_visible(self):
+        """A stale 'offered' rider is cleared by the sweep so the delivery reads
+        as a shared proposal for everyone; it is never forced onto one rider and
+        never times out while riders are online."""
+        from django.utils import timezone as tz
+        from .views import expire_stale_requests
+        self.delivery.assigned_to = self.rider_a
+        self.delivery.assigned_at = tz.now() - tz.timedelta(seconds=60)
+        self.delivery.save(update_fields=['assigned_to', 'assigned_at'])
+
+        expire_stale_requests()
+
+        self.delivery.refresh_from_db()
+        self.assertIsNone(self.delivery.assigned_to)
+        self.assertIsNone(self.delivery.assigned_at)
+        self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.SEARCHING)
+
+    def test_expire_keeps_proposal_when_only_one_rider_online(self):
+        """With any rider online, the proposal stays visible (never dropped to
+        TIMEOUT and never pre-assigned), even for a very old request."""
+        from django.utils import timezone as tz
+        from .views import expire_stale_requests
+        self.rider_a.is_available = False
+        self.rider_a.save(update_fields=['is_available'])
+        # rider_b stays online: give a fresh presence heartbeat so the sweep
+        # treats them as genuinely connected.
+        self.rider_b.availability_updated_at = tz.now()
+        self.rider_b.save(update_fields=['availability_updated_at'])
+        self.delivery.assigned_to = self.rider_a
+        self.delivery.assigned_at = tz.now() - tz.timedelta(seconds=60)
+        self.delivery.save(update_fields=['assigned_to', 'assigned_at'])
+
+        expire_stale_requests()
+
+        self.delivery.refresh_from_db()
+        self.assertIsNone(self.delivery.assigned_to)
+        self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.SEARCHING)
+
+        # Even a very old proposal is not auto-dropped while a rider is online.
+        self.delivery.requested_at = tz.now() - tz.timedelta(minutes=30)
+        self.delivery.save(update_fields=['requested_at'])
+        expire_stale_requests()
+        self.delivery.refresh_from_db()
+        self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.SEARCHING)
+
+    def test_expire_times_out_only_true_orphans(self):
+        """An order nobody could ever be assigned to (no rider online for a
+        while) eventually TIMEOUTs so the queue stays clean."""
+        from django.utils import timezone as tz
+        from .views import expire_stale_requests
+        self.rider_a.is_available = False
+        self.rider_a.save(update_fields=['is_available'])
+        self.rider_b.is_available = False
+        self.rider_b.save(update_fields=['is_available'])
+        self.delivery.assigned_to = None
+        self.delivery.assigned_at = None
+        self.delivery.requested_at = tz.now() - tz.timedelta(minutes=10)
+        self.delivery.save(update_fields=['assigned_to', 'assigned_at', 'requested_at'])
+
+        expire_stale_requests()
+
+        self.delivery.refresh_from_db()
+        self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.TIMEOUT)

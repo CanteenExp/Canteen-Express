@@ -13,16 +13,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='deliveryrequest',
-            name='dest_lat',
-            field=models.FloatField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='deliveryrequest',
-            name='dest_lng',
-            field=models.FloatField(blank=True, null=True),
-        ),
         migrations.CreateModel(
             name='RiderLocationPoint',
             fields=[

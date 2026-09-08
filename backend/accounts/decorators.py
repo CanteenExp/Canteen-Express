@@ -21,7 +21,7 @@ def role_required(allowed_roles=[]):
                 elif 'STAFF' in allowed_roles or 'ADMIN' in allowed_roles:
                     return redirect('accounts:staff_login')
                 else:
-                    return redirect('accounts:login')
+                    return redirect('accounts:faculty_auth')
             
             user_role = getattr(request.user, 'role', 'FACULTY' if is_faculty_session else '')
             if request.user.is_superuser or request.user.is_staff or user_role in allowed_roles or is_faculty_session:
@@ -31,15 +31,7 @@ def role_required(allowed_roles=[]):
                 return JsonResponse({'success': False, 'message': 'Access Denied'}, status=403)
 
             messages.error(request, "Access Denied: You are not authorized to access this page!")
-            
-            if user_role in ['STUDENT', 'FACULTY']:
-                return redirect('customer_portal:kiosk_menu')
-            elif user_role == 'STAFF':
-                return redirect('canteen_menu:staff_dashboard')
-            elif user_role == 'DELIVERY':
-                return redirect('deliveries:dashboard')
-            else:
-                return redirect('customer_portal:menu')
+            return redirect('accounts:access_denied')
                 
         return _wrapped_view
     return decorator

@@ -999,15 +999,25 @@
 
                                 <td class="py-3.5 px-3">
 
-                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase
+                                    <span id="rider-status-{{ rider.id }}" class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase
                                         {% if rider.is_active and rider.account_status == 'active' %}
-                                            bg-emerald-50 text-emerald-700
+                                            {% if rider.is_really_online %}
+                                                bg-emerald-50 text-emerald-700
+                                            {% else %}
+                                                bg-gray-100 text-gray-500
+                                            {% endif %}
                                         {% else %}
                                             bg-red-50 text-red-700
                                         {% endif %}">
-
-                                        {{ rider.account_status|default:"Active" }}
-
+                                        {% if rider.is_active and rider.account_status == 'active' %}
+                                            {% if rider.is_really_online %}
+                                                Online · Ready
+                                            {% else %}
+                                                Offline
+                                            {% endif %}
+                                        {% else %}
+                                            {{ rider.account_status|default:"Inactive" }}
+                                        {% endif %}
                                     </span>
 
                                 </td>
@@ -1151,7 +1161,7 @@
                                 </td>
 
                                 <td class="py-3.5 px-3 text-gray-800">
-                                    {{ d.rider.get_full_name|default:"Unassigned" }}
+                                    {% if d.rider %}{{ d.rider.get_full_name|default:d.rider.username }}{% elif d.assigned_to %}{{ d.assigned_to.get_full_name|default:d.assigned_to.username }}{% else %}Unassigned{% endif %}
                                 </td>
 
                                 <td class="py-3.5 px-3 text-right">
