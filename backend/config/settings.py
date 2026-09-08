@@ -18,7 +18,7 @@ print("="*40 + "\n")
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-local-dev-key")
 
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t", "yes")
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com', '*']
 AUTH_USER_MODEL = 'accounts.CustomUser'
