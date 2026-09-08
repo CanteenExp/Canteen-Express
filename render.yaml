@@ -17,12 +17,12 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DB_NAME
-        value: neondb
+        value: postgres
       - key: DB_USER
-        value: neondb_owner
+        value: postgres.hchqdkuijbpihraagetz
       - key: DB_PASSWORD
         sync: false
       - key: DB_HOST
-        value: ep-shy-heart-ayghwl06-pooler.c-5.us-east-2.aws.neon.tech
+        value: aws-0-ap-southeast-1.pooler.supabase.com
       - key: DB_PORT
-        value: 5432
+        value: 6543
