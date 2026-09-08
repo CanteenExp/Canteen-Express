@@ -83,12 +83,12 @@ Create a `.env` file directly inside the `backend/` folder alongside `manage.py`
 SECRET_KEY="django-insecure-your-secret-key-here"
 DEBUG=True
 
-# Neon Cloud Database Credentials (falls back to local SQLite if absent or unreachable)
-DB_NAME="neondb"
-DB_USER="neondb_owner"
+# Supabase PostgreSQL Database Credentials (falls back to local SQLite if absent or unreachable)
+DB_NAME="postgres"
+DB_USER="postgres.hchqdkuijbpihraagetz"
 DB_PASSWORD="<YOUR_DB_PASSWORD>"
-DB_HOST="ep-shy-heart-ayghwl06-pooler.c-5.us-east-2.aws.neon.tech"
-DB_PORT="5432"
+DB_HOST="aws-0-ap-southeast-1.pooler.supabase.com"
+DB_PORT="6543"
 ```
 
 ### 5. Run Database Migrations
@@ -111,7 +111,7 @@ Access the application in your browser at: `http://127.0.0.1:8000/`
 
 ## 🧪 Testing & Common Commands
 
-Always run Django tests inside the `backend/` directory with `--keepdb` to avoid slow/flaky Neon Cloud PostgreSQL test DB recreation prompts:
+Always run Django tests inside the `backend/` directory with `--keepdb` to avoid slow/flaky Supabase PostgreSQL test DB recreation prompts:
 
 ```bash
 # Run all tests (preserving test database)
@@ -197,6 +197,6 @@ CANTEEN-EXPRESS/
 ## 💡 Troubleshooting & Notes
 
 - **Windows CP1252 Encoding Error:** Avoid complex Unicode emojis in backend print statements and management commands; use FontAwesome icons in HTML templates instead.
-- **Database Fallback:** If the `.env` file is missing or Neon Cloud PostgreSQL is unreachable, the system automatically falls back to local SQLite (`backend/db.sqlite3`).
+- **Database Fallback:** If the `.env` file is missing or Supabase PostgreSQL is unreachable, the system automatically falls back to local SQLite (`backend/db.sqlite3`).
 
 **Happy coding, team!**

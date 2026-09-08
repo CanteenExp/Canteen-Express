@@ -9,14 +9,14 @@
 - **Run dev server:** `python manage.py runserver`
 - **Apply database migrations:** `python manage.py migrate`
 - **Make new migrations:** `python manage.py makemigrations`
-- **Run tests:** `python manage.py test --keepdb` (ALWAYS use `--keepdb` to avoid slow/flaky Neon Cloud PostgreSQL test DB recreation prompts).
+- **Run tests:** `python manage.py test --keepdb` (ALWAYS use `--keepdb` to avoid slow/flaky Supabase PostgreSQL test DB recreation prompts).
 - **Run specific app test:** `python manage.py test deliveries customer_portal`
 - **Interactive shell:** `python manage.py shell`
 - **Reset orders (testing):** Run in `python manage.py shell`: `from customer_portal.models import Order, OrderItem; OrderItem.objects.all().delete(); Order.objects.all().delete()`
 
 ## Operational Gotchas & Environment Setup
 - **Environment variables:** `.env` file must be located directly inside `backend/` alongside `manage.py`. Key keys: `SECRET_KEY`, `DEBUG`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.
-- **Database fallback:** Configured for Neon Cloud PostgreSQL (`sslmode='require'`). Falls back to SQLite (`db.sqlite3`) if `.env` is absent or connection fails.
+- **Database fallback:** Configured for Supabase PostgreSQL (`sslmode='require'`). Falls back to SQLite (`db.sqlite3`) if `.env` is absent or connection fails.
 - **Media files:** `MEDIA_ROOT` points to `backend/media`. Media URL routes served conditionally when `DEBUG=True` via `config/urls.py`.
 - **Campus Geofence:** Official center `9.77778, 118.73333` (PSU Tiniguiban Heights), radius `0.8` km (`deliveries/utils.py`). Out-of-campus orders or missing destination coordinates reject checkout with HTTP `422`.
 - **Dark Maps:** Leaflet maps use free OSM tiles with CSS invert filter on `.leaflet-tile-pane` for dark mode (no API keys required).
