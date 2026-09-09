@@ -109,15 +109,28 @@ def _auto_sync_menu_image(item):
     item.image_url = f"https://loremflickr.com/600/400/{encoded_query}"
 
 
-def _generate_auto_desc(name):
+def _generate_auto_desc(name, category=''):
     name_lower = name.lower()
-    if 'turon' in name_lower or 'banana' in name_lower or 'meryenda' in name_lower:
-        return f"Crispy and sweet golden {name}, freshly fried and glazed for the ultimate campus snack."
-    elif 'pork' in name_lower or 'chicken' in name_lower or 'beef' in name_lower or 'rice' in name_lower:
-        return f"Savory and hearty {name} served piping hot, rich in protein, flavor, and cooked with authentic canteen recipe."
-    elif 'coke' in name_lower or 'sprite' in name_lower or 'beverage' in name_lower or 'juice' in name_lower:
-        return f"Ice-cold refreshing {name} to complement your meal."
-    return f"Freshly prepared {name}, cooked daily with quality ingredients."
+    cat_lower = str(category).lower()
+
+    if 'coffee stick' in name_lower or 'kopiko' in name_lower or ('coffee' in name_lower and ('stick' in name_lower or 'twin' in name_lower or 'mix' in name_lower)):
+        return f"Instant {name} mix packet, ready to brew with hot water."
+    elif any(kw in name_lower for kw in ['candy', 'candies', 'flat tops', 'mentos', 'cloud 9', 'choco mucho', 'chocolate', 'bar', 'cracker', 'cookie', 'biscuit']):
+        return f"Packaged ready-to-eat {name}, a sweet confectionery snack."
+    elif any(kw in name_lower for kw in ['coke', 'sprite', 'royal', 'pepsi', 'water', 'juice', 'yakult', 'drink', 'mismo', 'can', "nature's spring", 'natures spring']):
+        return f"Chilled and refreshing bottled/canned {name}, served cold."
+    elif 'nissin' in name_lower or 'pancit canton' in name_lower or 'noodles' in name_lower or 'cup noodle' in name_lower:
+        return f"Instant packaged {name}, quick and easy to prepare with hot water."
+    elif any(kw in name_lower for kw in ['turon', 'banana cue', 'bibingka', 'biko', 'kutsinta', 'puto', 'suman', 'maja', 'pichi pichi', 'bread', 'mamon', 'crinkle', 'brownie', 'maruya', 'karyoka', 'pudding']):
+        return f"Delicious freshly prepared or baked {name}, perfect for meryenda."
+    elif any(kw in name_lower for kw in ['pork', 'chicken', 'beef', 'fish', 'rice', 'munggo', 'chop suey', 'ginataan', 'fillet', 'steak', 'macaroni', 'spaghetti', 'carbonara', 'palabok', 'bihon', 'soup', 'silog', 'adobo', 'sinigang', 'menudo', 'curry', 'tinola']) or 'ulam' in cat_lower or 'meal' in cat_lower:
+        return f"Savory and hearty {name} prepared and cooked daily with quality ingredients."
+    
+    if 'beverage' in cat_lower or 'drink' in cat_lower:
+        return f"Refreshing {name}."
+    elif 'snack' in cat_lower or 'dessert' in cat_lower:
+        return f"Ready-to-eat {name}."
+    return f"Quality item: {name}."
 
 
 # 2. STAFF SIDE - Add New Item (CREATE)
@@ -126,8 +139,8 @@ def staff_menu_create(request):
         form = MenuItemForm(request.POST, request.FILES)
         if form.is_valid():
             item = form.save(commit=False)
-            if not item.description:
-                item.description = _generate_auto_desc(item.name)
+            if not item.description or 'cooked daily' in item.description or 'Freshly prepared' in item.description:
+                item.description = _generate_auto_desc(item.name, str(item.category))
             _auto_sync_menu_image(item)
             item.save()
             messages.success(request, f"Ang menu na '{item.name}' ay matagumpay na naidagdag na may auto-synced image!")
