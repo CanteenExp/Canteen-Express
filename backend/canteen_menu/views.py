@@ -111,6 +111,7 @@ def _auto_sync_menu_image(item):
                                 pass
                         item.image = f'menu_items/{filename}'
                         item.image_url = ''
+                        item.save()
                         return
 
     # Reliable Fallback Food Photo for Render / production
@@ -126,6 +127,8 @@ def _auto_sync_menu_image(item):
         item.image_url = "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80"
     else:
         item.image_url = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80"
+    item.image = None
+    item.save()
 
 
 def _generate_auto_desc(name):
