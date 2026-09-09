@@ -67,7 +67,11 @@ def _auto_sync_menu_image(item):
     Auto-syncs menu image from designated local folders matching item name (instant check without listing large dirs).
     """
     if item.image:
-        return  # Manually uploaded image takes precedence
+        try:
+            if item.image.storage.exists(item.image.name):
+                return  # Manually uploaded image file exists and takes precedence
+        except Exception:
+            pass
 
     slug_name = slugify(item.name)
     clean_name = item.name.lower().replace(' ', '_').replace('-', '_')
@@ -148,7 +152,14 @@ def staff_menu_update(request, pk):
     if request.method == 'POST':
         form = MenuItemForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
-            form.save()
+            menu_item = form.save(commit=False)
+            if request.FILES.get('image'):
+                menu_item.image_url = ''
+            elif menu_item.image_url:
+                menu_item.image = None
+            if not menu_item.image and not menu_item.image_url:
+                _auto_sync_menu_image(menu_item)
+            menu_item.save()
             cache.delete('formatted_menu_active_kiosk')
             messages.success(request, "Menu item updated successfully!")
             return redirect('canteen_menu:staff_menu_list')
@@ -525,10 +536,14 @@ def staff_menu_edit_ajax(request):
             category_id = request.POST.get('category')
             if category_id:
                 item.category = get_object_or_404(Category, pk=category_id)
-            if request.POST.get('image_url'):
-                item.image_url = request.POST.get('image_url')
+            new_image_url = request.POST.get('image_url')
+            if new_image_url is not None:
+                item.image_url = new_image_url
+                if new_image_url.strip():
+                    item.image = None
             if request.FILES.get('image'):
                 item.image = request.FILES.get('image')
+                item.image_url = ''
             
             if not item.image and not item.image_url:
                 _auto_sync_menu_image(item)

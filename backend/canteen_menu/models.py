@@ -1,4 +1,5 @@
 from django.db import models
+import urllib.parse
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -27,11 +28,13 @@ class MenuItem(models.Model):
 
     @property
     def get_image_src(self):
+        if self.image_url and self.image_url.strip():
+            return self.image_url
         if self.image:
             try:
-                return self.image.url
-            except ValueError:
+                if self.image.storage.exists(self.image.name):
+                    return self.image.url
+            except Exception:
                 pass
-        if self.image_url:
-            return self.image_url
-        return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80"
+        encoded_query = urllib.parse.quote(f"{self.name},food,dish,filipino food")
+        return f"https://loremflickr.com/600/400/{encoded_query}"
