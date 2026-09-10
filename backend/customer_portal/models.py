@@ -32,12 +32,8 @@ class MenuItem(models.Model):
     @property
     def get_image_src(self):
         if self.image:
-            try:
-                if self.image.storage.exists(self.image.name):
-                    return self.image.url
-            except Exception:
-                pass
-        if self.image_url:
+            return self.image.url
+        elif self.image_url:
             return self.image_url
         return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80"
 

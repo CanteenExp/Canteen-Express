@@ -29,9 +29,8 @@ class MenuItem(models.Model):
     def get_image_src(self):
         if self.image:
             try:
-                if self.image.storage.exists(self.image.name):
-                    return self.image.url
-            except Exception:
+                return self.image.url
+            except ValueError:
                 pass
         if self.image_url:
             return self.image_url

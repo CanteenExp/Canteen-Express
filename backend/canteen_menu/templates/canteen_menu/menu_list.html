@@ -89,13 +89,15 @@
                         {% for item in items %}
                         <tr class="hover:bg-white/5 transition">
                             <td class="p-4 flex items-center gap-3">
-                                 {% if item.get_image_src %}
-                                     <img src="{{ item.get_image_src }}" class="w-12 h-12 rounded-xl object-cover bg-zinc-700 border border-white/10" alt="{{ item.name }}">
-                                 {% else %}
-                                     <div class="w-12 h-12 rounded-xl bg-zinc-700 border border-white/10 flex items-center justify-center text-zinc-500 text-xs font-bold">
-                                         No Pic
-                                     </div>
-                                 {% endif %}
+                                {% if item.image %}
+                                    <img src="{{ item.image.url }}" class="w-12 h-12 rounded-xl object-cover bg-zinc-700 border border-white/10" alt="{{ item.name }}">
+                                {% elif item.image_url %}
+                                    <img src="{{ item.image_url }}" class="w-12 h-12 rounded-xl object-cover bg-zinc-700 border border-white/10" alt="{{ item.name }}">
+                                {% else %}
+                                    <div class="w-12 h-12 rounded-xl bg-zinc-700 border border-white/10 flex items-center justify-center text-zinc-500 text-xs font-bold">
+                                        No Pic
+                                    </div>
+                                {% endif %}
                                 <div>
                                     <p class="font-bold text-white">{{ item.name }}</p>
                                     <p class="text-xs text-zinc-400 line-clamp-1">{{ item.description|default:"No description" }}</p>

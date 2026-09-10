@@ -1,12 +1,14 @@
 # AGENTS.md
 
 ## Repository Overview & Working Directory
-- **Backend framework:** Django 6.1 (Python 3.10+, recommended 3.12)
+- **Backend framework:** Django 5.1.5 (Python 3.10+, recommended 3.12)
 - **Active working directory:** Django app root is inside `backend/` (`backend/manage.py`). Always run Django commands relative to `backend/` or set `workdir="backend"`.
 - **Virtual environment:** Located at `venv/`. Activate using `.\venv\Scripts\Activate.ps1` (Windows PowerShell) or `source venv/bin/activate` (POSIX).
 
 ## Essential Commands (Run inside `backend/`)
 - **Run dev server:** `python manage.py runserver`
+- **Run production server (Gunicorn):** `gunicorn --chdir backend config.wsgi:application` (or `gunicorn config.wsgi:application` when in `backend/`)
+- **Collect static files:** `python manage.py collectstatic --noinput`
 - **Apply database migrations:** `python manage.py migrate`
 - **Make new migrations:** `python manage.py makemigrations`
 - **Run tests:** `python manage.py test --keepdb` (ALWAYS use `--keepdb` to avoid slow/flaky Supabase PostgreSQL test DB recreation prompts).
