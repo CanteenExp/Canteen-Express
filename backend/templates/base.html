@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
-    {% if user.is_authenticated and user.role|upper == 'DELIVERY' %}
+    {% if user.is_authenticated and user.role|upper == 'DELIVERY' or user.role|upper == 'RIDER' %}
     <link rel="manifest" href="{% static 'manifest-rider.json' %}">
     {% elif user.is_authenticated and user.role|upper == 'FACULTY' %}
     <link rel="manifest" href="{% static 'manifest-faculty.json' %}">
@@ -63,7 +63,7 @@
            <a href="{% url 'customer_portal:kiosk_menu' %}" class="flex items-center space-x-2.5">
            {% elif user.role|upper == 'STAFF' or user.role|upper == 'ADMIN' or user.is_staff %}
            <a href="{% url 'canteen_menu:staff_dashboard' %}" class="flex items-center space-x-2.5">
-           {% elif user.role|upper == 'DELIVERY' %}
+            {% elif user.role|upper == 'DELIVERY' or user.role|upper == 'RIDER' %}
            <a href="{% url 'deliveries:dashboard' %}" class="flex items-center space-x-2.5">
            {% else %}
            <a href="{% url 'customer_portal:kiosk_menu' %}" class="flex items-center space-x-2.5">
@@ -138,7 +138,7 @@
                 <i class="fa-solid fa-right-from-bracket text-lg mb-1"></i>
                 <span>Logout</span>
             </a>
-            {% elif user.role|upper == 'DELIVERY' %}
+           {% elif user.role|upper == 'DELIVERY' or user.role|upper == 'RIDER' %}
             <a href="{% url 'deliveries:dashboard' %}" class="flex flex-col items-center text-brand-500 font-bold text-xs">
                 <i class="fa-solid fa-gauge-high text-lg mb-1"></i>
                 <span>Dispatch</span>

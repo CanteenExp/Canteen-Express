@@ -26,7 +26,7 @@ def access_denied_view(request):
     portal_url = None
     if user_role in ('STAFF', 'ADMIN') or request.user.is_staff:
         portal_url = 'canteen_menu:staff_dashboard'
-    elif user_role == 'DELIVERY':
+    elif user_role in ('DELIVERY', 'RIDER'):
         portal_url = 'deliveries:dashboard'
     elif user_role in ('STUDENT', 'FACULTY'):
         portal_url = 'customer_portal:kiosk_menu'
@@ -223,7 +223,7 @@ def delivery_login_view(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
-        if user is not None and (getattr(user, 'role', '') == 'DELIVERY' or user.is_staff):
+        if user is not None and (getattr(user, 'role', '') in ['DELIVERY', 'RIDER'] or user.is_staff):
             logout(request)
             login(request, user)
             return redirect('deliveries:dashboard')
