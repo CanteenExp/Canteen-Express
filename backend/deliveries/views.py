@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.utils import timezone
 from django.http import JsonResponse, StreamingHttpResponse
+from django.core.exceptions import ValidationError
 import json
 import time
 from datetime import timedelta
@@ -193,6 +194,17 @@ def reject_delivery(request, delivery_id):
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
 def complete_delivery(request, delivery_id):
     delivery = get_object_or_404(DeliveryRequest, id=delivery_id, rider=request.user)
+
+    # Accept an optional proof-of-delivery photo (multipart form upload).
+    proof_photo = request.FILES.get('proof_photo')
+    if proof_photo:
+        try:
+            _validate_image_upload(proof_photo)
+            delivery.proof_photo = proof_photo
+        except ValidationError as e:
+            messages.error(request, f'Photo not saved: {e.message}')
+            proof_photo = None
+
     if delivery.status == DeliveryRequest.RequestStatus.ACCEPTED:
         delivery.status = DeliveryRequest.RequestStatus.DELIVERED
         delivery.delivered_at = timezone.now()
@@ -202,9 +214,26 @@ def complete_delivery(request, delivery_id):
         order.status = 'completed'
         order.save()
         earned = float(order.delivery_fee)
-        messages.success(request, f'Delivery {delivery.order.order_number} completed! +₱{earned:.0f} earned.')
+        if proof_photo:
+            messages.success(request, f'Delivery {delivery.order.order_number} completed with photo proof! +₱{earned:.0f} earned.')
+        else:
+            messages.success(request, f'Delivery {delivery.order.order_number} completed! +₱{earned:.0f} earned.')
+    else:
+        # Still persist the photo if the status raced already to DELIVERED.
+        delivery.save(update_fields=['proof_photo'])
 
     return redirect('deliveries:dashboard')
+
+
+def _validate_image_upload(file):
+    """Lightweight guard: reject anything that is clearly not an image."""
+    from pathlib import Path
+    allowed = {'.jpg', '.jpeg', '.png', '.webp', '.gif'}
+    ext = Path(file.name).suffix.lower()
+    if ext not in allowed:
+        raise ValidationError('Only image files (JPG, PNG, WEBP, GIF) are allowed as proof.')
+    if file.size > 5 * 1024 * 1024:
+        raise ValidationError('Proof photo must be under 5MB.')
 
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])

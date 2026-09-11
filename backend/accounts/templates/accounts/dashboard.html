@@ -274,6 +274,35 @@
                     >
                 </div>
 
+                <!-- Notifications Pop-out Bell -->
+                <div class="relative">
+                    <button onclick="toggleNotificationsDropdown(event)" class="relative w-10 h-10 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95 shadow">
+                        <i class="fa-solid fa-bell text-xs"></i>
+                        <span id="notif-badge" class="absolute -top-1 -right-1 bg-emerald-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black" style="display: none;">0</span>
+                    </button>
+
+                    <!-- Pop-out Notifications Panel -->
+                    <div id="notifications-dropdown"
+                         class="absolute right-0 mt-2 w-72 sm:w-80 glass-panel rounded-2xl shadow-2xl z-50 hidden animate-fade-in">
+                        <div class="glass-panel-head px-4 py-3 flex items-center justify-between rounded-t-2xl">
+                            <h3 class="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-bell text-brand-orange"></i> Notifications
+                            </h3>
+                            <button onclick="closeNotificationsDropdown()" class="text-brand-slate hover:text-white p-1">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <div id="notifications-dropdown-list" class="max-h-80 overflow-y-auto no-scrollbar p-2 space-y-2">
+                            <!-- Populated by populateNotificationsList() -->
+                        </div>
+                        <div class="border-t border-white/10 p-2">
+                            <button onclick="closeNotificationsDropdown(); openOngoingOrdersModal();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 text-brand-orange text-[11px] font-black transition flex items-center gap-2">
+                                <i class="fa-solid fa-truck-fast"></i> View all delivery updates
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Hamburger Menu Dropdown Wrapper (Far Right) -->
                 <div class="relative">
                     <button onclick="toggleHamburgerDropdown(event)" class="relative w-10 h-10 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95 shadow">
@@ -318,6 +347,31 @@
 
         <!-- Center: Menu Grid -->
         <main class="flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar space-y-3 pr-1">
+
+            <!-- Live Rider Location Strip (visible while a rider is on the way) -->
+            <div id="live-rider-strip" class="hidden glass-chip rounded-xl px-3.5 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 transition animate-fade-in">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="relative w-2.5 h-2.5 rounded-full bg-emerald-500 live-pulse-dot shrink-0"></span>
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-black text-white leading-tight truncate">
+                            <span class="text-brand-orange" id="live-order-no">--</span>
+                            <span class="text-emerald-400 ml-1.5">● Live</span>
+                        </p>
+                        <p class="text-[10px] text-brand-slate truncate" id="live-rider-name">Rider en route...</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 ml-auto min-w-0">
+                    <span class="text-[10px] text-brand-slate font-medium hidden sm:flex items-center gap-1.5">
+                        <i class="fa-solid fa-motorcycle text-brand-orange"></i>
+                        <span class="font-bold text-emerald-400" id="live-eta-text">--</span> to destination
+                    </span>
+                    <span class="text-[10px] text-brand-slate">Updated <strong class="text-white" id="live-updated-at">--</strong></span>
+                    <button onclick="openViewOrderModal()" class="bg-brand-orange hover:bg-orange-600 text-white text-[10px] font-black px-3 py-1.5 rounded-lg transition active:scale-95 flex items-center gap-1.5 shadow">
+                        <i class="fa-solid fa-map-location-dot"></i> Open Live Map
+                    </button>
+                </div>
+            </div>
+
             <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
                 <h2 id="category-heading" class="text-sm sm:text-lg font-black text-white uppercase tracking-wider">All Items</h2>
                 <span id="items-count-indicator" class="text-xs text-brand-slate font-bold">Showing items</span>
@@ -553,6 +607,26 @@
     </div>
 
 
+    <!-- ================= CHECKOUT ERROR MODAL ================= -->
+    <div id="checkout-error-modal" class="fixed inset-0 z-[90] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="modal-pop glass-panel rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl relative">
+            <button onclick="closeCheckoutErrorModal()" class="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="w-14 h-14 rounded-2xl bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-center mx-auto text-2xl animate-bounce">
+                <i class="fa-solid fa-circle-exclamation"></i>
+            </div>
+            <div>
+                <h3 id="checkout-error-title" class="font-black text-white text-base">Checkout Error</h3>
+                <p id="checkout-error-message" class="text-[11px] text-brand-slate font-medium mt-1.5 leading-relaxed"></p>
+            </div>
+            <button onclick="closeCheckoutErrorModal()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3 rounded-xl uppercase tracking-wider text-xs transition active:scale-95 shadow-lg shadow-brand-orange/25">
+                Got it
+            </button>
+        </div>
+    </div>
+
+
     <!-- ================= REAL-TIME LEAFLET MAP MODAL ================= -->
     <div id="map-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
         <div class="glass-panel rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col h-[450px]">
@@ -683,6 +757,17 @@
                 <div class="space-y-2">
                     <h4 class="text-xs font-black text-brand-slate uppercase tracking-wider">Live Rider Tracking Map</h4>
                     <div id="view-order-map" class="w-full h-48 rounded-2xl border border-white/10 overflow-hidden bg-zinc-800"></div>
+                </div>
+
+                <!-- Proof of Delivery Photo -->
+                <div id="view-order-proof-wrap" class="hidden space-y-2">
+                    <h4 class="text-xs font-black text-brand-slate uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-camera text-emerald-400"></i> Proof of Delivery
+                    </h4>
+                    <a id="view-order-proof-link" href="#" target="_blank" rel="noopener" class="block">
+                        <img id="view-order-proof-img" src="#" alt="Proof of Delivery"
+                             class="w-full max-h-56 object-cover rounded-2xl border border-white/10 shadow-xl bg-black/40 cursor-zoom-in">
+                    </a>
                 </div>
             </div>
 
@@ -841,6 +926,7 @@
     // Get GPS Location on Load & Ongoing Badge
     window.addEventListener('DOMContentLoaded', () => {
         updateOngoingBadge();
+        updateLiveRiderStrip();
         updateCartUI();
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -862,14 +948,16 @@
 
     function updateOngoingBadge() {
         const badge = document.getElementById('ongoing-badge');
+        const notifBadge = document.getElementById('notif-badge');
         const activeCount = ongoingDeliveriesData.filter(isOngoingDelivery).length;
-        if (badge) {
+        for (const el of [badge, notifBadge]) {
+            if (!el) continue;
             if (activeCount > 0) {
-                badge.innerText = activeCount;
-                badge.style.display = 'flex';
+                el.innerText = activeCount;
+                el.style.display = 'flex';
             } else {
-                badge.innerText = '0';
-                badge.style.display = 'none';
+                el.innerText = '0';
+                el.style.display = 'none';
             }
         }
     }
@@ -885,6 +973,46 @@
         renderOngoingOrdersList();
         populateNotificationsList();
         refreshCartButtonState();
+        updateLiveRiderStrip();
+    }
+
+    function calcDistanceKm(lat1, lng1, lat2, lng2) {
+        const R = 6371.0;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2
+            + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(a));
+    }
+
+    // Compact live rider-location strip shown right on the dashboard while a
+    // rider is en route. It is re-rendered on every SSE push so the distance
+    // and last-update time stay fresh without opening any modal.
+    function updateLiveRiderStrip() {
+        const strip = document.getElementById('live-rider-strip');
+        if (!strip) return;
+        const delivery = (ongoingDeliveriesData || []).find(d =>
+            d.raw_status === 'ACCEPTED'
+            && typeof d.rider_lat === 'number'
+            && typeof d.rider_lng === 'number');
+
+        if (!delivery) {
+            strip.classList.add('hidden');
+            return;
+        }
+
+        strip.querySelector('#live-order-no').innerText = delivery.order_number || '--';
+        strip.querySelector('#live-rider-name').innerText = `Rider: ${delivery.rider_name || 'en route...'}`;
+        strip.querySelector('#live-updated-at').innerText = delivery.location_updated_at || '--';
+
+        let etaText = '--';
+        if (typeof delivery.dest_lat === 'number' && typeof delivery.dest_lng === 'number') {
+            const km = calcDistanceKm(delivery.rider_lat, delivery.rider_lng, delivery.dest_lat, delivery.dest_lng);
+            etaText = `~${km.toFixed(2)} km`;
+        }
+        strip.querySelector('#live-eta-text').innerText = etaText;
+
+        strip.classList.remove('hidden');
     }
 
     function syncFacultyDeliveries() {
@@ -1541,6 +1669,20 @@
         const chatBtn = document.getElementById('view-order-chat-btn');
         if (chatBtn) chatBtn.style.display = hasAssignedRider(d) ? '' : 'none';
 
+        // Proof-of-delivery photo once the rider attaches one.
+        const proofWrap = document.getElementById('view-order-proof-wrap');
+        if (proofWrap) {
+            if (d.proof_photo) {
+                proofWrap.classList.remove('hidden');
+                const pImg = document.getElementById('view-order-proof-img');
+                const pLink = document.getElementById('view-order-proof-link');
+                if (pImg) pImg.src = d.proof_photo;
+                if (pLink) pLink.href = d.proof_photo;
+            } else {
+                proofWrap.classList.add('hidden');
+            }
+        }
+
         if (typeof L === 'undefined') return;
         const hasPos = typeof d.rider_lat === 'number' && typeof d.rider_lng === 'number';
         const hasDest = typeof d.dest_lat === 'number' && typeof d.dest_lng === 'number';
@@ -1729,7 +1871,8 @@
     function submitFacultyOrder() {
         const activeD = ongoingDeliveriesData.find(isOngoingDelivery);
         if (activeD) {
-            alert('Hindi ka pwedeng mag-checkout dahil mayroon ka pang ongoing delivery order (' + activeD.order_number + '). Hintayin muna itong maihatid.');
+            showCheckoutError('Order in Progress',
+                'Hindi ka pwedeng mag-checkout dahil mayroon ka pang ongoing delivery order (' + activeD.order_number + '). Hintayin muna itong maihatid.');
             const submitBtn = document.getElementById('checkout-submit-btn');
             submitBtn.disabled = false;
             submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
@@ -1800,16 +1943,26 @@
                 submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
                 openOrderPlacedModal(data, deliveryLoc, pointsEarned);
             } else {
-                alert('Checkout error: ' + (data.message || 'Unknown error'));
+                showCheckoutError('Checkout Error', data.message || 'Unknown error. Please try again.');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
             }
         })
         .catch(err => {
-            alert('An error occurred during checkout.');
+            showCheckoutError('Connection Error', 'An error occurred during checkout. Please check your connection and try again.');
             submitBtn.disabled = false;
             submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
         });
+    }
+
+    function showCheckoutError(title, message) {
+        document.getElementById('checkout-error-title').innerText = title || 'Checkout Error';
+        document.getElementById('checkout-error-message').innerText = message || 'Something went wrong. Please try again.';
+        document.getElementById('checkout-error-modal').classList.remove('hidden');
+    }
+
+    function closeCheckoutErrorModal() {
+        document.getElementById('checkout-error-modal').classList.add('hidden');
     }
 
     // Promo Carousel Logic

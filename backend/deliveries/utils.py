@@ -83,7 +83,8 @@ def serialize_delivery(d):
         'dest_lat': d.dest_lat,
         'dest_lng': d.dest_lng,
         'location_updated_at': d.location_updated_at.strftime('%H:%M %p') if d.location_updated_at else None,
-        'items': [{'name': i.item_name, 'qty': i.quantity, 'price': float(i.price)} for i in d.order.items.all()]
+        'items': [{'name': i.item_name, 'qty': i.quantity, 'price': float(i.price)} for i in d.order.items.all()],
+        'proof_photo': d.proof_photo.url if d.proof_photo else None
     }
 
 
