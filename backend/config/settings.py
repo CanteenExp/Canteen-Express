@@ -108,6 +108,11 @@ DATABASES = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Session Persistence Settings (Prevent Auto-Logout)
+SESSION_COOKIE_AGE = 1209600  # 2 weeks
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

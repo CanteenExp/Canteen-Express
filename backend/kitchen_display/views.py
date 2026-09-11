@@ -99,6 +99,9 @@ def staff_dashboard(request):
 
     staff_name = request.user.first_name if request.user.is_authenticated and request.user.first_name else (request.user.username if request.user.is_authenticated else 'Staff')
 
+    from customer_portal.models import OrderFeedback
+    feedbacks = OrderFeedback.objects.all().order_by('-created_at')
+
     context = {
         'total_orders_today': total_orders_today,
         'pending_count': pending_count,
@@ -119,6 +122,7 @@ def staff_dashboard(request):
         'sales_today': sales_today,
         'sales_week': sales_week,
         'sales_month': sales_month,
+        'feedbacks': feedbacks,
     }
     return render(request, 'staff_dashboard.html', context)
 
@@ -140,6 +144,34 @@ def kitchen_display(request):
         'staff_name': request.user.first_name or request.user.username,
     }
     return render(request, 'kitchen_dashboard.html', context)
+
+
+@role_required(allowed_roles=['STAFF'])
+def kitchen_orders_json_api(request):
+    def order_map(o, is_delivery):
+        return {
+            'id': o.id,
+            'order_number': o.order_number,
+            'status': o.status,
+            'is_delivery': is_delivery,
+            'customer': o.customer.get_full_name() if (o.customer and o.customer.get_full_name()) else (o.customer.username if o.customer else 'Walk-in Guest'),
+            'created_at': o.created_at.strftime('%H:%M'),
+            'items': [{'qty': it.quantity, 'name': it.item_name, 'total': str(it.total_price)} for it in o.items.all()],
+            'total_amount': str(o.total_amount),
+            'delivery_fee': str(o.delivery_fee),
+            'total_payment': str(o.total_payment),
+        }
+
+    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status='completed').exclude(status='ready').exclude(status='unpaid').order_by('created_at')
+    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status='completed').exclude(status='ready').order_by('created_at')
+    ready_orders = Order.objects.filter(status='ready').order_by('created_at')
+
+    boards = {
+        'kiosk': [order_map(o, False) for o in kiosk_orders],
+        'delivery': [order_map(o, True) for o in delivery_orders],
+        'ready': [order_map(o, DeliveryRequest.objects.filter(order=o).exists()) for o in ready_orders],
+    }
+    return JsonResponse({'success': True, 'boards': boards})
 
 
 @role_required(allowed_roles=['STAFF'])

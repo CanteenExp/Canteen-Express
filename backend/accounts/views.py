@@ -198,7 +198,8 @@ def faculty_dashboard_view(request, token=None):
         'categories': categories,
         'menu_data_json': json.dumps(formatted_menu),
         'faculty_display_name': faculty_display_name,
-        'ongoing_deliveries_json': json.dumps(ongoing_data)
+        'ongoing_deliveries_json': json.dumps(ongoing_data),
+        'user_points': float(request.user.loyalty_points) if request.user.is_authenticated else 0.0,
     }
     return render(request, 'accounts/dashboard.html', context)
 
@@ -207,8 +208,6 @@ def faculty_dashboard_view(request, token=None):
 @ensure_csrf_cookie
 @csrf_protect
 def staff_login_view(request):
-    if request.method == 'GET':
-        logout(request)
     error = None
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -227,8 +226,6 @@ def staff_login_view(request):
 @ensure_csrf_cookie
 @csrf_protect
 def delivery_login_view(request):
-    if request.method == 'GET':
-        logout(request)
     error = None
     if request.method == 'POST':
         username = request.POST.get('username')

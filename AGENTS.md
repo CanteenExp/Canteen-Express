@@ -3,7 +3,7 @@
 ## Repository Overview & Working Directory
 - **Backend framework:** Django 5.1.5 (Python 3.10+, recommended 3.12)
 - **Active working directory:** Django app root is inside `backend/` (`backend/manage.py`). Always run Django commands relative to `backend/` or set `workdir="backend"`.
-- **Virtual environment:** Located at `venv/`. Activate using `.\venv\Scripts\Activate.ps1` (Windows PowerShell) or `source venv/bin/activate` (POSIX).
+- **Virtual environment:** Located at `backend/venv/` or root `venv/`. Activate using `.\venv\Scripts\Activate.ps1` (Windows PowerShell) or `source venv/bin/activate` (POSIX).
 
 ## Essential Commands (Run inside `backend/`)
 - **Run dev server:** `python manage.py runserver`

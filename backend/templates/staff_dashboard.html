@@ -527,6 +527,32 @@
                 <p class="text-xs text-gray-500 mt-0.5">Read student and faculty reviews regarding canteen meals and service.</p>
             </div>
 
+            {% if feedbacks %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for fb in feedbacks %}
+                <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-3">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold text-gray-400">Order #{{ fb.order.order_number|default:"Walk-in" }}</span>
+                            <h4 class="text-sm font-black text-dark-900">
+                                {% if fb.customer %}
+                                    {{ fb.customer.get_full_name|default:fb.customer.username }}
+                                {% else %}
+                                    Anonymous Customer
+                                {% endif %}
+                            </h4>
+                        </div>
+                        <div class="flex items-center gap-1 bg-amber-50 text-amber-600 px-3 py-1 rounded-xl font-black text-xs border border-amber-200">
+                            <i class="fa-solid fa-star"></i>
+                            <span>{{ fb.rating }}.0</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-700 bg-gray-50 p-3 rounded-2xl border border-gray-100">“{{ fb.comment|default:"No comment provided." }}”</p>
+                    <span class="text-[10px] text-gray-400 font-medium block">{{ fb.created_at|date:"M d, Y H:i" }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
             <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-8 text-center space-y-3">
                 <div class="w-16 h-16 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-2xl mx-auto">
                     <i class="fa-solid fa-star"></i>
@@ -534,6 +560,7 @@
                 <h3 class="font-bold text-gray-800 text-sm">No feedback received yet</h3>
                 <p class="text-xs text-gray-400 max-w-sm mx-auto">Customer ratings and reviews will automatically populate here once orders are completed.</p>
             </div>
+            {% endif %}
         </div>
 
         <!-- 6. TAB: REPORTS & SALES -->

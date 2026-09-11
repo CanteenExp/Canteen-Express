@@ -664,7 +664,7 @@
     <div x-show="showOtpModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4" style="display: none;">
         <div class="bg-[#141416] border border-white/20 w-full max-w-sm rounded-[32px] p-6 text-center space-y-4 shadow-2xl text-white">
             <div class="w-14 h-14 bg-brand-orange/20 border border-brand-orange/40 text-brand-orange rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg shadow-brand-orange/20">
-                <i class="fa-solid fa-shield-check"></i>
+                <i class="fa-solid fa-envelope"></i>
             </div>
             <h3 class="text-base font-black text-white font-poppins">Enter OTP Verification Code</h3>
             <p class="text-xs text-white/70 leading-relaxed">
@@ -707,6 +707,12 @@
                 setTimeout(() => { overlay.classList.remove('opacity-0'); }, 10);
             }
         }
+        window.addEventListener('pageshow', (event) => {
+            const overlay = document.getElementById('logo-loading-overlay');
+            if (overlay) {
+                overlay.classList.add('opacity-0', 'hidden');
+            }
+        });
     </script>
 
     <!-- Custom In-Page Toast Notification -->

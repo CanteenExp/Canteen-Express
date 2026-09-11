@@ -1,13 +1,15 @@
 {
   "name": "Canteen Express Kiosk",
-  "short_name": "Canteen Kiosk",
-  "start_url": "/kiosk/",
-  "display": "standalone",
+  "short_name": "Canteen Express Kiosk",
+  "start_url": "/accounts/",
+  "scope": "/",
+  "display": "fullscreen",
+  "orientation": "any",
   "background_color": "#121212",
   "theme_color": "#f97316",
   "icons": [
     {
-      "src": "/static/Student.png",
+      "src": "/static/official_logo.png",
       "sizes": "192x192 512x512",
       "type": "image/png"
     }

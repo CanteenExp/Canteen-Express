@@ -392,6 +392,9 @@ def staff_dashboard(request, token=None):
 
     staff_name = request.user.first_name if request.user.is_authenticated and request.user.first_name else (request.user.username if request.user.is_authenticated else 'Staff')
 
+    from customer_portal.models import OrderFeedback
+    feedbacks = OrderFeedback.objects.all().order_by('-created_at')
+
     context = {
         'total_orders_today': total_orders_today,
         'pending_count': pending_count,
@@ -418,6 +421,7 @@ def staff_dashboard(request, token=None):
         'line_chart_data': line_chart_data,
         'pie_chart_data_json': json.dumps(pie_chart_data),
         'line_chart_data_json': json.dumps(line_chart_data),
+        'feedbacks': feedbacks,
     }
     return render(request, 'canteen_menu/staff_dashboard.html', context)
 

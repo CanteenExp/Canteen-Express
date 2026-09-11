@@ -159,11 +159,6 @@
                 </button>
             </form>
 
-            <div class="text-center pt-2 border-t border-white/10">
-                <a href="{% url 'accounts:landing' %}" class="text-xs font-bold text-white/60 hover:text-white transition flex items-center justify-center gap-1">
-                    <i class="fa-solid fa-arrow-left"></i> Back to Role Selection
-                </a>
-            </div>
         </div>
     </main>
 
@@ -188,6 +183,12 @@
                 setTimeout(() => { overlay.classList.remove('opacity-0'); }, 10);
             }
         }
+        window.addEventListener('pageshow', (event) => {
+            const overlay = document.getElementById('logo-loading-overlay');
+            if (overlay) {
+                overlay.classList.add('opacity-0', 'hidden');
+            }
+        });
     </script>
 
 </body>

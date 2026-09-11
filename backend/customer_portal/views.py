@@ -108,6 +108,19 @@ def process_checkout(request):
                     'message': 'Delivery is only available within the Palawan State University campus. Please make sure your location is inside the campus and try again.'
                 }, status=422)
 
+        points_redeemed = float(data.get('points_redeemed', 0) or 0)
+        points_earned = round(subtotal * 0.1, 1)
+
+        user = request.user if request.user.is_authenticated else None
+        if user:
+            if points_redeemed > 0:
+                if float(getattr(user, 'loyalty_points', 0)) >= points_redeemed:
+                    user.loyalty_points = float(user.loyalty_points) - points_redeemed
+                else:
+                    return JsonResponse({'success': False, 'message': 'Insufficient loyalty points.'}, status=400)
+            user.loyalty_points = float(user.loyalty_points) + points_earned
+            user.save()
+
         # Generate a unique order number that avoids colliding with existing
         # orders (the column is UNIQUE, and a 4-digit random can repeat ~1/9000).
         def _unique_order_number():
@@ -198,6 +211,8 @@ def process_checkout(request):
             'is_delivery': is_delivery,
             'delivery_fee': float(order.delivery_fee),
             'total_payment': float(order.total_payment),
+            'points_earned': points_earned,
+            'new_points': float(user.loyalty_points) if user else 0.0,
         })
 
     except Exception as e:
@@ -210,3 +225,28 @@ def check_order_status_api(request, order_num):
         return JsonResponse({'exists': True, 'status': order.status})
     except Order.DoesNotExist:
         return JsonResponse({'exists': False})
+
+
+@require_POST
+def submit_feedback_api(request):
+    try:
+        data = json.loads(request.body)
+        order_number = data.get('order_number')
+        rating = int(data.get('rating', 5))
+        comment = data.get('comment', '')
+
+        order = None
+        if order_number:
+            clean_num = order_number.replace('#', '').strip()
+            order = Order.objects.filter(order_number__iexact=clean_num).first()
+
+        from .models import OrderFeedback
+        OrderFeedback.objects.create(
+            order=order,
+            customer=request.user if request.user.is_authenticated else None,
+            rating=rating,
+            comment=comment
+        )
+        return JsonResponse({'success': True, 'message': 'Feedback submitted successfully'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)

@@ -13,7 +13,10 @@
         }
     </script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Faculty & Staff Portal - Canteen Express</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -66,6 +69,52 @@
         /* Order-placed confirmation animations */
         .modal-pop { animation: modalPop 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes modalPop { from { opacity: 0; transform: scale(0.92) translateY(14px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        body.light-mode {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+        }
+        body.light-mode .bg-brand-dark,
+        body.light-mode .bg-brand-card {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #e2e8f0 !important;
+        }
+        body.light-mode h1, body.light-mode h2, body.light-mode h3, body.light-mode h4 {
+            color: #0f172a !important;
+        }
+        body.light-mode p, body.light-mode .text-brand-slate {
+            color: #475569 !important;
+        }
+        body.light-mode #promo-carousel,
+        body.light-mode #promo-carousel div,
+        body.light-mode #promo-carousel span:not(.bg-brand-orange):not(.bg-emerald-500):not(.bg-blue-500),
+        body.light-mode #promo-carousel h2,
+        body.light-mode #promo-carousel p {
+            color: unset !important;
+        }
+        body.light-mode #promo-carousel h2 {
+            color: #ffffff !important;
+        }
+        body.light-mode #promo-carousel p {
+            color: #cbd5e1 !important;
+        }
+        body.light-mode #search-toggle-btn,
+        body.light-mode #search-wrapper button {
+            color: #0f172a !important;
+        }
+        body.light-mode #hamburger-dropdown {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #e2e8f0 !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+        }
+        body.light-mode #hamburger-dropdown button {
+            color: #0f172a !important;
+        }
+        body.light-mode #hamburger-dropdown button:hover {
+            background-color: #f1f5f9 !important;
+        }
         .confirm-ring { animation: confirmRing 1.8s ease-out infinite; }
         @keyframes confirmRing { 0% { box-shadow: 0 0 0 0 rgba(255,97,23,0.45); } 70% { box-shadow: 0 0 0 18px rgba(255,97,23,0); } 100% { box-shadow: 0 0 0 0 rgba(255,97,23,0); } }
         .confirm-check { animation: confirmCheck 0.55s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -167,28 +216,7 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <!-- Notification Bell Dropdown Wrapper -->
-                <div class="relative">
-                    <button onclick="toggleNotificationsDropdown(event)" class="relative w-10 h-10 rounded-xl bg-brand-orange/20 hover:bg-brand-orange/30 text-brand-orange border border-brand-orange/30 flex items-center justify-center transition shadow">
-                        <i class="fa-solid fa-bell text-xs"></i>
-                        <span id="ongoing-badge" class="absolute -top-1 -right-1 bg-brand-orange text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black" style="display: none;">0</span>
-                    </button>
-
-                    <!-- Notifications Dropdown -->
-                    <div id="notifications-dropdown" class="absolute right-0 mt-2 w-80 bg-brand-card border border-white/10 rounded-2xl shadow-2xl z-50 hidden p-3 space-y-2 animate-fade-in">
-                        <div class="flex justify-between items-center border-b border-white/10 pb-2">
-                            <h4 class="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                                <i class="fa-solid fa-bell text-brand-orange"></i> Order Notifications
-                            </h4>
-                            <button onclick="closeNotificationsDropdown()" class="text-brand-slate hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
-                        </div>
-                        <div id="notifications-dropdown-list" class="space-y-2 max-h-60 overflow-y-auto no-scrollbar">
-                            <!-- Populated dynamically -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Search Wrapper -->
+                <!-- Search Wrapper (First) -->
                 <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10 shadow-lg">
                     <button onclick="toggleSearch(event)" id="search-toggle-btn" type="button" class="w-10 h-10 shrink-0 flex items-center justify-center text-white transition active:scale-95">
                         <i class="fa-solid fa-magnifying-glass text-xs"></i>
@@ -200,6 +228,24 @@
                         placeholder="Search menu..." 
                         class="w-full bg-transparent border-0 pl-1 pr-3 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
                     >
+                </div>
+
+                <!-- Hamburger Menu Dropdown Wrapper (Far Right) -->
+                <div class="relative">
+                    <button onclick="toggleHamburgerDropdown(event)" class="relative w-10 h-10 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95 shadow">
+                        <i class="fa-solid fa-bars text-xs"></i>
+                        <span id="ongoing-badge" class="absolute -top-1 -right-1 bg-brand-orange text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black" style="display: none;">0</span>
+                    </button>
+
+                    <!-- Hamburger Dropdown Menu -->
+                    <div id="hamburger-dropdown" class="absolute right-0 mt-2 w-56 bg-brand-card border border-white/10 rounded-2xl shadow-2xl z-50 hidden p-2 space-y-1 animate-fade-in text-xs">
+                        <button onclick="openOngoingOrdersModal(); closeHamburgerDropdown();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 text-white font-bold flex items-center gap-2.5 transition">
+                            <i class="fa-solid fa-clock-rotate-left text-brand-orange"></i> Recent Orders History
+                        </button>
+                        <button onclick="toggleTheme(); closeHamburgerDropdown();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 text-white font-bold flex items-center gap-2.5 transition">
+                            <i class="fa-solid fa-sun text-amber-400" id="theme-icon"></i> Toggle Light/Dark
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -238,7 +284,7 @@
 
 
     <!-- ================= FOOTER BAR ================= -->
-    <footer class="bg-brand-card border-t border-white/10 p-3 sm:p-4 shrink-0 shadow-2xl z-20">
+    <footer class="absolute bottom-0 left-0 right-0 bg-brand-card border-t border-white/10 p-3 sm:p-4 shadow-2xl z-20">
         <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
             <div class="text-left">
@@ -597,10 +643,40 @@
                 <button id="view-order-chat-btn" onclick="closeViewOrderModal(); openActiveRiderChat()" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
                     <i class="fa-solid fa-comments"></i> Chat with Rider
                 </button>
-                <button onclick="closeViewOrderModal()" class="bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2 rounded-xl transition">
-                    Close
-                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="openFacultyFeedbackModal()" class="bg-amber-500 hover:bg-amber-600 text-black font-extrabold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
+                        <i class="fa-solid fa-star"></i> Rate Order
+                    </button>
+                    <button onclick="closeViewOrderModal()" class="bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2 rounded-xl transition">
+                        Close
+                    </button>
+                </div>
             </div>
+        </div>
+    </div>
+
+    <!-- ================= FACULTY FEEDBACK & RATINGS MODAL ================= -->
+    <div id="faculty-feedback-modal" class="fixed inset-0 z-[80] bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="modal-pop bg-brand-card border border-white/10 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl text-center relative">
+            <button onclick="closeFacultyFeedbackModal()" class="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-star"></i>
+            </div>
+            <div>
+                <h3 class="font-black text-white text-base">Order Complete! Rate Us</h3>
+                <p class="text-xs text-brand-slate mt-1">How was your meal and service today?</p>
+            </div>
+            <div class="flex justify-center gap-2 text-2xl text-amber-400 py-1" id="faculty-star-container">
+                <button type="button" onclick="setFacultyRating(1)" class="fac-star-btn text-amber-400" data-star="1"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setFacultyRating(2)" class="fac-star-btn text-amber-400" data-star="2"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setFacultyRating(3)" class="fac-star-btn text-amber-400" data-star="3"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setFacultyRating(4)" class="fac-star-btn text-amber-400" data-star="4"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setFacultyRating(5)" class="fac-star-btn text-amber-400" data-star="5"><i class="fa-solid fa-star"></i></button>
+            </div>
+            <textarea id="faculty-feedback-comment" placeholder="Leave a comment or review..." class="w-full bg-black/40 border border-white/10 text-white rounded-xl p-3 text-xs focus:outline-none focus:border-brand-orange resize-none h-20 placeholder-brand-slate"></textarea>
+            <button onclick="submitFacultyFeedback()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3 rounded-xl uppercase tracking-wider text-xs transition shadow-lg shadow-brand-orange/20">Submit Feedback</button>
         </div>
     </div>
 
@@ -1654,6 +1730,11 @@
         .then(res => res.json())
         .then(data => {
             if (data.success) {
+                if (data.new_points !== undefined) {
+                    userPoints = Number(data.new_points);
+                    const pLbl = document.getElementById('user-points-lbl');
+                    if (pLbl) pLbl.innerText = userPoints.toFixed(1);
+                }
                 ongoingDeliveriesData.unshift({
                     id: data.order_id || 1,
                     order_number: data.order_number,
@@ -1714,6 +1795,119 @@
     }
 
     setInterval(nextCarouselSlide, 4500);
+
+    let currentFacultyRating = 5;
+    function setFacultyRating(r) {
+        currentFacultyRating = r;
+        document.querySelectorAll('.fac-star-btn').forEach((btn, idx) => {
+            if (idx < r) {
+                btn.classList.remove('text-white/30');
+                btn.classList.add('text-amber-400');
+            } else {
+                btn.classList.remove('text-amber-400');
+                btn.classList.add('text-white/30');
+            }
+        });
+    }
+
+    function openFacultyFeedbackModal() {
+        document.getElementById('faculty-feedback-modal').classList.remove('hidden');
+    }
+
+    function closeFacultyFeedbackModal() {
+        document.getElementById('faculty-feedback-modal').classList.add('hidden');
+    }
+
+    async function submitFacultyFeedback() {
+        const comment = document.getElementById('faculty-feedback-comment').value;
+        const orderNumEl = document.getElementById('view-order-no');
+        const orderNum = orderNumEl ? orderNumEl.innerText.replace('Order', '').trim() : '';
+        try {
+            const res = await fetch("{% url 'customer_portal:submit_feedback_api' %}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+                body: JSON.stringify({ order_number: orderNum, rating: currentFacultyRating, comment: comment })
+            });
+            const data = await res.json();
+            if (data.success) {
+                const happyEmojis = ['😊', '🎉', '🌟', '🥳', '🙌', '🤩', '✨', '🚀', '💖'];
+                const randomEmoji = happyEmojis[Math.floor(Math.random() * happyEmojis.length)];
+                showFeedbackSuccessPopup(`Thank you for your feedback! ${randomEmoji}`);
+                closeFacultyFeedbackModal();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to submit feedback.');
+        }
+    }
+
+    function showFeedbackSuccessPopup(message) {
+        let existing = document.getElementById('feedback-success-popup');
+        if (existing) existing.remove();
+
+        const popup = document.createElement('div');
+        popup.id = 'feedback-success-popup';
+        popup.className = 'fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in';
+        popup.innerHTML = `
+            <div class="bg-brand-card border border-white/10 rounded-3xl max-w-xs w-full p-6 text-center space-y-4 shadow-2xl">
+                <div class="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto text-3xl animate-bounce">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <h3 class="font-black text-white text-base">${message}</h3>
+                <button onclick="document.getElementById('feedback-success-popup').remove()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-2.5 rounded-xl uppercase tracking-wider text-xs transition">Awesome!</button>
+            </div>
+        `;
+        document.body.appendChild(popup);
+    }
+
+    function getCSRFToken() {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === 'csrftoken=') {
+                    cookieValue = decodeURIComponent(cookie.substring(10));
+                    break;
+                }
+            }
+        }
+        return cookieValue || '{{ csrf_token }}';
+    }
+
+    function toggleHamburgerDropdown(e) {
+        e.stopPropagation();
+        const dropdown = document.getElementById('hamburger-dropdown');
+        if (dropdown) dropdown.classList.toggle('hidden');
+    }
+
+    function closeHamburgerDropdown() {
+        const dropdown = document.getElementById('hamburger-dropdown');
+        if (dropdown) dropdown.classList.add('hidden');
+    }
+
+    function toggleTheme() {
+        document.body.classList.toggle('light-mode');
+        const isLight = document.body.classList.contains('light-mode');
+        localStorage.setItem('canex_faculty_theme', isLight ? 'light' : 'dark');
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.className = isLight ? 'fa-solid fa-moon text-xs text-amber-400' : 'fa-solid fa-sun text-xs text-amber-400';
+    }
+
+    if (localStorage.getItem('canex_faculty_theme') === 'light') {
+        document.body.classList.add('light-mode');
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.className = 'fa-solid fa-moon text-xs text-amber-400';
+    }
+
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('hamburger-dropdown');
+        if (dropdown && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
 
     // Initialize
     renderMenu();

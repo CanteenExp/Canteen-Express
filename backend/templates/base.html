@@ -13,7 +13,10 @@
         }
     </script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>{% block title %}Canteen Express{% endblock %}</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -57,9 +60,7 @@
            {% else %}
            <a href="{% url 'customer_portal:kiosk_menu' %}" class="flex items-center space-x-2.5">
            {% endif %}
-                <span class="bg-brand-500 text-white font-bold p-2 rounded-xl text-lg shadow-md shadow-brand-500/30">
-                    <i class="fa-solid font-black fa-utensils"></i>
-                </span>
+                <img src="{% static 'logo.png' %}" alt="Logo" class="h-9 w-auto object-contain">
                 <span class="font-black text-xl tracking-tight text-white">
                     Canteen<span class="text-brand-500">Express</span>
                 </span>
@@ -67,23 +68,9 @@
 
             {% if user.is_authenticated %}
                 <div class="flex items-center space-x-3">
-                    {% if user.role|upper == 'STUDENT' %}
-                        <span class="bg-gray-800 text-orange-400 text-xs px-3 py-1 rounded-full font-bold border border-orange-500/30">
-                            🎓 Student
-                        </span>
-                    {% elif user.role|upper == 'FACULTY' %}
-                        <span class="bg-brand-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-sm">
-                            👨‍🏫 Faculty
-                        </span>
-                    {% elif user.role|upper == 'STAFF' or user.role|upper == 'ADMIN' or user.is_staff %}
-                        <span class="bg-brand-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-sm">
-                            🍳 Canteen Staff
-                        </span>
-                    {% elif user.role|upper == 'DELIVERY' %}
-                        <span class="bg-emerald-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-sm">
-                            🏍️ Delivery Rider
-                        </span>
-                    {% endif %}
+                    <a href="{% url 'canteen_menu:staff_dashboard' %}" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition shadow flex items-center gap-1.5">
+                        <i class="fa-solid fa-gauge-high"></i> Staff Dashboard
+                    </a>
                     <a href="{% url 'accounts:logout' %}" class="text-gray-400 hover:text-red-500 text-sm font-medium transition" title="Logout">
                         <i class="fa-solid fa-right-from-bracket"></i>
                     </a>
