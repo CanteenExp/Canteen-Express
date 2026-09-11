@@ -923,6 +923,25 @@
     let leafletMap = null;
     let leafletMarker = null;
 
+    // Campus-only delivery scope: the map and checkout destination must stay
+    // anchored to the PSU campus (9.77778, 118.73333). Device GPS is only used
+    // to refine the position when the device is actually inside the campus
+    // geofence (~0.8 km); otherwise we keep the campus default so the map never
+    // jumps to an off-campus location (e.g. when testing from home).
+    const CAMPUS_CENTER_LAT = 9.77778;
+    const CAMPUS_CENTER_LNG = 118.73333;
+    const CAMPUS_RADIUS_KM = 0.8;
+
+    function isOnCampus(lat, lng) {
+        const R = 6371.0;
+        const dLat = (lat - CAMPUS_CENTER_LAT) * Math.PI / 180;
+        const dLng = (lng - CAMPUS_CENTER_LNG) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2
+            + Math.cos(CAMPUS_CENTER_LAT * Math.PI / 180)
+            * Math.cos(lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(a)) <= CAMPUS_RADIUS_KM;
+    }
+
     // Get GPS Location on Load & Ongoing Badge
     window.addEventListener('DOMContentLoaded', () => {
         updateOngoingBadge();
@@ -931,11 +950,17 @@
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
-                    currentLat = pos.coords.latitude;
-                    currentLng = pos.coords.longitude;
-                    locationText = `Lat: ${currentLat.toFixed(4)}, Lng: ${currentLng.toFixed(4)} (GPS Active)`;
                     const gpsEl = document.getElementById('gps-location-text');
-                    if (gpsEl) gpsEl.innerText = locationText;
+                    if (isOnCampus(pos.coords.latitude, pos.coords.longitude)) {
+                        currentLat = pos.coords.latitude;
+                        currentLng = pos.coords.longitude;
+                        if (gpsEl) gpsEl.innerText = `Lat: ${currentLat.toFixed(4)}, Lng: ${currentLng.toFixed(4)} (GPS Active)`;
+                    } else {
+                        // Off-campus device: keep the campus anchor as the
+                        // checkout/delivery location and inform the user.
+                        if (gpsEl) gpsEl.innerText = "PSU Campus (No Delivery)";
+                        console.warn('Device GPS is off-campus; keeping campus default.');
+                    }
                 },
                 () => {
                     const gpsEl = document.getElementById('gps-location-text');
