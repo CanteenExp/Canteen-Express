@@ -196,11 +196,8 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <span onclick="openPointsModal()" class="cursor-pointer text-amber-400 font-black flex items-center gap-1">
-                        <i class="fa-solid fa-coins"></i> <span x-text="userPoints.toFixed(1)">0.0</span> Pts
+                        <i class="fa-solid fa-coins"></i> <span x-text="userPoints.toFixed(1)">{{ user_points|default:0.0 }}</span> Pts
                     </span>
-                    <a href="{% url 'accounts:faculty_logout' %}" class="text-red-400 hover:text-red-300 font-bold flex items-center gap-1">
-                        <i class="fa-solid fa-right-from-bracket"></i> Logout
-                    </a>
                 </div>
             </div>
         </div>
@@ -216,6 +213,11 @@
             </div>
 
             <div class="flex items-center gap-2">
+                <!-- Points Badge -->
+                <span onclick="openPointsModal()" class="cursor-pointer bg-brand-card hover:bg-white/10 border border-white/10 px-3 py-2 rounded-xl text-amber-400 font-black text-xs flex items-center gap-1.5 transition active:scale-95 shadow">
+                    <i class="fa-solid fa-coins"></i> <span x-text="userPoints.toFixed(1)">{{ user_points|default:0.0 }}</span> Pts
+                </span>
+
                 <!-- Search Wrapper (First) -->
                 <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10 shadow-lg">
                     <button onclick="toggleSearch(event)" id="search-toggle-btn" type="button" class="w-10 h-10 shrink-0 flex items-center justify-center text-white transition active:scale-95">
@@ -245,6 +247,9 @@
                         <button onclick="toggleTheme(); closeHamburgerDropdown();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 text-white font-bold flex items-center gap-2.5 transition">
                             <i class="fa-solid fa-sun text-amber-400" id="theme-icon"></i> Toggle Light/Dark
                         </button>
+                        <a href="{% url 'accounts:faculty_logout' %}" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 text-red-400 font-bold flex items-center gap-2.5 transition border-t border-white/5 mt-1 pt-2">
+                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                        </a>
                     </div>
                 </div>
             </div>
@@ -784,7 +789,7 @@
     let activeCategory = 'all';
     let selectedItemForModal = null;
     let modalRiceQty = 0;
-    let userPoints = 0.0;
+    let userPoints = {{ user_points|default:0.0 }};
     let currentLat = 9.77778;
     let currentLng = 118.73333;
     let locationText = "Detecting GPS...";

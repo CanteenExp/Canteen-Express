@@ -9,7 +9,7 @@
   "theme_color": "#FF6117",
   "icons": [
     {
-      "src": "/static/official_logo.png",
+      "src": "/static/Rider.png",
       "sizes": "192x192 512x512",
       "type": "image/png"
     }

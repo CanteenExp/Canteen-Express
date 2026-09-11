@@ -12,15 +12,7 @@ from django.core.mail import send_mail
 User = get_user_model()
 
 def is_strong_password(password):
-    if len(password) < 8:
-        return False
-    if not re.search(r'[A-Z]', password):
-        return False
-    if not re.search(r'[a-z]', password):
-        return False
-    if not re.search(r'\d', password):
-        return False
-    if not re.search(r'[!@#$%^&*(),.?":{}|<>\-_=+]', password):
+    if len(password) < 6:
         return False
     return True
 
@@ -75,7 +67,7 @@ def faculty_auth_view(request):
                 error = "Passwords do not match."
                 mode = 'signup'
             elif not is_strong_password(password):
-                error = "Password must be at least 8 characters and include uppercase, lowercase, numbers, and unique/special characters (!@#$...).";
+                error = "Password must be at least 6 characters."
                 mode = 'signup'
             elif User.objects.filter(email=email).exists():
                 error = "An account with this institutional email already exists. Please sign in."
@@ -333,7 +325,7 @@ def verify_and_reset_password(request):
                 return JsonResponse({'success': False, 'error': 'Invalid or expired OTP code.'}, status=400)
             
             if not is_strong_password(new_password):
-                return JsonResponse({'success': False, 'error': 'Password must be at least 8 characters and include uppercase, lowercase, numbers, and unique/special characters.'}, status=400)
+                return JsonResponse({'success': False, 'error': 'Password must be at least 6 characters.'}, status=400)
             
             user = User.objects.filter(email=email).first()
             if not user:

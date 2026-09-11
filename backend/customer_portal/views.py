@@ -109,7 +109,7 @@ def process_checkout(request):
                 }, status=422)
 
         points_redeemed = float(data.get('points_redeemed', 0) or 0)
-        points_earned = round(subtotal * 0.1, 1)
+        points_earned = round(subtotal / 100.0, 2)
 
         user = request.user if request.user.is_authenticated else None
         if user:

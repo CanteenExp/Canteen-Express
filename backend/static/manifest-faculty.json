@@ -9,7 +9,7 @@
   "theme_color": "#f97316",
   "icons": [
     {
-      "src": "/static/official_logo.png",
+      "src": "/static/Prof.png",
       "sizes": "192x192 512x512",
       "type": "image/png"
     }
