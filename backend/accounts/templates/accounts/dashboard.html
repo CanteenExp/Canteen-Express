@@ -195,7 +195,8 @@
                     <span id="gps-location-text" class="font-bold text-white">Acquiring GPS...</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <span onclick="openPointsModal()" class="cursor-pointer text-amber-400 font-black flex items-center gap-1">
+                    <!-- Rewards / Points Badge -->
+                    <span onclick="openPointsModal()" class="cursor-pointer bg-brand-card hover:bg-white/10 border border-white/10 px-3 py-2 rounded-xl text-amber-400 font-black text-xs flex items-center gap-1.5 transition active:scale-95 shadow">
                         <i class="fa-solid fa-coins"></i> <span x-text="userPoints.toFixed(1)">{{ user_points|default:0.0 }}</span> Pts
                     </span>
                 </div>
@@ -213,11 +214,6 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <!-- Points Badge -->
-                <span onclick="openPointsModal()" class="cursor-pointer bg-brand-card hover:bg-white/10 border border-white/10 px-3 py-2 rounded-xl text-amber-400 font-black text-xs flex items-center gap-1.5 transition active:scale-95 shadow">
-                    <i class="fa-solid fa-coins"></i> <span x-text="userPoints.toFixed(1)">{{ user_points|default:0.0 }}</span> Pts
-                </span>
-
                 <!-- Search Wrapper (First) -->
                 <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10 shadow-lg">
                     <button onclick="toggleSearch(event)" id="search-toggle-btn" type="button" class="w-10 h-10 shrink-0 flex items-center justify-center text-white transition active:scale-95">
@@ -452,7 +448,7 @@
                     </div>
                 </div>
 
-                <!-- Loyalty Points Redemption (P10 = 0.1 pt -> 100 PHP = 10 pts) -->
+                <!-- Loyalty Points Redemption (₱100 spent = 1 point, 1 Pt = ₱1 Off) -->
                 <div class="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-2.5">
                     <div class="flex justify-between items-center">
                         <span class="font-bold text-white flex items-center gap-1.5">
@@ -1658,7 +1654,7 @@
     function updateCheckoutSummary() {
         let subtotal = getCartSubtotal();
         let fee = getConvenienceFee(subtotal);
-        let pointsEarned = Number((subtotal * 0.1).toFixed(1));
+        let pointsEarned = Number((subtotal / 100).toFixed(2));
 
         let pointsInput = document.getElementById('points-redeem-input');
         let pointsToUse = parseInt(pointsInput.value) || 0;
@@ -1699,7 +1695,7 @@
         let fee = getConvenienceFee(subtotal);
         let pointsToUse = parseInt(document.getElementById('points-redeem-input').value) || 0;
         let finalPayable = Math.max(0, subtotal + fee - pointsToUse);
-        let pointsEarned = Number((subtotal * 0.1).toFixed(1));
+        let pointsEarned = Number((subtotal / 100).toFixed(2));
         let deliveryLoc = document.getElementById('delivery-location-input').value;
 
         const cartArray = Object.keys(cart).map(k => ({

@@ -112,14 +112,8 @@ def process_checkout(request):
         points_earned = round(subtotal / 100.0, 2)
 
         user = request.user if request.user.is_authenticated else None
-        if user:
-            if points_redeemed > 0:
-                if float(getattr(user, 'loyalty_points', 0)) >= points_redeemed:
-                    user.loyalty_points = float(user.loyalty_points) - points_redeemed
-                else:
-                    return JsonResponse({'success': False, 'message': 'Insufficient loyalty points.'}, status=400)
-            user.loyalty_points = float(user.loyalty_points) + points_earned
-            user.save()
+        if user and points_redeemed > 0 and float(getattr(user, 'loyalty_points', 0)) < points_redeemed:
+            return JsonResponse({'success': False, 'message': 'Insufficient loyalty points.'}, status=400)
 
         # Generate a unique order number that avoids colliding with existing
         # orders (the column is UNIQUE, and a 4-digit random can repeat ~1/9000).
@@ -148,6 +142,12 @@ def process_checkout(request):
                 status=initial_status,
                 customer=request.user if request.user.is_authenticated else None
             )
+
+            # Points are applied atomically with order creation so a failed
+            # order never grants (or spends) loyalty points.
+            if user:
+                user.loyalty_points = float(user.loyalty_points) - points_redeemed + points_earned
+                user.save(update_fields=['loyalty_points'])
 
             from queuing.models import DigitalQueueSlip
             try:
