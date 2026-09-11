@@ -2,7 +2,9 @@
   "name": "Canteen Express Kiosk",
   "short_name": "Canteen Kiosk",
   "start_url": "/kiosk/",
-  "display": "standalone",
+  "scope": "/",
+  "display": "fullscreen",
+  "orientation": "any",
   "background_color": "#121212",
   "theme_color": "#f97316",
   "icons": [

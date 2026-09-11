@@ -418,8 +418,11 @@ def update_location(request, delivery_id):
             lat = float(lat)
             lng = float(lng)
 
-            # Campus-only scope: reject location pushes outside the campus geofence
-            if not is_within_campus(lat, lng):
+            # Campus-only scope: reject location pushes outside the campus geofence.
+            # Toggle-able for testing/demo via ENFORCE_GEOFENCE=False.
+            from django.conf import settings
+            enforce_geofence = getattr(settings, 'ENFORCE_GEOFENCE', True)
+            if enforce_geofence and not is_within_campus(lat, lng):
                 return JsonResponse({
                     'success': False,
                     'message': 'Location is outside the campus delivery zone'

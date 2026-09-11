@@ -38,7 +38,41 @@ def staff_dashboard(request):
 
     # Sales Reports & Analytics
     valid_orders = Order.objects.filter(status__in=['ready', 'completed'])
-    
+    overall_orders = valid_orders
+    kiosk_orders = valid_orders.filter(customer__isnull=True)
+    faculty_orders = valid_orders.filter(customer__role='FACULTY')
+    delivery_orders = valid_orders.filter(deliveries_deliveryrequest__isnull=False)
+
+    def compute_stats(qs):
+        s_today = qs.filter(created_at__date=today).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        s_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        s_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        d_sales = list(
+            qs.annotate(period=TruncDate('created_at'))
+            .values('period')
+            .annotate(total=Sum('total_amount'), count=Count('id'))
+            .order_by('-period')[:7]
+        )
+        chart = {
+            'labels': [row['period'].strftime('%b %d') if row['period'] else '' for row in reversed(d_sales)],
+            'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(d_sales)],
+        }
+        return {'today': s_today, 'week': s_week, 'month': s_month, 'chart': chart}
+
+    overall_stats = compute_stats(overall_orders)
+    kiosk_stats = compute_stats(kiosk_orders)
+    faculty_stats = compute_stats(faculty_orders)
+    delivery_stats = compute_stats(delivery_orders)
+
+    rider_rankings = list(
+        User.objects.filter(role__in=['RIDER', 'DELIVERY'])
+        .annotate(
+            total_delivered=Count('assigned_deliveries', filter=models.Q(assigned_deliveries__status='DELIVERED')),
+            total_earnings=Sum('assigned_deliveries__order__delivery_fee', filter=models.Q(assigned_deliveries__status='DELIVERED'))
+        )
+        .order_by('-total_delivered')
+    )
+
     daily_sales = list(
         valid_orders
         .annotate(period=TruncDate('created_at'))
@@ -76,11 +110,9 @@ def staff_dashboard(request):
         'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(monthly_sales)],
     }
 
-    sales_today = valid_orders.filter(created_at__date=today).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    week_start = today - timezone.timedelta(days=7)
-    sales_week = valid_orders.filter(created_at__date__gte=week_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    month_start = today.replace(day=1)
-    sales_month = valid_orders.filter(created_at__date__gte=month_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    sales_today = overall_stats['today']
+    sales_week = overall_stats['week']
+    sales_month = overall_stats['month']
 
     if request.method == 'POST' and 'add_menu_item' in request.POST:
         name = request.POST.get('name')
@@ -98,6 +130,9 @@ def staff_dashboard(request):
         return redirect('kitchen_display:dashboard')
 
     staff_name = request.user.first_name if request.user.is_authenticated and request.user.first_name else (request.user.username if request.user.is_authenticated else 'Staff')
+
+    from customer_portal.models import OrderFeedback
+    feedbacks = OrderFeedback.objects.all().order_by('-created_at')
 
     context = {
         'total_orders_today': total_orders_today,
@@ -119,6 +154,12 @@ def staff_dashboard(request):
         'sales_today': sales_today,
         'sales_week': sales_week,
         'sales_month': sales_month,
+        'feedbacks': feedbacks,
+        'overall_stats': overall_stats,
+        'kiosk_stats': kiosk_stats,
+        'faculty_stats': faculty_stats,
+        'delivery_stats': delivery_stats,
+        'rider_rankings': rider_rankings,
     }
     return render(request, 'staff_dashboard.html', context)
 
@@ -140,6 +181,34 @@ def kitchen_display(request):
         'staff_name': request.user.first_name or request.user.username,
     }
     return render(request, 'kitchen_dashboard.html', context)
+
+
+@role_required(allowed_roles=['STAFF'])
+def kitchen_orders_json_api(request):
+    def order_map(o, is_delivery):
+        return {
+            'id': o.id,
+            'order_number': o.order_number,
+            'status': o.status,
+            'is_delivery': is_delivery,
+            'customer': o.customer.get_full_name() if (o.customer and o.customer.get_full_name()) else (o.customer.username if o.customer else 'Walk-in Guest'),
+            'created_at': o.created_at.strftime('%H:%M'),
+            'items': [{'qty': it.quantity, 'name': it.item_name, 'total': str(it.total_price)} for it in o.items.all()],
+            'total_amount': str(o.total_amount),
+            'delivery_fee': str(o.delivery_fee),
+            'total_payment': str(o.total_payment),
+        }
+
+    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status='completed').exclude(status='ready').exclude(status='unpaid').order_by('created_at')
+    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status='completed').exclude(status='ready').order_by('created_at')
+    ready_orders = Order.objects.filter(status='ready').order_by('created_at')
+
+    boards = {
+        'kiosk': [order_map(o, False) for o in kiosk_orders],
+        'delivery': [order_map(o, True) for o in delivery_orders],
+        'ready': [order_map(o, DeliveryRequest.objects.filter(order=o).exists()) for o in ready_orders],
+    }
+    return JsonResponse({'success': True, 'boards': boards})
 
 
 @role_required(allowed_roles=['STAFF'])

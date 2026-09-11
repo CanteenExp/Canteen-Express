@@ -357,7 +357,20 @@ function bindStatusBtn(button) {
             body: JSON.stringify({ status: newStatus })
         })
         .then(r => r.json())
-        .then(data => { if (!data.success) alert('Error: ' + (data.error || 'Failed to update order status.')); })
+        .then(data => {
+            if (data.success) {
+                const card = document.getElementById(`order-card-${orderId}`);
+                if (card) {
+                    card.style.transition = 'all 0.2s ease';
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.95)';
+                    setTimeout(() => card.remove(), 200);
+                }
+                setTimeout(() => { window.location.reload(); }, 250);
+            } else {
+                alert('Error: ' + (data.error || 'Failed to update order status.'));
+            }
+        })
         .catch(error => console.error('Error:', error));
     });
 }
@@ -424,6 +437,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { /* ignore malformed pings */ }
     };
     sse.onerror = () => { /* EventSource auto-reconnects */ };
+
+    const pollOrders = async () => {
+        try {
+            const res = await fetch("{% url 'kitchen_display:kitchen_orders_json_api' %}");
+            const data = await res.json();
+            if (data.success) csvSuccess(data);
+        } catch (err) { /* ignore network blips */ }
+    };
+    setInterval(pollOrders, 2500);
 });
 </script>
 {% endblock %}

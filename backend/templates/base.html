@@ -3,7 +3,15 @@
 <html lang="en">
 <head>
     <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
+    {% if user.is_authenticated and user.role|upper == 'DELIVERY' %}
+    <link rel="manifest" href="{% static 'manifest-rider.json' %}">
+    {% elif user.is_authenticated and user.role|upper == 'FACULTY' %}
+    <link rel="manifest" href="{% static 'manifest-faculty.json' %}">
+    {% elif user.is_authenticated and user.role|upper == 'STUDENT' %}
+    <link rel="manifest" href="{% static 'manifest-kiosk.json' %}">
+    {% else %}
     <link rel="manifest" href="{% static 'manifest-staff.json' %}">
+    {% endif %}
     <meta name="theme-color" content="#f97316">
     <script>
         if ('serviceWorker' in navigator) {
@@ -13,7 +21,11 @@
         }
     </script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>[x-cloak] { display: none !important; }</style>
     <title>{% block title %}Canteen Express{% endblock %}</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -57,36 +69,28 @@
            {% else %}
            <a href="{% url 'customer_portal:kiosk_menu' %}" class="flex items-center space-x-2.5">
            {% endif %}
-                <span class="bg-brand-500 text-white font-bold p-2 rounded-xl text-lg shadow-md shadow-brand-500/30">
-                    <i class="fa-solid font-black fa-utensils"></i>
-                </span>
+                <img src="{% static 'logo.png' %}" alt="Logo" class="h-9 w-auto object-contain">
                 <span class="font-black text-xl tracking-tight text-white">
                     Canteen<span class="text-brand-500">Express</span>
                 </span>
             </a>
 
             {% if user.is_authenticated %}
-                <div class="flex items-center space-x-3">
-                    {% if user.role|upper == 'STUDENT' %}
-                        <span class="bg-gray-800 text-orange-400 text-xs px-3 py-1 rounded-full font-bold border border-orange-500/30">
-                            🎓 Student
-                        </span>
-                    {% elif user.role|upper == 'FACULTY' %}
-                        <span class="bg-brand-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-sm">
-                            👨‍🏫 Faculty
-                        </span>
-                    {% elif user.role|upper == 'STAFF' or user.role|upper == 'ADMIN' or user.is_staff %}
-                        <span class="bg-brand-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-sm">
-                            🍳 Canteen Staff
-                        </span>
-                    {% elif user.role|upper == 'DELIVERY' %}
-                        <span class="bg-emerald-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-sm">
-                            🏍️ Delivery Rider
-                        </span>
-                    {% endif %}
-                    <a href="{% url 'accounts:logout' %}" class="text-gray-400 hover:text-red-500 text-sm font-medium transition" title="Logout">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                    </a>
+                <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                    <button @click="open = !open" class="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-2 rounded-xl transition border border-white/15">
+                        <i class="fa-solid fa-user"></i>
+                        <span class="hidden sm:inline">{{ user.get_full_name|default:user.username }}</span>
+                        <i class="fa-solid fa-chevron-down text-[9px] text-gray-400 transition" :class="open && 'rotate-180'"></i>
+                    </button>
+                    <div x-show="open" x-transition x-cloak class="absolute right-0 mt-2 w-52 bg-black border border-zinc-800 rounded-2xl shadow-2xl py-2 z-50 origin-top-right">
+                        <a href="{% url 'canteen_menu:staff_dashboard' %}" class="flex items-center gap-2.5 px-4 py-2.5 hover:bg-white/10 text-white text-xs font-bold transition">
+                            <i class="fa-solid fa-gauge-high text-brand-500"></i> Staff Dashboard
+                        </a>
+                        <div class="border-t border-zinc-800 my-1"></div>
+                        <a href="{% url 'accounts:logout' %}" class="flex items-center gap-2.5 px-4 py-2.5 hover:bg-red-500/20 text-red-400 text-xs font-bold transition">
+                            <i class="fa-solid fa-right-from-bracket"></i> Log Out
+                        </a>
+                    </div>
                 </div>
             {% else %}
                 <a href="{% url 'accounts:landing' %}" class="bg-brand-500 hover:bg-brand-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition shadow-md shadow-brand-500/20">

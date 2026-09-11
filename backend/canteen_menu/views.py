@@ -309,7 +309,41 @@ def staff_dashboard(request, token=None):
 
     # Sales Reports & Analytics
     valid_orders = Order.objects.filter(status__in=['ready', 'completed'])
-    
+    overall_orders = valid_orders
+    kiosk_orders = valid_orders.filter(customer__isnull=True)
+    faculty_orders = valid_orders.filter(customer__role='FACULTY')
+    delivery_orders = valid_orders.filter(deliveries_deliveryrequest__isnull=False)
+
+    def compute_stats(qs):
+        s_today = qs.filter(created_at__date=today).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        s_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        s_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        d_sales = list(
+            qs.annotate(period=TruncDate('created_at'))
+            .values('period')
+            .annotate(total=Sum('total_amount'), count=Count('id'))
+            .order_by('-period')[:7]
+        )
+        chart = {
+            'labels': [row['period'].strftime('%b %d') if row['period'] else '' for row in reversed(d_sales)],
+            'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(d_sales)],
+        }
+        return {'today': s_today, 'week': s_week, 'month': s_month, 'chart': chart}
+
+    overall_stats = compute_stats(overall_orders)
+    kiosk_stats = compute_stats(kiosk_orders)
+    faculty_stats = compute_stats(faculty_orders)
+    delivery_stats = compute_stats(delivery_orders)
+
+    rider_rankings = list(
+        User.objects.filter(role__in=['RIDER', 'DELIVERY'])
+        .annotate(
+            total_delivered=Count('assigned_deliveries', filter=models.Q(assigned_deliveries__status='DELIVERED')),
+            total_earnings=Sum('assigned_deliveries__order__delivery_fee', filter=models.Q(assigned_deliveries__status='DELIVERED'))
+        )
+        .order_by('-total_delivered')
+    )
+
     daily_sales = list(
         valid_orders
         .annotate(period=TruncDate('created_at'))
@@ -347,11 +381,9 @@ def staff_dashboard(request, token=None):
         'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(monthly_sales)],
     }
 
-    sales_today = valid_orders.filter(created_at__date=today).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    week_start = today - timezone.timedelta(days=7)
-    sales_week = valid_orders.filter(created_at__date__gte=week_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    month_start = today.replace(day=1)
-    sales_month = valid_orders.filter(created_at__date__gte=month_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    sales_today = overall_stats['today']
+    sales_week = overall_stats['week']
+    sales_month = overall_stats['month']
 
     # Audit Logs & Reports Data
     from customer_portal.models import OrderItem
@@ -420,6 +452,9 @@ def staff_dashboard(request, token=None):
 
     staff_name = request.user.first_name if request.user.is_authenticated and request.user.first_name else (request.user.username if request.user.is_authenticated else 'Staff')
 
+    from customer_portal.models import OrderFeedback
+    feedbacks = OrderFeedback.objects.all().order_by('-created_at')
+
     context = {
         'total_orders_today': total_orders_today,
         'pending_count': pending_count,
@@ -446,6 +481,12 @@ def staff_dashboard(request, token=None):
         'line_chart_data': line_chart_data,
         'pie_chart_data_json': json.dumps(pie_chart_data),
         'line_chart_data_json': json.dumps(line_chart_data),
+        'feedbacks': feedbacks,
+        'overall_stats': overall_stats,
+        'kiosk_stats': kiosk_stats,
+        'faculty_stats': faculty_stats,
+        'delivery_stats': delivery_stats,
+        'rider_rankings': rider_rankings,
     }
     return render(request, 'canteen_menu/staff_dashboard.html', context)
 

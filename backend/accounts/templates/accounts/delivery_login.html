@@ -3,6 +3,8 @@
 <html lang="en">
 <head>
     <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
+    <link rel="manifest" href="{% static 'manifest-rider.json' %}">
+    <meta name="theme-color" content="#FF6117">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Delivery Personnel Portal - Canteen Express</title>
@@ -159,11 +161,6 @@
                 </button>
             </form>
 
-            <div class="text-center pt-2 border-t border-white/10">
-                <a href="{% url 'accounts:landing' %}" class="text-xs font-bold text-white/60 hover:text-white transition flex items-center justify-center gap-1">
-                    <i class="fa-solid fa-arrow-left"></i> Back to Role Selection
-                </a>
-            </div>
         </div>
     </main>
 
@@ -188,6 +185,12 @@
                 setTimeout(() => { overlay.classList.remove('opacity-0'); }, 10);
             }
         }
+        window.addEventListener('pageshow', (event) => {
+            const overlay = document.getElementById('logo-loading-overlay');
+            if (overlay) {
+                overlay.classList.add('opacity-0', 'hidden');
+            }
+        });
     </script>
 
 </body>

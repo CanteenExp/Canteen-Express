@@ -1214,7 +1214,32 @@
 
             </div>
 
-
+            {% if feedbacks %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for fb in feedbacks %}
+                <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-3">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold text-gray-400">Order #{{ fb.order.order_number|default:"Walk-in" }}</span>
+                            <h4 class="text-sm font-black text-dark-900">
+                                {% if fb.customer %}
+                                    {{ fb.customer.get_full_name|default:fb.customer.username }}
+                                {% else %}
+                                    Anonymous Customer
+                                {% endif %}
+                            </h4>
+                        </div>
+                        <div class="flex items-center gap-1 bg-amber-50 text-amber-600 px-3 py-1 rounded-xl font-black text-xs border border-amber-200">
+                            <i class="fa-solid fa-star"></i>
+                            <span>{{ fb.rating }}.0</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-700 bg-gray-50 p-3 rounded-2xl border border-gray-100">“{{ fb.comment|default:"No comment provided." }}”</p>
+                    <span class="text-[10px] text-gray-400 font-medium block">{{ fb.created_at|date:"M d, Y H:i" }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
             <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-8 text-center space-y-3">
 
                 <div class="w-16 h-16 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-2xl mx-auto">
@@ -1230,6 +1255,7 @@
                 </p>
 
             </div>
+            {% endif %}
 
         </div>
 
@@ -1237,22 +1263,32 @@
         <!-- ========================================= -->
         <!-- 6. REPORTS & SALES -->
         <!-- ========================================= -->
-        <div x-show="activeTab === 'reports'" class="space-y-6" style="display: none;" x-data="{ reportMode: 'daily' }">
+        <div x-show="activeTab === 'reports'" class="space-y-6" style="display: none;" x-data="{ reportMode: 'daily', reportRole: 'overall' }">
 
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+
                 <div>
                     <h2 class="text-xl font-black text-dark-900">
-                        Sales Reports, Analytics & Audit Logs
+                        Sales Reports, Analytics & Rider Rankings
                     </h2>
                     <p class="text-xs text-gray-500 mt-0.5">
-                        Overall financial summaries, visual charts (Bar, Line, Pie), and system audit reports.
+                        Overall and role-separated earnings breakdown (Kiosk, Faculty/Staff, Delivery) & Rider rankings.
                     </p>
                 </div>
-                <!-- Export Dropdown & Filter Buttons -->
+
+                <!-- Export Dropdown & Role Filter Tabs -->
                 <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex flex-wrap bg-gray-100 p-1 rounded-2xl gap-1">
+                        <button @click="reportRole = 'overall'" :class="reportRole === 'overall' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Overall</button>
+                        <button @click="reportRole = 'kiosk'" :class="reportRole === 'kiosk' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Kiosk</button>
+                        <button @click="reportRole = 'faculty'" :class="reportRole === 'faculty' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Faculty</button>
+                        <button @click="reportRole = 'delivery'" :class="reportRole === 'delivery' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Delivery</button>
+                        <button @click="reportRole = 'rankings'" :class="reportRole === 'rankings' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Rider Rankings</button>
+                    </div>
+
                     <div class="relative" x-data="{ exportOpen: false }">
                         <button @click="exportOpen = !exportOpen" class="px-4 py-2.5 bg-black hover:bg-gray-800 text-white font-black rounded-2xl text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer transition shadow-md">
-                            <i class="fa-solid fa-download"></i> Download Report ▾
+                            <i class="fa-solid fa-download"></i> Download ▾
                         </button>
                         <div x-show="exportOpen" @click.away="exportOpen = false" class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-2xl shadow-2xl py-2 z-30" style="display: none;">
                             <a href="{% url 'canteen_menu:export_report' 'excel' %}" class="block px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-orange-50 hover:text-orange-600"><i class="fa-solid fa-file-excel text-emerald-600 mr-2"></i> Excel (.csv)</a>
@@ -1260,30 +1296,122 @@
                             <a href="{% url 'canteen_menu:export_report' 'docx' %}" class="block px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-orange-50 hover:text-orange-600"><i class="fa-solid fa-file-word text-blue-600 mr-2"></i> Word Doc (.doc)</a>
                         </div>
                     </div>
-                    <div class="flex bg-gray-100 p-1 rounded-2xl">
-                        <button @click="reportMode = 'daily'; switchChart('daily')" :class="reportMode === 'daily' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3.5 py-2 rounded-xl text-xs transition cursor-pointer">Daily</button>
-                        <button @click="reportMode = 'weekly'; switchChart('weekly')" :class="reportMode === 'weekly' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3.5 py-2 rounded-xl text-xs transition cursor-pointer">Weekly</button>
-                        <button @click="reportMode = 'monthly'; switchChart('monthly')" :class="reportMode === 'monthly' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3.5 py-2 rounded-xl text-xs transition cursor-pointer">Monthly</button>
+                </div>
+
+            </div>
+
+            <!-- OVERALL STATS -->
+            <div x-show="reportRole === 'overall'" class="space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Overall Sales Today</span>
+                        <p class="text-2xl font-black text-brand-500">₱{{ overall_stats.today|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Overall Sales This Week</span>
+                        <p class="text-2xl font-black text-blue-600">₱{{ overall_stats.week|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Overall Sales This Month</span>
+                        <p class="text-2xl font-black text-emerald-600">₱{{ overall_stats.month|floatformat:2 }}</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Summary Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Sales Today</span>
-                    <p class="text-2xl font-black text-brand-500">₱{{ sales_today|floatformat:2 }}</p>
-                    <p class="text-xs text-emerald-600 font-bold"><i class="fa-solid fa-arrow-up"></i> Today's total revenue</p>
+            <!-- KIOSK STATS -->
+            <div x-show="reportRole === 'kiosk'" class="space-y-6" style="display: none;">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Kiosk Sales Today</span>
+                        <p class="text-2xl font-black text-brand-500">₱{{ kiosk_stats.today|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Kiosk Sales This Week</span>
+                        <p class="text-2xl font-black text-blue-600">₱{{ kiosk_stats.week|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Kiosk Sales This Month</span>
+                        <p class="text-2xl font-black text-emerald-600">₱{{ kiosk_stats.month|floatformat:2 }}</p>
+                    </div>
                 </div>
-                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Sales This Week</span>
-                    <p class="text-2xl font-black text-blue-600">₱{{ sales_week|floatformat:2 }}</p>
-                    <p class="text-xs text-blue-600 font-bold"><i class="fa-solid fa-calendar-week"></i> Past 7 days revenue</p>
+            </div>
+
+            <!-- FACULTY STATS -->
+            <div x-show="reportRole === 'faculty'" class="space-y-6" style="display: none;">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Faculty / Staff Sales Today</span>
+                        <p class="text-2xl font-black text-brand-500">₱{{ faculty_stats.today|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Faculty / Staff Sales This Week</span>
+                        <p class="text-2xl font-black text-blue-600">₱{{ faculty_stats.week|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Faculty / Staff Sales This Month</span>
+                        <p class="text-2xl font-black text-emerald-600">₱{{ faculty_stats.month|floatformat:2 }}</p>
+                    </div>
                 </div>
-                <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Sales This Month</span>
-                    <p class="text-2xl font-black text-emerald-600">₱{{ sales_month|floatformat:2 }}</p>
-                    <p class="text-xs text-emerald-600 font-bold"><i class="fa-solid fa-calendar-days"></i> Current month revenue</p>
+            </div>
+
+            <!-- DELIVERY STATS -->
+            <div x-show="reportRole === 'delivery'" class="space-y-6" style="display: none;">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Delivery Sales Today</span>
+                        <p class="text-2xl font-black text-brand-500">₱{{ delivery_stats.today|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Delivery Sales This Week</span>
+                        <p class="text-2xl font-black text-blue-600">₱{{ delivery_stats.week|floatformat:2 }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Delivery Sales This Month</span>
+                        <p class="text-2xl font-black text-emerald-600">₱{{ delivery_stats.month|floatformat:2 }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIDER RANKINGS -->
+            <div x-show="reportRole === 'rankings'" class="space-y-6" style="display: none;">
+                <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-base font-black text-dark-900"><i class="fa-solid fa-trophy text-amber-500 mr-2"></i> Delivery Personnel Leaderboard & Rankings</h3>
+                        <span class="text-xs font-bold text-gray-400">Ranked by Total Completed Deliveries</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-gray-50 text-gray-500 uppercase font-bold tracking-wider border-b border-gray-200">
+                                <tr>
+                                    <th class="p-3">Rank</th>
+                                    <th class="p-3">Rider Name</th>
+                                    <th class="p-3">Username</th>
+                                    <th class="p-3 text-center">Completed Deliveries</th>
+                                    <th class="p-3 text-right">Total Rider Earnings</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
+                                {% for rider in rider_rankings %}
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="p-3 font-black text-brand-orange">
+                                        {% if forloop.counter == 1 %}🥇 1st
+                                        {% elif forloop.counter == 2 %}🥈 2nd
+                                        {% elif forloop.counter == 3 %}🥉 3rd
+                                        {% else %}#{{ forloop.counter }}{% endif %}
+                                    </td>
+                                    <td class="p-3 font-bold text-dark-900">{{ rider.get_full_name|default:rider.username }}</td>
+                                    <td class="p-3 text-gray-500">@{{ rider.username }}</td>
+                                    <td class="p-3 text-center font-black text-brand-orange text-sm">{{ rider.total_delivered|default:0 }}</td>
+                                    <td class="p-3 text-right font-black text-emerald-600">₱{{ rider.total_earnings|default:0.00|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="p-6 text-center text-gray-400">No delivery personnel found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 

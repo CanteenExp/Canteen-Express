@@ -32,9 +32,8 @@ class MenuItem(models.Model):
             return self.image_url
         if self.image:
             try:
-                if self.image.storage.exists(self.image.name):
-                    return self.image.url
-            except Exception:
+                return self.image.url
+            except ValueError:
                 pass
         name_lower = self.name.lower()
         cat_name = str(self.category).lower() if self.category else ''

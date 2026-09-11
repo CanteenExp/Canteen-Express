@@ -171,7 +171,7 @@
     <div class="relative z-10 flex flex-col justify-between h-full max-w-md mx-auto w-full py-2">
         
         <!-- Header Brand -->
-        <header class="flex justify-center pt-1 shrink-0">
+        <header class="flex justify-center pt-8 sm:pt-10 shrink-0">
             <div class="flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full border border-white/15 backdrop-blur-md">
                 <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-6 w-auto">
                 <span class="font-poppins text-xs font-bold uppercase tracking-widest text-white/90">Canteen Express</span>
@@ -396,6 +396,13 @@
                 window.location.href = targetUrl;
             }, 200);
         }
+
+        window.addEventListener('pageshow', (event) => {
+            const overlay = document.getElementById('logo-loading-overlay');
+            if (overlay) {
+                overlay.classList.add('opacity-0', 'hidden');
+            }
+        });
     </script>
 </body>
 </html>

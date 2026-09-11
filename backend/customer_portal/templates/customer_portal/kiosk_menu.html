@@ -13,7 +13,10 @@
         }
     </script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Today's Menu - Canteen Express Kiosk</title>
 
     <!-- Tailwind CSS CDN -->
@@ -161,7 +164,10 @@
 
     <!-- ================= 1. DINE-IN / TAKE-OUT SELECTION POPUP MODAL ================= -->
     <div id="dining-option-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4">
-        <div class="bg-brand-card border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-6 shadow-2xl animate-fade-in">
+        <div class="bg-brand-card border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-6 shadow-2xl animate-fade-in relative">
+            <a href="{% url 'customer_portal:kiosk_welcome' %}" class="absolute right-5 top-5 w-9 h-9 rounded-full bg-white/5 hover:bg-red-500/20 text-brand-slate hover:text-red-400 border border-white/10 flex items-center justify-center transition active:scale-95" title="Exit Kiosk">
+                <i class="fa-solid fa-xmark text-sm font-black"></i>
+            </a>
             <div class="space-y-2">
                 <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-12 w-auto mx-auto mb-2 object-contain">
                 <h2 class="text-2xl sm:text-3xl font-black text-white">How will you be eating today?</h2>
@@ -253,8 +259,9 @@
 
         <div class="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <a href="{% url 'customer_portal:kiosk_welcome' %}" class="w-10 h-10 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95 shrink-0">
-                    <i class="fa-solid fa-arrow-left"></i>
+                <a href="{% url 'customer_portal:kiosk_welcome' %}" class="bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 font-extrabold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 transition active:scale-95 shrink-0" title="Exit Kiosk">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span class="hidden sm:inline font-black uppercase tracking-wider">Exit</span>
                 </a>
                 <div class="flex items-center gap-3">
                     <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto object-contain shrink-0">
@@ -342,7 +349,7 @@
 
 
     <!-- ================= FOOTER BAR ================= -->
-    <footer class="bg-brand-card border-t border-white/10 p-3 sm:p-4 shrink-0 shadow-2xl z-20">
+    <footer class="absolute bottom-0 left-0 right-0 bg-brand-card border-t border-white/10 p-3 sm:p-4 shadow-2xl z-20">
         <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
             <div class="text-left">
@@ -971,6 +978,8 @@ function stopKioskStatusPolling() {
 
 function transformToOfficialReceipt() {
     stopKioskStatusPolling();
+    localStorage.removeItem('canteen_pending_order');
+    currentPendingOrder = null;
 
     const titleLabel = document.getElementById('slip-title-label');
     if (titleLabel) titleLabel.textContent = "Official Payment Receipt";
@@ -991,6 +1000,18 @@ function transformToOfficialReceipt() {
                 <i class="fa-solid fa-circle-check"></i> Payment Verified & Sent to Kitchen
             </div>
             <p class="text-[9px] text-gray-400 mt-0.5">Salamat sa pagtangkilik sa Canteen Express!</p>
+            <div class="mt-3 pt-3 border-t border-dashed border-gray-300 space-y-2 text-left w-full">
+                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider block text-center">Rate Your Experience</span>
+                <div class="flex justify-center gap-1.5 text-lg text-amber-500" id="star-rating-container">
+                    <button type="button" onclick="setRating(1)" class="star-btn text-amber-500" data-star="1"><i class="fa-solid fa-star"></i></button>
+                    <button type="button" onclick="setRating(2)" class="star-btn text-amber-500" data-star="2"><i class="fa-solid fa-star"></i></button>
+                    <button type="button" onclick="setRating(3)" class="star-btn text-amber-500" data-star="3"><i class="fa-solid fa-star"></i></button>
+                    <button type="button" onclick="setRating(4)" class="star-btn text-amber-500" data-star="4"><i class="fa-solid fa-star"></i></button>
+                    <button type="button" onclick="setRating(5)" class="star-btn text-amber-500" data-star="5"><i class="fa-solid fa-star"></i></button>
+                </div>
+                <textarea id="feedback-comment-input" placeholder="Write feedback or comment..." class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl p-2 text-xs focus:outline-none focus:border-orange-500 resize-none h-14"></textarea>
+                <button onclick="submitKioskFeedback()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-2 rounded-xl text-xs uppercase tracking-wider transition">Submit Feedback</button>
+            </div>
         `;
     }
 
@@ -999,6 +1020,78 @@ function transformToOfficialReceipt() {
 
     const actionsGrid = document.getElementById('slip-actions-grid');
     if (actionsGrid) actionsGrid.style.display = 'none';
+}
+
+let currentSelectedRating = 5;
+function getCSRFToken() {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, 10) === 'csrftoken=') {
+                cookieValue = decodeURIComponent(cookie.substring(10));
+                break;
+            }
+        }
+    }
+    return cookieValue || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
+function setRating(r) {
+    currentSelectedRating = r;
+    document.querySelectorAll('.star-btn').forEach((btn, idx) => {
+        if (idx < r) {
+            btn.classList.remove('text-gray-300');
+            btn.classList.add('text-amber-500');
+        } else {
+            btn.classList.remove('text-amber-500');
+            btn.classList.add('text-gray-300');
+        }
+    });
+}
+
+async function submitKioskFeedback() {
+    const comment = document.getElementById('feedback-comment-input').value;
+    const orderNum = document.getElementById('slip-queue-number').innerText;
+    try {
+        const res = await fetch("{% url 'customer_portal:submit_feedback_api' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+            body: JSON.stringify({ order_number: orderNum, rating: currentSelectedRating, comment: comment })
+        });
+        const data = await res.json();
+        if (data.success) {
+            const happyEmojis = ['😊', '🎉', '🌟', '🥳', '🙌', '🤩', '✨', '🚀', '💖'];
+            const randomEmoji = happyEmojis[Math.floor(Math.random() * happyEmojis.length)];
+            showFeedbackSuccessPopup(`Thank you for your feedback! ${randomEmoji}`);
+            document.getElementById('slip-footer-container').innerHTML = `<p class="text-xs text-emerald-600 font-bold text-center py-4"><i class="fa-solid fa-circle-check"></i> Thank you! Feedback & Rating submitted successfully. ${randomEmoji}</p>`;
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Failed to submit feedback.');
+    }
+}
+
+function showFeedbackSuccessPopup(message) {
+    let existing = document.getElementById('feedback-success-popup');
+    if (existing) existing.remove();
+
+    const popup = document.createElement('div');
+    popup.id = 'feedback-success-popup';
+    popup.className = 'fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in';
+    popup.innerHTML = `
+        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-xs w-full p-6 text-center space-y-4 shadow-2xl">
+            <div class="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto text-3xl animate-bounce">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h3 class="font-black text-white text-base">${message}</h3>
+            <button onclick="document.getElementById('feedback-success-popup').remove()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-2.5 rounded-xl uppercase tracking-wider text-xs transition">Awesome!</button>
+        </div>
+    `;
+    document.body.appendChild(popup);
 }
 
 function cancelPendingOrder() {
@@ -1062,11 +1155,12 @@ function checkPendingOrderOnLoad() {
             fetch(`/kiosk/api/order-status/${currentPendingOrder.order_number}/`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.exists && (data.status === 'unpaid' || data.status === 'pending')) {
+                    if (data.exists && data.status === 'unpaid') {
                         showPendingBanner();
                         openQueueSlipModal();
                     } else {
                         localStorage.removeItem('canteen_pending_order');
+                        currentPendingOrder = null;
                         document.getElementById('dining-option-modal').classList.remove('hidden');
                     }
                 })
