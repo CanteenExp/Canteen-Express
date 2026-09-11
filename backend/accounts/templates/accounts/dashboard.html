@@ -70,6 +70,52 @@
         .modal-pop { animation: modalPop 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes modalPop { from { opacity: 0; transform: scale(0.92) translateY(14px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
+        /* ===== Glassmorphism UI system ===== */
+        .glass-backdrop {
+            background: rgba(8, 8, 12, 0.55) !important;
+            -webkit-backdrop-filter: blur(12px) saturate(120%);
+            backdrop-filter: blur(12px) saturate(120%);
+        }
+        .glass-panel {
+            background: linear-gradient(160deg, rgba(32, 32, 41, 0.92), rgba(18, 18, 24, 0.82));
+            -webkit-backdrop-filter: blur(28px) saturate(150%);
+            backdrop-filter: blur(28px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+        .glass-chip {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+        }
+        .glass-panel-head {
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+        .live-pulse-dot { position: relative; }
+        .live-pulse-dot::after {
+            content: ''; position: absolute; inset: 0; border-radius: 9999px;
+            border: 2px solid rgba(34, 197, 94, 0.9); animation: livePulse 1.4s ease-out infinite;
+        }
+        @keyframes livePulse { from { transform: scale(1); opacity: .9; } to { transform: scale(2.2); opacity: 0; } }
+        body.light-mode .glass-panel {
+            background: linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 249, 0.86));
+            border-color: rgba(148, 163, 184, 0.35);
+            color: #0f172a !important;
+        }
+        body.light-mode .glass-panel-head { background: rgba(15, 23, 42, 0.04); border-bottom-color: rgba(148, 163, 184, 0.25); }
+        body.light-mode .glass-card { background: rgba(15, 23, 42, 0.04); border-color: rgba(148, 163, 184, 0.25); }
+        body.light-mode .glass-chip { background: rgba(15, 23, 42, 0.04); border-color: rgba(148, 163, 184, 0.25); }
+
         body.light-mode {
             background-color: #f8fafc !important;
             color: #0f172a !important;
@@ -124,8 +170,8 @@
 <body class="bg-brand-dark text-brand-light h-screen flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative" x-data="facultyPortal()">
 
     <!-- ================= HEADER ================= -->
-    <header class="bg-brand-dark border-b border-white/10 shrink-0 space-y-3 pb-3">
-        <div class="max-w-7xl mx-auto px-4 pt-3 space-y-2">
+    <header class="bg-brand-dark border-b border-white/10 shrink-0 space-y-2 pb-2">
+        <div class="max-w-7xl mx-auto px-4 pt-2 space-y-1.5">
             <!-- Carousel Container -->
             <div class="relative w-full h-28 sm:h-36 md:h-44 rounded-2xl overflow-hidden border border-white/10 bg-brand-dark shadow-xl group">
                 <div id="promo-carousel" class="flex h-full transition-transform duration-500 ease-in-out" style="width: 300%;">
@@ -254,30 +300,30 @@
 
 
     <!-- ================= MAIN LAYOUT ================= -->
-    <div class="flex-1 max-w-7xl w-full mx-auto flex overflow-hidden p-3 sm:p-4 gap-4">
+    <div class="flex-1 max-w-7xl w-full mx-auto flex overflow-hidden p-2 sm:p-3 gap-3">
 
         <!-- Left: Category Sidebar -->
-        <aside class="w-24 sm:w-28 flex-shrink-0 flex flex-col gap-2.5 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
-            <button onclick="selectCategory('all', this)" class="category-btn active-cat flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-orange text-white text-center font-black text-xs gap-1.5 transition shadow-lg shadow-brand-orange/20">
-                <i class="fa-solid fa-utensils text-lg sm:text-xl"></i>
-                <span class="text-[11px] leading-tight">All Items</span>
+        <aside class="w-20 sm:w-24 flex-shrink-0 flex flex-col gap-2 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
+            <button onclick="selectCategory('all', this)" class="category-btn active-cat flex flex-col items-center justify-center p-2 rounded-xl bg-brand-orange text-white text-center font-black text-[11px] gap-1 transition shadow-lg shadow-brand-orange/20">
+                <i class="fa-solid fa-utensils text-base"></i>
+                <span class="text-[10px] leading-tight">All Items</span>
             </button>
             {% for cat in categories %}
-            <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition">
-                <i class="fa-solid {% if 'rice' in cat.name|lower %}fa-bowl-rice{% elif 'biscuit' in cat.name|lower %}fa-cookie{% elif 'beverage' in cat.name|lower %}fa-bottle-water{% elif 'meryenda' in cat.name|lower %}fa-burger{% elif 'diet' in cat.name|lower %}fa-heart-pulse{% else %}fa-bowl-food{% endif %} text-lg sm:text-xl"></i>
-                <span class="text-[11px] leading-tight line-clamp-1">{{ cat.name }}</span>
+            <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn flex flex-col items-center justify-center p-2 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-[11px] gap-1 transition">
+                <i class="fa-solid {% if 'rice' in cat.name|lower %}fa-bowl-rice{% elif 'biscuit' in cat.name|lower %}fa-cookie{% elif 'beverage' in cat.name|lower %}fa-bottle-water{% elif 'meryenda' in cat.name|lower %}fa-burger{% elif 'diet' in cat.name|lower %}fa-heart-pulse{% else %}fa-bowl-food{% endif %} text-base"></i>
+                <span class="text-[10px] leading-tight line-clamp-1">{{ cat.name }}</span>
             </button>
             {% endfor %}
         </aside>
 
         <!-- Center: Menu Grid -->
-        <main class="flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar space-y-4 pr-1">
-            <div class="flex items-center justify-between border-b border-white/10 pb-2">
+        <main class="flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar space-y-3 pr-1">
+            <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
                 <h2 id="category-heading" class="text-sm sm:text-lg font-black text-white uppercase tracking-wider">All Items</h2>
                 <span id="items-count-indicator" class="text-xs text-brand-slate font-bold">Showing items</span>
             </div>
 
-            <section id="menu-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 pb-12">
+            <section id="menu-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3 pb-12">
             </section>
         </main>
 
@@ -309,7 +355,7 @@
 
 
     <!-- ================= COLLAPSIBLE CART DRAWER ================= -->
-    <div id="cart-drawer-backdrop" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden transition-opacity flex justify-end">
+    <div id="cart-drawer-backdrop" class="fixed inset-0 z-50 glass-backdrop hidden transition-opacity flex justify-end">
         <div class="max-w-md w-full bg-brand-card border-l border-white/10 p-5 flex flex-col justify-between shadow-2xl h-full animate-slide-left">
             
             <div class="flex items-center justify-between border-b border-white/10 pb-4">
@@ -352,8 +398,8 @@
 
 
     <!-- ================= ITEM EXPAND / DETAILS MODAL ================= -->
-    <div id="item-details-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl space-y-4 relative animate-fade-in my-8">
+    <div id="item-details-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-panel rounded-3xl max-w-md w-full overflow-hidden shadow-2xl space-y-4 relative animate-fade-in my-8">
             <button onclick="closeItemModal()" class="absolute right-4 top-4 z-10 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -407,8 +453,8 @@
 
 
     <!-- ================= CHECKOUT MODAL ================= -->
-    <div id="checkout-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-brand-card border border-white/10 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl my-auto animate-fade-in">
+    <div id="checkout-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-panel rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl my-auto animate-fade-in">
             <div class="flex justify-between items-center border-b border-white/10 pb-4">
                 <h2 class="text-lg font-black text-white">Campus Delivery Checkout</h2>
                 <button onclick="closeCheckoutModal()" class="text-brand-slate hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -508,8 +554,8 @@
 
 
     <!-- ================= REAL-TIME LEAFLET MAP MODAL ================= -->
-    <div id="map-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col h-[450px]">
+    <div id="map-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col h-[450px]">
             <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
                 <h3 class="font-black text-white text-sm flex items-center gap-2"><i class="fa-solid fa-map-location-dot text-brand-orange"></i> Live GPS Location Mapping</h3>
                 <button onclick="closeMapModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -522,8 +568,8 @@
     </div>
 
     <!-- ================= ONGOING ORDERS & LIVE TRACKING MODAL ================= -->
-    <div id="ongoing-orders-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+    <div id="ongoing-orders-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
             <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
                 <h3 class="font-black text-white text-sm flex items-center gap-2">
                     <i class="fa-solid fa-bell text-brand-orange"></i> Ongoing Orders & Live Tracking
@@ -540,8 +586,8 @@
     </div>
 
     <!-- ================= RIDER CHAT MODAL ================= -->
-    <div id="rider-chat-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col h-[500px]">
+    <div id="rider-chat-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col h-[500px]">
             <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
                 <div>
                     <h3 id="chat-order-title" class="font-black text-white text-sm">Chat - Order</h3>
@@ -569,8 +615,8 @@
     </div>
 
     <!-- ================= POINTS INFO MODAL ================= -->
-    <div id="points-info-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl text-center">
+    <div id="points-info-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl text-center">
             <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto text-xl">
                 <i class="fa-solid fa-coins"></i>
             </div>
@@ -586,8 +632,8 @@
     </div>
 
     <!-- ================= VIEW ORDER & LIVE TRACKING MODAL ================= -->
-    <div id="view-order-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+    <div id="view-order-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
             <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
                 <div>
                     <h3 id="view-order-no" class="font-black text-white text-sm flex items-center gap-2">
@@ -657,8 +703,8 @@
     </div>
 
     <!-- ================= FACULTY FEEDBACK & RATINGS MODAL ================= -->
-    <div id="faculty-feedback-modal" class="fixed inset-0 z-[80] bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="modal-pop bg-brand-card border border-white/10 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl text-center relative">
+    <div id="faculty-feedback-modal" class="fixed inset-0 z-[80] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="modal-pop glass-panel rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl text-center relative">
             <button onclick="closeFacultyFeedbackModal()" class="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -682,8 +728,8 @@
     </div>
 
     <!-- ================= ORDER PLACED CONFIRMATION MODAL ================= -->
-    <div id="order-placed-modal" class="fixed inset-0 z-[70] bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="modal-pop bg-brand-card border border-white/10 rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl text-center">
+    <div id="order-placed-modal" class="fixed inset-0 z-[70] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="modal-pop glass-panel rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl text-center">
             <div class="relative mx-auto w-20 h-20">
                 <div class="confirm-ring absolute inset-0 rounded-full bg-brand-orange/20"></div>
                 <div class="confirm-check relative w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 via-brand-orange to-orange-600 text-white flex items-center justify-center text-3xl shadow-lg">
@@ -1850,9 +1896,9 @@
 
         const popup = document.createElement('div');
         popup.id = 'feedback-success-popup';
-        popup.className = 'fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in';
+        popup.className = 'fixed inset-0 z-[100] glass-backdrop flex items-center justify-center p-4 animate-fade-in';
         popup.innerHTML = `
-            <div class="bg-brand-card border border-white/10 rounded-3xl max-w-xs w-full p-6 text-center space-y-4 shadow-2xl">
+            <div class="glass-panel rounded-3xl max-w-xs w-full p-6 text-center space-y-4 shadow-2xl">
                 <div class="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto text-3xl animate-bounce">
                     <i class="fa-solid fa-circle-check"></i>
                 </div>
