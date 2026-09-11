@@ -570,13 +570,21 @@
                     <h2 class="text-xl font-black text-dark-900">Sales Reports & Analytics</h2>
                     <p class="text-xs text-gray-500 mt-0.5">Overall and role-separated earnings breakdown (Kiosk, Faculty/Staff, Delivery) & Rider rankings.</p>
                 </div>
-                <!-- Role Filter Tabs -->
-                <div class="flex flex-wrap bg-gray-100 p-1 rounded-2xl gap-1">
-                    <button @click="reportRole = 'overall'" :class="reportRole === 'overall' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Overall</button>
-                    <button @click="reportRole = 'kiosk'" :class="reportRole === 'kiosk' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Kiosk (Walk-in)</button>
-                    <button @click="reportRole = 'faculty'" :class="reportRole === 'faculty' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Faculty / Staff</button>
-                    <button @click="reportRole = 'delivery'" :class="reportRole === 'delivery' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Delivery</button>
-                    <button @click="reportRole = 'rankings'" :class="reportRole === 'rankings' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Rider Rankings</button>
+                <!-- Role Filter Dropdown -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <select x-model="reportRole" class="px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-2xl text-xs font-black text-dark-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm">
+                        <option value="overall">Overall Sales</option>
+                        <option value="kiosk">Kiosk Sales</option>
+                        <option value="faculty">Faculty / Staff Sales</option>
+                        <option value="delivery">Delivery Sales</option>
+                        <option value="rankings">Rider Rankings & Leaderboard</option>
+                    </select>
+
+                    <div class="flex justify-end">
+                        <button onclick="window.print()" class="bg-dark-900 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow cursor-pointer">
+                            <i class="fa-solid fa-download"></i> Print / Download
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -596,11 +604,6 @@
                         <p class="text-2xl font-black text-emerald-600">₱{{ overall_stats.month|floatformat:2 }}</p>
                     </div>
                 </div>
-                <div class="flex justify-end">
-                    <button onclick="window.print()" class="bg-dark-900 text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow cursor-pointer">
-                        <i class="fa-solid fa-download"></i> Download / Print Overall Report
-                    </button>
-                </div>
             </div>
 
             <!-- KIOSK STATS -->
@@ -618,11 +621,6 @@
                         <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Kiosk Sales This Month</span>
                         <p class="text-2xl font-black text-emerald-600">₱{{ kiosk_stats.month|floatformat:2 }}</p>
                     </div>
-                </div>
-                <div class="flex justify-end">
-                    <button onclick="window.print()" class="bg-dark-900 text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow cursor-pointer">
-                        <i class="fa-solid fa-download"></i> Download / Print Kiosk Report
-                    </button>
                 </div>
             </div>
 
@@ -642,11 +640,6 @@
                         <p class="text-2xl font-black text-emerald-600">₱{{ faculty_stats.month|floatformat:2 }}</p>
                     </div>
                 </div>
-                <div class="flex justify-end">
-                    <button onclick="window.print()" class="bg-dark-900 text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow cursor-pointer">
-                        <i class="fa-solid fa-download"></i> Download / Print Faculty Report
-                    </button>
-                </div>
             </div>
 
             <!-- DELIVERY STATS -->
@@ -664,11 +657,6 @@
                         <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Delivery Sales This Month</span>
                         <p class="text-2xl font-black text-emerald-600">₱{{ delivery_stats.month|floatformat:2 }}</p>
                     </div>
-                </div>
-                <div class="flex justify-end">
-                    <button onclick="window.print()" class="bg-dark-900 text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow cursor-pointer">
-                        <i class="fa-solid fa-download"></i> Download / Print Delivery Report
-                    </button>
                 </div>
             </div>
 
@@ -715,11 +703,15 @@
                 </div>
             </div>
 
-            <!-- Graph Section -->
+            <!-- Graph Section with Per Day, Weekly, Monthly Toggles -->
             <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
-                <div class="flex justify-between items-center">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider" x-text="reportMode === 'daily' ? 'Daily Sales Trend (Last 7 Days)' : (reportMode === 'weekly' ? 'Weekly Sales Trend (Last 4 Weeks)' : 'Monthly Sales Trend (Last 6 Months)')"></h3>
-                    <span class="text-xs font-bold text-gray-400">Revenue in PHP (₱)</span>
+                    <div class="flex bg-gray-100 p-1 rounded-2xl gap-1">
+                        <button @click="reportMode = 'daily'; switchChart('daily')" :class="reportMode === 'daily' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-1.5 rounded-xl text-xs transition cursor-pointer">Per Day</button>
+                        <button @click="reportMode = 'weekly'; switchChart('weekly')" :class="reportMode === 'weekly' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-1.5 rounded-xl text-xs transition cursor-pointer">Weekly</button>
+                        <button @click="reportMode = 'monthly'; switchChart('monthly')" :class="reportMode === 'monthly' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-1.5 rounded-xl text-xs transition cursor-pointer">Monthly</button>
+                    </div>
                 </div>
                 <div class="h-72 w-full relative">
                     <canvas id="salesChart"></canvas>

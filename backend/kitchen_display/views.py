@@ -16,10 +16,12 @@ User = get_user_model()
 @role_required(allowed_roles=['STAFF'])
 def staff_dashboard(request):
     """Unified Canteen Staff Dashboard with all management modules."""
-    from django.db.models import Sum, Count
+    from django.db.models import Sum, Count, Q
     from django.db.models.functions import TruncDate, TruncWeek, TruncMonth
 
     today = timezone.now().date()
+    week_start = today - timezone.timedelta(days=7)
+    month_start = today.replace(day=1)
     today_orders = Order.objects.filter(created_at__date=today).exclude(status='unpaid')
     
     total_orders_today = today_orders.count()
@@ -41,37 +43,50 @@ def staff_dashboard(request):
     overall_orders = valid_orders
     kiosk_orders = valid_orders.filter(customer__isnull=True)
     faculty_orders = valid_orders.filter(customer__role='FACULTY')
-    delivery_orders = valid_orders.filter(deliveries_deliveryrequest__isnull=False)
+    from deliveries.models import DeliveryRequest
+    delivery_order_ids = DeliveryRequest.objects.values_list('order_id', flat=True)
+    delivery_orders = valid_orders.filter(id__in=delivery_order_ids)
 
     def compute_stats(qs):
         s_today = qs.filter(created_at__date=today).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
         s_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
         s_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        d_sales = list(
-            qs.annotate(period=TruncDate('created_at'))
-            .values('period')
-            .annotate(total=Sum('total_amount'), count=Count('id'))
-            .order_by('-period')[:7]
-        )
-        chart = {
-            'labels': [row['period'].strftime('%b %d') if row['period'] else '' for row in reversed(d_sales)],
-            'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(d_sales)],
-        }
-        return {'today': s_today, 'week': s_week, 'month': s_month, 'chart': chart}
+        c_today = qs.filter(created_at__date=today).count()
+        c_week = qs.filter(created_at__date__gte=week_start).count()
+        c_month = qs.filter(created_at__date__gte=month_start).count()
+        return {'today': s_today, 'week': s_week, 'month': s_month, 'count_today': c_today, 'count_week': c_week, 'count_month': c_month}
+
+    def compute_delivery_stats(qs):
+        base = compute_stats(qs)
+        d_fees_today = qs.filter(created_at__date=today).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
+        d_fees_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
+        d_fees_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
+        base['delivery_fees'] = {'today': d_fees_today, 'week': d_fees_week, 'month': d_fees_month}
+        return base
 
     overall_stats = compute_stats(overall_orders)
     kiosk_stats = compute_stats(kiosk_orders)
     faculty_stats = compute_stats(faculty_orders)
-    delivery_stats = compute_stats(delivery_orders)
+    delivery_stats = compute_delivery_stats(delivery_orders)
 
-    rider_rankings = list(
-        User.objects.filter(role__in=['RIDER', 'DELIVERY'])
-        .annotate(
-            total_delivered=Count('assigned_deliveries', filter=models.Q(assigned_deliveries__status='DELIVERED')),
-            total_earnings=Sum('assigned_deliveries__order__delivery_fee', filter=models.Q(assigned_deliveries__status='DELIVERED'))
+    def get_rankings(date_filter=None):
+        f = Q(assigned_deliveries__status='DELIVERED')
+        if date_filter == 'daily':
+            f &= Q(assigned_deliveries__order__created_at__date=today)
+        elif date_filter == 'weekly':
+            f &= Q(assigned_deliveries__order__created_at__date__gte=week_start)
+        elif date_filter == 'monthly':
+            f &= Q(assigned_deliveries__order__created_at__date__gte=month_start)
+        return list(
+            User.objects.filter(role__in=['RIDER', 'DELIVERY'])
+            .annotate(
+                total_delivered=Count('assigned_deliveries', filter=f),
+                total_earnings=Sum('assigned_deliveries__order__delivery_fee', filter=f)
+            )
+            .order_by('-total_delivered')
         )
-        .order_by('-total_delivered')
-    )
+
+    rider_rankings = get_rankings(None)
 
     daily_sales = list(
         valid_orders

@@ -1276,15 +1276,15 @@
                     </p>
                 </div>
 
-                <!-- Export Dropdown & Role Filter Tabs -->
+                <!-- Role Filter Dropdown -->
                 <div class="flex flex-wrap items-center gap-3">
-                    <div class="flex flex-wrap bg-gray-100 p-1 rounded-2xl gap-1">
-                        <button @click="reportRole = 'overall'" :class="reportRole === 'overall' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Overall</button>
-                        <button @click="reportRole = 'kiosk'" :class="reportRole === 'kiosk' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Kiosk</button>
-                        <button @click="reportRole = 'faculty'" :class="reportRole === 'faculty' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Faculty</button>
-                        <button @click="reportRole = 'delivery'" :class="reportRole === 'delivery' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Delivery</button>
-                        <button @click="reportRole = 'rankings'" :class="reportRole === 'rankings' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-2 rounded-xl text-xs transition cursor-pointer">Rider Rankings</button>
-                    </div>
+                    <select x-model="reportRole" class="px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-2xl text-xs font-black text-dark-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm">
+                        <option value="overall">Overall Sales</option>
+                        <option value="kiosk">Kiosk Sales</option>
+                        <option value="faculty">Faculty / Staff Sales</option>
+                        <option value="delivery">Delivery Sales</option>
+                        <option value="rankings">Rider Rankings & Leaderboard</option>
+                    </select>
 
                     <div class="relative" x-data="{ exportOpen: false }">
                         <button @click="exportOpen = !exportOpen" class="px-4 py-2.5 bg-black hover:bg-gray-800 text-white font-black rounded-2xl text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer transition shadow-md">
@@ -1415,28 +1415,110 @@
                 </div>
             </div>
 
-            <!-- Analytics Graphs Grid (Bar, Line, Pie) -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Bar Graph -->
-                <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Sales Revenue (Bar Chart)</h3>
-                        <span class="text-xs font-bold text-gray-400">PHP (₱)</span>
+            <!-- Analytics Graphs Grid (Bar, Line, Pie) with Per Day, Weekly, Monthly Toggles -->
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider" x-text="reportMode === 'daily' ? 'Daily Sales & Order Trend (Last 7 Days)' : (reportMode === 'weekly' ? 'Weekly Sales & Order Trend (Last 4 Weeks)' : 'Monthly Sales & Order Trend (Last 6 Months)')"></h3>
+                        <span class="text-xs font-bold text-gray-400">Revenue (₱) & Order Volume</span>
                     </div>
-                    <div class="h-64 w-full relative">
-                        <canvas id="salesChart"></canvas>
+                    <div class="flex bg-gray-100 p-1 rounded-2xl gap-1">
+                        <button @click="reportMode = 'daily'; switchChart('daily')" :class="reportMode === 'daily' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-1.5 rounded-xl text-xs transition cursor-pointer">Per Day</button>
+                        <button @click="reportMode = 'weekly'; switchChart('weekly')" :class="reportMode === 'weekly' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-1.5 rounded-xl text-xs transition cursor-pointer">Weekly</button>
+                        <button @click="reportMode = 'monthly'; switchChart('monthly')" :class="reportMode === 'monthly' ? 'bg-brand-500 text-white font-black shadow-md' : 'text-gray-600 font-bold'" class="px-3 py-1.5 rounded-xl text-xs transition cursor-pointer">Monthly</button>
                     </div>
                 </div>
 
-                <!-- Line Graph -->
-                <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Order Volume Trend (Line Chart)</h3>
-                        <span class="text-xs font-bold text-gray-400">Order Count</span>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+                    <div class="space-y-2">
+                        <span class="text-xs font-bold text-gray-500 uppercase">Sales Revenue (Bar Chart)</span>
+                        <div class="h-64 w-full relative">
+                            <canvas id="salesChart"></canvas>
+                        </div>
                     </div>
-                    <div class="h-64 w-full relative">
-                        <canvas id="lineChart"></canvas>
+                    <div class="space-y-2">
+                        <span class="text-xs font-bold text-gray-500 uppercase">Order Volume Trend (Line Chart)</span>
+                        <div class="h-64 w-full relative">
+                            <canvas id="lineChart"></canvas>
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Detailed Financial Breakdown Tables per Mode -->
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
+                <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Detailed Financial Breakdown</h3>
+                
+                <!-- Daily Table -->
+                <div x-show="reportMode === 'daily'" class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
+                                <th class="py-3 px-4">Date</th>
+                                <th class="py-3 px-4">Total Orders</th>
+                                <th class="py-3 px-4 text-right">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
+                            {% for row in daily_sales %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-3.5 px-4 font-bold text-dark-900">{{ row.period|date:"F j, Y" }}</td>
+                                <td class="py-3.5 px-4">{{ row.count }} orders</td>
+                                <td class="py-3.5 px-4 text-right font-black text-brand-500">₱{{ row.total|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="py-6 text-center text-gray-400">No daily sales data available.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Weekly Table -->
+                <div x-show="reportMode === 'weekly'" class="overflow-x-auto" style="display: none;">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
+                                <th class="py-3 px-4">Week Starting</th>
+                                <th class="py-3 px-4">Total Orders</th>
+                                <th class="py-3 px-4 text-right">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
+                            {% for row in weekly_sales %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-3.5 px-4 font-bold text-dark-900">Week of {{ row.period|date:"F j, Y" }}</td>
+                                <td class="py-3.5 px-4">{{ row.count }} orders</td>
+                                <td class="py-3.5 px-4 text-right font-black text-blue-600">₱{{ row.total|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="py-6 text-center text-gray-400">No weekly sales data available.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Monthly Table -->
+                <div x-show="reportMode === 'monthly'" class="overflow-x-auto" style="display: none;">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
+                                <th class="py-3 px-4">Month</th>
+                                <th class="py-3 px-4">Total Orders</th>
+                                <th class="py-3 px-4 text-right">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
+                            {% for row in monthly_sales %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-3.5 px-4 font-bold text-dark-900">{{ row.period|date:"F Y" }}</td>
+                                <td class="py-3.5 px-4">{{ row.count }} orders</td>
+                                <td class="py-3.5 px-4 text-right font-black text-emerald-600">₱{{ row.total|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="py-6 text-center text-gray-400">No monthly sales data available.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
