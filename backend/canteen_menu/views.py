@@ -67,7 +67,11 @@ def _auto_sync_menu_image(item):
     Auto-syncs menu image from designated local folders matching item name (instant check without listing large dirs).
     """
     if item.image:
-        return  # Manually uploaded image takes precedence
+        try:
+            if item.image.storage.exists(item.image.name):
+                return  # Manually uploaded image file exists and takes precedence
+        except Exception:
+            pass
 
     slug_name = slugify(item.name)
     clean_name = item.name.lower().replace(' ', '_').replace('-', '_')
@@ -82,6 +86,10 @@ def _auto_sync_menu_image(item):
 
     source_dirs = [
         media_menu_dir,
+        r"C:\Users\vince\Vince Projects\CAPSTONE PROJECT\UPDATED CANTEEN EXPRESS\Merge updated\backend\media\menu_items",
+        r"C:\Users\vince\Vince Projects\CAPSTONE PROJECT\UPDATED CANTEEN EXPRESS\Merge updated\Biscuits & Beverages",
+        r"C:\Users\vince\Vince Projects\CAPSTONE PROJECT\UPDATED CANTEEN EXPRESS\Merge updated\Meryenda",
+        r"C:\Users\vince\Vince Projects\CAPSTONE PROJECT\UPDATED CANTEEN EXPRESS\Merge updated\Ulams",
         "C:/Users/vince/Vince Projects/CAPSTONE PROJECT/CANTEEN EXPRESS GITHUB MERGE/TESTING/backend/media/menu_items",
         "C:/Users/vince/Vince Projects/CAPSTONE PROJECT/CANTEEN EXPRESS GITHUB MERGE/TESTING/Biscuits & Beverages",
         "C:/Users/vince/Vince Projects/CAPSTONE PROJECT/CANTEEN EXPRESS GITHUB MERGE/TESTING/Meryenda",
@@ -103,11 +111,24 @@ def _auto_sync_menu_image(item):
                                 pass
                         item.image = f'menu_items/{filename}'
                         item.image_url = ''
+                        item.save()
                         return
 
-    # Automated API Food Photo Fallback matching item name
-    encoded_query = urllib.parse.quote(f"{item.name},food,dish,filipino food")
-    item.image_url = f"https://loremflickr.com/600/400/{encoded_query}"
+    # Reliable Fallback Food Photo for Render / production
+    name_lower = item.name.lower()
+    cat_name = str(item.category).lower() if item.category else ''
+    if 'coke' in name_lower or 'sprite' in name_lower or 'royal' in name_lower or 'pepsi' in name_lower or 'drink' in name_lower or 'beverage' in name_lower or 'coffee' in name_lower or 'energen' in name_lower:
+        item.image_url = "https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=600&q=80"
+    elif 'rice' in name_lower or 'silog' in name_lower or 'adobo' in name_lower or 'sinigang' in name_lower or 'menudo' in name_lower or 'curry' in name_lower or 'tinola' in name_lower or 'chicken' in name_lower or 'pork' in name_lower or 'beef' in name_lower or 'fish' in name_lower or 'ulam' in cat_name:
+        item.image_url = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80"
+    elif 'cookie' in name_lower or 'biscuit' in name_lower or 'crinkle' in name_lower or 'brownie' in name_lower:
+        item.image_url = "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=600&q=80"
+    elif 'turon' in name_lower or 'bread' in name_lower or 'pastry' in name_lower or 'meryenda' in name_lower or 'snack' in name_lower or 'puto' in name_lower or 'suman' in name_lower:
+        item.image_url = "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80"
+    else:
+        item.image_url = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80"
+    item.image = None
+    item.save()
 
 
 def _generate_auto_desc(name):
@@ -148,7 +169,14 @@ def staff_menu_update(request, pk):
     if request.method == 'POST':
         form = MenuItemForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
-            form.save()
+            menu_item = form.save(commit=False)
+            if request.FILES.get('image'):
+                menu_item.image_url = ''
+            elif menu_item.image_url:
+                menu_item.image = None
+            if not menu_item.image and not menu_item.image_url:
+                _auto_sync_menu_image(menu_item)
+            menu_item.save()
             cache.delete('formatted_menu_active_kiosk')
             messages.success(request, "Menu item updated successfully!")
             return redirect('canteen_menu:staff_menu_list')
@@ -581,10 +609,14 @@ def staff_menu_edit_ajax(request):
             category_id = request.POST.get('category')
             if category_id:
                 item.category = get_object_or_404(Category, pk=category_id)
-            if request.POST.get('image_url'):
-                item.image_url = request.POST.get('image_url')
+            new_image_url = request.POST.get('image_url')
+            if new_image_url is not None:
+                item.image_url = new_image_url
+                if new_image_url.strip():
+                    item.image = None
             if request.FILES.get('image'):
                 item.image = request.FILES.get('image')
+                item.image_url = ''
             
             if not item.image and not item.image_url:
                 _auto_sync_menu_image(item)

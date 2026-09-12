@@ -39,6 +39,9 @@ class DeliveryRequest(models.Model):
     dest_lat = models.FloatField(null=True, blank=True)
     dest_lng = models.FloatField(null=True, blank=True)
 
+    # Proof of delivery photo (uploaded by rider on completion)
+    proof_photo = models.ImageField(upload_to='delivery_proofs/', null=True, blank=True)
+
     @property
     def raw_status(self):
         """Raw status code string (e.g. 'ACCEPTED') for templates/JSON labeling."""
