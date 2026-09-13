@@ -3,11 +3,11 @@
 <html lang="en">
 <head>
     <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
-    {% if user.is_authenticated and user.role|upper == 'DELIVERY' or user.role|upper == 'RIDER' %}
+    {% if '/deliveries' in request.path or user.role|upper == 'DELIVERY' or user.role|upper == 'RIDER' %}
     <link rel="manifest" href="{% static 'manifest-rider.json' %}">
-    {% elif user.is_authenticated and user.role|upper == 'FACULTY' %}
+    {% elif '/accounts/faculty' in request.path or user.role|upper == 'FACULTY' %}
     <link rel="manifest" href="{% static 'manifest-faculty.json' %}">
-    {% elif user.is_authenticated and user.role|upper == 'STUDENT' %}
+    {% elif '/kiosk' in request.path or user.role|upper == 'STUDENT' or not user.is_authenticated %}
     <link rel="manifest" href="{% static 'manifest-kiosk.json' %}">
     {% else %}
     <link rel="manifest" href="{% static 'manifest-staff.json' %}">

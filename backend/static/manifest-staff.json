@@ -1,8 +1,8 @@
 {
   "name": "Canteen Express Staff Portal",
   "short_name": "CanEx Staff",
-  "start_url": "/canteen/staff/",
-  "scope": "/",
+  "start_url": "/canteen/dashboard/",
+  "scope": "/canteen/",
   "display": "fullscreen",
   "orientation": "any",
   "background_color": "#ffffff",
