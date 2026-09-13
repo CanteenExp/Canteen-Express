@@ -177,6 +177,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://tiny-boats-win.loca.lt',
     'https://*.loca.lt',
     'https://*.onrender.com',
+    'https://*.railway.app',
 ]
 
 ENFORCE_GEOFENCE = os.getenv('ENFORCE_GEOFENCE', 'True').lower() == 'true'
