@@ -131,6 +131,33 @@ def _auto_sync_menu_image(item):
     item.save()
 
 
+def upload_to_supabase_storage(image_file):
+    if not image_file:
+        return None
+    try:
+        project_ref = "hchqdkuijbpihraagetz"
+        bucket_name = "menu-images"
+        anon_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjaHFka3VpamJwaWhyYWFnZXR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4MzU1MDMsImV4cCI6MjEwNDQxMTUwM30.FevR0wpG7Kk7YgNO30Hi8Jvz-Z8rXiWNPBVoM4LbqUA"
+        
+        filename = image_file.name.replace(' ', '_')
+        url = f"https://{project_ref}.supabase.co/storage/v1/object/{bucket_name}/{filename}"
+        
+        file_data = image_file.read()
+        content_type = getattr(image_file, 'content_type', 'image/jpeg')
+        
+        req = urllib.request.Request(url, data=file_data, method='POST')
+        req.add_header('Authorization', f'Bearer {anon_key}')
+        req.add_header('Content-Type', content_type)
+        req.add_header('x-upsert', 'true')
+        
+        with urllib.request.urlopen(req) as response:
+            if response.status in [200, 201]:
+                return f"https://{project_ref}.supabase.co/storage/v1/object/public/{bucket_name}/{urllib.parse.quote(filename)}"
+    except Exception as e:
+        print(f"Supabase upload error: {e}")
+    return None
+
+
 def _generate_auto_desc(name):
     name_lower = name.lower()
     if 'turon' in name_lower or 'banana' in name_lower or 'meryenda' in name_lower:
@@ -171,7 +198,12 @@ def staff_menu_update(request, pk):
         if form.is_valid():
             menu_item = form.save(commit=False)
             if request.FILES.get('image'):
-                menu_item.image_url = ''
+                pub_url = upload_to_supabase_storage(request.FILES.get('image'))
+                if pub_url:
+                    menu_item.image_url = pub_url
+                    menu_item.image = None
+                else:
+                    menu_item.image_url = ''
             elif menu_item.image_url:
                 menu_item.image = None
             if not menu_item.image and not menu_item.image_url:
@@ -446,6 +478,11 @@ def staff_dashboard(request, token=None):
         category = get_object_or_404(Category, id=category_id) if category_id else Category.objects.first()
         image_url = request.POST.get('image_url', '')
         image = request.FILES.get('image')
+        if image:
+            pub_url = upload_to_supabase_storage(image)
+            if pub_url:
+                image_url = pub_url
+                image = None
         description = request.POST.get('description', '')
         if not description:
             description = _generate_auto_desc(name)
@@ -615,8 +652,13 @@ def staff_menu_edit_ajax(request):
                 if new_image_url.strip():
                     item.image = None
             if request.FILES.get('image'):
-                item.image = request.FILES.get('image')
-                item.image_url = ''
+                pub_url = upload_to_supabase_storage(request.FILES.get('image'))
+                if pub_url:
+                    item.image_url = pub_url
+                    item.image = None
+                else:
+                    item.image = request.FILES.get('image')
+                    item.image_url = ''
             
             if not item.image and not item.image_url:
                 _auto_sync_menu_image(item)
