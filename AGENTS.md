@@ -15,6 +15,7 @@
 - **Run specific app test:** `python manage.py test deliveries customer_portal`
 - **Interactive shell:** `python manage.py shell`
 - **Reset orders (testing):** Run in `python manage.py shell`: `from customer_portal.models import Order, OrderItem; OrderItem.objects.all().delete(); Order.objects.all().delete()`
+- **Deployment Build Command (Render):** `pip install -r backend/requirements.txt && python backend/manage.py collectstatic --noinput && python backend/manage.py migrate`
 
 ## Operational Gotchas & Environment Setup
 - **Environment variables:** `.env` file must be located directly inside `backend/` alongside `manage.py`. Key keys: `SECRET_KEY`, `DEBUG`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.

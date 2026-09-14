@@ -63,6 +63,9 @@ def faculty_auth_view(request):
             if not email.endswith('@psu.palawan.edu.ph'):
                 error = "Institutional email must end with @psu.palawan.edu.ph"
                 mode = 'signup'
+            elif not email.split('@')[0] or email.split('@')[0].isdigit() or not any(c.isalpha() for c in email.split('@')[0]):
+                error = "Institutional email cannot consist solely of numbers. It must contain letters before @psu.palawan.edu.ph."
+                mode = 'signup'
             elif password != confirm_password:
                 error = "Passwords do not match."
                 mode = 'signup'
@@ -126,6 +129,12 @@ def faculty_auth_view(request):
 
 # STEP 3: Faculty Dashboard
 def faculty_dashboard_view(request, token=None):
+    if not request.user.is_authenticated:
+        return redirect('accounts:faculty_auth')
+    user_role = getattr(request.user, 'role', '')
+    if user_role not in ('FACULTY', 'STAFF', 'ADMIN') and not request.user.is_staff and not request.user.is_superuser:
+        return redirect('accounts:access_denied')
+
     import uuid
     from django.urls import reverse
     session_token = request.session.get('faculty_secure_token')
@@ -257,6 +266,9 @@ def send_signup_otp(request):
             
             if not email.endswith('@psu.palawan.edu.ph'):
                 return JsonResponse({'success': False, 'error': 'Invalid institutional email. Must end with @psu.palawan.edu.ph'}, status=400)
+            local_part = email.split('@')[0] if '@' in email else ''
+            if local_part.isdigit() or not any(c.isalpha() for c in local_part):
+                return JsonResponse({'success': False, 'error': 'Institutional email cannot consist solely of numbers. It must contain letters before @psu.palawan.edu.ph.'}, status=400)
             
             request.session['signup_otp'] = otp_code
             request.session['signup_email'] = email

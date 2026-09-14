@@ -37,9 +37,12 @@ class FacultyStaffRegisterForm(forms.ModelForm):
         }
 
     def clean_email(self):
-        email = self.cleaned_data.get('email')
+        email = self.cleaned_data.get('email', '').strip().lower()
         if not email.endswith('@psu.palawan.edu.ph'):
             raise forms.ValidationError("Only institutional emails ending in @psu.palawan.edu.ph can be used for Faculty/Staff registration.")
+        local_part = email.split('@')[0] if '@' in email else ''
+        if local_part.isdigit() or not any(c.isalpha() for c in local_part):
+            raise forms.ValidationError("Institutional email cannot consist solely of numbers. It must contain letters before @psu.palawan.edu.ph.")
         return email
 
     def clean(self):

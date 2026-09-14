@@ -227,8 +227,9 @@
                 },
                 getOtp() {
                     if (this.otpCountdown > 0) return;
-                    if (!this.signupEmail || !this.signupEmail.endsWith('@psu.palawan.edu.ph')) {
-                        this.triggerToast('Please enter a valid institutional email ending in @psu.palawan.edu.ph first.', 'error');
+                    const localPart = this.signupEmail ? this.signupEmail.split('@')[0] : '';
+                    if (!this.signupEmail || !this.signupEmail.endsWith('@psu.palawan.edu.ph') || /^\d+$/.test(localPart) || !/[a-zA-Z]/.test(localPart)) {
+                        this.triggerToast('Institutional email must end with @psu.palawan.edu.ph and cannot consist solely of numbers (must contain letters).', 'error');
                         return;
                     }
                     const otp = Math.floor(100000 + Math.random() * 900000).toString();
