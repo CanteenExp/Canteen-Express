@@ -551,7 +551,7 @@
     </footer>
 
     <!-- Location Permission Modal -->
-    <div x-show="showLocationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4" style="display: none;" @click.away="useDefaultLocation()">
+    <div x-show="showLocationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4" style="display: none;">
         <div class="bg-[#141416] border border-white/20 w-full max-w-sm rounded-[32px] p-6 text-center space-y-4 shadow-2xl">
             <div class="w-14 h-14 bg-brand-orange/20 border border-brand-orange/40 text-brand-orange rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg shadow-brand-orange/20">
                 <i class="fa-solid fa-location-crosshairs"></i>
@@ -563,9 +563,6 @@
             <div class="space-y-2 pt-2">
                 <button type="button" @click="detectLocation()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins flex items-center justify-center gap-2">
                     <i class="fa-solid fa-crosshairs"></i> Allow & Detect Location
-                </button>
-                <button type="button" @click="useDefaultLocation()" class="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer border border-white/10 font-poppins">
-                    Use Campus Default Location
                 </button>
             </div>
         </div>
