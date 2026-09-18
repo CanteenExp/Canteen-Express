@@ -6,22 +6,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ action_title }} - Staff Portal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{% static 'css/menu-form.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'brand-dark': '#0d0d12',
-                        'brand-card': '#16161e',
-                        'brand-orange': '#f97316',
-                        'brand-slate': '#94a3b8',
-                    }
-                }
-            }
-        }
-    </script>
+    
     <style>
         /* Styling para sa automatic inputs ng Django form */
         input[type="text"], input[type="number"], input[type="url"], textarea, select {

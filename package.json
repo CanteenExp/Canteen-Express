@@ -1,0 +1,12 @@
+{
+  "name": "canteen-express",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:css": "node build-css.js"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "3.4.17"
+  }
+}

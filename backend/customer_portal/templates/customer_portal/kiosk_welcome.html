@@ -17,7 +17,7 @@
     <title>Welcome - Canteen Express</title>
 
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{% static 'css/auth.css' %}">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,27 +27,7 @@
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        poppins: ['Poppins', 'sans-serif'],
-                        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            orange: '#FF6117',
-                            dark: '#0A0A0C',
-                            card: '#141416',
-                            slate: '#8E8E93',
-                            blue: '#3B82F6',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    
 
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; height: 100dvh; overflow: hidden; }

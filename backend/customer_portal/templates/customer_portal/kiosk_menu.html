@@ -20,7 +20,7 @@
     <title>Today's Menu - Canteen Express Kiosk</title>
 
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -30,25 +30,7 @@
     <!-- html2canvas CDN (For Downloading Queue Slip as Image) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            orange: '#FF6117',
-                            dark: '#121212',
-                            card: '#242424',
-                            light: '#EAEAEA',
-                            amber: '#FFB800',
-                            peach: '#FFECD9',
-                            slate: '#8E8E93',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    
 
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }

@@ -8,24 +8,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Track {{ order_number }} - Canteen Express</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{% static 'css/rider.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: { rider: { orange: '#FF6117', dark: '#08080b', card: '#121216', border: '#26262c' } },
-                    boxShadow: {
-                        'glow-orange': '0 0 25px rgba(255,97,23,0.35)',
-                        'glow-green': '0 0 25px rgba(34,197,94,0.35)',
-                    }
-                }
-            }
-        }
-    </script>
+    
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .map-shell { position: relative; height: 100%; }
