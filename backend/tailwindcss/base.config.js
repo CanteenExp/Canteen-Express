@@ -3,6 +3,16 @@ const { glob } = require('./tw');
 module.exports = {
   content: [
     glob('templates/base.html'),
+    glob('accounts/templates/accounts/access_denied.html'),
+    glob('canteen_menu/templates/canteen_menu/staff_dashboard.html'),
+    glob('templates/admin_dashboard.html'),
+    glob('templates/admin_pin_verify.html'),
+    glob('templates/kitchen_dashboard.html'),
+    glob('templates/staff_dashboard.html'),
+    glob('templates/staff_menu_management.html'),
+    glob('templates/accounts/login.html'),
+    glob('templates/accounts/register.html'),
+    glob('templates/accounts/verify_otp.html'),
   ],
   theme: {
     extend: {

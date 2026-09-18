@@ -28,10 +28,30 @@
     <style>[x-cloak] { display: none !important; }</style>
     <title>{% block title %}Canteen Express{% endblock %}</title>
     <!-- Tailwind CSS CDN -->
-    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            500: '#f97316', // Primary Orange
+                            600: '#ea580c', // Hover Orange
+                            700: '#c2410c',
+                        },
+                        dark: {
+                            800: '#1e293b',
+                            900: '#0f172a', // Charcoal Black
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans min-h-screen flex flex-col pb-20 md:pb-0">

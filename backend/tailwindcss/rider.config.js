@@ -5,6 +5,7 @@ module.exports = {
     glob('templates/delivery_dashboard.html'),
     glob('templates/delivery_history.html'),
     glob('templates/delivery_tracking.html'),
+    glob('templates/partials/pending_delivery_cards.html'),
   ],
   theme: {
     extend: {
