@@ -2,6 +2,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
     <link rel="manifest" href="{% static 'manifest-rider.json' %}">
     <meta name="theme-color" content="#FF6117">
@@ -129,8 +132,13 @@
 
                 <div>
                     <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Password</label>
-                    <input type="password" name="password" required placeholder="••••••••"
-                           class="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/15 text-white placeholder-white/30 focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm font-bold backdrop-blur-md">
+                    <div class="relative">
+                        <input type="password" id="rider-password" name="password" required placeholder="••••••••"
+                               class="w-full px-4 py-3 pr-12 rounded-2xl bg-white/5 border border-white/15 text-white placeholder-white/30 focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs sm:text-sm font-bold backdrop-blur-md">
+                        <button type="button" onclick="togglePassword('rider-password', this)" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%);" class="text-white/40 hover:text-white cursor-pointer text-sm bg-transparent border-none">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-shine w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-black py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-glow-orange transition active:scale-95 cursor-pointer font-poppins">
@@ -154,6 +162,17 @@
     </div>
 
     <script>
+        function togglePassword(fieldId, btn) {
+            const input = document.getElementById(fieldId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
         function showLogoLoading(event) {
             const form = event.target.closest('form');
             if (form && form.checkValidity()) {

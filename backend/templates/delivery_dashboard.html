@@ -875,8 +875,8 @@
                 this.chatOpen = true;
                 if (this.unread[deliveryId]) { this.unread[deliveryId] = 0; }
                 this.fetchMessages();
-                // Messages stream in real-time via the SSE `chat_updated` push,
-                // so no separate 2s poll is needed here.
+                if (this.pollInterval) { clearInterval(this.pollInterval); }
+                this.pollInterval = setInterval(() => this.fetchMessages(), 2500);
             },
             closeChat() {
                 this.chatOpen = false;

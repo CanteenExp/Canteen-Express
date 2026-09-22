@@ -137,40 +137,35 @@
             const nextBtn = document.getElementById('next-btn');
 
             if (navigator.geolocation) {
-                statusText.innerText = "Locating your position...";
+                statusText.innerText = "Locating your exact device position...";
                 statusIcon.className = "fa-solid fa-spinner fa-spin text-2xl text-brand-orange mb-1";
+                statusBox.className = "p-3 bg-white/5 border border-white/15 rounded-2xl text-center transition-all duration-300";
 
                 const geoOptions = {
-                    enableHighAccuracy: false,
-                    timeout: 6000,
-                    maximumAge: 60000
+                    enableHighAccuracy: true,
+                    timeout: 8000,
+                    maximumAge: 0
                 };
-
-                let geoTimeout = setTimeout(() => {
-                    useDefaultLocation();
-                }, 6500);
 
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        clearTimeout(geoTimeout);
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
                         setCoordinates(lat, lng, false);
                     },
                     (error) => {
-                        clearTimeout(geoTimeout);
-                        console.warn("Geolocation warning/error:", error);
-                        useDefaultLocation();
+                        console.warn("Geolocation error:", error);
+                        statusBox.className = "p-3 bg-red-500/10 border border-red-500/30 rounded-2xl text-center backdrop-blur-md";
+                        statusIcon.className = "fa-solid fa-triangle-exclamation text-2xl text-red-400 mb-1";
+                        statusText.innerHTML = `<span class="text-red-300 font-bold">Location access required!</span><br><span class="text-[11px] text-red-400/80">Please turn on your device GPS / location services and click Allow.</span>`;
                     },
                     geoOptions
                 );
             } else {
-                useDefaultLocation();
+                statusBox.className = "p-3 bg-red-500/10 border border-red-500/30 rounded-2xl text-center backdrop-blur-md";
+                statusIcon.className = "fa-solid fa-triangle-exclamation text-2xl text-red-400 mb-1";
+                statusText.innerHTML = `<span class="text-red-300 font-bold">Geolocation not supported</span><br><span class="text-[11px] text-red-400/80">Your browser does not support GPS location tracking.</span>`;
             }
-        }
-
-        function useDefaultLocation() {
-            setCoordinates(9.77778, 118.73333, false);
         }
 
         function setCoordinates(lat, lng, isCached = false) {

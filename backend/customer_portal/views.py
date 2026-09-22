@@ -194,7 +194,7 @@ def process_checkout(request):
                 # Proposal-only: the request enters the shared SEARCHING pool
                 # (no pre-assigned rider); every online rider sees it and the
                 # first to Accept claims it.
-                DeliveryRequest.objects.create(
+                delivery_req = DeliveryRequest.objects.create(
                     order=order,
                     delivery_location=delivery_location,
                     status=DeliveryRequest.RequestStatus.SEARCHING,
@@ -209,6 +209,7 @@ def process_checkout(request):
             'order_number': order.order_number,
             'order_id': order.id,
             'is_delivery': is_delivery,
+            'delivery_id': delivery_req.id if is_delivery else None,
             'delivery_fee': float(order.delivery_fee),
             'total_payment': float(order.total_payment),
             'points_earned': points_earned,

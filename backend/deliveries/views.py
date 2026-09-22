@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.utils import timezone
 from django.http import JsonResponse, StreamingHttpResponse
+from django.views.decorators.http import require_POST
 from django.core.exceptions import ValidationError
 import json
 import time
@@ -824,3 +825,48 @@ def staff_dispatch_stream(request):
             'Connection': 'keep-alive',
         },
     )
+
+
+@require_POST
+def api_convert_to_pickup(request, delivery_id):
+    from django.db import transaction
+    from queuing.models import DigitalQueueSlip
+    try:
+        with transaction.atomic():
+            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+            if delivery.status == DeliveryRequest.RequestStatus.SEARCHING:
+                delivery.status = DeliveryRequest.RequestStatus.TIMEOUT
+                delivery.save(update_fields=['status'])
+                
+                order = delivery.order
+                order.delivery_fee = 0.00
+                order.save(update_fields=['delivery_fee'])
+                
+                DigitalQueueSlip.objects.get_or_create(
+                    order=order,
+                    defaults={'queue_number': order.order_number}
+                )
+        return JsonResponse({'success': True, 'message': 'Successfully converted to pick-up!'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@require_POST
+def api_cancel_order_with_reason(request, delivery_id):
+    from django.db import transaction
+    try:
+        data = json.loads(request.body) if request.body else {}
+        reason = data.get('reason', 'Waiting for too long')
+        
+        with transaction.atomic():
+            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+            delivery.status = DeliveryRequest.RequestStatus.REJECTED
+            delivery.save(update_fields=['status'])
+            
+            order = delivery.order
+            order.status = 'cancelled'
+            order.save(update_fields=['status'])
+            
+        return JsonResponse({'success': True, 'message': 'Order cancelled successfully.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
