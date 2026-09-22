@@ -37,6 +37,28 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+        /* --- Glassy helpers (match the delivery order detail modal) --- */
+        .glass {
+            background: rgba(255,255,255,0.04);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .glass-strong {
+            background: rgba(18,18,24,0.78);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.09);
+        }
+        .shadow-glass { box-shadow: 0 24px 60px -16px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.035); }
+        .shadow-glow-orange { box-shadow: 0 8px 22px -6px rgba(255,97,23,0.45); }
+
+        /* --- Cart modal: centered glassy sheet --- */
+        #cart-drawer-backdrop { opacity: 0; transition: opacity 0.25s ease; pointer-events: none; }
+        #cart-drawer-backdrop.drawer-open { opacity: 1; pointer-events: auto; }
+        #cart-drawer-backdrop .cart-sheet { opacity: 0; transform: translateY(14px) scale(0.98); }
+        #cart-drawer-backdrop.drawer-open .cart-sheet { opacity: 1; transition: transform 0.3s cubic-bezier(0.32, 0.72, 0.32, 1), opacity 0.25s ease; transform: translateY(0) scale(1); }
+
         body.light-mode {
             background-color: #f8fafc !important;
             color: #0f172a !important;
@@ -355,25 +377,30 @@
     </footer>
 
 
-    <!-- ================= COLLAPSIBLE CART DRAWER ================= -->
-    <div id="cart-drawer-backdrop" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden transition-opacity">
-        <div class="absolute right-0 top-0 bottom-0 max-w-md w-full bg-brand-card border-l border-white/10 p-5 flex flex-col justify-between shadow-2xl">
-            
-            <div class="flex items-center justify-between border-b border-white/10 pb-4">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-cart-shopping text-brand-orange text-xl"></i>
-                    <h3 class="text-lg font-black text-white uppercase tracking-wider">Your Cart</h3>
+    <!-- ================= YOUR CART MODAL (centered, glassy) ================= -->
+    <div id="cart-drawer-backdrop" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl hidden flex items-center justify-center p-4">
+        <div class="cart-sheet glass-strong rounded-3xl max-w-md w-full overflow-hidden shadow-glass flex flex-col max-h-[85vh]">
+
+            <!-- Header -->
+            <div class="shrink-0 border-b border-white/10 p-4 flex items-center justify-between pt-[max(env(safe-area-inset-top),16px)] sm:pt-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-orange-500/15 text-brand-orange flex items-center justify-center text-base shrink-0">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                    </div>
+                    <h3 class="text-base font-black text-white uppercase tracking-wider">Your Cart</h3>
                 </div>
-                <button onclick="closeCartDrawer()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition">
+                <button onclick="closeCartDrawer()" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition shrink-0">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
 
-            <div id="drawer-cart-list" class="flex-1 overflow-y-auto no-scrollbar py-4 space-y-3">
+            <!-- Cart items -->
+            <div id="drawer-cart-list" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 min-h-0 bg-black/20">
             </div>
 
-            <div class="border-t border-white/10 pt-4 space-y-4 shrink-0">
-                <div class="space-y-1.5 text-xs text-brand-slate">
+            <!-- Footer bar -->
+            <div class="shrink-0 border-t border-white/10 p-4 pb-[max(env(safe-area-inset-bottom),16px)] space-y-4 glass">
+                <div class="space-y-2 text-xs text-brand-slate">
                     <div class="flex justify-between">
                         <span>Dining Mode:</span>
                         <span id="drawer-dining-mode" class="text-white font-bold">Dine-In</span>
@@ -385,10 +412,10 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <button onclick="closeCartDrawer()" class="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl uppercase tracking-wider text-xs border border-white/10 transition">
+                    <button onclick="closeCartDrawer()" class="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl uppercase tracking-wider text-xs border border-white/10 transition active:scale-95">
                         + Add More
                     </button>
-                    <button onclick="checkoutOrder()" id="drawer-pay-btn" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3 rounded-xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/20 transition flex items-center justify-center gap-2">
+                    <button onclick="checkoutOrder()" id="drawer-pay-btn" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3 rounded-xl uppercase tracking-wider text-xs shadow-glow-orange transition flex items-center justify-center gap-2 active:scale-95">
                         <span>Done / Pay</span>
                         <i class="fa-solid fa-circle-check"></i>
                     </button>
@@ -669,11 +696,16 @@ function filterItems() {
 
 // ================= CART DRAWER MANAGEMENT =================
 function openCartDrawer() {
-    document.getElementById('cart-drawer-backdrop').classList.remove('hidden');
+    const el = document.getElementById('cart-drawer-backdrop');
+    el.classList.remove('hidden');
+    // Force a frame so the display toggle doesn't swallow the fade/slide.
+    requestAnimationFrame(() => el.classList.add('drawer-open'));
 }
 
 function closeCartDrawer() {
-    document.getElementById('cart-drawer-backdrop').classList.add('hidden');
+    const el = document.getElementById('cart-drawer-backdrop');
+    el.classList.remove('drawer-open');
+    setTimeout(() => el.classList.add('hidden'), 260);
 }
 
 function addToCart(itemId) {
@@ -736,20 +768,20 @@ function updateCartUI() {
             total += itemSubtotal;
 
             const cartRow = document.createElement('div');
-            cartRow.className = "flex items-center justify-between bg-white/5 border border-white/10 p-3 rounded-2xl gap-3";
+            cartRow.className = "flex items-center justify-between bg-white/5 border border-white/10 p-4 rounded-2xl gap-3";
             cartRow.innerHTML = `
                 <div class="flex items-center gap-3 min-w-0">
-                    <img src="${item.img}" class="w-12 h-12 rounded-xl object-cover shrink-0">
+                    <img src="${item.img}" class="w-14 h-14 rounded-xl object-cover shrink-0">
                     <div class="min-w-0">
-                        <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
+                        <h4 class="text-sm font-black text-white truncate">${item.name}</h4>
                         <span class="text-xs font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                     <div class="flex items-center gap-2 bg-black/40 rounded-xl px-2 py-1 border border-white/10">
-                        <button onclick="updateQuantity('${item.id}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">-</button>
-                        <span class="text-xs font-black text-white px-1">${item.qty}</span>
-                        <button onclick="updateQuantity('${item.id}', 1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">+</button>
+                        <button onclick="updateQuantity('${item.id}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-6 h-6 flex items-center justify-center">-</button>
+                        <span class="text-sm font-black text-white px-1">${item.qty}</span>
+                        <button onclick="updateQuantity('${item.id}', 1)" class="text-brand-slate hover:text-white font-black text-xs w-6 h-6 flex items-center justify-center">+</button>
                     </div>
                     <button onclick="updateQuantity('${item.id}', -${item.qty})" class="text-brand-slate hover:text-red-400 p-1.5 text-xs transition">
                         <i class="fa-solid fa-trash-can"></i>
