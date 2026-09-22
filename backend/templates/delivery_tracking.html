@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -234,6 +235,10 @@
                 .then(data => {
                     if (!data.success) return;
 
+                    // Check searching timer
+                    currentStatus = data.status;
+                    checkSearchingTimer(data.status);
+
                     // Destination pin
                     if (data.dest_lat != null && data.dest_lng != null && !destMarker) {
                         destMarker = L.marker([data.dest_lat, data.dest_lng], {
@@ -344,6 +349,162 @@
 
         updateMap();
         setInterval(updateMap, 4000);
+
+        // Smart Rider Timeout Timer (2 minutes while SEARCHING) - 1-second precision tick
+        let searchingSeconds = 0;
+        let timeoutModalShown = false;
+        let currentStatus = '{{ delivery.status }}';
+        const deliveryId = {{ delivery.id }};
+
+        setInterval(() => {
+            if (currentStatus === 'SEARCHING') {
+                searchingSeconds++;
+                if (searchingSeconds >= 120 && !timeoutModalShown) {
+                    timeoutModalShown = true;
+                    const modal = document.getElementById('rider-timeout-modal');
+                    if (modal) modal.classList.remove('hidden');
+                }
+            } else {
+                searchingSeconds = 0;
+                timeoutModalShown = false;
+                const modal = document.getElementById('rider-timeout-modal');
+                if (modal) modal.classList.add('hidden');
+            }
+        }, 1000);
+
+        function checkSearchingTimer(status) {
+            currentStatus = status;
+            if (status !== 'SEARCHING') {
+                searchingSeconds = 0;
+                timeoutModalShown = false;
+                const modal = document.getElementById('rider-timeout-modal');
+                if (modal) modal.classList.add('hidden');
+            }
+        }
+
+        // Auto-refresh when PWA tab / app comes back into view
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                updateMap();
+            }
+        });
+
+        function extendSearchTimer() {
+            searchingSeconds = 0;
+            timeoutModalShown = false;
+            document.getElementById('rider-timeout-modal').classList.add('hidden');
+        }
+
+        function convertToPickup() {
+            if (!confirm("Are you sure you want to convert this delivery order to Counter Pick-up?")) return;
+            fetch(`/deliveries/api/convert-to-pickup/${deliveryId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            }).then(res => res.json()).then(data => {
+                if (data.success) {
+                    const modalBox = document.querySelector('#rider-timeout-modal > div');
+                    modalBox.innerHTML = `
+                        <div class="text-center pb-3 border-b border-white/10">
+                            <span class="bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-amber-500/30">Converted to Walk-In</span>
+                            <h3 class="text-xl font-black text-white mt-2">Queue Slip Generated</h3>
+                        </div>
+                        <div class="space-y-1.5 py-1">
+                            <p class="text-[10px] uppercase tracking-wider text-white/60 font-bold">Your Queue Number</p>
+                            <span class="text-4xl font-black text-orange-400 tracking-tight">{{ order.order_number }}</span>
+                            <p class="text-xs text-white/80 font-medium">Counter Pick-up Mode Activated</p>
+                        </div>
+                        <div class="bg-white p-3 rounded-2xl flex flex-col items-center justify-center">
+                            <svg id="timeout-slip-barcode" class="w-full h-14"></svg>
+                            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Scan at Counter to Process Payment</span>
+                        </div>
+                        <button onclick="window.location.href='{% url 'customer_portal:kiosk_menu' %}'" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition">
+                            Done / Go to Menu
+                        </button>
+                    `;
+                    if (typeof JsBarcode !== 'undefined') {
+                        JsBarcode("#timeout-slip-barcode", "{{ order.order_number }}", {
+                            format: "CODE128",
+                            lineColor: "#111827",
+                            width: 2,
+                            height: 45,
+                            displayValue: true,
+                            fontSize: 11,
+                            margin: 0
+                        });
+                    }
+                } else {
+                    alert(data.error || "Failed to convert.");
+                }
+            });
+        }
+
+        function showCancelReasons() {
+            document.getElementById('timeout-buttons').classList.add('hidden');
+            document.getElementById('cancel-reason-container').classList.remove('hidden');
+        }
+
+        function submitCancelOrder() {
+            const reason = document.getElementById('cancel-reason-select').value;
+            fetch(`/deliveries/api/cancel-with-reason/${deliveryId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason: reason })
+            }).then(res => res.json()).then(data => {
+                if (data.success) {
+                    alert("Order cancelled successfully.");
+                    window.location.href = "{% url 'customer_portal:kiosk_menu' %}";
+                } else {
+                    alert(data.error || "Failed to cancel.");
+                }
+            });
+        }
     </script>
+
+    <!-- Smart Rider Timeout Modal -->
+    <div id="rider-timeout-modal" class="fixed inset-0 z-[99999] bg-black/98 backdrop-blur-3xl hidden flex items-center justify-center p-4">
+        <div style="background: rgba(18, 18, 22, 0.78); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);" class="w-full max-w-sm rounded-3xl p-6 text-center space-y-4 text-white relative z-[100000]">
+            <div class="w-14 h-14 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg">
+                <i class="fa-solid fa-clock"></i>
+            </div>
+            <h3 class="text-lg font-black font-poppins text-white">No Rider Available Yet</h3>
+            <p class="text-xs text-zinc-200 leading-relaxed font-medium">
+                It's been 2 minutes and no rider has accepted your delivery request yet. What would you like to do?
+            </p>
+
+            <div id="cancel-reason-container" class="hidden space-y-2 text-left pt-2">
+                <label class="block text-[10px] font-extrabold uppercase tracking-wider text-white/70">Select cancellation reason:</label>
+                <select id="cancel-reason-select" class="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-orange">
+                    <option value="Waiting for too long" class="bg-zinc-900">Waiting for too long</option>
+                    <option value="No riders available" class="bg-zinc-900">No riders available</option>
+                    <option value="Change of plans" class="bg-zinc-900">Change of plans</option>
+                    <option value="Other reason" class="bg-zinc-900">Other reason</option>
+                </select>
+                <button onclick="submitCancelOrder()" class="w-full mt-2 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
+                    Confirm Cancellation
+                </button>
+                <button onclick="document.getElementById('cancel-reason-container').classList.add('hidden'); document.getElementById('timeout-buttons').classList.remove('hidden');" class="w-full py-1.5 text-white/50 hover:text-white text-xs font-bold">
+                    Back
+                </button>
+            </div>
+
+            <div id="timeout-buttons" class="space-y-2 pt-2">
+                <button onclick="extendSearchTimer()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition cursor-pointer">
+                    Wait (+2 Mins)
+                </button>
+                <button onclick="convertToPickup()" class="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider border border-white/10 transition cursor-pointer">
+                    Convert to Pick-up
+                </button>
+                <button onclick="showCancelReasons()" class="w-full py-2.5 bg-transparent hover:bg-red-500/10 text-red-400 font-bold rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
+                    Cancel Order
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

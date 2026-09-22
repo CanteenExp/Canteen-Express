@@ -885,60 +885,73 @@
                 } catch (e) {}
             }
 
-            // The dispatches tab can be toggled away; only refresh when visible.
             let lastIds = Array.from(document.querySelectorAll('[data-dispatch-row]'))
                 .map(r => { const tds = r.children; return tds[0] ? Number(tds[0].textContent.replace(/\D/g, '')) : 0; });
 
             const esc = (s) => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
 
-            const sse = new EventSource('/deliveries/api/staff-dispatch-stream/');
-            sse.onmessage = (ev) => {
-                try {
-                    const data = JSON.parse(ev.data);
-                    if (!data.success) return;
+            let sse = null;
+            function initStaffSSE() {
+                if (sse) { try { sse.close(); } catch(e) {} }
+                sse = new EventSource('/deliveries/api/staff-dispatch-stream/');
+                sse.onmessage = (ev) => {
+                    try {
+                        const data = JSON.parse(ev.data);
+                        if (!data.success) return;
 
-                    // Live rider availability badge: online == ready to take a
-                    // delivery, matching exactly what the auto-assign logic uses.
-                    if (Array.isArray(data.riders)) {
-                        data.riders.forEach(r => {
-                            const el = document.getElementById('rider-status-' + r.id);
-                            if (!el) return;
-                            let label, cls;
-                            if (!r.is_active || r.account_status !== 'active') {
-                                label = r.is_active && r.account_status ? r.account_status : 'Inactive';
-                                cls = 'bg-red-50 text-red-700';
-                            } else if (r.online) {
-                                label = 'Online · Ready';
-                                cls = 'bg-emerald-50 text-emerald-700';
-                            } else {
-                                label = 'Offline';
-                                cls = 'bg-gray-100 text-gray-500';
-                            }
-                            el.textContent = label;
-                            el.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ' + cls;
-                        });
-                    }
+                        if (Array.isArray(data.riders)) {
+                            data.riders.forEach(r => {
+                                const el = document.getElementById('rider-status-' + r.id);
+                                if (!el) return;
+                                let label, cls;
+                                if (!r.is_active || r.account_status !== 'active') {
+                                    label = r.is_active && r.account_status ? r.account_status : 'Inactive';
+                                    cls = 'bg-red-50 text-red-700';
+                                } else if (r.online) {
+                                    label = 'Online · Ready';
+                                    cls = 'bg-emerald-50 text-emerald-700';
+                                } else {
+                                    label = 'Offline';
+                                    cls = 'bg-gray-100 text-gray-500';
+                                }
+                                el.textContent = label;
+                                el.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ' + cls;
+                            });
+                        }
 
-                    const rows = data.dispatches || [];
-                    const ids = rows.map(r => r.id);
-                    const hasNew = ids.some(id => lastIds.indexOf(id) === -1);
-                    if (hasNew) playChime();
-                    lastIds = ids;
-                    if (!rows.length) {
-                        tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-gray-400">No active delivery requests at the moment.</td></tr>';
-                        return;
-                    }
-                    tbody.innerHTML = rows.map(r => `
-                        <tr class="hover:bg-gray-50 transition" data-dispatch-row>
-                            <td class="py-3.5 px-3 font-black text-dark-900">#DEL-${r.id}</td>
-                            <td class="py-3.5 px-3 font-bold text-gray-800">${esc(r.order_number)}</td>
-                            <td class="py-3.5 px-3 text-gray-600">${esc(r.location)}</td>
-                            <td class="py-3.5 px-3 text-gray-800">${esc(r.rider)}</td>
-                            <td class="py-3.5 px-3 text-right"><span class="bg-brand-50 text-brand-700 font-bold px-2.5 py-1 rounded-full text-[10px] uppercase">${esc(r.status)}</span></td>
-                        </tr>`).join('');
-                } catch (e) {}
-            };
-            sse.onerror = () => {};
+                        const rows = data.dispatches || [];
+                        const ids = rows.map(r => r.id);
+                        const hasNew = ids.some(id => lastIds.indexOf(id) === -1);
+                        if (hasNew) playChime();
+                        lastIds = ids;
+                        if (!rows.length) {
+                            tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-gray-400">No active delivery requests at the moment.</td></tr>';
+                            return;
+                        }
+                        tbody.innerHTML = rows.map(r => `
+                            <tr class="hover:bg-gray-50 transition" data-dispatch-row>
+                                <td class="py-3.5 px-3 font-black text-dark-900">#DEL-${r.id}</td>
+                                <td class="py-3.5 px-3 font-bold text-gray-800">${esc(r.order_number)}</td>
+                                <td class="py-3.5 px-3 text-gray-600">${esc(r.location)}</td>
+                                <td class="py-3.5 px-3 text-gray-800">${esc(r.rider)}</td>
+                                <td class="py-3.5 px-3 text-right"><span class="bg-brand-50 text-brand-700 font-bold px-2.5 py-1 rounded-full text-[10px] uppercase">${esc(r.status)}</span></td>
+                            </tr>`).join('');
+                    } catch (e) {}
+                };
+                sse.onerror = () => {
+                    if (sse) { sse.close(); }
+                    setTimeout(initStaffSSE, 3000);
+                };
+            }
+
+            initStaffSSE();
+
+            // Auto-refresh when PWA tab / app comes back into view
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    window.location.reload();
+                }
+            });
         })();
         </script>
 

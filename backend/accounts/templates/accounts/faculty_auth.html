@@ -2,6 +2,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
     <link rel="manifest" href="{% static 'manifest-faculty.json' %}">
     <meta name="theme-color" content="#f97316">
@@ -57,6 +60,8 @@
                 mode: '{{ mode|default:"login"|escapejs }}',
                 showLoginPass: false,
                 showSignupPass: false,
+                showForgotNewPass: false,
+                showForgotConfirmPass: false,
                 rememberMe: false,
                 showTermsModal: false,
                 showForgotModal: false,
@@ -282,20 +287,15 @@
                                 this.showLocationModal = false;
                             },
                             (err) => {
-                                this.useDefaultLocation();
+                                alert("GPS location access is required. Please turn on your location services and allow location access to verify you are inside the PSU campus.");
+                                this.showLocationModal = true;
                             },
-                            { enableHighAccuracy: false, timeout: 5000 }
+                            { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
                         );
                     } else {
-                        this.useDefaultLocation();
+                        alert("Geolocation is not supported by your browser.");
+                        this.showLocationModal = true;
                     }
-                },
-                useDefaultLocation() {
-                    this.lat = 9.77778;
-                    this.lng = 118.73333;
-                    localStorage.setItem('canteen_faculty_lat', this.lat);
-                    localStorage.setItem('canteen_faculty_lng', this.lng);
-                    this.showLocationModal = false;
                 }
             }));
         });
@@ -568,8 +568,13 @@
 
                 <div>
                     <label class="block text-[11px] font-extrabold text-white/80 uppercase tracking-wider mb-1">New Strong Password</label>
-                    <input type="password" x-model="forgotNewPassword" placeholder="••••••••"
-                           class="w-full px-3.5 py-2.5 bg-white/5 border border-white/15 rounded-xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30">
+                    <div class="relative">
+                        <input :type="showForgotNewPass ? 'text' : 'password'" x-model="forgotNewPassword" placeholder="••••••••"
+                               class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30">
+                        <button type="button" @click="showForgotNewPass = !showForgotNewPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white cursor-pointer text-sm">
+                            <i :class="showForgotNewPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                        </button>
+                    </div>
                     <div class="flex items-center justify-between mt-1 px-0.5" x-show="forgotNewPassword">
                         <span class="text-[10px] text-white/60 font-bold">Strength:</span>
                         <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider"
@@ -584,8 +589,13 @@
 
                 <div>
                     <label class="block text-[11px] font-extrabold text-white/80 uppercase tracking-wider mb-1">Confirm New Password</label>
-                    <input type="password" x-model="forgotConfirmPassword" placeholder="••••••••"
-                           class="w-full px-3.5 py-2.5 bg-white/5 border border-white/15 rounded-xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30">
+                    <div class="relative">
+                        <input :type="showForgotConfirmPass ? 'text' : 'password'" x-model="forgotConfirmPassword" placeholder="••••••••"
+                               class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30">
+                        <button type="button" @click="showForgotConfirmPass = !showForgotConfirmPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white cursor-pointer text-sm">
+                            <i :class="showForgotConfirmPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                        </button>
+                    </div>
                     <p class="text-[10px] text-red-400 font-bold mt-1" x-show="forgotConfirmPassword && forgotNewPassword !== forgotConfirmPassword">Passwords do not match</p>
                 </div>
 

@@ -15,17 +15,19 @@ class DeliveryRequest(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name='deliveries'
+        related_name='deliveries',
+        db_index=True
     )
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name='assigned_deliveries'
+        related_name='assigned_deliveries',
+        db_index=True
     )
     assigned_at = models.DateTimeField(null=True, blank=True)
     delivery_location = models.CharField(max_length=255, help_text="Building & Room Number")
-    status = models.CharField(max_length=20, choices=RequestStatus.choices, default=RequestStatus.SEARCHING)
+    status = models.CharField(max_length=20, choices=RequestStatus.choices, default=RequestStatus.SEARCHING, db_index=True)
     requested_at = models.DateTimeField(auto_now_add=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)

@@ -13,6 +13,8 @@ print("\n" + "="*40)
 print(f"Checking .env path: {env_file}")
 print(f"File exists: {env_file.exists()}")
 print(f"DB_PASSWORD Loaded: {'YES' if os.getenv('DB_PASSWORD') else 'NO (Empty/None)'}")
+geofence_status = os.getenv('ENFORCE_GEOFENCE', 'True').lower() == 'true'
+print(f"Geofence Enforcement: {'ENABLED (Strict Campus Radius)' if geofence_status else 'DISABLED (Testing Anywhere Mode)'}")
 print("="*40 + "\n")
 
 # Quick-start development settings - unsuitable for production
@@ -85,10 +87,11 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# Database (Strict Supabase PostgreSQL + SQLite backup source)
+# Database (Strict Supabase PostgreSQL + SQLite backup source with automatic fallback)
 USE_SQLITE = os.getenv('USE_SQLITE', 'False').lower() == 'true'
+db_host = os.getenv('DB_HOST', '')
 
-if USE_SQLITE:
+if USE_SQLITE or not db_host:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -103,7 +106,7 @@ else:
             'USER': os.getenv('DB_USER', ''),
             'PASSWORD': os.getenv('DB_PASSWORD', ''),
             'HOST': os.getenv('DB_HOST', ''),
-            'PORT': os.getenv('DB_PORT', '5432'),
+            'PORT': os.getenv('DB_PORT', '6543'),
             'CONN_MAX_AGE': 600,
             'OPTIONS': {
                 'sslmode': 'require',
@@ -176,8 +179,10 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Canteen Express <canteenex
 CSRF_TRUSTED_ORIGINS = [
     'https://tiny-boats-win.loca.lt',
     'https://*.loca.lt',
+    'https://*.devtunnels.ms',
     'https://*.onrender.com',
     'https://*.railway.app',
+    'https://*.localhost',
 ]
 
 ENFORCE_GEOFENCE = os.getenv('ENFORCE_GEOFENCE', 'True').lower() == 'true'

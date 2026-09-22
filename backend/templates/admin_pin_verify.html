@@ -21,13 +21,32 @@
 
     <form method="POST" class="space-y-4">
         {% csrf_token %}
-        <input type="password" name="pin" maxlength="4" placeholder="••••" required autofocus
-            class="w-full text-center tracking-widest text-2xl py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-brand-500 font-black">
+        <div class="relative">
+            <input type="password" id="supervisor-pin" name="pin" maxlength="4" placeholder="••••" required autofocus
+                class="w-full text-center tracking-widest text-2xl py-3 pr-12 border border-gray-300 rounded-2xl focus:outline-none focus:border-brand-500 font-black">
+            <button type="button" onclick="togglePinVisibility()" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 cursor-pointer text-base">
+                <i id="pin-eye-icon" class="fa-solid fa-eye"></i>
+            </button>
+        </div>
             
         <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 rounded-2xl text-sm transition shadow-md shadow-brand-500/20">
             Verify PIN
         </button>
     </form>
+
+    <script>
+        function togglePinVisibility() {
+            const input = document.getElementById('supervisor-pin');
+            const icon = document.getElementById('pin-eye-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
+    </script>
 
     <a href="{% url 'kitchen_display:dashboard' %}" class="block text-xs font-bold text-gray-400 hover:text-gray-600">
         <i class="fa-solid fa-arrow-left mr-1"></i> Back to Staff Dashboard

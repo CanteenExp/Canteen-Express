@@ -806,6 +806,11 @@ async function checkoutOrder() {
         if (data.success) {
             closeCartDrawer();
             
+            if (data.is_delivery && data.delivery_id) {
+                window.location.href = `/deliveries/track/${data.delivery_id}/`;
+                return;
+            }
+
             currentPendingOrder = {
                 order_number: data.order_number,
                 cart: cart,

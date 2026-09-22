@@ -24,5 +24,7 @@ urlpatterns = [
     path('api/order-detail/<int:delivery_id>/', views.get_order_detail, name='order_detail'),
     path('api/location/<int:delivery_id>/update/', views.update_location, name='update_location'),
     path('api/location/<int:delivery_id>/', views.get_tracking, name='get_tracking'),
+    path('api/convert-to-pickup/<int:delivery_id>/', views.api_convert_to_pickup, name='api_convert_to_pickup'),
+    path('api/cancel-with-reason/<int:delivery_id>/', views.api_cancel_order_with_reason, name='api_cancel_order_with_reason'),
     path('track/<int:delivery_id>/', views.track_order, name='track_order'),
 ]
