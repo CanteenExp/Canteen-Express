@@ -1,40 +1,45 @@
-# Canteen Express - Django Web Application & PWA Suite
+<div align="center">
 
-Welcome to the **Canteen Express** project! A comprehensive, enterprise-grade Django web application and Progressive Web App (PWA) suite designed for automated Canteen Ordering, Counter POS, Kitchen Display, Digital Queuing, and Campus Delivery.
+# 🍔 Canteen Express
+### *Enterprise-Grade Django Web Application & Progressive Web App (PWA) Suite*
 
----
+[![Django](https://img.shields.io/badge/Django-5.1.5-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![PostgreSQL](https://img.shields.io/badge/Supabase-PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://supabase.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.x-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![PWA Ready](https://img.shields.io/badge/PWA-Ready-FF6117?style=for-the-badge&logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
 
-## 📱 Progressive Web App (PWA) Support by Role
+*A comprehensive campus dining, counter POS, kitchen display, digital queuing, and real-time geofenced delivery platform built for Palawan State University (PalSU) Main Canteen.*
 
-Canteen Express is fully optimized as a Progressive Web App across all user tiers, enabling offline caching, standalone app installation, and native-like performance:
-
-1. **Customer Student / Walk-in Kiosk (`manifest-kiosk.json`)**
-   - **Start URL:** `/kiosk/`
-   - **Theme:** Dark theme (`#121212`, accent `#f97316`)
-   - **Features:** Self-service kiosk ordering, guest/student ordering, QR/barcode queue slip generation, smart category-based customization (e.g., Steamed Rice add-ons exclusively for Rice Meals).
-2. **Customer Faculty / Staff (`manifest-faculty.json`)**
-   - **Start URL:** `/accounts/dashboard/`
-   - **Theme:** Dark theme (`#121212`, accent `#f97316`)
-   - **Features:** Authenticated faculty/staff ordering (`@psu.palawan.edu.ph`), loyalty points accumulation, order history, and delivery tracking.
-3. **Canteen Staff / Admin Portal (`manifest-staff.json`)**
-   - **Start URL:** `/canteen/staff/`
-   - **Theme:** Light/Brand dark (`#f97316` theme)
-   - **Features:** Counter POS screen (`counter_pos.html`), barcode & queue slip scanning API (`/canteen/api/process-barcode/`), menu item management, delivery rider creation, and comprehensive sales reports.
-4. **Delivery Personnel / Rider Hub (`manifest-rider.json`)**
-   - **Start URL:** `/deliveries/dashboard/`
-   - **Theme:** Dark brand theme (`#08080b`, accent `#FF6117`)
-   - **Features:** Real-time delivery dispatch, accept/update delivery status, live GPS tracking (`navigator.geolocation.watchPosition`), and real-time customer chat (`DeliveryMessage`).
+</div>
 
 ---
 
-## 🚀 Core System Modules & Features
+## 📱 Progressive Web App (PWA) Tiers & Roles
+
+Canteen Express is fully optimized as a Progressive Web App across all user tiers, enabling offline caching, standalone home-screen installation, and native-like performance:
+
+| Role / Tier | Manifest File | Start URL | Core Features |
+| :--- | :--- | :--- | :--- |
+| **Student / Walk-In Kiosk** | `manifest-kiosk.json` | `/kiosk/` | Self-service kiosk ordering, guest/student ordering, QR/barcode queue slip generation, smart category-based customization. |
+| **Faculty / Staff Portal** | `manifest-faculty.json` | `/accounts/dashboard/` | Authenticated institutional ordering (`@psu.palawan.edu.ph`), loyalty points accumulation (1pt per ₱100 spent), and live delivery tracking. |
+| **Canteen Staff / Admin** | `manifest-staff.json` | `/canteen/staff/` | Counter POS screen (`counter_pos.html`), barcode scanning API (`/canteen/api/process-barcode/`), menu management, and sales analytics. |
+| **Delivery Rider Hub** | `manifest-rider.json` | `/deliveries/dashboard/` | Real-time delivery dispatch, accept/update status, live GPS tracking (`watchPosition`), and real-time customer chat (`DeliveryMessage`). |
+
+---
+
+## 🚀 Core Modules & Advanced Features
 
 - **Kitchen Display Kanban Board (`kitchen_display`)**
-  - Real-time 3-column workflow: **Kiosk Accepted** (Walk-in Kiosk), **Delivery** (Campus Delivery), and **Orders Ready** (Ready for pickup/dispatch).
+  - Real-time 3-column workflow: **Kiosk Accepted**, **Delivery**, and **Orders Ready**.
   - AJAX status updates (`/kitchen/order/<id>/update-status/`) with robust null-safety for walk-in kiosk orders.
 - **Campus Geofence Enforcement (`deliveries`)**
   - Official campus center: `9.77778, 118.73333` (PSU Tiniguiban Heights).
   - Strict radius check: `0.8` km (`deliveries/utils.py`). Out-of-campus delivery orders or missing destination coordinates are automatically rejected at checkout with HTTP `422 Unprocessable Entity`.
+- **Smart Rider Timeout & Walk-In Queue Slip Generator**
+  - If no rider accepts a campus delivery order within 2 minutes (`SEARCHING` status), a frosted dark glass timeout modal pops up automatically with three options: **Wait (+2 Mins)**, **Convert to Pick-up** (instantly transitions the order to counter pick-up and generates an official Digital Queue Slip with barcode via `JsBarcode`), and **Cancel Order**.
+- **Real-Time PWA Auto-Refresh & Chat Polling**
+  - Server-Sent Events (SSE) with auto-reconnection and `visibilitychange` resume listeners ensure live updates without requiring manual app reloads. In-chat interfaces feature automatic 2.5-second polling for instantaneous messaging.
 - **Sales Reports & Analytics (`analytics_reports`, `admin_dashboard`)**
   - Interactive Chart.js bar graphs with filter tabs for **Daily (7 Days)**, **Weekly (4 Weeks)**, and **Monthly (6 Months)** sales performance and financial breakdown tables.
 - **Convenience Fee & Loyalty Points**
@@ -46,7 +51,6 @@ Canteen Express is fully optimized as a Progressive Web App across all user tier
 
 ## 📋 Prerequisites
 
-Ensure you have the following installed on your system:
 - **Python 3.10+** (Recommended: **Python 3.12**)
 - **Git**
 
@@ -82,13 +86,25 @@ Create a `.env` file directly inside the `backend/` folder alongside `manage.py`
 ```env
 SECRET_KEY="django-insecure-your-secret-key-here"
 DEBUG=True
+USE_SQLITE=FALSE
 
-# Supabase PostgreSQL Database Credentials (falls back to local SQLite if absent or unreachable)
+# Supabase PostgreSQL Database Credentials (Transaction Mode Port 6543)
 DB_NAME="postgres"
 DB_USER="postgres.hchqdkuijbpihraagetz"
 DB_PASSWORD="<YOUR_DB_PASSWORD>"
 DB_HOST="aws-0-ap-southeast-1.pooler.supabase.com"
 DB_PORT="6543"
+
+# Gmail SMTP Real-time Email Settings (SSL Port 465)
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=465
+EMAIL_USE_SSL=True
+EMAIL_HOST_USER=canteenexpress26@gmail.com
+EMAIL_HOST_PASSWORD=<YOUR_GMAIL_APP_PASSWORD>
+DEFAULT_FROM_EMAIL=Canteen Express <canteenexpress26@gmail.com>
+
+ENFORCE_GEOFENCE=True
 ```
 
 ### 5. Run Database Migrations
@@ -118,7 +134,7 @@ Always run Django tests inside the `backend/` directory with `--keepdb` to avoid
 python manage.py test --keepdb
 
 # Run specific app tests
-python manage.py test deliveries customer_portal
+python manage.py test deliveries customer_portal accounts
 ```
 
 ### Reset / Clear All Orders (Testing Utility)
@@ -139,24 +155,13 @@ To clear all orders and order items in the database for testing:
 
 ## 🔌 Key API Endpoints
 
-1. **Barcode & Queue Slip Processing API (`canteen_menu`)**
-   - **Endpoint:** `/canteen/api/process-barcode/`
-   - **Method:** `POST`
-   - **Payload:** `{"queue_slip": "#CE-1001"}`
-   - **Purpose:** Converts queue slip status from `unpaid` to `pending` (marks order as paid at the counter POS).
-2. **Kitchen Order Status Update API (`kitchen_display`)**
-   - **Endpoint:** `/kitchen/order/<int:order_id>/update-status/`
-   - **Method:** `POST`
-   - **Payload:** `{"status": "ready"}` or `{"status": "completed"}`
-   - **Purpose:** Updates order workflow status on the kitchen Kanban board in real time.
-3. **Customer Kiosk & Ordering APIs (`customer_portal`)**
-   - **Endpoint:** `/kiosk/`
-   - **Method:** `GET`, `POST`
-   - **Purpose:** Manages kiosk menu items, cart sessions, and order checkout with geofence validation.
-4. **Delivery & Live Chat APIs (`deliveries`)**
-   - **Endpoints:** `/deliveries/...`
-   - **Method:** `GET`, `POST`
-   - **Purpose:** Rider delivery assignment, GPS coordinate updates (`watchPosition`), and real-time messaging (`DeliveryMessage`).
+| API Module | Endpoint | Method | Payload / Parameters | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **Canteen Menu** | `/canteen/api/process-barcode/` | `POST` | `{"queue_slip": "#CE-1001"}` | Converts queue slip status from `unpaid` to `pending` (marks order as paid at the counter POS). |
+| **Kitchen Display** | `/kitchen/order/<id>/update-status/` | `POST` | `{"status": "ready"}` | Updates order workflow status on the kitchen Kanban board in real time. |
+| **Customer Kiosk** | `/kiosk/` | `GET`, `POST` | Cart JSON / Form Data | Manages kiosk menu items, cart sessions, and order checkout with geofence validation. |
+| **Deliveries** | `/deliveries/api/location/<id>/` | `GET` | — | Returns rider GPS coordinates, speed, distance, and ETA for live Leaflet tracking. |
+| **Deliveries** | `/deliveries/api/convert-to-pickup/<id>/` | `POST` | — | Converts delivery order to counter pick-up and generates a digital queue slip. |
 
 ---
 
@@ -196,7 +201,12 @@ CANTEEN-EXPRESS/
 
 ## 💡 Troubleshooting & Notes
 
+- **Supabase Connection Limit (`EMAXCONNSESSION`):** Always use Supabase **Transaction Mode** (`DB_PORT=6543`) to prevent connection pool exhaustion during multithreaded development.
 - **Windows CP1252 Encoding Error:** Avoid complex Unicode emojis in backend print statements and management commands; use FontAwesome icons in HTML templates instead.
 - **Database Fallback:** If the `.env` file is missing or Supabase PostgreSQL is unreachable, the system automatically falls back to local SQLite (`backend/db.sqlite3`).
 
-**Happy coding, team!**
+<div align="center">
+
+**Happy coding, team! 🚀**
+
+</div>
