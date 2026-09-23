@@ -48,6 +48,36 @@
             100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 25px rgba(255, 97, 23, 0.4)); }
         }
         .animate-logo-glow { animation: logoPulseGlow 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+        /* ===== Consistent Quick Fade Animations ===== */
+        @keyframes pageFadeIn {
+            0% { opacity: 0; transform: translateY(8px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pageFadeOut {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-8px); }
+        }
+        @keyframes riseIn {
+            0% { opacity: 0; transform: translateY(14px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.92); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .animate-page-in { animation: pageFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .animate-rise-in { animation: riseIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .animate-pop-in { animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        #page-fade-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: #0A0A0C;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.22s ease;
+        }
+        #page-fade-overlay.fading { opacity: 1; pointer-events: auto; }
+        button:active, a:active { transform: scale(0.98); }
+        button, a, [role="button"] { -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
 <body class="bg-brand-dark text-white flex flex-col justify-between py-2 px-4 max-w-md mx-auto w-full relative select-none"
@@ -85,6 +115,11 @@
                 forgotOtpSent: false,
                 forgotOtpCountdown: 0,
                 forgotOtpTimer: null,
+                forgotSendingOtp: false,
+                forgotSubmitting: false,
+                otpSending: false,
+                otpVerifying: false,
+                loginSubmitting: false,
                 toastMessage: '',
                 toastType: 'success',
                 showToast: false,
@@ -115,15 +150,12 @@
                     return this.forgotNewPassword.length >= 6;
                 },
                 getForgotOtp() {
-                    if (this.forgotOtpCountdown > 0) return;
+                    if (this.forgotOtpCountdown > 0 || this.forgotSendingOtp) return;
                     if (!this.forgotEmail || !this.forgotEmail.endsWith('@psu.palawan.edu.ph')) {
                         this.triggerToast('Please enter a valid institutional email ending in @psu.palawan.edu.ph first.', 'error');
                         return;
                     }
-                    if (!this.forgotNewPassword || this.forgotNewPassword !== this.forgotConfirmPassword || !this.isForgotPassStrong) {
-                        this.triggerToast('Please enter a valid, matching, and strong new password first.', 'error');
-                        return;
-                    }
+                    this.forgotSendingOtp = true;
                     fetch('{% url "accounts:send_password_reset_otp" %}', {
                         method: 'POST',
                         headers: {
@@ -158,6 +190,9 @@
                     })
                     .catch(err => {
                         this.triggerToast('Network error initializing password reset.', 'error');
+                    })
+                    .finally(() => {
+                        this.forgotSendingOtp = false;
                     });
                 },
                 submitPasswordReset() {
@@ -337,7 +372,7 @@
     <div class="absolute inset-0 bg-gradient-to-b from-brand-dark/80 via-brand-dark/75 to-brand-dark/90 z-0"></div>
 
     <!-- Header Brand (Image 2) -->
-    <header class="flex justify-center pt-2 relative z-10 shrink-0">
+    <header class="flex justify-center pt-10 relative z-10 shrink-0 animate-page-in">
         <div class="flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full border border-white/15 backdrop-blur-md">
             <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-6 w-auto object-contain">
             <span class="text-xs font-bold uppercase tracking-[0.2em] text-white/90 font-poppins">CANTEEN EXPRESS</span>
@@ -345,7 +380,7 @@
     </header>
 
     <!-- Main Card Container (Larger & Roomier Form) -->
-    <main class="w-full max-w-md mx-auto relative z-10 shrink-0 my-auto">
+    <main class="w-full max-w-md mx-auto relative z-10 shrink-0 my-auto animate-rise-in">
         <div class="bg-[#121215]/90 border border-white/15 rounded-[24px] p-4 sm:p-5 space-y-2.5 backdrop-blur-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] ring-1 ring-white/10 text-white">
             
             <div class="text-center space-y-1">
@@ -391,7 +426,7 @@
                     <div class="relative">
                         <input :type="showLoginPass ? 'text' : 'password'" name="password" required placeholder="••••••••"
                             class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30 backdrop-blur-md">
-                        <button type="button" @click="showLoginPass = !showLoginPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white cursor-pointer text-sm">
+                        <button type="button" @click="showLoginPass = !showLoginPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white cursor-pointer text-sm mix-blend-difference hover:opacity-80">
                             <i :class="showLoginPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
                     </div>
@@ -446,7 +481,7 @@
                     <div class="relative">
                         <input :type="showSignupPass ? 'text' : 'password'" name="password" x-model="password" required placeholder="••••••••"
                             class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30 backdrop-blur-md">
-                        <button type="button" @click="showSignupPass = !showSignupPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white cursor-pointer text-sm">
+                        <button type="button" @click="showSignupPass = !showSignupPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white cursor-pointer text-sm mix-blend-difference hover:opacity-80">
                             <i :class="showSignupPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
                     </div>
@@ -499,7 +534,7 @@
     </main>
 
     <!-- Footer / Back Link -->
-    <footer class="pb-1 text-center relative z-10 shrink-0">
+    <footer class="pb-1 text-center relative z-10 shrink-0 animate-page-in">
         <a href="{% url 'accounts:landing' %}" class="text-xs font-bold text-white/60 hover:text-white transition inline-flex items-center gap-1">
             <i class="fa-solid fa-arrow-left text-xs"></i> Back to Role Selection
         </a>
@@ -571,7 +606,7 @@
                     <div class="relative">
                         <input :type="showForgotNewPass ? 'text' : 'password'" x-model="forgotNewPassword" placeholder="••••••••"
                                class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30">
-                        <button type="button" @click="showForgotNewPass = !showForgotNewPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white cursor-pointer text-sm">
+                        <button type="button" @click="showForgotNewPass = !showForgotNewPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white cursor-pointer text-sm mix-blend-difference hover:opacity-80">
                             <i :class="showForgotNewPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
                     </div>
@@ -592,7 +627,7 @@
                     <div class="relative">
                         <input :type="showForgotConfirmPass ? 'text' : 'password'" x-model="forgotConfirmPassword" placeholder="••••••••"
                                class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30">
-                        <button type="button" @click="showForgotConfirmPass = !showForgotConfirmPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white cursor-pointer text-sm">
+                        <button type="button" @click="showForgotConfirmPass = !showForgotConfirmPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white cursor-pointer text-sm mix-blend-difference hover:opacity-80">
                             <i :class="showForgotConfirmPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
                     </div>
@@ -661,6 +696,25 @@
 
     <!-- AlpineJS -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+    <!-- Page Transition Fade Overlay -->
+    <div id="page-fade-overlay"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const overlay = document.getElementById('page-fade-overlay');
+            document.addEventListener('click', function (e) {
+                if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                const link = e.target.closest('a[href]');
+                if (!link) return;
+                if (link.target === '_blank') return;
+                const href = link.getAttribute('href') || '';
+                if (href.startsWith('#') || href.startsWith('javascript:')) return;
+                e.preventDefault();
+                overlay.classList.add('fading');
+                setTimeout(() => { window.location.href = link.href; }, 230);
+            });
+        });
+    </script>
 
     <!-- ================= LOGO LOADING OVERLAY ================= -->
     <div id="logo-loading-overlay" class="fixed inset-0 z-[100] bg-[#0A0A0C] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">

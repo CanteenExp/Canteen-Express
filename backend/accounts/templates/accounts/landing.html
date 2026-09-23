@@ -36,6 +36,36 @@
         .diagonal-wrapper {
             transform: rotate(-12deg) scale(1.4);
         }
+
+        /* ===== Consistent Quick Fade Animations ===== */
+        @keyframes pageFadeIn {
+            0% { opacity: 0; transform: translateY(8px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pageFadeOut {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-8px); }
+        }
+        @keyframes riseIn {
+            0% { opacity: 0; transform: translateY(14px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.92); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .animate-page-in { animation: pageFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .animate-rise-in { animation: riseIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .animate-pop-in { animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        #page-fade-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: #0A0A0C;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.22s ease;
+        }
+        #page-fade-overlay.fading { opacity: 1; pointer-events: auto; }
+        button:active, a:active { transform: scale(0.98); }
+        button, a, [role="button"] { -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
 <body class="bg-brand-dark text-white flex flex-col justify-between p-4 max-w-md mx-auto w-full select-none relative">
@@ -76,7 +106,7 @@
     <div class="absolute inset-0 bg-gradient-to-b from-brand-dark/80 via-brand-dark/75 to-brand-dark/90 z-0"></div>
 
     <!-- Header Brand -->
-    <header class="flex justify-center pt-2 relative z-10 shrink-0">
+    <header class="flex justify-center pt-10 relative z-10 shrink-0 animate-page-in">
         <div class="flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full border border-white/15 backdrop-blur-md">
             <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-6 w-auto object-contain">
             <span class="text-xs font-bold uppercase tracking-[0.2em] text-white/90 font-poppins">CANTEEN EXPRESS</span>
@@ -84,7 +114,7 @@
     </header>
 
     <!-- Main Content Container Card -->
-    <main class="my-auto py-3 space-y-4 text-center relative z-10 bg-[#121215]/90 border border-white/15 rounded-[32px] p-6 backdrop-blur-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] ring-1 ring-white/10 shrink-0">
+    <main class="my-auto py-3 space-y-4 text-center relative z-10 bg-[#121215]/90 border border-white/15 rounded-[32px] p-6 backdrop-blur-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] ring-1 ring-white/10 shrink-0 animate-rise-in">
         <div class="w-14 h-14 rounded-2xl bg-brand-orange/20 border border-brand-orange/40 flex items-center justify-center text-brand-orange text-2xl mx-auto shadow-lg shadow-brand-orange/20">
             <i class="fa-solid fa-users"></i>
         </div>
@@ -131,11 +161,30 @@
     </main>
 
     <!-- Footer -->
-    <footer class="pb-2 text-center space-y-1 border-t border-white/10 pt-2 relative z-10 shrink-0">
+    <footer class="pb-2 text-center space-y-1 border-t border-white/10 pt-2 relative z-10 shrink-0 animate-page-in">
         <p class="text-[10px] text-white/50 uppercase font-bold tracking-widest">
             Touch your role to proceed
         </p>
     </footer>
+
+    <!-- Page Transition Fade Overlay -->
+    <div id="page-fade-overlay"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const overlay = document.getElementById('page-fade-overlay');
+            document.addEventListener('click', function (e) {
+                if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                const link = e.target.closest('a[href]');
+                if (!link) return;
+                if (link.target === '_blank') return;
+                const href = link.getAttribute('href') || '';
+                if (href.startsWith('#') || href.startsWith('javascript:')) return;
+                e.preventDefault();
+                overlay.classList.add('fading');
+                setTimeout(() => { window.location.href = link.href; }, 230);
+            });
+        });
+    </script>
 
 </body>
 </html>

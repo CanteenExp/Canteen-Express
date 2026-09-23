@@ -33,6 +33,12 @@
         body { font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; height: 100dvh; overflow: hidden; }
         .font-poppins { font-family: 'Poppins', sans-serif; }
 
+        .glass-backdrop {
+            background: rgba(8, 8, 12, 0.55) !important;
+            -webkit-backdrop-filter: blur(12px) saturate(120%);
+            backdrop-filter: blur(12px) saturate(120%);
+        }
+
         /* Smooth Infinite Diagonal Food Carousel */
         @keyframes scroll-left {
             0% { transform: translateX(0); }
@@ -243,7 +249,7 @@
 
 
     <!-- ================= 3. ROLE SELECTION MODAL ================= -->
-    <div id="role-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-2xl hidden flex items-center justify-center p-4 transition-all duration-300">
+    <div id="role-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 transition-all duration-300">
         
         <div class="bg-[#121215]/90 border border-white/20 rounded-[32px] p-6 max-w-md w-full text-center space-y-4 shadow-[0_30px_70px_rgba(0,0,0,0.95)] relative overflow-hidden ring-1 ring-white/10">
             

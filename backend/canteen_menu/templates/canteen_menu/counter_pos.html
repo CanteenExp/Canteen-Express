@@ -15,6 +15,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
+        .glass-backdrop {
+            background: rgba(8, 8, 12, 0.55) !important;
+            backdrop-filter: blur(12px) saturate(120%);
+            -webkit-backdrop-filter: blur(12px) saturate(120%);
+        }
         #reader video {
             border-radius: 1rem;
             object-fit: cover;
@@ -161,7 +166,7 @@
     </main>
 
     <!-- OFFICIAL RECEIPT MODAL -->
-    <div id="receipt-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50 overflow-y-auto">
+    <div id="receipt-modal" class="fixed inset-0 glass-backdrop hidden items-center justify-center p-4 z-50 overflow-y-auto">
         <div class="max-w-sm w-full bg-white rounded-3xl p-6 shadow-2xl space-y-5 relative my-8">
             
             <button onclick="closeReceiptModal()" class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 text-lg">

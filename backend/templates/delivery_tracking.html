@@ -11,8 +11,20 @@
     <link rel="stylesheet" href="{% static 'css/rider.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <script>
+        // Tell the unified map facade which engine to use (google when a key is
+        // configured in backend/.env, otherwise the free Leaflet/OSM fallback).
+        window.CE_MAP_ENGINE = {% if USE_GOOGLE_MAPS %}'google'{% else %}'leaflet'{% endif %};
+    </script>
+
+    {% if USE_GOOGLE_MAPS %}
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&v=weekly&callback=ceGoogleMapsReady&loading=async"></script>
+    {% else %}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    {% endif %}
+    <script src="{% static 'js/maps.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     
     <style>
@@ -50,6 +62,11 @@
         @keyframes slide-up { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .slide-up { animation: slide-up 0.4s ease; }
 
+        .glass-backdrop {
+            background: rgba(8, 8, 12, 0.55) !important;
+            backdrop-filter: blur(12px) saturate(120%);
+            -webkit-backdrop-filter: blur(12px) saturate(120%);
+        }
         .glass-card {
             background: rgba(16,16,20,0.85);
             backdrop-filter: blur(20px);
@@ -467,8 +484,8 @@
     </script>
 
     <!-- Smart Rider Timeout Modal -->
-    <div id="rider-timeout-modal" class="fixed inset-0 z-[99999] bg-black/98 backdrop-blur-3xl hidden flex items-center justify-center p-4">
-        <div style="background: rgba(18, 18, 22, 0.78); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);" class="w-full max-w-sm rounded-3xl p-6 text-center space-y-4 text-white relative z-[100000]">
+    <div id="rider-timeout-modal" class="fixed inset-0 z-[99999] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm rounded-3xl p-6 text-center space-y-4 text-white relative z-[100000]">
             <div class="w-14 h-14 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg">
                 <i class="fa-solid fa-clock"></i>
             </div>

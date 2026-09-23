@@ -22,6 +22,11 @@
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         /* --- Glassmorphism helper --- */
+        .glass-backdrop {
+            background: rgba(8, 8, 12, 0.55) !important;
+            -webkit-backdrop-filter: blur(12px) saturate(120%);
+            backdrop-filter: blur(12px) saturate(120%);
+        }
         .glass {
             background: rgba(255,255,255,0.04);
             backdrop-filter: blur(18px);
@@ -303,17 +308,11 @@
                                 </div>
 
                                 <div class="flex items-center gap-2">
-                                    <form method="POST" enctype="multipart/form-data" action="{% url 'deliveries:complete_delivery' d.id %}"
-                                          class="list-none">
-                                        {% csrf_token %}
-                                        <input type="file" name="proof_photo" id="proof-file-{{ d.id }}" accept="image/*" class="hidden"
-                                               onchange="this.form.submit()" />
-                                        <button type="button"
-                                                onclick="document.getElementById('proof-file-{{ d.id }}').click()"
-                                                class="btn-shine bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-black px-3.5 py-2.5 rounded-xl text-xs shadow-glow-green transition active:scale-95 flex items-center gap-1.5" title="Attach a photo as proof of delivery">
-                                            <i class="fa-solid fa-camera"></i> Delivered + Photo
-                                        </button>
-                                    </form>
+                                    <button type="button"
+                                            onclick="openCameraCapture('{% url 'deliveries:complete_delivery' d.id %}')"
+                                            class="btn-shine bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-black px-3.5 py-2.5 rounded-xl text-xs shadow-glow-green transition active:scale-95 flex items-center gap-1.5" title="Capture a live photo as proof of delivery (gallery uploads are not accepted)">
+                                        <i class="fa-solid fa-camera"></i> Delivered + Photo
+                                    </button>
                                     <a href="{% url 'deliveries:complete_delivery' d.id %}"
                                        onclick="return confirm('Complete without a photo proof?');"
                                        class="bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-300 px-3 py-2.5 rounded-xl text-[10px] font-bold transition border border-white/10" title="Complete without a photo">
@@ -416,7 +415,7 @@
     </footer>
 
     <!-- ============ ORDER DETAIL MODAL (glass) ============ -->
-    <div x-show="detailOpen" x-cloak class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4" @click.self="closeDetail()">
+    <div x-show="detailOpen" x-cloak class="fixed inset-0 z-50 glass-backdrop flex items-center justify-center p-4" @click.self="closeDetail()">
         <div class="glass-strong rounded-3xl max-w-md w-full overflow-hidden shadow-glass flex flex-col max-h-[85vh]">
             <div class="border-b border-white/10 p-4 flex items-center justify-between">
                 <div>
@@ -475,7 +474,7 @@
     </div>
 
     <!-- ============ CONFIRMATION MODAL (glass) ============ -->
-    <div x-show="confirmOpen" x-cloak class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4">
+    <div x-show="confirmOpen" x-cloak class="fixed inset-0 z-[60] glass-backdrop flex items-center justify-center p-4">
         <div class="glass-strong rounded-3xl max-w-sm w-full p-6 shadow-glass text-center space-y-4">
             <div class="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-xl"
                  :class="confirmData.type === 'release' ? 'bg-red-500/15 text-red-400' : (confirmData.type === 'reject' ? 'bg-zinc-800 text-zinc-400' : 'bg-orange-500/15 text-orange-400')">
@@ -495,13 +494,55 @@
         </div>
     </div>
 
+    <!-- ============ PHOTO CAPTURE MODAL (live camera, no gallery) ============ -->
+    <div id="photo-capture-modal" class="fixed inset-0 z-[70] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-strong rounded-3xl max-w-md w-full overflow-hidden shadow-glass flex flex-col max-h-[88vh]">
+            <div class="border-b border-white/10 p-4 flex items-center justify-between">
+                <div>
+                    <h3 class="font-black text-white text-sm">Capture Proof of Delivery</h3>
+                    <p class="text-[10px] text-green-400 font-bold">Live camera photo only - gallery uploads not accepted</p>
+                </div>
+                <button onclick="closePhotoCapture()" class="text-zinc-400 hover:text-white p-1.5"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="flex-1 p-4 overflow-y-auto space-y-3 bg-black/20">
+                <div id="capture-live-wrap" class="relative rounded-2xl overflow-hidden bg-black/60 aspect-[4/3]">
+                    <video id="camera-live" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div class="w-10 h-10 text-zinc-400/80">
+                            <i class="fa-solid fa-camera-rotate text-4xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="camera-snapshot" class="hidden w-full rounded-2xl border border-white/10 bg-black/40"></canvas>
+                <div id="capture-error-box" class="hidden rounded-xl bg-red-500/10 border border-red-500/30 p-3 text-xs text-red-400 font-bold"></div>
+                <p class="text-[10px] text-zinc-500 font-bold text-center">The photo is taken from your device camera in real time.</p>
+            </div>
+
+            <div class="p-4 border-t border-white/10 flex items-center gap-2">
+                <button id="capture-retake-btn" onclick="retakePhoto()" class="hidden bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-300 border border-white/10 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95">
+                    <i class="fa-solid fa-rotate-left mr-1"></i> Retake
+                </button>
+                <button id="capture-shoot-btn" onclick="shootPhoto()" class="flex-1 btn-shine bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-black px-3.5 py-2.5 rounded-xl text-xs shadow-glow-green transition active:scale-95 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-camera"></i> Capture Photo
+                </button>
+                <button id="capture-submit-btn" onclick="submitCapturedPhoto()" class="hidden flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-black px-3.5 py-2.5 rounded-xl text-xs shadow-glow-orange transition active:scale-95 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> Complete Delivery
+                </button>
+                <button onclick="closePhotoCapture()" class="bg-red-500/15 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-3 py-2.5 rounded-xl text-xs font-bold transition active:scale-95">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ============ CHAT MODAL (glass) ============ -->
-    <div x-show="chatOpen" x-cloak class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4">
+    <div x-show="chatOpen" x-cloak class="fixed inset-0 z-50 glass-backdrop flex items-center justify-center p-4">
         <div class="glass-chat rounded-3xl max-w-md w-full overflow-hidden flex flex-col h-[540px] border-green-500/20">
             <div class="border-b border-white/10 p-4 flex items-center justify-between">
                 <div>
                     <h3 class="font-black text-white text-sm" x-text="'Chat - Order ' + currentOrderNo"></h3>
-                    <p class="text-[10px] text-green-400 font-bold" x-text="'Messaging with ' + (currentCustomerName || 'faculty customer')"></p>
+                    <p class="text-[10px] text-green-400 font-bold" x-text="'Messaging with ' + (currentCustomerName || 'Customer')"></p>
                 </div>
                 <button @click="closeChat()" class="text-zinc-400 hover:text-white p-1.5"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
@@ -513,7 +554,7 @@
                             ? 'bg-gradient-to-br from-green-500 to-green-600 rounded-tr-none shadow-glow-green'
                             : 'bg-zinc-800 border border-white/10 rounded-tl-none')">
                             <p class="font-bold text-[9px] mb-0.5" :class="msg.is_me ? 'text-green-200' : 'text-orange-400'">
-                                <span x-text="msg.is_me ? 'You' : ((msg.sender ? msg.sender + ' (Faculty)' : 'Faculty Customer'))"></span>
+                                <span x-text="msg.is_me ? 'You' : ((msg.sender_name ? msg.sender_name : (msg.sender || 'Customer')) + ' (' + senderRoleLabel(msg.sender_role) + ')')"></span>
                                 <span class="opacity-60" x-text="msg.time ? ' • ' + msg.time : ' • now'"></span>
                             </p>
                             <p class="whitespace-pre-wrap break-words" x-text="msg.message"></p>
@@ -868,10 +909,17 @@
                 .catch(() => this.addToast('error', 'Error', 'Could not update availability.'));
             },
 
+            senderRoleLabel(role) {
+                const labels = {
+                    'FACULTY': 'Faculty', 'STUDENT': 'Student', 'STAFF': 'Staff',
+                    'RIDER': 'Rider', 'DELIVERY': 'Rider', 'ADMIN': 'Admin',
+                };
+                return labels[role] || 'Customer';
+            },
             openChat(deliveryId, orderNo, customerName) {
                 this.currentDeliveryId = deliveryId;
                 this.currentOrderNo = orderNo;
-                this.currentCustomerName = customerName || 'faculty customer';
+                this.currentCustomerName = customerName || 'Customer';
                 this.chatOpen = true;
                 if (this.unread[deliveryId]) { this.unread[deliveryId] = 0; }
                 this.fetchMessages();
@@ -946,6 +994,164 @@
     document.addEventListener('alpine:initialized', () => {
         setTimeout(() => { window.riderHubInstance = document.querySelector('[x-data="riderHub()"]')?._x_dataStack?.[0]; }, 200);
     });
+    </script>
+
+    <script>
+    /* ============================================================
+     * LIVE PROOF-OF-DELIVERY PHOTO CAPTURE
+     *
+     * Real-time camera capture only -- there is no file/gallery input
+     * anywhere in the flow. The shot is taken straight from the device
+     * camera (navigator.mediaDevices.getUserMedia) and posted to the
+     * normal complete_delivery endpoint as proof_photo.
+     * ============================================================ */
+    let photoStream = null;
+    let photoCaptureUrl = '';
+    let photoCaptured = false;
+
+    function getCsrfToken() {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            document.cookie.split(';').forEach(c => {
+                const kv = c.trim();
+                if (kv.substring(0, 9) === 'csrftoken=') cookieValue = decodeURIComponent(kv.substring(10));
+            });
+        }
+        return cookieValue || '{{ csrf_token }}';
+    }
+
+    function stopPhotoStream() {
+        if (photoStream) {
+            photoStream.getTracks().forEach(t => t.stop());
+            photoStream = null;
+        }
+        const live = document.getElementById('camera-live');
+        if (live) live.srcObject = null;
+    }
+
+    function openCameraCapture(url) {
+        photoCaptureUrl = url;
+        photoCaptured = false;
+        document.getElementById('photo-capture-modal').classList.remove('hidden');
+        document.getElementById('capture-live-wrap').classList.remove('hidden');
+        document.getElementById('camera-snapshot').classList.add('hidden');
+        document.getElementById('capture-error-box').classList.add('hidden');
+        document.getElementById('capture-shoot-btn').classList.remove('hidden');
+        document.getElementById('capture-shoot-btn').disabled = false;
+        document.getElementById('capture-retake-btn').classList.add('hidden');
+        document.getElementById('capture-submit-btn').classList.add('hidden');
+        startPhotoStream();
+    }
+
+    function closePhotoCapture() {
+        stopPhotoStream();
+        document.getElementById('photo-capture-modal').classList.add('hidden');
+    }
+
+    function startPhotoStream() {
+        stopPhotoStream();
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showCaptureError('This browser does not support direct camera access. Please open the rider dashboard on a mobile device or a browser with camera permissions.');
+            return;
+        }
+        navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 960 } }
+        })
+        .then(stream => {
+            photoStream = stream;
+            const live = document.getElementById('camera-live');
+            if (live) {
+                live.srcObject = stream;
+                live.onloadedmetadata = () => live.play().catch(() => {});
+            }
+        })
+        .catch(() => {
+            showCaptureError('Camera access was denied or no camera is available. Enable camera permission, or complete the delivery without a photo.');
+        });
+    }
+
+    function showCaptureError(message) {
+        const box = document.getElementById('capture-error-box');
+        if (box) {
+            box.textContent = message;
+            box.classList.remove('hidden');
+        }
+    }
+
+    function shootPhoto() {
+        const live = document.getElementById('camera-live');
+        if (!live || !live.videoWidth) {
+            showCaptureError('No camera feed available yet. Wait a moment and try again, or complete without a photo.');
+            return;
+        }
+        // Snap exactly what's on screen -- a live frame, never from disk.
+        const canvas = document.getElementById('camera-snapshot');
+        canvas.width = live.videoWidth;
+        canvas.height = live.videoHeight;
+        canvas.getContext('2d').drawImage(live, 0, 0, canvas.width, canvas.height);
+
+        stopPhotoStream();
+
+        document.getElementById('capture-live-wrap').classList.add('hidden');
+        canvas.classList.remove('hidden');
+        document.getElementById('capture-shoot-btn').classList.add('hidden');
+        document.getElementById('capture-retake-btn').classList.remove('hidden');
+        document.getElementById('capture-submit-btn').classList.remove('hidden');
+        document.getElementById('capture-error-box').classList.add('hidden');
+        photoCaptured = true;
+    }
+
+    function retakePhoto() {
+        document.getElementById('capture-live-wrap').classList.remove('hidden');
+        document.getElementById('camera-snapshot').classList.add('hidden');
+        document.getElementById('capture-shoot-btn').classList.remove('hidden');
+        document.getElementById('capture-retake-btn').classList.add('hidden');
+        document.getElementById('capture-submit-btn').classList.add('hidden');
+        photoCaptured = false;
+        startPhotoStream();
+    }
+
+    function submitCapturedPhoto() {
+        const canvas = document.getElementById('camera-snapshot');
+        if (!photoCaptured || !canvas) return;
+        const submitBtn = document.getElementById('capture-submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Completing...';
+
+        // A jpeg blob fresh from the canvas -- authentic live capture.
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Complete Delivery';
+                showCaptureError('Could not read the captured photo. Please retake.');
+                return;
+            }
+            const file = new File([blob], 'proof_photo.jpg', { type: 'image/jpeg' });
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.enctype = 'multipart/form-data';
+            form.action = photoCaptureUrl;
+            document.body.appendChild(form);
+
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = getCsrfToken();
+            form.appendChild(csrfInput);
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.name = 'proof_photo';
+            fileInput.style.display = 'none';
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+            form.appendChild(fileInput);
+
+            form.submit();
+        }, 'image/jpeg', 0.92);
+    }
     </script>
 </body>
 </html>

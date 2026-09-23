@@ -241,6 +241,13 @@ def submit_feedback_api(request):
             clean_num = order_number.replace('#', '').strip()
             order = Order.objects.filter(order_number__iexact=clean_num).first()
 
+        # Ratings are only allowed once a delivery has fully completed.
+        # Orders still pending/preparing/out-for-delivery must not be rated.
+        if order is None or order.status != 'completed':
+            return JsonResponse(
+                {'success': False, 'message': 'Rating is only available after the delivery has been completed.'},
+                status=400)
+
         from .models import OrderFeedback
         OrderFeedback.objects.create(
             order=order,

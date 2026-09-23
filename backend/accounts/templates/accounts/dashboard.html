@@ -47,6 +47,20 @@
         #view-order-map .leaflet-control-attribution,
         #checkout-mini-map .leaflet-control-attribution,
         .leaflet-control-attribution { display: none !important; }
+        /* Dark zoom control on the campus checkout map */
+        #checkout-mini-map .leaflet-control-zoom {
+            border: 1px solid rgba(255,255,255,.12) !important;
+            border-radius: 12px !important;
+            overflow: hidden;
+            box-shadow: 0 6px 20px rgba(0,0,0,.45) !important;
+        }
+        #checkout-mini-map .leaflet-control-zoom a {
+            background: rgba(8,8,12,.78) !important;
+            color: #fff !important;
+            border-color: rgba(255,255,255,.1) !important;
+            width: 34px !important; height: 34px !important; line-height: 34px !important;
+        }
+        #checkout-mini-map .leaflet-control-zoom a:hover { background: rgba(249,115,22,.35) !important; color: #fff !important; }
         /* No white flash before tiles load */
         #leaflet-map, #view-order-map, #checkout-mini-map { background: #1a1a1f !important; }
         /* Order-placed confirmation animations */
@@ -66,6 +80,25 @@
             border: 1px solid rgba(255, 255, 255, 0.14);
             box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
         }
+        .glass-panel-accent {
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.16) !important;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 30px rgba(249, 115, 22, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+        }
+        .glass-panel-accent::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 24px 24px 0 0;
+            background: linear-gradient(90deg, #f97316 0%, rgba(249, 115, 22, 0.55) 45%, rgba(249, 115, 22, 0) 100%);
+            pointer-events: none;
+            z-index: 2;
+        }
+        body.light-mode .glass-panel-accent {
+            border-color: rgba(15, 23, 42, 0.14) !important;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12), 0 0 24px rgba(249, 115, 22, 0.10) !important;
+        }
         .glass-card {
             background: rgba(255, 255, 255, 0.06);
             border: 1px solid rgba(255, 255, 255, 0.10);
@@ -78,11 +111,68 @@
             -webkit-backdrop-filter: blur(8px);
             backdrop-filter: blur(8px);
         }
+        /* ===== 3D Glassmorphic Category Pods (plain) ===== */
+        .cat-pod {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            -webkit-backdrop-filter: blur(12px) saturate(140%);
+            backdrop-filter: blur(12px) saturate(140%);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .cat-pod:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.28); }
+        .cat-pod .pod-icon {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #94a3b8;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .cat-pod:hover .pod-icon { transform: scale(1.06); border-color: rgba(255, 255, 255, 0.28); }
+        .cat-pod.active-cat {
+            background: rgba(255, 85, 0, 0.25);
+            border-color: rgba(255, 116, 38, 0.55);
+            box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.25), 0 0 28px rgba(249, 115, 22, 0.22), 0 12px 30px rgba(0, 0, 0, 0.4);
+        }
+        .cat-pod.active-cat .pod-icon {
+            background: linear-gradient(180deg, #ff7a2d, #f97316);
+            border-color: #ff9d5c;
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(249, 115, 22, 0.45);
+        }
+        .cat-pod.active-cat .pod-label { color: #ffffff; }
+        .cat-pod .pod-label { color: #94a3b8; }
+        body.light-mode .cat-pod { background: rgba(255, 255, 255, 0.65); border-color: rgba(148, 163, 184, 0.35); }
+        body.light-mode .cat-pod .pod-label { color: #475569; }
+        body.light-mode .cat-pod.active-cat .pod-label { color: #0f172a; }
+        /* ===== Floating Glass Cart Bar ===== */
+        .cart-bar-glass {
+            background: linear-gradient(180deg, rgba(24, 24, 32, 0.92), rgba(14, 14, 20, 0.88));
+            -webkit-backdrop-filter: blur(16px) saturate(150%);
+            backdrop-filter: blur(16px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55), 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+        }
+        body.light-mode .cart-bar-glass {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.92));
+            border-color: rgba(148, 163, 184, 0.35);
+        }
         .glass-panel-head {
             background: rgba(255, 255, 255, 0.05);
             border-bottom: 1px solid rgba(255, 255, 255, 0.10);
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
+        }
+        .glass-panel-foot {
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.10);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+        .glass-scroll {
+            background: rgba(0, 0, 0, 0.25);
+            -webkit-backdrop-filter: blur(8px) saturate(120%);
+            backdrop-filter: blur(8px) saturate(120%);
         }
         .live-pulse-dot { position: relative; }
         .live-pulse-dot::after {
@@ -96,6 +186,8 @@
             color: #0f172a !important;
         }
         body.light-mode .glass-panel-head { background: rgba(15, 23, 42, 0.04); border-bottom-color: rgba(148, 163, 184, 0.25); }
+        body.light-mode .glass-panel-foot { background: rgba(15, 23, 42, 0.04); border-top-color: rgba(148, 163, 184, 0.25); }
+        body.light-mode .glass-scroll { background: rgba(241, 245, 249, 0.55); }
         body.light-mode .glass-card { background: rgba(15, 23, 42, 0.04); border-color: rgba(148, 163, 184, 0.25); }
         body.light-mode .glass-chip { background: rgba(15, 23, 42, 0.04); border-color: rgba(148, 163, 184, 0.25); }
 
@@ -257,6 +349,14 @@
                     >
                 </div>
 
+                <!-- Cart Button (only shows when items are in cart) -->
+                <div id="header-cart-wrap" class="relative" style="display: none;">
+                    <button onclick="openCartDrawer()" class="relative w-10 h-10 rounded-xl bg-brand-orange hover:bg-orange-600 border border-brand-orange/40 flex items-center justify-center text-white transition active:scale-95 shadow-lg shadow-brand-orange/25">
+                        <i class="fa-solid fa-cart-shopping text-xs"></i>
+                        <span id="header-cart-badge" class="absolute -top-1 -right-1 bg-white text-brand-orange text-[9px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center font-black shadow">0</span>
+                    </button>
+                </div>
+
                 <!-- Notifications Pop-out Bell -->
                 <div class="relative">
                     <button onclick="toggleNotificationsDropdown(event)" class="relative w-10 h-10 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95 shadow">
@@ -314,16 +414,16 @@
     <!-- ================= MAIN LAYOUT ================= -->
     <div class="flex-1 max-w-7xl w-full mx-auto flex overflow-hidden min-h-0 p-2 sm:p-3 gap-3">
 
-        <!-- Left: Category Sidebar -->
-        <aside class="w-20 sm:w-24 flex-shrink-0 flex flex-col gap-2 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
-            <button onclick="selectCategory('all', this)" class="category-btn active-cat flex flex-col items-center justify-center p-2 rounded-xl bg-brand-orange text-white text-center font-black text-[11px] gap-1 transition shadow-lg shadow-brand-orange/20">
-                <i class="fa-solid fa-utensils text-base"></i>
-                <span class="text-[10px] leading-tight">All Items</span>
+        <!-- Left: Category Sidebar (vertical kiosk-style, glass + plain FA icons) -->
+        <aside class="w-20 sm:w-28 flex-shrink-0 flex flex-col gap-2 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
+            <button onclick="selectCategory('all', this)" class="category-btn active-cat cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
+                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-utensils"></i></span>
+                <span class="pod-label text-[10px] font-black leading-tight mt-1.5">All</span>
             </button>
             {% for cat in categories %}
-            <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn flex flex-col items-center justify-center p-2 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-[11px] gap-1 transition">
-                <i class="fa-solid {% if 'rice' in cat.name|lower %}fa-bowl-rice{% elif 'biscuit' in cat.name|lower %}fa-cookie{% elif 'beverage' in cat.name|lower %}fa-bottle-water{% elif 'meryenda' in cat.name|lower %}fa-burger{% elif 'diet' in cat.name|lower %}fa-heart-pulse{% else %}fa-bowl-food{% endif %} text-base"></i>
-                <span class="text-[10px] leading-tight line-clamp-1">{{ cat.name }}</span>
+            <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
+                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid {% if 'rice' in cat.name|lower %}fa-bowl-rice{% elif 'biscuit' in cat.name|lower %}fa-cookie{% elif 'beverage' in cat.name|lower %}fa-bottle-water{% elif 'meryenda' in cat.name|lower %}fa-burger{% elif 'candy' in cat.name|lower %}fa-candy-cane{% elif 'diet' in cat.name|lower %}fa-heart-pulse{% else %}fa-bowl-food{% endif %}"></i></span>
+                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">{{ cat.name }}</span>
             </button>
             {% endfor %}
         </aside>
@@ -377,10 +477,6 @@
             </div>
 
             <div class="flex items-center gap-2.5">
-                <button onclick="clearCart()" class="px-4 py-2.5 sm:py-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-brand-slate hover:text-red-400 font-bold text-xs sm:text-sm uppercase tracking-wider transition border border-white/10 active:scale-95">
-                    Clear
-                </button>
-
                 <button onclick="openCartDrawer()" id="next-btn" disabled class="bg-brand-orange disabled:opacity-40 disabled:cursor-not-allowed hover:bg-orange-600 active:scale-95 text-white font-extrabold text-xs sm:text-sm px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl shadow-lg shadow-brand-orange/25 uppercase tracking-wider transition flex items-center gap-2">
                     <span id="next-btn-text">View Cart (0)</span>
                     <i class="fa-solid fa-arrow-right"></i>
@@ -391,42 +487,49 @@
     </footer>
 
 
-    <!-- ================= COLLAPSIBLE CART DRAWER ================= -->
-    <div id="cart-drawer-backdrop" class="fixed inset-0 z-50 glass-backdrop hidden transition-opacity flex justify-end">
-        <div class="max-w-md w-full bg-brand-card border-l border-white/10 p-5 flex flex-col justify-between shadow-2xl h-full animate-slide-left">
-            
-            <div class="flex items-center justify-between border-b border-white/10 pb-4">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-cart-shopping text-brand-orange text-xl"></i>
-                    <h3 class="text-lg font-black text-white uppercase tracking-wider">Your Order Cart</h3>
+    <!-- ================= YOUR ORDER CART (centered, glassy — matches kiosk) ================= -->
+    <div id="cart-drawer-backdrop" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 transition-opacity">
+        <div class="cart-sheet glass-panel rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh] modal-pop">
+
+            <div class="shrink-0 flex items-center justify-between border-b border-white/10 p-4 pt-[max(env(safe-area-inset-top),16px)] sm:pt-4 glass-panel-head">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="relative w-9 h-9 rounded-xl bg-brand-orange/15 text-brand-orange flex items-center justify-center text-base shrink-0">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <span id="drawer-item-count" class="absolute -top-1.5 -right-1.5 min-w-[1.15rem] h-[1.15rem] px-0.5 rounded-full bg-brand-orange text-white text-[9px] font-black flex items-center justify-center shadow">0</span>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="text-base font-black text-white uppercase tracking-wider truncate leading-tight">Your Order Cart</h3>
+                        <p id="drawer-item-subtitle" class="text-[10px] font-bold text-brand-slate">Ready to order</p>
+                    </div>
                 </div>
-                <button onclick="closeCartDrawer()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="clearCart()" class="h-9 px-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-brand-slate hover:text-red-400 text-[10px] font-bold uppercase tracking-wider border border-white/10 transition">
+                        <i class="fa-solid fa-trash-can mr-1"></i>Clear
+                    </button>
+                    <button onclick="closeCartDrawer()" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-brand-orange text-brand-slate hover:text-white flex items-center justify-center transition shrink-0">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
             </div>
 
-            <div id="drawer-cart-list" class="flex-1 overflow-y-auto no-scrollbar py-4 space-y-3">
+            <div id="drawer-cart-list" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 min-h-0 glass-scroll">
             </div>
 
-            <div class="border-t border-white/10 pt-4 space-y-4 shrink-0">
-                <div class="space-y-1.5 text-xs text-brand-slate">
-                    <div class="flex justify-between">
-                        <span>Items Subtotal</span>
+            <div class="shrink-0 border-t border-white/10 p-4 pb-[max(env(safe-area-inset-bottom),16px)] space-y-4 glass-panel-head">
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-2 text-xs">
+                    <div class="flex justify-between gap-4 text-brand-slate">
+                        <span><i class="fa-solid fa-cart-shopping text-brand-orange mr-1.5"></i>Items Subtotal</span>
                         <span id="drawer-subtotal" class="font-bold text-white">₱0.00</span>
                     </div>
-                    <div class="flex justify-between">
-                        <span>Delivery Fee (Rider)</span>
-                        <span id="drawer-convenience-fee" class="font-bold text-white">₱0.00</span>
-                    </div>
                 </div>
 
-                <div class="flex justify-between items-center text-white font-black text-base pt-2 border-t border-white/10">
+                <div class="flex justify-between items-center text-white font-black text-base pt-1">
                     <span>Total Amount</span>
-                    <span id="drawer-total-amount" class="text-brand-orange text-xl">₱0.00</span>
+                    <span id="drawer-total-amount" class="font-black text-brand-orange text-xl">₱0.00</span>
                 </div>
 
                 <button onclick="closeCartDrawer(); openCheckoutModal()" class="w-full py-3.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-check"></i> Proceed to Delivery Checkout
+                    <i class="fa-solid fa-check"></i> Proceed to Checkout
                 </button>
             </div>
 
@@ -460,7 +563,7 @@
                             <span class="text-xs font-bold text-white block">Steamed Rice Portions</span>
                             <span class="text-[10px] text-brand-orange font-bold">₱15.00 per serving</span>
                         </div>
-                        <div class="flex items-center gap-3 bg-brand-dark px-3 py-1.5 rounded-xl border border-white/10">
+                        <div class="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-md">
                             <button type="button" onclick="changeRiceQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition"><i class="fa-solid fa-minus text-xs"></i></button>
                             <span id="modal-rice-count" class="text-xs font-black text-white w-4 text-center">0</span>
                             <button type="button" onclick="changeRiceQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition"><i class="fa-solid fa-plus text-xs"></i></button>
@@ -469,7 +572,7 @@
 
                     <div class="space-y-1.5" id="modal-beverage-container">
                         <label class="text-[11px] font-bold text-brand-slate uppercase tracking-wider block">Optional Beverage Pairing</label>
-                        <select id="modal-beverage-select" onchange="updateModalTotal()" class="w-full bg-brand-dark border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange">
+                        <select id="modal-beverage-select" onchange="updateModalTotal()" class="w-full bg-white/5 border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange backdrop-blur-md">
                             <option value="">-- No Beverage --</option>
                         </select>
                     </div>
@@ -491,101 +594,157 @@
 
     <!-- ================= CHECKOUT MODAL ================= -->
     <div id="checkout-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 overflow-y-auto">
-        <div class="glass-panel rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl my-auto animate-fade-in">
-            <div class="flex justify-between items-center border-b border-white/10 pb-4">
-                <h2 class="text-lg font-black text-white">Campus Delivery Checkout</h2>
-                <button onclick="closeCheckoutModal()" class="text-brand-slate hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <div class="glass-panel glass-panel-accent rounded-3xl max-w-md w-full flex flex-col overflow-hidden shadow-2xl max-h-[90vh] animate-fade-in">
+
+            <!-- Header -->
+            <div class="shrink-0 flex items-center justify-between px-5 py-4 border-b border-brand-orange/25 glass-panel-head">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-10 h-10 rounded-xl bg-brand-orange/15 border border-brand-orange/30 text-brand-orange flex items-center justify-center text-base shrink-0">
+                        <i class="fa-solid fa-bag-shopping"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h2 id="checkout-modal-title" class="font-black text-white text-sm uppercase tracking-wider truncate leading-tight">Campus Delivery Checkout</h2>
+                        <p class="text-[10px] font-bold text-brand-slate truncate">Confirm details to place your order</p>
+                    </div>
+                </div>
+                <button onclick="closeCheckoutModal()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center shrink-0 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
 
-            <div class="space-y-4 text-xs">
-                <div class="p-3.5 rounded-2xl bg-brand-orange/10 border border-brand-orange/30 text-brand-orange font-bold flex items-center gap-2">
-                    <i class="fa-solid fa-motorcycle text-base"></i>
-                    <span>Mode: Campus Delivery (Delivery Fee Applies)</span>
-                </div>
+            <!-- Scrollable body -->
+            <div class="glass-scroll flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0 text-xs">
 
+                <!-- Delivery Method -->
                 <div class="space-y-1.5">
-                    <label class="block font-bold text-white uppercase tracking-wider flex items-center justify-between">
-                        <span>Office Building & Room</span>
-                        <span class="text-[10px] text-brand-orange font-bold"><i class="fa-solid fa-map-location-dot"></i> Select on Map Below</span>
-                    </label>
-                    <input type="text" id="delivery-location-input" value="Faculty Office Bldg, Room 204" placeholder="e.g., Faculty Office Bldg, Room 204"
-                        class="w-full px-3.5 py-2.5 bg-black/40 border border-white/10 rounded-xl text-xs text-white focus:ring-2 focus:ring-brand-orange outline-none">
-                    
-                    <!-- Interactive Mini Leaflet Map -->
-                    <div id="checkout-mini-map" class="w-full h-36 rounded-2xl border border-white/10 overflow-hidden bg-zinc-800 z-10"></div>
-
-                    <!-- Quick Building Selectors -->
-                    <div class="grid grid-cols-2 gap-1.5 pt-1">
-                        <button type="button" onclick="setBuildingLocation('Faculty Office Bldg, Room 204', 9.77750, 118.73400)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-building text-brand-orange"></i> Faculty Office Bldg
+                    <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate">Delivery Method</label>
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-white/5 border border-white/10 rounded-2xl">
+                        <button type="button" id="fulfillment-delivery" onclick="setFulfillment('delivery')"
+                            class="relative rounded-xl text-[11px] bg-emerald-600 text-white font-black flex items-center justify-center gap-1.5 transition shadow-lg shadow-emerald-600/30">
+                            <i class="fa-solid fa-motorcycle"></i> Delivery
+                            <span class="text-[8px] font-black bg-emerald-400 text-emerald-950 px-1.5 py-0.5 rounded-full">₱15+</span>
                         </button>
-                        <button type="button" onclick="setBuildingLocation('Administration Building, Rm 102', 9.77725, 118.73480)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-landmark text-brand-orange"></i> Administration Bldg
+                        <button type="button" id="fulfillment-pickup" onclick="setFulfillment('pickup')"
+                            class="relative rounded-xl text-[11px] bg-white/5 text-brand-slate font-bold flex items-center justify-center gap-1.5 transition hover:text-white">
+                            <i class="fa-solid fa-store"></i> Pickup
+                            <span class="text-[8px] font-black bg-emerald-400 text-emerald-950 px-1.5 py-0.5 rounded-full">Free</span>
                         </button>
-                        <button type="button" onclick="setBuildingLocation('Engineering Building, Rm 305', 9.77850, 118.73300)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-gears text-brand-orange"></i> Engineering Bldg
-                        </button>
-                        <button type="button" onclick="setBuildingLocation('Science & Tech Bldg, Rm 112', 9.77680, 118.73380)" class="text-[10px] bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white font-bold p-2 rounded-xl text-left border border-white/5 transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-flask text-brand-orange"></i> Science & Tech Bldg
-                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 px-0.5">
+                        <span class="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400"><i class="fa-solid fa-circle text-[6px]"></i> Delivery</span>
+                        <span class="text-brand-slate">·</span>
+                        <span class="flex items-center gap-1.5 text-[10px] font-bold text-brand-orange"><i class="fa-solid fa-circle text-[6px]"></i> Pickup</span>
                     </div>
                 </div>
 
-                <!-- Loyalty Points Redemption (₱100 spent = 1 point, 1 Pt = ₱1 Off) -->
-                <div class="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-2.5">
-                    <div class="flex justify-between items-center">
+                <!-- Delivery location -->
+                <div id="delivery-details-section" class="space-y-2.5">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate">Deliver To</label>
+                        <input type="text" id="delivery-location-input" value="Faculty Office Bldg, Room 204" placeholder="e.g., Faculty Office Bldg, Room 204"
+                            class="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:ring-2 focus:ring-brand-orange outline-none backdrop-blur-md">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate flex items-center gap-1.5"><i class="fa-solid fa-location-crosshairs text-brand-orange"></i> Pin on Campus Map</label>
+                            <button type="button" onclick="recenterCheckoutMap()" class="flex items-center gap-1 text-[10px] font-bold text-brand-slate hover:text-brand-orange transition bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1">
+                                <i class="fa-solid fa-crosshairs"></i> Recenter
+                            </button>
+                        </div>
+                        <div id="checkout-mini-map" class="w-full h-52 rounded-2xl border border-white/10 overflow-hidden bg-zinc-800 z-[5]"></div>
+                        <p class="text-[10px] font-bold text-brand-slate flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-dot text-emerald-400"></i>
+                            <span id="checkout-map-status">Tap the map to set your exact delivery pin (campus only)</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Pickup info -->
+                <div id="pickup-details-section" class="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] font-bold flex items-start gap-2.5" style="display: none;">
+                    <i class="fa-solid fa-store text-base text-emerald-400 mt-0.5"></i>
+                    <span class="text-emerald-400 leading-relaxed">Pay & collect at the counter — a queue-slip barcode is auto-generated for the staff.</span>
+                </div>
+
+                <!-- Loyalty points -->
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
                         <span class="font-bold text-white flex items-center gap-1.5">
-                            <i class="fa-solid fa-coins text-amber-400"></i> Points Available: <span class="text-amber-400" id="user-points-lbl" x-text="userPoints.toFixed(1)">45.0</span>
+                            <i class="fa-solid fa-coins text-amber-400"></i> Loyalty Points
+                            <span class="text-amber-400" id="user-points-lbl">45.0</span> available
                         </span>
                         <span class="text-[10px] text-brand-slate">1 Pt = ₱1 Off</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <input type="number" id="points-redeem-input" min="0" value="0" oninput="updateCheckoutSummary()" placeholder="Points to use"
-                            class="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-xl text-xs text-white focus:ring-2 focus:ring-brand-orange outline-none">
-                        <button type="button" onclick="setMaxPoints()" class="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl text-xs font-bold transition">Max</button>
+                            class="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:ring-2 focus:ring-brand-orange outline-none backdrop-blur-md">
+                        <button type="button" onclick="setMaxPoints()" class="w-14 bg-white/10 hover:bg-white/20 text-white py-2 rounded-xl text-xs font-bold transition">Max</button>
                     </div>
                     <p class="text-[11px] text-emerald-400 font-bold" id="points-earned-lbl">+ You will earn 0.0 loyalty points with this order!</p>
                 </div>
 
-                <div class="space-y-2">
-                    <label class="block font-bold text-white uppercase tracking-wider">Payment Method</label>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="p-3.5 rounded-2xl border font-black transition flex flex-col items-center gap-1.5 bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-600/30">
-                            <i class="fa-solid fa-money-bill-wave text-base"></i>
-                            <span>Cash on Delivery (COD)</span>
+                <!-- Payment method -->
+                <div class="pt-1 space-y-1.5">
+                    <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate block">Payment Method</label>
+                    <div class="space-y-2.5">
+                        <div class="relative flex items-center gap-3 p-3.5 rounded-2xl border border-emerald-500/70 bg-gradient-to-r from-emerald-600/25 via-emerald-600/10 to-transparent">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-500/25 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-base shrink-0">
+                                <i class="fa-solid fa-money-bill-wave"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p id="payment-method-lbl" class="font-black text-white text-[11px] uppercase tracking-wide">Cash on Delivery</p>
+                                <p class="text-[9px] font-bold text-brand-slate">Pay with cash when your order arrives</p>
+                            </div>
+                            <span class="shrink-0 w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px] shadow">
+                                <i class="fa-solid fa-check"></i>
+                            </span>
                         </div>
-                        <div class="p-3.5 rounded-2xl border border-white/5 bg-white/5 opacity-50 cursor-not-allowed flex flex-col items-center justify-center gap-1.5 relative">
-                            <span class="absolute -top-2 bg-amber-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full">Coming Soon</span>
-                            <i class="fa-solid fa-wallet text-base text-brand-slate"></i>
-                            <span class="font-bold text-brand-slate">E-Payments</span>
+                        <div class="relative flex items-center gap-3 p-3.5 rounded-2xl border border-white/10 bg-white/5 opacity-60 cursor-not-allowed">
+                            <span class="absolute -top-2 right-3 bg-amber-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full">Soon</span>
+                            <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/10 text-brand-slate flex items-center justify-center text-base shrink-0">
+                                <i class="fa-solid fa-wallet"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="font-black text-brand-slate text-[11px] uppercase tracking-wide">E-Payments</p>
+                                <p class="text-[9px] font-bold text-brand-slate">GCash / e-wallet checkout</p>
+                            </div>
+                            <i class="fa-solid fa-arrow-right text-brand-slate/50 shrink-0 text-xs"></i>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white/5 p-4 rounded-2xl space-y-2 border border-white/5">
-                    <div class="flex justify-between text-brand-slate">
-                        <span>Items Subtotal</span>
+                <!-- Summary -->
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-2">
+                    <div class="flex justify-between gap-4 text-brand-slate">
+                        <span><i class="fa-solid fa-cart-shopping text-brand-orange mr-1.5"></i>Items Subtotal</span>
                         <span id="summary-subtotal" class="font-bold text-white">₱0.00</span>
                     </div>
-                    <div class="flex justify-between text-brand-slate">
-                        <span>Delivery Fee (₱15 per ₱300 block)</span>
-                        <span id="summary-convenience-fee" class="font-bold text-white">₱0.00</span>
+                    <div class="flex justify-between gap-4 text-brand-slate">
+                        <span id="summary-fee-label"><i class="fa-solid fa-motorcycle text-brand-orange mr-1.5"></i>Delivery Fee (₱15/₱300)</span>
+                        <span id="summary-convenience-fee" class="font-bold text-brand-orange">₱0.00</span>
                     </div>
-                    <div class="flex justify-between text-amber-400" id="summary-discount-row" style="display: none;">
-                        <span>Loyalty Points Discount</span>
+                    <div class="flex justify-between gap-4 text-amber-400" id="summary-discount-row" style="display: none;">
+                        <span><i class="fa-solid fa-coins text-amber-400 mr-1.5"></i>Loyalty Points Discount</span>
                         <span id="summary-discount" class="font-bold">-₱0.00</span>
-                    </div>
-                    <div class="flex justify-between text-white font-black text-sm pt-2 border-t border-white/10">
-                        <span>Total Payable</span>
-                        <span id="summary-total" class="text-brand-orange text-base">₱0.00</span>
                     </div>
                 </div>
             </div>
 
-            <button onclick="submitFacultyOrder()" id="checkout-submit-btn"
-                class="w-full py-4 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
-                <i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order
-            </button>
+            <!-- Footer / action -->
+            <div class="shrink-0 px-5 py-3 border-t border-brand-orange/25 glass-panel-foot space-y-2.5">
+                <div class="flex justify-between items-center gap-3">
+                    <div>
+                        <span class="text-[9px] text-brand-slate font-bold block uppercase tracking-wider">Total</span>
+                        <span id="summary-total" class="font-black text-brand-orange text-lg leading-tight">₱0.00</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="submitFacultyOrder()" id="checkout-submit-btn"
+                            class="px-5 py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wide shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-1.5 active:scale-95">
+                            <i class="fa-solid fa-check-circle text-[11px]"></i> <span id="checkout-submit-text">Place Order</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -613,13 +772,13 @@
     <!-- ================= REAL-TIME LEAFLET MAP MODAL ================= -->
     <div id="map-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
         <div class="glass-panel rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col h-[450px]">
-            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center glass-panel-head">
                 <h3 class="font-black text-white text-sm flex items-center gap-2"><i class="fa-solid fa-map-location-dot text-brand-orange"></i> Live GPS Location Mapping</h3>
                 <button onclick="closeMapModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <div id="leaflet-map" class="flex-1 w-full bg-zinc-800"></div>
-            <div class="p-3 bg-brand-dark border-t border-white/10 text-center text-[11px] text-brand-slate">
-                <span>Lat: <span id="map-lat">--</span>, Lng: <span id="map-lng">--</span> • Palawan State University Campus Zone</span>
+            <div class="p-3 glass-panel-foot border-t border-white/10 text-center text-[11px] text-brand-slate">
+                <span id="map-building">Detecting location...</span> • <span>Lat: <span id="map-lat">--</span>, Lng: <span id="map-lng">--</span> • Palawan State University Campus Zone</span>
             </div>
         </div>
     </div>
@@ -627,16 +786,16 @@
     <!-- ================= ONGOING ORDERS & LIVE TRACKING MODAL ================= -->
     <div id="ongoing-orders-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
         <div class="glass-panel rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
-            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center glass-panel-head">
                 <h3 class="font-black text-white text-sm flex items-center gap-2">
                     <i class="fa-solid fa-bell text-brand-orange"></i> Ongoing Orders & Live Tracking
                 </h3>
                 <button onclick="closeOngoingOrdersModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <div id="ongoing-orders-container" class="p-5 overflow-y-auto space-y-4 flex-1">
+            <div id="ongoing-orders-container" class="p-5 overflow-y-auto space-y-4 flex-1 glass-scroll">
                 <!-- Populated dynamically -->
             </div>
-            <div class="p-4 bg-brand-dark border-t border-white/10 text-center text-xs text-brand-slate">
+            <div class="p-4 glass-panel-foot border-t border-white/10 text-center text-xs text-brand-slate">
                 <span>Palawan State University Canteen Express Delivery System</span>
             </div>
         </div>
@@ -645,25 +804,25 @@
     <!-- ================= RIDER CHAT MODAL ================= -->
     <div id="rider-chat-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
         <div class="glass-panel rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col h-[500px]">
-            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center glass-panel-head">
                 <div>
                     <h3 id="chat-order-title" class="font-black text-white text-sm">Chat - Order</h3>
                     <p id="chat-rider-subtitle" class="text-[10px] text-brand-orange font-bold">Rider info</p>
                 </div>
                 <button onclick="closeRiderChatModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <div id="chat-messages-list" class="flex-1 p-4 overflow-y-auto space-y-3 bg-black/40">
+            <div id="chat-messages-list" class="flex-1 p-4 overflow-y-auto space-y-3 glass-scroll">
                 <!-- Messages -->
             </div>
-            <div class="px-3 pt-2 bg-brand-dark flex gap-1.5 overflow-x-auto no-scrollbar whitespace-nowrap">
+            <div class="px-3 pt-2 glass-panel-head flex gap-1.5 overflow-x-auto no-scrollbar whitespace-nowrap">
                 <button onclick="sendQuickMsg('Please drop it at my room/desk 🏢')" class="px-2.5 py-1 bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">🏢 Drop at room</button>
                 <button onclick="sendQuickMsg('I am coming down to meet you 🏃')" class="px-2.5 py-1 bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">🏃 Coming down</button>
                 <button onclick="sendQuickMsg('Please call me upon arrival 📞')" class="px-2.5 py-1 bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">📞 Call me</button>
                 <button onclick="sendQuickMsg('Thank you so much! 🙏')" class="px-2.5 py-1 bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">🙏 Thank you</button>
             </div>
-            <div class="p-3 border-t border-white/10 bg-brand-dark flex items-center gap-2">
+            <div class="p-3 border-t border-white/10 glass-panel-head flex items-center gap-2">
                 <input type="text" id="chat-input-msg" placeholder="Type message to rider..." onkeyup="if(event.key==='Enter') sendRiderMessage()"
-                    class="flex-1 px-3.5 py-2.5 bg-black/40 border border-white/10 rounded-xl text-xs text-white placeholder-brand-slate focus:outline-none focus:border-brand-orange">
+                    class="flex-1 px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-brand-slate focus:outline-none focus:border-brand-orange backdrop-blur-md">
                 <button onclick="sendRiderMessage()" class="bg-brand-orange hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow">
                     <i class="fa-solid fa-paper-plane"></i>
                 </button>
@@ -691,7 +850,7 @@
     <!-- ================= VIEW ORDER & LIVE TRACKING MODAL ================= -->
     <div id="view-order-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
         <div class="glass-panel rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
-            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-brand-dark">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center glass-panel-head">
                 <div>
                     <h3 id="view-order-no" class="font-black text-white text-sm flex items-center gap-2">
                         <i class="fa-solid fa-box-open text-brand-orange"></i> Order Details & Live Tracking
@@ -732,7 +891,7 @@
                     </div>
                     <div class="flex justify-between text-white font-black pt-2 border-t border-white/10 items-center">
                         <span class="uppercase tracking-wider text-xs">Total Payment</span>
-                        <span id="view-order-total" class="text-orange-400 text-lg bg-orange-500/15 border border-orange-500/30 px-3 py-1 rounded-xl shadow-glow-orange">₱0.00</span>
+                        <span id="view-order-total" class="text-orange-400 text-base bg-orange-950/80 border border-orange-500/40 px-3 py-1 rounded-full shadow-glow-orange">₱0.00</span>
                     </div>
                 </div>
 
@@ -749,17 +908,17 @@
                     </h4>
                     <a id="view-order-proof-link" href="#" target="_blank" rel="noopener" class="block">
                         <img id="view-order-proof-img" src="#" alt="Proof of Delivery"
-                             class="w-full max-h-56 object-cover rounded-2xl border border-white/10 shadow-xl bg-black/40 cursor-zoom-in">
+                             class="w-full max-h-56 object-cover rounded-2xl border border-white/10 shadow-xl bg-white/5 cursor-zoom-in">
                     </a>
                 </div>
             </div>
 
-            <div class="p-4 bg-brand-dark border-t border-white/10 flex justify-between items-center text-xs">
+            <div class="p-4 glass-panel-foot border-t border-white/10 flex justify-between items-center text-xs">
                 <button id="view-order-chat-btn" onclick="closeViewOrderModal(); openActiveRiderChat()" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
                     <i class="fa-solid fa-comments"></i> Chat with Rider
                 </button>
                 <div class="flex items-center gap-2">
-                    <button onclick="openFacultyFeedbackModal()" class="bg-amber-500 hover:bg-amber-600 text-black font-extrabold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
+                    <button id="view-order-rate-btn" onclick="openFacultyFeedbackModal()" class="bg-amber-500 hover:bg-amber-600 text-black font-extrabold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
                         <i class="fa-solid fa-star"></i> Rate Order
                     </button>
                     <button onclick="closeViewOrderModal()" class="bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2 rounded-xl transition">
@@ -790,7 +949,7 @@
                 <button type="button" onclick="setFacultyRating(4)" class="fac-star-btn text-amber-400" data-star="4"><i class="fa-solid fa-star"></i></button>
                 <button type="button" onclick="setFacultyRating(5)" class="fac-star-btn text-amber-400" data-star="5"><i class="fa-solid fa-star"></i></button>
             </div>
-            <textarea id="faculty-feedback-comment" placeholder="Leave a comment or review..." class="w-full bg-black/40 border border-white/10 text-white rounded-xl p-3 text-xs focus:outline-none focus:border-brand-orange resize-none h-20 placeholder-brand-slate"></textarea>
+            <textarea id="faculty-feedback-comment" placeholder="Leave a comment or review..." class="w-full bg-white/5 border border-white/10 text-white rounded-xl p-3 text-xs focus:outline-none focus:border-brand-orange resize-none h-20 placeholder-brand-slate backdrop-blur-md"></textarea>
             <button onclick="submitFacultyFeedback()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3 rounded-xl uppercase tracking-wider text-xs transition shadow-lg shadow-brand-orange/20">Submit Feedback</button>
         </div>
     </div>
@@ -811,21 +970,21 @@
             </div>
 
             <div class="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2 text-xs text-left">
-                <div class="flex justify-between gap-4 text-brand-slate">
+                <div class="flex justify-between gap-4 text-brand-slate border-b border-white/10 pb-2">
                     <span><i class="fa-solid fa-location-dot text-brand-orange mr-1.5"></i>Delivery To</span>
                     <span id="place-order-location" class="font-bold text-white text-right">--</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate">
+                <div class="flex justify-between gap-4 text-brand-slate border-b border-white/10 pb-2">
                     <span><i class="fa-solid fa-motorcycle text-brand-orange mr-1.5"></i>Delivery Fee (Rider)</span>
                     <span id="place-order-fee" class="font-bold text-brand-orange">₱0.00</span>
                 </div>
                 <div class="flex justify-between gap-4 text-brand-slate">
                     <span><i class="fa-solid fa-credit-card text-brand-orange mr-1.5"></i>Total Payment</span>
-                    <span id="place-order-total" class="font-black text-orange-400 text-lg bg-orange-500/15 border border-orange-500/30 px-3 py-1 rounded-xl shadow-glow-orange">₱0.00</span>
+                    <span id="place-order-total" class="font-black text-orange-400 text-base bg-orange-950/80 border border-orange-500/40 px-3 py-1 rounded-full shadow-glow-orange">₱0.00</span>
                 </div>
                 <div class="flex justify-between gap-4 text-brand-slate pt-2 border-t border-white/10">
                     <span><i class="fa-solid fa-coins text-amber-400 mr-1.5"></i>Loyalty Points Earned</span>
-                    <span id="place-order-points" class="font-bold text-amber-400">+0 pts</span>
+                    <span id="place-order-points" class="font-bold text-emerald-400">+0 pts</span>
                 </div>
             </div>
 
@@ -841,6 +1000,56 @@
                     <i class="fa-solid fa-location-dot"></i> Track Order
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- ================= PICKUP ORDER PLACED CONFIRMATION MODAL ================= -->
+    <div id="pickup-placed-modal" class="fixed inset-0 z-[70] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="modal-pop glass-panel rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl text-center">
+            <div class="relative mx-auto w-20 h-20">
+                <div class="confirm-ring absolute inset-0 rounded-full bg-emerald-500/20"></div>
+                <div class="confirm-check relative w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 text-white flex items-center justify-center text-3xl shadow-lg">
+                    <i class="fa-solid fa-store"></i>
+                </div>
+            </div>
+
+            <div class="space-y-1.5">
+                <h3 class="text-xl font-black text-white">Pickup Order Placed!</h3>
+                <p class="text-[11px] font-black text-brand-orange uppercase tracking-wider">Order <span id="pickup-place-number">#CE-0000</span></p>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 space-y-1.5 shadow-inner">
+                <p class="text-[10px] uppercase tracking-widest font-black text-gray-500">Your Queue Slip Barcode</p>
+                <svg id="pickup-place-barcode" class="w-full h-16"></svg>
+                <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Scan at Counter to Process Payment</p>
+            </div>
+
+            <div class="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2 text-xs text-left">
+                <div class="flex justify-between gap-4 text-brand-slate border-b border-white/10 pb-2">
+                    <span><i class="fa-solid fa-store text-emerald-400 mr-1.5"></i>Pickup Location</span>
+                    <span class="font-bold text-white text-right">Canteen Express Counter</span>
+                </div>
+                <div class="flex justify-between gap-4 text-brand-slate border-b border-white/10 pb-2">
+                    <span><i class="fa-solid fa-money-bill-wave text-emerald-400 mr-1.5"></i>Delivery Fee</span>
+                    <span class="font-bold text-emerald-400">Free (Pickup)</span>
+                </div>
+                <div class="flex justify-between gap-4 text-brand-slate">
+                    <span><i class="fa-solid fa-credit-card text-brand-orange mr-1.5"></i>Total Payment</span>
+                    <span id="pickup-place-total" class="font-black text-orange-400 text-base bg-orange-950/80 border border-orange-500/40 px-3 py-1 rounded-full shadow-glow-orange">₱0.00</span>
+                </div>
+                <div class="flex justify-between gap-4 text-brand-slate pt-2 border-t border-white/10">
+                    <span><i class="fa-solid fa-coins text-amber-400 mr-1.5"></i>Loyalty Points Earned</span>
+                    <span id="pickup-place-points" class="font-bold text-emerald-400">+0 pts</span>
+                </div>
+            </div>
+
+            <p class="text-[11px] text-brand-slate leading-relaxed">
+                Head to the Canteen Express counter and show this barcode to pay. Your order will be prepared right away.
+            </p>
+
+            <button onclick="closePickupPlacedModal()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow">
+                Continue Shopping
+            </button>
         </div>
     </div>
 
@@ -905,6 +1114,7 @@
     let locationText = "Detecting GPS...";
     let leafletMap = null;
     let leafletMarker = null;
+    let leafletAccuracyCircle = null;
 
     // Campus-only delivery scope: the map and checkout destination must stay
     // anchored to the PSU campus (9.77778, 118.73333). Device GPS is only used
@@ -914,6 +1124,51 @@
     const CAMPUS_CENTER_LAT = 9.77778;
     const CAMPUS_CENTER_LNG = 118.73333;
     const CAMPUS_RADIUS_KM = 0.8;
+
+    // Campus landmark directory used to display the nearest building instead of
+    // raw coordinates. Coordinates are approximate (relative to the campus
+    // center) and should be tuned to your real campus map if needed.
+    const CAMPUS_LANDMARKS = [
+        { name: 'Faculty Office Bldg', lat: 9.77789, lng: 118.73355 },
+        { name: 'Main Academic Bldg',  lat: 9.77812, lng: 118.73320 },
+        { name: 'Admin Building',      lat: 9.77765, lng: 118.73382 },
+        { name: 'College of Engineering', lat: 9.77836, lng: 118.73378 },
+        { name: 'Library & Media Center', lat: 9.77798, lng: 118.73412 },
+        { name: 'Gymnasium / Sports Complex', lat: 9.77750, lng: 118.73322 },
+        { name: 'Cafeteria',           lat: 9.77828, lng: 118.73350 },
+        { name: 'Canteen Express Stall', lat: 9.77800, lng: 118.73338 },
+        { name: 'ICT / Computer Lab Bldg', lat: 9.77815, lng: 118.73398 },
+        { name: 'Student Quadrangle',  lat: 9.77795, lng: 118.73430 },
+    ];
+
+    function findNearestLandmark(lat, lng) {
+        let best = null;
+        for (const lm of CAMPUS_LANDMARKS) {
+            const R = 6371.0;
+            const dLat = (lm.lat - lat) * Math.PI / 180;
+            const dLng = (lm.lng - lng) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) ** 2
+                + Math.cos(lat * Math.PI / 180)
+                * Math.cos(lm.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+            const distM = 2 * R * Math.asin(Math.sqrt(a)) * 1000;
+            if (!best || distM < best.distM) best = { distM, landmark: lm };
+        }
+        return best;
+    }
+
+    function buildGpsLabel(lat, lng) {
+        const near = findNearestLandmark(lat, lng);
+        if (near && near.distM < 60) {
+            return `${near.landmark.name} (~${Math.round(near.distM)}m)`;
+        }
+        if (near && near.distM < 150) {
+            return `Near ${near.landmark.name} (~${Math.round(near.distM)}m)`;
+        }
+        if (near) {
+            return `${near.landmark.name} area (~${Math.round(near.distM)}m)`;
+        }
+        return 'Open Campus Area';
+    }
 
     function isOnCampus(lat, lng) {
         const R = 6371.0;
@@ -937,7 +1192,7 @@
                     if (isOnCampus(pos.coords.latitude, pos.coords.longitude)) {
                         currentLat = pos.coords.latitude;
                         currentLng = pos.coords.longitude;
-                        if (gpsEl) gpsEl.innerText = `Lat: ${currentLat.toFixed(4)}, Lng: ${currentLng.toFixed(4)} (GPS Active)`;
+                        if (gpsEl) gpsEl.innerText = `${buildGpsLabel(currentLat, currentLng)} (GPS Active)`;
                     } else {
                         // Off-campus device: keep the campus anchor as the
                         // checkout/delivery location and inform the user.
@@ -950,6 +1205,38 @@
                     if (gpsEl) gpsEl.innerText = "PSU Campus (Default GPS)";
                 },
                 { enableHighAccuracy: true }
+            );
+
+            // Live tracking: keep updating the user's pin as they move around.
+            navigator.geolocation.watchPosition(
+                (pos) => {
+                    const gpsEl = document.getElementById('gps-location-text');
+                    if (isOnCampus(pos.coords.latitude, pos.coords.longitude)) {
+                        currentLat = pos.coords.latitude;
+                        currentLng = pos.coords.longitude;
+                        if (gpsEl) gpsEl.innerText = `${buildGpsLabel(currentLat, currentLng)} (GPS Active)`;
+                        // Live-update the checkout map pin while it's open.
+                        if (checkoutMap && !document.getElementById('checkout-modal').classList.contains('hidden')) {
+                            checkoutMarker.setLatLng([currentLat, currentLng]);
+                            checkoutMap.setView([currentLat, currentLng], 17);
+                            syncCheckoutStatus();
+                        }
+                        // Live-update the full map modal pin while it's open.
+                        if (leafletMap && leafletMarker && !document.getElementById('map-modal').classList.contains('hidden')) {
+                            leafletMarker.setLatLng([currentLat, currentLng]);
+                            leafletMap.setView([currentLat, currentLng], 16);
+                            document.getElementById('map-lat').innerText = currentLat.toFixed(4);
+                            document.getElementById('map-lng').innerText = currentLng.toFixed(4);
+                            const mapBuilding = document.getElementById('map-building');
+                            if (mapBuilding) mapBuilding.innerText = buildGpsLabel(currentLat, currentLng);
+                        }
+                    } else {
+                        if (gpsEl) gpsEl.innerText = "PSU Campus (No Delivery)";
+                        console.warn('Device GPS moved off-campus; keeping campus default.');
+                    }
+                },
+                () => {},
+                { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
             );
         }
     });
@@ -1136,7 +1423,7 @@
 
     function makeChatBubble(m) {
         const isMe = m.is_me === true;
-        const who = isMe ? 'You' : (m.sender || 'Rider');
+        const who = isMe ? 'You' : (m.sender_name || m.sender || 'Rider');
         const initial = (who.charAt(0) || 'R').toUpperCase();
         const wrap = document.createElement('div');
         wrap.className = 'flex justify-' + (isMe ? 'end' : 'start');
@@ -1236,6 +1523,7 @@
         document.getElementById('map-modal').classList.remove('hidden');
         document.getElementById('map-lat').innerText = currentLat.toFixed(4);
         document.getElementById('map-lng').innerText = currentLng.toFixed(4);
+        document.getElementById('map-building').innerText = buildGpsLabel(currentLat, currentLng);
 
         setTimeout(() => {
             if (!leafletMap) {
@@ -1320,18 +1608,18 @@
             card.className = "bg-brand-card rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group cursor-pointer shadow-lg";
             card.onclick = () => openItemModal(item.id);
             card.innerHTML = `
-                <div class="relative h-28 sm:h-36 overflow-hidden bg-white/5">
+                <div class="relative aspect-[16/10] overflow-hidden bg-white/5">
                     <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                     ${badgeHTML}
                     <span class="absolute bottom-2 right-2 w-7 h-7 rounded-xl bg-white/5 group-hover:bg-brand-orange/25 group-hover:text-brand-orange text-brand-slate flex items-center justify-center transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg></span>
                 </div>
-                <div class="p-3.5 flex-1 flex flex-col justify-between gap-2">
+                <div class="p-3 flex-1 flex flex-col justify-between gap-1.5">
                     <div>
                         <span class="text-[9px] font-extrabold text-brand-orange uppercase tracking-wider">${item.category}</span>
                         <h3 class="text-xs sm:text-sm font-black text-white group-hover:text-brand-orange transition line-clamp-1 mt-0.5">${item.name}</h3>
                         <p class="text-[10px] text-brand-slate line-clamp-1 mt-0.5">${item.desc || 'Freshly prepared daily.'}</p>
                     </div>
-                    <div class="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
+                    <div class="pt-1.5 border-t border-white/5 flex items-center justify-between gap-2">
                         <span class="text-sm font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
                     </div>
                 </div>
@@ -1345,9 +1633,9 @@
         document.getElementById('category-heading').innerText = category === 'all' ? 'All Items' : category;
 
         document.querySelectorAll('#category-sidebar .category-btn').forEach(btn => {
-            btn.className = "category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition";
+            btn.classList.remove('active-cat');
         });
-        element.className = "category-btn active-cat flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-orange text-white text-center font-black text-xs gap-1.5 transition shadow-lg shadow-brand-orange/20";
+        element.classList.add('active-cat');
         renderMenu();
     }
 
@@ -1434,6 +1722,12 @@
 
     function addCustomizedItemToCart() {
         if (!selectedItemForModal) return;
+        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
+        if (activeOrder) {
+            showCheckoutError('Order in Progress',
+                'You must complete your previous order (' + activeOrder.order_number + ') before ordering again. Please wait for it to be delivered.');
+            return;
+        }
         let basePrice = selectedItemForModal.price + (modalRiceQty * 15);
         let displayName = selectedItemForModal.name;
         let additions = [];
@@ -1451,6 +1745,7 @@
         }
 
         const cartKey = `${selectedItemForModal.id}_${modalRiceQty}_${bevSelect ? bevSelect.value : ''}`;
+        const wasEmpty = Object.keys(cart).length === 0;
         if (cart[cartKey]) {
             cart[cartKey].qty += 1;
         } else {
@@ -1458,11 +1753,14 @@
                 id: selectedItemForModal.id,
                 name: displayName,
                 price: basePrice,
-                qty: 1
+                qty: 1,
+                img: selectedItemForModal.img || '',
+                category: selectedItemForModal.category || 'General'
             };
         }
         closeItemModal();
         updateCartUI();
+        if (wasEmpty) openCartDrawer();
     }
 
     // Cart Management
@@ -1482,6 +1780,11 @@
                 delete cart[key];
             }
         }
+        updateCartUI();
+    }
+
+    function removeFromCart(key) {
+        if (cart[key]) delete cart[key];
         updateCartUI();
     }
 
@@ -1516,17 +1819,25 @@
             subtotal += item.price * item.qty;
 
             const row = document.createElement('div');
-            row.className = "flex items-center justify-between bg-white/5 border border-white/10 p-3 rounded-2xl gap-3";
+            row.className = "flex items-center gap-3 bg-white/5 border border-white/10 p-3 rounded-2xl";
             row.innerHTML = `
-                <div class="min-w-0">
-                    <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
-                    <span class="text-xs font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
+                <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=120&q=80'}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=120&q=80'"
+                     class="w-14 h-14 rounded-xl object-cover border border-white/10 shrink-0 bg-white/5">
+                <div class="min-w-0 flex-1">
+                    <h4 class="text-xs font-bold text-white truncate leading-tight">${item.name}</h4>
+                    <span class="text-[9px] font-extrabold text-brand-orange uppercase tracking-wider">${item.category}</span>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    <div class="flex items-center gap-2 bg-black/40 rounded-xl px-2 py-1 border border-white/10">
-                        <button onclick="updateQty('${k}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">-</button>
-                        <span class="text-xs font-black text-white px-1">${item.qty}</span>
-                        <button onclick="updateQty('${k}', 1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">+</button>
+                <div class="flex flex-col items-end gap-1.5 shrink-0">
+                    <span class="text-xs font-black text-white">₱${(item.price * item.qty).toFixed(2)}</span>
+                    <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 bg-white/5 rounded-lg px-1.5 py-1 border border-white/10 backdrop-blur-md">
+                            <button onclick="updateQty('${k}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">−</button>
+                            <span class="text-xs font-black text-white px-0.5 w-4 text-center">${item.qty}</span>
+                            <button onclick="updateQty('${k}', 1)" class="text-brand-orange hover:text-orange-500 font-black text-xs w-5 h-5 flex items-center justify-center">+</button>
+                        </div>
+                        <button onclick="removeFromCart('${k}')" class="w-6 h-6 rounded-lg bg-red-500/10 hover:bg-red-500/25 text-red-400 flex items-center justify-center text-[10px] transition" title="Remove">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
                     </div>
                 </div>
             `;
@@ -1534,16 +1845,32 @@
         });
 
         if (keys.length === 0) {
-            drawerList.innerHTML = `<div class="text-center py-20 text-brand-slate text-xs font-bold">Your cart is empty.</div>`;
+            drawerList.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-20 text-center gap-3">
+                    <div class="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl text-brand-slate">
+                        <i class="fa-solid fa-cart-arrow-down"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-black text-white">Your cart is empty</p>
+                        <p class="text-[10px] text-brand-slate font-bold mt-1">Browse the menu and add items to get started.</p>
+                    </div>
+                </div>
+            `;
         }
 
-        let fee = getConvenienceFee(subtotal);
-        let total = subtotal + fee;
+        const countBadge = document.getElementById('drawer-item-count');
+        const countSub = document.getElementById('drawer-item-subtitle');
+        if (countBadge) countBadge.innerText = count;
+        if (countSub) countSub.innerText = keys.length === 0 ? 'Ready to order' : `${count} item${count === 1 ? '' : 's'} • ₱${subtotal.toFixed(2)}`;
 
-        document.getElementById('cart-total').innerText = `₱${total.toFixed(2)}`;
+        const headerCartWrap = document.getElementById('header-cart-wrap');
+        const headerCartBadge = document.getElementById('header-cart-badge');
+        if (headerCartWrap) headerCartWrap.style.display = keys.length > 0 ? 'block' : 'none';
+        if (headerCartBadge) headerCartBadge.innerText = count;
+
+        document.getElementById('cart-total').innerText = `₱${subtotal.toFixed(2)}`;
         document.getElementById('drawer-subtotal').innerText = `₱${subtotal.toFixed(2)}`;
-        document.getElementById('drawer-convenience-fee').innerText = `₱${fee.toFixed(2)}`;
-        document.getElementById('drawer-total-amount').innerText = `₱${total.toFixed(2)}`;
+        document.getElementById('drawer-total-amount').innerText = `₱${subtotal.toFixed(2)}`;
 
         refreshCartButtonState(count);
     }
@@ -1559,22 +1886,23 @@
             count = keys.reduce((s, k) => s + (cart[k].qty || 0), 0);
         }
 
-        if (activeD) {
+        if (keys.length > 0) {
+            // Always keep the cart reachable: pre-order pickup stays available
+            // even while a delivery is ongoing.
+            if (chatD && floatingMsg) floatingMsg.style.display = 'block';
+            nextBtn.disabled = false;
+            nextBtn.onclick = openCartDrawer;
+            nextText.innerText = `View Cart (${count})`;
+        } else if (activeD) {
             if (chatD && floatingMsg) floatingMsg.style.display = 'block';
             nextBtn.disabled = false;
             nextBtn.onclick = openViewOrderModal; // View Order opens Order Details & Live Tracking Modal
             nextText.innerHTML = `<i class="fa-solid fa-box-open mr-1"></i> View Order (${activeD.order_number})`;
         } else {
             if (floatingMsg) floatingMsg.style.display = 'none';
-            if (keys.length > 0) {
-                nextBtn.disabled = false;
-                nextBtn.onclick = openCartDrawer;
-                nextText.innerText = `View Cart (${count})`;
-            } else {
-                nextBtn.disabled = true;
-                nextBtn.onclick = null;
-                nextText.innerText = `View Cart (0)`;
-            }
+            nextBtn.disabled = true;
+            nextBtn.onclick = null;
+            nextText.innerText = `View Cart (0)`;
         }
     }
 
@@ -1674,8 +2002,14 @@
         const statusEl = document.getElementById('view-order-status');
         if (statusEl) statusEl.innerText = `Status: ${deliveryStatusLabel(d)}`;
 
+        const isDelivered = d.raw_status === 'DELIVERED';
+
+        // Rating is only meaningful once the order has actually been received.
+        const rateBtn = document.getElementById('view-order-rate-btn');
+        if (rateBtn) rateBtn.style.display = isDelivered ? '' : 'none';
+
         const chatBtn = document.getElementById('view-order-chat-btn');
-        if (chatBtn) chatBtn.style.display = hasAssignedRider(d) ? '' : 'none';
+        if (chatBtn) chatBtn.style.display = (isDelivered ? 'none' : hasAssignedRider(d) ? '' : 'none');
 
         // Proof-of-delivery photo once the rider attaches one.
         const proofWrap = document.getElementById('view-order-proof-wrap');
@@ -1758,8 +2092,35 @@
         document.getElementById('order-placed-modal').classList.add('hidden');
     }
 
+    function openPickupPlacedModal(data, pointsEarned) {
+        document.getElementById('pickup-place-number').innerText = data.order_number;
+        document.getElementById('pickup-place-total').innerText = `₱${(data.total_payment || data.total_amount || 0).toFixed(2)}`;
+        document.getElementById('pickup-place-points').innerText = `+${(Number(pointsEarned) || Number(data.points_earned) || 0)} pts`;
+        document.getElementById('pickup-placed-modal').classList.remove('hidden');
+        if (typeof JsBarcode !== 'undefined') {
+            setTimeout(() => {
+                JsBarcode("#pickup-place-barcode", data.order_number.toString(), {
+                    format: "CODE128",
+                    lineColor: "#111827",
+                    width: 2,
+                    height: 50,
+                    displayValue: true,
+                    fontSize: 12,
+                    margin: 0
+                });
+            }, 50);
+        }
+    }
+
+    function closePickupPlacedModal() {
+        document.getElementById('pickup-placed-modal').classList.add('hidden');
+    }
+
     function openViewOrderModal() {
-        const activeD = ongoingDeliveriesData.find(isOngoingDelivery);
+        // Prefer the active ongoing delivery; fall back to the most recent
+        // delivered one so the faculty can still view it and rate the order.
+        const activeD = ongoingDeliveriesData.find(isOngoingDelivery)
+            || [...ongoingDeliveriesData].reverse().find(d => d.raw_status === 'DELIVERED');
         if (!activeD) {
             alert('Wala kang active order sa ngayon.');
             return;
@@ -1792,6 +2153,9 @@
 
         document.getElementById('view-order-modal').classList.remove('hidden');
 
+        const rateBtn = document.getElementById('view-order-rate-btn');
+        if (rateBtn) rateBtn.style.display = (activeD.raw_status === 'DELIVERED') ? '' : 'none';
+
         setTimeout(() => refreshViewOrderTracking(activeD), 150);
     }
 
@@ -1803,21 +2167,106 @@
     // Checkout Modal & Mini Map Integration
     let checkoutMap = null;
     let checkoutMarker = null;
+    let fulfillmentMode = 'delivery';
+
+    function setFulfillment(mode) {
+        fulfillmentMode = mode;
+        const isDelivery = mode === 'delivery';
+
+        const deliveryBtn = document.getElementById('fulfillment-delivery');
+        const pickupBtn = document.getElementById('fulfillment-pickup');
+        const deliveryDetails = document.getElementById('delivery-details-section');
+        const pickupDetails = document.getElementById('pickup-details-section');
+        const feeLabel = document.getElementById('summary-fee-label');
+        const payLbl = document.getElementById('payment-method-lbl');
+        const submitText = document.getElementById('checkout-submit-text');
+        const modalTitle = document.getElementById('checkout-modal-title');
+
+        const deliveryActiveCls = "rounded-xl text-[11px] bg-emerald-600 text-white border-emerald-500 font-black shadow-lg shadow-emerald-600/30";
+        const pickupActiveCls = "rounded-xl text-[11px] bg-brand-orange text-white border-brand-orange font-black shadow-lg shadow-brand-orange/30";
+        const idleCls = "rounded-xl text-[11px] bg-white/5 text-brand-slate border-transparent font-bold hover:text-white";
+
+        deliveryBtn.className = `relative py-2.5 flex items-center justify-center gap-1.5 transition border ${isDelivery ? deliveryActiveCls : idleCls}`;
+        pickupBtn.className = `relative py-2.5 flex items-center justify-center gap-1.5 transition border ${isDelivery ? idleCls : pickupActiveCls}`;
+
+        deliveryDetails.style.display = isDelivery ? '' : 'none';
+        pickupDetails.style.display = isDelivery ? 'none' : '';
+
+        feeLabel.innerText = isDelivery ? 'Delivery Fee (₱15 per ₱300 block)' : 'Delivery Fee (Pickup)';
+        payLbl.innerText = isDelivery ? 'Cash on Delivery (COD)' : 'Cash on Pickup (Counter)';
+        submitText.innerText = isDelivery ? 'Place Order' : 'Place Order';
+        modalTitle.innerText = isDelivery ? 'Campus Delivery Checkout' : 'Pre-Order Pickup';
+
+        updateCheckoutSummary();
+    }
 
     function openCheckoutModal() {
         if (Object.keys(cart).length === 0) return;
+        setFulfillment('delivery');
         updateCheckoutSummary();
         document.getElementById('checkout-modal').classList.remove('hidden');
 
         setTimeout(() => {
             if (!checkoutMap) {
-                checkoutMap = L.map('checkout-mini-map', { attributionControl: false }).setView([currentLat, currentLng], 17);
+                const latDelta = CAMPUS_RADIUS_KM / 110.574;
+                const lngDelta = CAMPUS_RADIUS_KM / (111.320 * Math.cos(CAMPUS_CENTER_LAT * Math.PI / 180));
+                const campusBounds = L.latLngBounds(
+                    [CAMPUS_CENTER_LAT - latDelta, CAMPUS_CENTER_LNG - lngDelta],
+                    [CAMPUS_CENTER_LAT + latDelta, CAMPUS_CENTER_LNG + lngDelta]
+                );
+
+                checkoutMap = L.map('checkout-mini-map', {
+                    attributionControl: false,
+                    zoomControl: true,
+                    minZoom: 15,
+                    maxZoom: 19,
+                    maxBounds: campusBounds,
+                    maxBoundsViscosity: 1.0
+                }).setView([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], 17);
+
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19, subdomains: 'abcd',
                     attribution: ''
                 }).addTo(checkoutMap);
-                checkoutMarker = L.marker([currentLat, currentLng]).addTo(checkoutMap)
-                    .bindPopup('<b>Selected Delivery Location</b>').openPopup();
+
+                // Draw the campus delivery zone outline
+                L.circle([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], {
+                    radius: CAMPUS_RADIUS_KM * 1000,
+                    color: '#f97316', weight: 1.5, dashArray: '4 6', fillColor: '#f97316', fillOpacity: 0.05
+                }).addTo(checkoutMap);
+
+                const pinIcon = L.divIcon({
+                    className: '',
+                    html: '<div class="w-8 h-8 rounded-full bg-brand-orange border-2 border-white flex items-center justify-center shadow-xl" style="box-shadow:0 6px 20px rgba(255,97,23,.6)"><i class="fa-solid fa-location-dot text-white text-sm"></i></div>',
+                    iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -28]
+                });
+
+                currentLat = isOnCampus(currentLat, currentLng) ? currentLat : CAMPUS_CENTER_LAT;
+                currentLng = isOnCampus(currentLat, currentLng) ? currentLng : CAMPUS_CENTER_LNG;
+                checkoutMarker = L.marker([currentLat, currentLng], { icon: pinIcon, draggable: true }).addTo(checkoutMap);
+                syncCheckoutStatus();
+
+                checkoutMap.on('click', (e) => {
+                    if (isOnCampus(e.latlng.lat, e.latlng.lng)) {
+                        setCheckoutPin(e.latlng.lat, e.latlng.lng);
+                    } else {
+                        const statusEl = document.getElementById('checkout-map-status');
+                        if (statusEl) { statusEl.innerText = 'Outside delivery zone — keep pin inside campus'; statusEl.classList.add('text-red-400'); statusEl.classList.remove('text-brand-slate'); statusEl.closest('p')?.classList.add('text-red-400'); }
+                        setTimeout(recenterHidden, 1800);
+                    }
+                });
+
+                checkoutMarker.on('dragend', (e) => {
+                    const pos = e.target.getLatLng();
+                    if (isOnCampus(pos.lat, pos.lng)) {
+                        setCheckoutPin(pos.lat, pos.lng);
+                    } else {
+                        checkoutMarker.setLatLng([currentLat, currentLng]);
+                        const statusEl = document.getElementById('checkout-map-status');
+                        if (statusEl) { statusEl.innerText = 'Outside campus — pin snapped back'; statusEl.classList.add('text-red-400'); }
+                        setTimeout(recenterHidden, 1600);
+                    }
+                });
             } else {
                 checkoutMap.setView([currentLat, currentLng], 17);
                 checkoutMarker.setLatLng([currentLat, currentLng]);
@@ -1826,14 +2275,34 @@
         }, 150);
     }
 
-    function setBuildingLocation(locName, lat, lng) {
-        document.getElementById('delivery-location-input').value = locName;
+    function setCheckoutPin(lat, lng) {
         currentLat = lat;
         currentLng = lng;
-        if (checkoutMap && checkoutMarker) {
-            checkoutMap.setView([lat, lng], 17);
-            checkoutMarker.setLatLng([lat, lng]);
-            checkoutMarker.bindPopup(`<b>${locName}</b><br>Delivery Building Selected`).openPopup();
+        checkoutMarker.setLatLng([lat, lng]);
+        document.getElementById('delivery-location-input').value = `Campus Spot (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+        syncCheckoutStatus();
+    }
+
+    function syncCheckoutStatus() {
+        const statusEl = document.getElementById('checkout-map-status');
+        if (statusEl) {
+            statusEl.innerText = `Pin set: ${currentLat.toFixed(5)}, ${currentLng.toFixed(5)} — PSU Campus`;
+            statusEl.classList.remove('text-red-400');
+            statusEl.classList.add('text-brand-slate');
+            statusEl.closest('p')?.classList.remove('text-red-400');
+            statusEl.closest('p')?.classList.add('text-brand-slate');
+        }
+    }
+
+    function recenterCheckoutMap() {
+        if (checkoutMap) checkoutMap.setView([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], 17);
+    }
+
+    function recenterHidden() {
+        if (checkoutMap) {
+            checkoutMap.setView([currentLat, currentLng], 17);
+            const statusEl = document.getElementById('checkout-map-status');
+            if (statusEl) statusEl.innerText = 'Pin set within campus delivery zone';
         }
     }
 
@@ -1849,7 +2318,7 @@
 
     function updateCheckoutSummary() {
         let subtotal = getCartSubtotal();
-        let fee = getConvenienceFee(subtotal);
+        let fee = fulfillmentMode === 'pickup' ? 0 : getConvenienceFee(subtotal);
         let pointsEarned = Number((subtotal / 100).toFixed(2));
 
         let pointsInput = document.getElementById('points-redeem-input');
@@ -1877,19 +2346,21 @@
     }
 
     function submitFacultyOrder() {
+        const isDelivery = fulfillmentMode === 'delivery';
+
         const activeD = ongoingDeliveriesData.find(isOngoingDelivery);
         if (activeD) {
             showCheckoutError('Order in Progress',
-                'Hindi ka pwedeng mag-checkout dahil mayroon ka pang ongoing delivery order (' + activeD.order_number + '). Hintayin muna itong maihatid.');
+                'You must complete your previous order (' + activeD.order_number + ') before ordering again. Please wait for it to be delivered.');
             const submitBtn = document.getElementById('checkout-submit-btn');
             submitBtn.disabled = false;
-            submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
+            submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
             closeCheckoutModal();
             return;
         }
 
         let subtotal = getCartSubtotal();
-        let fee = getConvenienceFee(subtotal);
+        let fee = isDelivery ? getConvenienceFee(subtotal) : 0;
         let pointsToUse = parseInt(document.getElementById('points-redeem-input').value) || 0;
         let finalPayable = Math.max(0, subtotal + fee - pointsToUse);
         let pointsEarned = Number((subtotal / 100).toFixed(2));
@@ -1916,9 +2387,9 @@
                 cart: cartArray,
                 subtotal: subtotal,
                 total_amount: subtotal,
-                is_delivery: true,
+                is_delivery: isDelivery,
                 delivery_location: deliveryLoc,
-                payment_method: 'COD',
+                payment_method: isDelivery ? 'COD' : 'COUNTER',
                 points_redeemed: pointsToUse,
                 points_earned: pointsEarned,
                 dest_lat: currentLat,
@@ -1933,33 +2404,40 @@
                     const pLbl = document.getElementById('user-points-lbl');
                     if (pLbl) pLbl.innerText = userPoints.toFixed(1);
                 }
-                ongoingDeliveriesData.unshift({
-                    id: data.order_id || 1,
-                    order_number: data.order_number,
-                    status: 'Searching for Rider',
-                    raw_status: 'SEARCHING',
-                    location: deliveryLoc,
-                    rider_name: 'Searching for Rider...',
-                    total_amount: data.total_payment - data.delivery_fee,
-                    total_payment: data.total_payment,
-                    created_at: 'Just now'
-                });
+                if (isDelivery) {
+                    ongoingDeliveriesData.unshift({
+                        id: data.order_id || 1,
+                        order_number: data.order_number,
+                        status: 'Searching for Rider',
+                        raw_status: 'SEARCHING',
+                        location: deliveryLoc,
+                        rider_name: 'Searching for Rider...',
+                        total_amount: data.total_payment - data.delivery_fee,
+                        total_payment: data.total_payment,
+                        created_at: 'Just now'
+                    });
+                }
                 cart = {};
                 closeCheckoutModal();
                 updateCartUI();
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
-                openOrderPlacedModal(data, deliveryLoc, pointsEarned);
+if (isDelivery) {
+                    submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
+                    openOrderPlacedModal(data, deliveryLoc, pointsEarned);
+                } else {
+                    submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
+                    openPickupPlacedModal(data, pointsEarned);
+                }
             } else {
                 showCheckoutError('Checkout Error', data.message || 'Unknown error. Please try again.');
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
+                submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
             }
         })
         .catch(err => {
             showCheckoutError('Connection Error', 'An error occurred during checkout. Please check your connection and try again.');
             submitBtn.disabled = false;
-            submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Confirm & Place Delivery Order`;
+            submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
         });
     }
 
@@ -2019,6 +2497,12 @@
     }
 
     function openFacultyFeedbackModal() {
+        // Rating is locked until the delivery is fully completed.
+        const target = (ongoingDeliveriesData || []).find(d => d.id === viewOrderDeliveryId);
+        if (!target || target.raw_status !== 'DELIVERED') {
+            alert('Rating is only available after the delivery has been completed.');
+            return;
+        }
         document.getElementById('faculty-feedback-modal').classList.remove('hidden');
     }
 
@@ -2151,52 +2635,83 @@
         if (modal) modal.classList.add('hidden');
     }
 
+    // Reusable, consistent confirmation dialog (glass UI matching other modals)
+    let facultyConfirmCallback = null;
+    function showFacultyConfirm(opts) {
+        opts = opts || {};
+        facultyConfirmCallback = opts.onConfirm || null;
+        document.getElementById('faculty-confirm-title').innerText = opts.title || 'Please Confirm';
+        document.getElementById('faculty-confirm-subtitle').innerText = opts.subtitle || 'This action cannot be undone';
+        document.getElementById('faculty-confirm-message').innerText = opts.message || 'Are you sure you want to continue?';
+        document.getElementById('faculty-confirm-ok').innerHTML = `<i class="fa-solid fa-check"></i> ${opts.confirmLabel || 'Confirm'}`;
+        document.getElementById('faculty-confirm-modal').classList.remove('hidden');
+    }
+    function closeFacultyConfirm() {
+        facultyConfirmCallback = null;
+        document.getElementById('faculty-confirm-modal').classList.add('hidden');
+    }
+    function runFacultyConfirm() {
+        const cb = facultyConfirmCallback;
+        closeFacultyConfirm();
+        if (typeof cb === 'function') cb();
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeFacultyConfirm();
+    });
+
     function convertFacultyDeliveryToPickup() {
         if (!facultyTimeoutDeliveryId) return;
-        if (!confirm("Are you sure you want to convert this delivery order to Counter Pick-up?")) return;
-        fetch(`/deliveries/api/convert-to-pickup/${facultyTimeoutDeliveryId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCSRFToken(),
-                'Content-Type': 'application/json'
-            }
-        }).then(res => res.json()).then(data => {
-            if (data.success) {
-                // Find order number from ongoingDeliveriesData if possible
-                const ongoing = (ongoingDeliveriesData || []).find(d => d.id === facultyTimeoutDeliveryId);
-                const orderNum = ongoing ? ongoing.order_number : 'Order';
-                const modalBox = document.querySelector('#rider-timeout-modal > div');
-                modalBox.innerHTML = `
-                    <div class="text-center pb-3 border-b border-white/10">
-                        <span class="bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-amber-500/30">Converted to Walk-In</span>
-                        <h3 class="text-xl font-black text-white mt-2">Queue Slip Generated</h3>
-                    </div>
-                    <div class="space-y-1.5 py-1">
-                        <p class="text-[10px] uppercase tracking-wider text-white/60 font-bold">Your Queue Number</p>
-                        <span class="text-4xl font-black text-orange-400 tracking-tight">${orderNum}</span>
-                        <p class="text-xs text-white/80 font-medium">Counter Pick-up Mode Activated</p>
-                    </div>
-                    <div class="bg-white p-3 rounded-2xl flex flex-col items-center justify-center">
-                        <svg id="faculty-timeout-slip-barcode" class="w-full h-14"></svg>
-                        <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Scan at Counter to Process Payment</span>
-                    </div>
-                    <button onclick="window.location.reload()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition">
-                        Done / Refresh Dashboard
-                    </button>
-                `;
-                if (typeof JsBarcode !== 'undefined') {
-                    JsBarcode("#faculty-timeout-slip-barcode", orderNum, {
-                        format: "CODE128",
-                        lineColor: "#111827",
-                        width: 2,
-                        height: 45,
-                        displayValue: true,
-                        fontSize: 11,
-                        margin: 0
-                    });
-                }
-            } else {
-                alert(data.error || "Failed to convert.");
+        showFacultyConfirm({
+            title: 'Convert to Pick-up?',
+            subtitle: 'Delivery order action',
+            message: 'Are you sure you want to convert this delivery order to Counter Pick-up? You will not be able to undo this.',
+            confirmLabel: 'Convert',
+            onConfirm: () => {
+                fetch(`/deliveries/api/convert-to-pickup/${facultyTimeoutDeliveryId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'Content-Type': 'application/json'
+                    }
+                }).then(res => res.json()).then(data => {
+                    if (data.success) {
+                        // Find order number from ongoingDeliveriesData if possible
+                        const ongoing = (ongoingDeliveriesData || []).find(d => d.id === facultyTimeoutDeliveryId);
+                        const orderNum = ongoing ? ongoing.order_number : 'Order';
+                        const modalBox = document.querySelector('#rider-timeout-modal > div');
+                        modalBox.innerHTML = `
+                            <div class="text-center pb-3 border-b border-white/10">
+                                <span class="bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-amber-500/30">Converted to Walk-In</span>
+                                <h3 class="text-xl font-black text-white mt-2">Queue Slip Generated</h3>
+                            </div>
+                            <div class="space-y-1.5 py-1">
+                                <p class="text-[10px] uppercase tracking-wider text-white/60 font-bold">Your Queue Number</p>
+                                <span class="text-4xl font-black text-orange-400 tracking-tight">${orderNum}</span>
+                                <p class="text-xs text-white/80 font-medium">Counter Pick-up Mode Activated</p>
+                            </div>
+                            <div class="bg-white p-3 rounded-2xl flex flex-col items-center justify-center">
+                                <svg id="faculty-timeout-slip-barcode" class="w-full h-14"></svg>
+                                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Scan at Counter to Process Payment</span>
+                            </div>
+                            <button onclick="window.location.reload()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition">
+                                Done / Refresh Dashboard
+                            </button>
+                        `;
+                        if (typeof JsBarcode !== 'undefined') {
+                            JsBarcode("#faculty-timeout-slip-barcode", orderNum, {
+                                format: "CODE128",
+                                lineColor: "#111827",
+                                width: 2,
+                                height: 45,
+                                displayValue: true,
+                                fontSize: 11,
+                                margin: 0
+                            });
+                        }
+                    } else {
+                        alert(data.error || "Failed to convert.");
+                    }
+                });
             }
         });
     }
@@ -2228,8 +2743,8 @@
     </script>
 
     <!-- Smart Rider Timeout Modal for Faculty/Staff Dashboard -->
-    <div id="rider-timeout-modal" class="fixed inset-0 z-[99999] bg-black/98 backdrop-blur-3xl hidden flex items-center justify-center p-4">
-        <div style="background: rgba(18, 18, 22, 0.78); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);" class="w-full max-w-sm rounded-3xl p-6 text-center space-y-4 text-white relative z-[100000]">
+    <div id="rider-timeout-modal" class="fixed inset-0 z-[99999] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 text-center space-y-4 text-white relative z-[100000] modal-pop">
             <div class="w-14 h-14 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg">
                 <i class="fa-solid fa-clock"></i>
             </div>
@@ -2263,6 +2778,35 @@
                 </button>
                 <button onclick="showFacultyCancelReasons()" class="w-full py-2.5 bg-transparent hover:bg-red-500/10 text-red-400 font-bold rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
                     Cancel Order
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= CUSTOM CONFIRMATION DIALOG (consistent glass UI) ================= -->
+    <div id="faculty-confirm-modal" class="fixed inset-0 z-[99999] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel glass-panel-accent w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl modal-pop">
+            <div class="shrink-0 flex items-center gap-3 px-5 py-4 border-b border-brand-orange/25 glass-panel-head">
+                <div class="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div class="min-w-0">
+                    <h3 id="faculty-confirm-title" class="font-black text-white text-sm uppercase tracking-wider truncate leading-tight">Please Confirm</h3>
+                    <p id="faculty-confirm-subtitle" class="text-[10px] font-bold text-brand-slate truncate">This action cannot be undone</p>
+                </div>
+                <button onclick="closeFacultyConfirm()" class="ml-auto w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center shrink-0 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="px-5 py-4">
+                <p id="faculty-confirm-message" class="text-xs text-brand-slate leading-relaxed font-medium">Are you sure you want to continue?</p>
+            </div>
+            <div class="shrink-0 grid grid-cols-2 gap-2.5 px-5 pb-5 border-t border-white/10 pt-4 glass-panel-foot">
+                <button onclick="closeFacultyConfirm()" class="py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider transition">
+                    Not Now
+                </button>
+                <button id="faculty-confirm-ok" onclick="runFacultyConfirm()" class="py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> Confirm
                 </button>
             </div>
         </div>

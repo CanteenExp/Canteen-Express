@@ -21,14 +21,14 @@
 
     <!-- Tailwind CSS CDN -->
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="{% static 'vendor/fonts/plus-jakarta-sans.css' %}">
+    <!-- FontAwesome Icons (self-hosted) -->
+    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}" />
 
-    <!-- JsBarcode CDN (For Barcode Generation) -->
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <!-- html2canvas CDN (For Downloading Queue Slip as Image) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- JsBarcode (For Barcode Generation) - self-hosted -->
+    <script src="{% static 'vendor/jsbarcode/JsBarcode.all.min.js' %}"></script>
+    <!-- html2canvas (For Downloading Queue Slip as Image) - self-hosted -->
+    <script src="{% static 'vendor/html2canvas/html2canvas.min.js' %}"></script>
 
     
 
@@ -38,11 +38,21 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
         /* --- Glassy helpers (match the delivery order detail modal) --- */
+        .glass-backdrop {
+            background: rgba(8, 8, 12, 0.55) !important;
+            -webkit-backdrop-filter: blur(12px) saturate(120%);
+            backdrop-filter: blur(12px) saturate(120%);
+        }
         .glass {
             background: rgba(255,255,255,0.04);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
             border: 1px solid rgba(255,255,255,0.08);
+        }
+        .glass-scroll {
+            background: rgba(0, 0, 0, 0.25);
+            -webkit-backdrop-filter: blur(8px) saturate(120%);
+            backdrop-filter: blur(8px) saturate(120%);
         }
         .glass-strong {
             background: rgba(18,18,24,0.78);
@@ -52,6 +62,101 @@
         }
         .shadow-glass { box-shadow: 0 24px 60px -16px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.035); }
         .shadow-glow-orange { box-shadow: 0 8px 22px -6px rgba(255,97,23,0.45); }
+
+        /* ===== Glassmorphism UI system (matches faculty dashboard) ===== */
+        .modal-pop { animation: modalPop 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes modalPop { from { opacity: 0; transform: scale(0.92) translateY(14px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        .glass-panel {
+            background: linear-gradient(160deg, rgba(32, 32, 41, 0.92), rgba(18, 18, 24, 0.82));
+            -webkit-backdrop-filter: blur(28px) saturate(150%);
+            backdrop-filter: blur(28px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        .glass-panel-accent {
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.16) !important;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 30px rgba(249, 115, 22, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+        }
+        .glass-panel-accent::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 24px 24px 0 0;
+            background: linear-gradient(90deg, #f97316 0%, rgba(249, 115, 22, 0.55) 45%, rgba(249, 115, 22, 0) 100%);
+            pointer-events: none;
+            z-index: 2;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+        .glass-chip {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+        }
+        .glass-panel-head {
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+        .glass-panel-foot {
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.10);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+
+        /* ===== 3D Glassmorphic Category Pods (matches faculty sidebar) ===== */
+        .cat-pod {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            -webkit-backdrop-filter: blur(12px) saturate(140%);
+            backdrop-filter: blur(12px) saturate(140%);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .cat-pod:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.28); }
+        .cat-pod .pod-icon {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #94a3b8;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .cat-pod:hover .pod-icon { transform: scale(1.06); border-color: rgba(255, 255, 255, 0.28); }
+        .cat-pod.active-cat {
+            background: rgba(255, 85, 0, 0.25);
+            border-color: rgba(255, 116, 38, 0.55);
+            box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.25), 0 0 28px rgba(249, 115, 22, 0.22), 0 12px 30px rgba(0, 0, 0, 0.4);
+        }
+        .cat-pod.active-cat .pod-icon {
+            background: linear-gradient(180deg, #ff7a2d, #f97316);
+            border-color: #ff9d5c;
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(249, 115, 22, 0.45);
+        }
+        .cat-pod.active-cat .pod-label { color: #ffffff; }
+        .cat-pod .pod-label { color: #94a3b8; }
+        body.light-mode .cat-pod { background: rgba(255, 255, 255, 0.65); border-color: rgba(148, 163, 184, 0.35); }
+        body.light-mode .cat-pod .pod-label { color: #475569; }
+        body.light-mode .cat-pod.active-cat .pod-label { color: #0f172a; }
+        body.light-mode .glass-panel {
+            background: linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 249, 0.86));
+            border-color: rgba(148, 163, 184, 0.35);
+            color: #0f172a !important;
+        }
+        body.light-mode .glass-panel-head { background: rgba(15, 23, 42, 0.04); border-bottom-color: rgba(148, 163, 184, 0.25); }
+        body.light-mode .glass-panel-foot { background: rgba(15, 23, 42, 0.04); border-top-color: rgba(148, 163, 184, 0.25); }
+        body.light-mode .glass-card { background: rgba(15, 23, 42, 0.04); border-color: rgba(148, 163, 184, 0.25); }
+        body.light-mode .glass-chip { background: rgba(15, 23, 42, 0.04); border-color: rgba(148, 163, 184, 0.25); }
 
         /* --- Cart modal: centered glassy sheet --- */
         #cart-drawer-backdrop { opacity: 0; transition: opacity 0.25s ease; pointer-events: none; }
@@ -115,12 +220,18 @@
         body.light-mode #search-wrapper,
         body.light-mode #theme-toggle-btn,
         body.light-mode #search-toggle-btn,
-        body.light-mode .category-btn {
+        body.light-mode .category-btn:not(.active-cat) {
             background-color: #ffffff !important;
             border-color: #cbd5e1 !important;
             color: #0f172a !important;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
         }
+        body.light-mode .cat-pod.active-cat {
+            background: rgba(255, 85, 0, 0.10) !important;
+            border-color: rgba(249, 115, 22, 0.45) !important;
+            box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.2), 0 4px 18px rgba(249, 115, 22, 0.15) !important;
+        }
+        body.light-mode .cat-pod.active-cat .pod-label { color: #b45309 !important; }
         body.light-mode #cart-drawer-backdrop > div,
         body.light-mode #item-details-modal > div {
             background-color: #ffffff !important;
@@ -133,6 +244,7 @@
             border-color: #e2e8f0 !important;
             color: #0f172a !important;
         }
+        body.light-mode .glass-scroll { background: rgba(241, 245, 249, 0.55); }
         body.light-mode #promo-carousel,
         body.light-mode #promo-carousel div,
         body.light-mode #promo-carousel span:not(.bg-brand-orange):not(.bg-emerald-500):not(.bg-blue-500),
@@ -167,8 +279,8 @@
     </div>
 
     <!-- ================= 1. DINE-IN / TAKE-OUT SELECTION POPUP MODAL ================= -->
-    <div id="dining-option-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4">
-        <div class="bg-brand-card border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-6 shadow-2xl animate-fade-in relative">
+    <div id="dining-option-modal" class="fixed inset-0 z-50 glass-backdrop flex items-center justify-center p-4">
+        <div class="glass-panel glass-panel-accent rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-6 modal-pop relative">
             <a href="{% url 'customer_portal:kiosk_welcome' %}" class="absolute right-5 top-5 w-9 h-9 rounded-full bg-white/5 hover:bg-red-500/20 text-brand-slate hover:text-red-400 border border-white/10 flex items-center justify-center transition active:scale-95" title="Exit Kiosk">
                 <i class="fa-solid fa-xmark text-sm font-black"></i>
             </a>
@@ -305,37 +417,36 @@
     <!-- ================= MAIN LAYOUT ================= -->
     <div class="flex-1 max-w-7xl w-full mx-auto flex overflow-hidden min-h-0 p-2 sm:p-3 gap-3">
 
-        <aside class="w-20 sm:w-24 flex-shrink-0 flex flex-col gap-2 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
-            <button onclick="selectCategory('all', this)" class="category-btn active-cat flex flex-col items-center justify-center p-2 rounded-xl bg-brand-orange text-white text-center font-black text-[11px] gap-1 transition shadow-lg shadow-brand-orange/20">
-                <i class="fa-solid fa-utensils text-base"></i>
-                <span class="text-[10px] leading-tight">All Items</span>
+        <aside class="w-20 sm:w-28 flex-shrink-0 flex flex-col gap-2 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
+            <button onclick="selectCategory('all', this)" class="category-btn active-cat cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
+                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-utensils"></i></span>
+                <span class="pod-label text-[10px] font-black leading-tight mt-1.5">All Items</span>
             </button>
 
-            <button onclick="selectCategory('biscuits', this)" class="category-btn flex flex-col items-center justify-center p-2 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-[11px] gap-1 transition">
-                <i class="fa-solid fa-cookie text-base"></i>
-                <span class="text-[10px] leading-tight line-clamp-1">Biscuits</span>
+            <button onclick="selectCategory('biscuits', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
+                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-cookie"></i></span>
+                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">Biscuits</span>
             </button>
 
-            <button onclick="selectCategory('rice', this)" class="category-btn flex flex-col items-center justify-center p-2 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-[11px] gap-1 transition">
-                <i class="fa-solid fa-bowl-rice text-base"></i>
-                <span class="text-[10px] leading-tight line-clamp-1">Rice Meals</span>
+            <button onclick="selectCategory('rice', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
+                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-bowl-rice"></i></span>
+                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">Rice Meals</span>
             </button>
 
-            <button onclick="selectCategory('beverages', this)" class="category-btn flex flex-col items-center justify-center p-2 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-[11px] gap-1 transition">
-                <i class="fa-solid fa-bottle-water text-base"></i>
-                <span class="text-[10px] leading-tight line-clamp-1">Beverages</span>
+            <button onclick="selectCategory('beverages', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
+                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-bottle-water"></i></span>
+                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">Beverages</span>
             </button>
 
-            <button onclick="selectCategory('meryenda', this)" class="category-btn flex flex-col items-center justify-center p-2 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-[11px] gap-1 transition">
-                <i class="fa-solid fa-burger text-base"></i>
-                <span class="text-[10px] leading-tight line-clamp-1">Meryenda</span>
+            <button onclick="selectCategory('meryenda', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
+                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-burger"></i></span>
+                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">Meryenda</span>
             </button>
 
-            <button onclick="selectCategory('candies', this)" class="category-btn flex flex-col items-center justify-center p-2 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-[11px] gap-1 transition">
-                <i class="fa-solid fa-candy-cane text-base"></i>
-                <span class="text-[10px] leading-tight line-clamp-1">Candies</span>
+            <button onclick="selectCategory('candies', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
+                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-candy-cane"></i></span>
+                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">Candies</span>
             </button>
-
 
         </aside>
 
@@ -353,7 +464,7 @@
 
 
     <!-- ================= FOOTER BAR ================= -->
-    <footer class="shrink-0 bg-brand-card border-t border-white/10 p-3 sm:p-4 shadow-2xl z-20">
+    <footer class="shrink-0 glass-panel glass-panel-accent border-t border-white/10 p-3 sm:p-4 shadow-2xl z-20">
         <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
             <div class="text-left">
@@ -378,11 +489,11 @@
 
 
     <!-- ================= YOUR CART MODAL (centered, glassy) ================= -->
-    <div id="cart-drawer-backdrop" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl hidden flex items-center justify-center p-4">
-        <div class="cart-sheet glass-strong rounded-3xl max-w-md w-full overflow-hidden shadow-glass flex flex-col max-h-[85vh]">
+    <div id="cart-drawer-backdrop" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="cart-sheet glass-panel glass-panel-accent rounded-3xl max-w-md w-full overflow-hidden flex flex-col max-h-[85vh]">
 
             <!-- Header -->
-            <div class="shrink-0 border-b border-white/10 p-4 flex items-center justify-between pt-[max(env(safe-area-inset-top),16px)] sm:pt-4">
+            <div class="shrink-0 glass-panel-head border-b border-white/10 p-4 flex items-center justify-between pt-[max(env(safe-area-inset-top),16px)] sm:pt-4">
                 <div class="flex items-center gap-2.5">
                     <div class="w-9 h-9 rounded-xl bg-orange-500/15 text-brand-orange flex items-center justify-center text-base shrink-0">
                         <i class="fa-solid fa-cart-shopping"></i>
@@ -395,11 +506,11 @@
             </div>
 
             <!-- Cart items -->
-            <div id="drawer-cart-list" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 min-h-0 bg-black/20">
+            <div id="drawer-cart-list" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 min-h-0 glass-scroll">
             </div>
 
             <!-- Footer bar -->
-            <div class="shrink-0 border-t border-white/10 p-4 pb-[max(env(safe-area-inset-bottom),16px)] space-y-4 glass">
+            <div class="shrink-0 glass-panel-foot border-t border-white/10 p-4 pb-[max(env(safe-area-inset-bottom),16px)] space-y-4">
                 <div class="space-y-2 text-xs text-brand-slate">
                     <div class="flex justify-between">
                         <span>Dining Mode:</span>
@@ -427,7 +538,7 @@
 
 
     <!-- ================= QUEUE SLIP MODAL (DOWNLOADABLE & WITH BARCODE) ================= -->
-    <div id="queue-slip-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
+    <div id="queue-slip-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 overflow-y-auto">
         <div class="max-w-sm w-full space-y-4 my-auto">
             
             <!-- Target Printable Queue Slip Container -->
@@ -471,7 +582,7 @@
             </div>
 
             <!-- Action Buttons Below Queue Slip -->
-            <div class="space-y-2">
+            <div class="glass-panel glass-panel-accent rounded-3xl p-3.5 space-y-2 modal-pop">
                 <button onclick="downloadQueueSlip()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
                     <i class="fa-solid fa-download"></i>
                     <span id="slip-download-text">Download Slip as Image</span>
@@ -497,10 +608,37 @@
         </div>
     </div>
 
+    <!-- ================= CANCEL QUEUE SLIP CONFIRMATION MODAL ================= -->
+    <div id="queue-cancel-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4" style="background: rgba(8, 8, 12, 0.35); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);">
+        <div class="glass-panel glass-panel-accent rounded-3xl p-6 sm:p-7 max-w-xs w-full text-center space-y-5 modal-pop relative">
+            <div class="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-400 flex items-center justify-center mx-auto text-3xl shadow-lg shadow-red-500/10 animate-bounce">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="space-y-1.5">
+                <h3 class="text-lg font-black text-white uppercase tracking-wider">Cancel Queue Slip</h3>
+                <p class="text-xs text-white/70 font-semibold leading-relaxed">
+                    Are you sure you want to cancel your queue slip? This will clear your cart and you'll need to build your order again.
+                </p>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <button onclick="closeQueueCancelModal()" id="queue-cancel-back-btn"
+                    class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl uppercase tracking-wider text-[11px] transition border border-white/10 flex items-center justify-center gap-1.5 cursor-pointer">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Keep Slip</span>
+                </button>
+                <button onclick="confirmCancelPendingOrder()" id="queue-cancel-confirm-btn"
+                    class="w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold py-3 rounded-xl uppercase tracking-wider text-[11px] transition border border-red-500/30 flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-red-500/10">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>Yes, Cancel</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- ================= ITEM EXPAND / DETAILS MODAL ================= -->
-    <div id="item-details-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl space-y-4 relative animate-fade-in my-8">
+    <div id="item-details-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-panel glass-panel-accent rounded-3xl max-w-md w-full overflow-hidden modal-pop relative my-8">
             <button onclick="closeItemModal()" class="absolute right-4 top-4 z-10 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -646,21 +784,22 @@ function renderMenu() {
             : '';
 
         const card = document.createElement('div');
-        card.className = "bg-brand-card rounded-2xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group cursor-pointer";
+        card.className = "bg-brand-card rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group cursor-pointer shadow-lg";
         card.onclick = () => openItemModal(item.id);
         card.innerHTML = `
-            <div class="relative h-28 sm:h-36 overflow-hidden bg-white/5">
+            <div class="relative aspect-[16/10] overflow-hidden bg-white/5">
                 <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                 ${badgeHTML}
+                <span class="absolute bottom-2 right-2 w-7 h-7 rounded-xl bg-white/5 group-hover:bg-brand-orange/25 group-hover:text-brand-orange text-brand-slate flex items-center justify-center transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg></span>
             </div>
-            <div class="p-3 flex-1 flex flex-col justify-between gap-2">
+            <div class="p-3 flex-1 flex flex-col justify-between gap-1.5">
                 <div>
-                    <h3 class="text-xs sm:text-sm font-extrabold text-white group-hover:text-brand-orange transition line-clamp-1">${item.name}</h3>
-                    <p class="text-[10px] text-brand-slate line-clamp-2 mt-0.5">${item.desc || 'Freshly prepared daily.'}</p>
+                    <span class="text-[9px] font-extrabold text-brand-orange uppercase tracking-wider">${item.category}</span>
+                    <h3 class="text-xs sm:text-sm font-black text-white group-hover:text-brand-orange transition line-clamp-1 mt-0.5">${item.name}</h3>
+                    <p class="text-[10px] text-brand-slate line-clamp-1 mt-0.5">${item.desc || 'Freshly prepared daily.'}</p>
                 </div>
-                <div class="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
-                    <span class="text-sm sm:text-base font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
-                    <span class="w-7 h-7 rounded-xl bg-white/5 group-hover:bg-brand-orange/25 group-hover:text-brand-orange text-brand-slate flex items-center justify-center transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg></span>
+                <div class="pt-1.5 border-t border-white/5 flex items-center justify-between gap-2">
+                    <span class="text-sm font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
                 </div>
             </div>
         `;
@@ -683,10 +822,10 @@ function selectCategory(category, element) {
     document.getElementById('category-heading').innerText = titleMap[category] || 'Menu Items';
 
     document.querySelectorAll('#category-sidebar .category-btn').forEach(btn => {
-        btn.className = "category-btn flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-card hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white text-center font-bold text-xs gap-1.5 transition";
+        btn.classList.remove('active-cat');
     });
-    element.className = "category-btn active-cat flex flex-col items-center justify-center p-3 rounded-2xl bg-brand-orange text-white text-center font-black text-xs gap-1.5 transition shadow-lg shadow-brand-orange/20";
-    
+    element.classList.add('active-cat');
+
     renderMenu();
 }
 
@@ -1100,7 +1239,7 @@ function showFeedbackSuccessPopup(message) {
 
     const popup = document.createElement('div');
     popup.id = 'feedback-success-popup';
-    popup.className = 'fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in';
+    popup.className = 'fixed inset-0 z-[100] glass-backdrop flex items-center justify-center p-4 animate-fade-in';
     popup.innerHTML = `
         <div class="bg-brand-card border border-white/10 rounded-3xl max-w-xs w-full p-6 text-center space-y-4 shadow-2xl">
             <div class="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto text-3xl animate-bounce">
@@ -1114,15 +1253,33 @@ function showFeedbackSuccessPopup(message) {
 }
 
 function cancelPendingOrder() {
-    if (confirm("Are you sure you want to cancel your queue slip?")) {
-        currentPendingOrder = null;
-        localStorage.removeItem('canteen_pending_order');
-        cart = {};
-        updateCartUI();
-        closeQueueSlipModal();
-        hidePendingBanner();
-    }
+    document.getElementById('queue-cancel-modal').classList.remove('hidden');
 }
+
+function closeQueueCancelModal() {
+    document.getElementById('queue-cancel-modal').classList.add('hidden');
+}
+
+function confirmCancelPendingOrder() {
+    currentPendingOrder = null;
+    localStorage.removeItem('canteen_pending_order');
+    cart = {};
+    updateCartUI();
+    closeQueueSlipModal();
+    closeQueueCancelModal();
+    hidePendingBanner();
+}
+
+document.addEventListener('keydown', (e) => {
+    const cancelModal = document.getElementById('queue-cancel-modal');
+    if (!cancelModal || cancelModal.classList.contains('hidden')) return;
+    if (e.key === 'Escape') {
+        closeQueueCancelModal();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmCancelPendingOrder();
+    }
+});
 
 function openQueueSlipModal() {
     if (currentPendingOrder) {

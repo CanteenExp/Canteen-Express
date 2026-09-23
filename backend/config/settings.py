@@ -22,6 +22,10 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-local-dev-key")
 
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t", "yes")
 
+# Google Maps JS API key (from backend/.env). When empty/absent, the map engine
+# facade falls back to free OpenStreetMap tiles so the app keeps working offline.
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
+
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com', '*']
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
@@ -79,6 +83,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core_app.context_processors.map_key',
             ],
         },
     },

@@ -323,13 +323,14 @@ def get_delivery_messages(request, delivery_id):
     is_privileged = user.role in ('STAFF', 'ADMIN')
     if not (is_rider or is_customer or is_privileged):
         return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
-    messages_qs = delivery.messages.all().order_by('timestamp')
+    messages_qs = delivery.messages.all().order_by('timestamp', 'id')
     # Mark incoming messages as read now that the user has the chat open
     unread_ids = delivery.messages.filter(is_read=False).exclude(sender=request.user).count()
     delivery.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
     msg_list = [{
         'id': m.id,
         'sender': m.sender.username,
+        'sender_name': (m.sender.get_full_name() or m.sender.username),
         'sender_role': m.sender.role,
         'is_me': m.sender == request.user,
         'message': m.message,
@@ -639,7 +640,7 @@ def rider_live_stream(request):
                 total_unread = 0
                 chat_digest = None
                 for d in my_deliveries:
-                    last = d.messages.order_by('-timestamp').first()
+                    last = d.messages.order_by('-timestamp', '-id').first()
                     if last is not None:
                         current = f"{d.id}:{last.id}:{last.timestamp.timestamp()}"
                         chat_digest = (chat_digest + '|' + current) if chat_digest else current
@@ -726,7 +727,7 @@ def faculty_delivery_stream(request):
                     order__customer=request.user).exclude(
                         status=DeliveryRequest.RequestStatus.SEARCHING)
                 for d in chat_deliveries:
-                    last = d.messages.order_by('-timestamp').first()
+                    last = d.messages.order_by('-timestamp', '-id').first()
                     if last is not None:
                         current = f"{d.id}:{last.id}:{last.timestamp.timestamp()}"
                         chat_digest = (chat_digest + '|' + current) if chat_digest else current
