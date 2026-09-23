@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🍔 Canteen Express
+# Canteen Express
 ### *Enterprise-Grade Django Web Application & Progressive Web App (PWA) Suite*
 
 [![Django](https://img.shields.io/badge/Django-5.1.5-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
@@ -15,7 +15,7 @@
 
 ---
 
-## 📱 Progressive Web App (PWA) Tiers & Roles
+## Progressive Web App (PWA) Tiers & Roles
 
 Canteen Express is fully optimized as a Progressive Web App across all user tiers, enabling offline caching, standalone home-screen installation, and native-like performance:
 
@@ -28,7 +28,7 @@ Canteen Express is fully optimized as a Progressive Web App across all user tier
 
 ---
 
-## 🚀 Core Modules & Advanced Features
+## Core Modules & Advanced Features
 
 - **Kitchen Display Kanban Board (`kitchen_display`)**
   - Real-time 3-column workflow: **Kiosk Accepted**, **Delivery**, and **Orders Ready**.
@@ -49,14 +49,14 @@ Canteen Express is fully optimized as a Progressive Web App across all user tier
 
 ---
 
-## 📋 Prerequisites
+## Prerequisites
 
 - **Python 3.10+** (Recommended: **Python 3.12**)
 - **Git**
 
 ---
 
-## 🛠️ Quick Start Guide
+## Quick Start Guide
 
 ### 1. Clone the Repository & Navigate to Backend
 ```bash
@@ -125,7 +125,7 @@ Access the application in your browser at: `http://127.0.0.1:8000/`
 
 ---
 
-## 🧪 Testing & Common Commands
+## Testing & Common Commands
 
 Always run Django tests inside the `backend/` directory with `--keepdb` to avoid slow/flaky Supabase PostgreSQL test DB recreation prompts:
 
@@ -153,7 +153,7 @@ To clear all orders and order items in the database for testing:
 
 ---
 
-## 🔌 Key API Endpoints
+## Key API Endpoints
 
 | API Module | Endpoint | Method | Payload / Parameters | Purpose |
 | :--- | :--- | :--- | :--- | :--- |
@@ -165,7 +165,7 @@ To clear all orders and order items in the database for testing:
 
 ---
 
-## 📂 Project Directory Structure
+## Project Directory Structure
 
 ```text
 CANTEEN-EXPRESS/
@@ -199,7 +199,7 @@ CANTEEN-EXPRESS/
 
 ---
 
-## 💡 Troubleshooting & Notes
+## Troubleshooting & Notes
 
 - **Supabase Connection Limit (`EMAXCONNSESSION`):** Always use Supabase **Transaction Mode** (`DB_PORT=6543`) to prevent connection pool exhaustion during multithreaded development.
 - **Windows CP1252 Encoding Error:** Avoid complex Unicode emojis in backend print statements and management commands; use FontAwesome icons in HTML templates instead.
@@ -207,6 +207,6 @@ CANTEEN-EXPRESS/
 
 <div align="center">
 
-**Happy coding, team! 🚀**
+**Happy coding, team!**
 
 </div>
