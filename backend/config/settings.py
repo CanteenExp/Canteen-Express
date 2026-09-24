@@ -204,6 +204,9 @@ EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True') == 'True'
 EMAIL_USE_TLS = False
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'canteenexpress26@gmail.com')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+# Fail fast when SMTP is unreachable/blocked (e.g. Railway egress) instead of
+# blocking the worker until gunicorn kills it; the OTP fallback then takes over.
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', 10))
 # From address always follows the authenticated SMTP account so Gmail never
 # rejects a mismatched sender (works on Railway/Render the same as locally).
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', f'Canteen Express <{EMAIL_HOST_USER}>')
