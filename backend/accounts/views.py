@@ -8,7 +8,7 @@ import json
 import os
 import re
 import time
-from django.core.mail import send_mail
+from accounts.emailer import send_code_email
 from django.conf import settings
 
 User = get_user_model()
@@ -331,7 +331,7 @@ def send_signup_otp(request):
 
             email_sent = True
             try:
-                send_mail(
+                send_code_email(
                     subject='Canteen Express - Your OTP Verification Code',
                     message=(
                         f'Hello,\n\n'
@@ -339,9 +339,7 @@ def send_signup_otp(request):
                         f'This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n'
                         f'- Canteen Express Team'
                     ),
-                    from_email=None,
-                    recipient_list=[email],
-                    fail_silently=False,
+                    to_email=email,
                 )
             except Exception as e:
                 email_sent = False
@@ -419,7 +417,7 @@ def send_password_reset_otp(request):
 
             email_sent = True
             try:
-                send_mail(
+                send_code_email(
                     subject='Canteen Express - Your Password Reset OTP',
                     message=(
                         f'Hello,\n\n'
@@ -427,11 +425,9 @@ def send_password_reset_otp(request):
                         f'This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n'
                         f'- Canteen Express Team'
                     ),
-                    from_email=None,
-                    recipient_list=[email],
-                    fail_silently=False,
+                    to_email=email,
                 )
-                print(f"SMTP send OK for password reset OTP -> {email}")
+                print(f"Email send OK for password reset OTP -> {email}")
             except Exception as e:
                 email_sent = False
                 print(f"SMTP send failed for password reset OTP: {type(e).__name__}: {e}")
