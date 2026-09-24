@@ -8,7 +8,7 @@ import json
 import os
 import re
 import time
-from django.core.mail import send_mail
+from accounts.emailer import send_code_email
 from django.conf import settings
 
 User = get_user_model()
@@ -331,7 +331,7 @@ def send_signup_otp(request):
 
             email_sent = True
             try:
-                send_mail(
+                send_code_email(
                     subject='Canteen Express - Your OTP Verification Code',
                     message=(
                         f'Hello,\n\n'
@@ -339,22 +339,15 @@ def send_signup_otp(request):
                         f'This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n'
                         f'- Canteen Express Team'
                     ),
-                    from_email=None,
-                    recipient_list=[email],
-                    fail_silently=False,
+                    to_email=email,
                 )
             except Exception as e:
                 email_sent = False
-                print(f"SMTP send failed for signup OTP: {type(e).__name__}: {e}")
+                print(f"Email send failed for signup OTP: {type(e).__name__}: {e}")
                 print(
-                    "SMTP cfg: host="
-                    + str(getattr(settings, 'EMAIL_HOST', ''))
-                    + " port=" + str(getattr(settings, 'EMAIL_PORT', ''))
-                    + " ssl=" + str(getattr(settings, 'EMAIL_USE_SSL', ''))
-                    + " tls=" + str(getattr(settings, 'EMAIL_USE_TLS', ''))
-                    + " user=" + str(getattr(settings, 'EMAIL_HOST_USER', ''))
-                    + " pass_set=" + str(bool(getattr(settings, 'EMAIL_HOST_PASSWORD', '')))
-                    + " from=" + str(getattr(settings, 'DEFAULT_FROM_EMAIL', ''))
+                    "Email API cfg: sendgrid_key_set=" + str(bool(os.getenv('SENDGRID_API_KEY', '')))
+                    + " from=" + str(os.getenv('EMAIL_FROM', settings.DEFAULT_FROM_EMAIL))
+                    + " smtp_set=" + str(bool(getattr(settings, 'EMAIL_HOST_PASSWORD', '')))
                 )
 
             return JsonResponse({
@@ -419,7 +412,7 @@ def send_password_reset_otp(request):
 
             email_sent = True
             try:
-                send_mail(
+                send_code_email(
                     subject='Canteen Express - Your Password Reset OTP',
                     message=(
                         f'Hello,\n\n'
@@ -427,23 +420,16 @@ def send_password_reset_otp(request):
                         f'This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n'
                         f'- Canteen Express Team'
                     ),
-                    from_email=None,
-                    recipient_list=[email],
-                    fail_silently=False,
+                    to_email=email,
                 )
-                print(f"SMTP send OK for password reset OTP -> {email}")
+                print(f"Email send OK for password reset OTP -> {email}")
             except Exception as e:
                 email_sent = False
-                print(f"SMTP send failed for password reset OTP: {type(e).__name__}: {e}")
+                print(f"Email send failed for password reset OTP: {type(e).__name__}: {e}")
                 print(
-                    "SMTP cfg: host="
-                    + str(getattr(settings, 'EMAIL_HOST', ''))
-                    + " port=" + str(getattr(settings, 'EMAIL_PORT', ''))
-                    + " ssl=" + str(getattr(settings, 'EMAIL_USE_SSL', ''))
-                    + " tls=" + str(getattr(settings, 'EMAIL_USE_TLS', ''))
-                    + " user=" + str(getattr(settings, 'EMAIL_HOST_USER', ''))
-                    + " pass_set=" + str(bool(getattr(settings, 'EMAIL_HOST_PASSWORD', '')))
-                    + " from=" + str(getattr(settings, 'DEFAULT_FROM_EMAIL', ''))
+                    "Email API cfg: sendgrid_key_set=" + str(bool(os.getenv('SENDGRID_API_KEY', '')))
+                    + " from=" + str(os.getenv('EMAIL_FROM', settings.DEFAULT_FROM_EMAIL))
+                    + " smtp_set=" + str(bool(getattr(settings, 'EMAIL_HOST_PASSWORD', '')))
                 )
 
             return JsonResponse({
