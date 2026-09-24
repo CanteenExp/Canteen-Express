@@ -343,16 +343,15 @@ def send_signup_otp(request):
                 )
             except Exception as e:
                 email_sent = False
-                print(f"SMTP send failed for signup OTP: {type(e).__name__}: {e}")
+                print(f"Email send failed for signup OTP: {type(e).__name__}: {e}")
                 print(
-                    "SMTP cfg: host="
+                    "Email API cfg: api_key_set=" + str(bool(os.getenv('EMAIL_API_KEY', '')))
+                    + " from=" + str(os.getenv('EMAIL_FROM', settings.DEFAULT_FROM_EMAIL))
+                    + " | SMTP cfg: host="
                     + str(getattr(settings, 'EMAIL_HOST', ''))
                     + " port=" + str(getattr(settings, 'EMAIL_PORT', ''))
-                    + " ssl=" + str(getattr(settings, 'EMAIL_USE_SSL', ''))
                     + " tls=" + str(getattr(settings, 'EMAIL_USE_TLS', ''))
                     + " user=" + str(getattr(settings, 'EMAIL_HOST_USER', ''))
-                    + " pass_set=" + str(bool(getattr(settings, 'EMAIL_HOST_PASSWORD', '')))
-                    + " from=" + str(getattr(settings, 'DEFAULT_FROM_EMAIL', ''))
                 )
 
             return JsonResponse({
@@ -430,16 +429,15 @@ def send_password_reset_otp(request):
                 print(f"Email send OK for password reset OTP -> {email}")
             except Exception as e:
                 email_sent = False
-                print(f"SMTP send failed for password reset OTP: {type(e).__name__}: {e}")
+                print(f"Email send failed for password reset OTP: {type(e).__name__}: {e}")
                 print(
-                    "SMTP cfg: host="
+                    "Email API cfg: api_key_set=" + str(bool(os.getenv('EMAIL_API_KEY', '')))
+                    + " from=" + str(os.getenv('EMAIL_FROM', settings.DEFAULT_FROM_EMAIL))
+                    + " | SMTP cfg: host="
                     + str(getattr(settings, 'EMAIL_HOST', ''))
                     + " port=" + str(getattr(settings, 'EMAIL_PORT', ''))
-                    + " ssl=" + str(getattr(settings, 'EMAIL_USE_SSL', ''))
                     + " tls=" + str(getattr(settings, 'EMAIL_USE_TLS', ''))
                     + " user=" + str(getattr(settings, 'EMAIL_HOST_USER', ''))
-                    + " pass_set=" + str(bool(getattr(settings, 'EMAIL_HOST_PASSWORD', '')))
-                    + " from=" + str(getattr(settings, 'DEFAULT_FROM_EMAIL', ''))
                 )
 
             return JsonResponse({
