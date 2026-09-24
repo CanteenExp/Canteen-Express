@@ -200,14 +200,20 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 465))
-EMAIL_USE_SSL = (os.getenv('EMAIL_USE_SSL') or '').lower() == 'true'
-EMAIL_USE_TLS = (os.getenv('EMAIL_USE_TLS') or '').lower() == 'true'
-# If neither transport is set explicitly, pick the right one for the port:
-# Gmail 587 -> STARTTLS, Gmail 465 -> implicit SSL. This keeps both port
-# configurations working (local .env and Railway/Render) out of the box.
-if not EMAIL_USE_SSL and not EMAIL_USE_TLS:
-    EMAIL_USE_TLS = EMAIL_PORT != 465
-    EMAIL_USE_SSL = not EMAIL_USE_TLS
+_use_ssl = (os.getenv('EMAIL_USE_SSL') or '').lower() == 'true'
+_use_tls = (os.getenv('EMAIL_USE_TLS') or '').lower() == 'true'
+# Transport is derived from the port so Gmail always works: 587 needs STARTTLS,
+# 465 needs implicit SSL. Explicit env values win, but a contradictory pair
+# (both SSL and TLS true) is resolved by the port instead of breaking sends.
+if _use_ssl and _use_tls:
+    EMAIL_USE_SSL = EMAIL_PORT == 465
+    EMAIL_USE_TLS = EMAIL_PORT == 587
+elif _use_ssl or _use_tls:
+    EMAIL_USE_SSL = _use_ssl
+    EMAIL_USE_TLS = _use_tls
+else:
+    EMAIL_USE_SSL = EMAIL_PORT == 465
+    EMAIL_USE_TLS = EMAIL_PORT == 587
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'canteenexpress26@gmail.com')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 # Fail fast when SMTP is unreachable/blocked (e.g. Railway egress) instead of
