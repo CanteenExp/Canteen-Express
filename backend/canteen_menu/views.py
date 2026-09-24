@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
 from accounts.decorators import role_required
+from .models import MenuItem, Category
 
 try:
     from .forms import MenuItemForm, CategoryForm

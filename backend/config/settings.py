@@ -200,8 +200,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 465))
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True') == 'True'
-EMAIL_USE_TLS = False
+EMAIL_USE_SSL = (os.getenv('EMAIL_USE_SSL') or '').lower() == 'true'
+EMAIL_USE_TLS = (os.getenv('EMAIL_USE_TLS') or '').lower() == 'true'
+# If neither transport is set explicitly, pick the right one for the port:
+# Gmail 587 -> STARTTLS, Gmail 465 -> implicit SSL. This keeps both port
+# configurations working (local .env and Railway/Render) out of the box.
+if not EMAIL_USE_SSL and not EMAIL_USE_TLS:
+    EMAIL_USE_TLS = EMAIL_PORT != 465
+    EMAIL_USE_SSL = not EMAIL_USE_TLS
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'canteenexpress26@gmail.com')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 # Fail fast when SMTP is unreachable/blocked (e.g. Railway egress) instead of
