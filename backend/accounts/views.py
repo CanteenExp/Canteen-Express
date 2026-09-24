@@ -9,6 +9,7 @@ import os
 import re
 import time
 from django.core.mail import send_mail
+from django.conf import settings
 
 User = get_user_model()
 
@@ -311,6 +312,12 @@ def send_signup_otp(request):
             request.session['signup_otp_created_at'] = int(time.time())
             request.session['signup_otp_attempts'] = 0
 
+            print(f"\n========================================")
+            print(f" [CANTEEN EXPRESS OTP DEBUG]")
+            print(f" Target Email: {email}")
+            print(f" OTP Code: {otp_code}")
+            print(f"========================================\n")
+
             email_sent = True
             try:
                 send_mail(
@@ -325,14 +332,15 @@ def send_signup_otp(request):
                     recipient_list=[email],
                     fail_silently=False,
                 )
-            except Exception:
+            except Exception as e:
                 email_sent = False
+                print(f"[Email Send Warning] Failed to send email via SMTP: {str(e)}")
+                if not getattr(settings, 'DEBUG', False):
+                    return JsonResponse({'success': False, 'error': f'Failed to send OTP email: {str(e)}'}, status=500)
 
             return JsonResponse({
                 'success': True,
-                'otp_code': otp_code,
-                'email_sent': email_sent,
-                'message': 'OTP sent to your institutional email.' if email_sent else 'Email delivery failed. Use the on-screen OTP instead.'
+                'message': 'OTP successfully sent to your corporate email.' if email_sent else 'OTP generated (SMTP email delivery skipped in debug mode - check server console).'
             })
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
@@ -389,6 +397,12 @@ def send_password_reset_otp(request):
             request.session['reset_otp_created_at'] = int(time.time())
             request.session['reset_otp_attempts'] = 0
 
+            print(f"\n========================================")
+            print(f" [CANTEEN EXPRESS RESET OTP DEBUG]")
+            print(f" Target Email: {email}")
+            print(f" OTP Code: {otp_code}")
+            print(f"========================================\n")
+
             email_sent = True
             try:
                 send_mail(
@@ -403,14 +417,15 @@ def send_password_reset_otp(request):
                     recipient_list=[email],
                     fail_silently=False,
                 )
-            except Exception:
+            except Exception as e:
                 email_sent = False
+                print(f"[Email Send Warning] Failed to send email via SMTP: {str(e)}")
+                if not getattr(settings, 'DEBUG', False):
+                    return JsonResponse({'success': False, 'error': f'Failed to send password reset OTP email: {str(e)}'}, status=500)
 
             return JsonResponse({
                 'success': True,
-                'otp_code': otp_code,
-                'email_sent': email_sent,
-                'message': 'OTP sent to your institutional email.' if email_sent else 'Email delivery failed. Use the on-screen OTP instead.'
+                'message': 'Password reset OTP successfully sent to your corporate email.' if email_sent else 'Password reset OTP generated (SMTP email delivery skipped in debug mode - check server console).'
             })
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
