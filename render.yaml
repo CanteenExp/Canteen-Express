@@ -26,3 +26,19 @@ services:
         value: aws-0-ap-southeast-1.pooler.supabase.com
       - key: DB_PORT
         value: 6543
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USE_TLS
+        value: True
+      - key: EMAIL_USE_SSL
+        value: False
+      - key: EMAIL_HOST_USER
+        value: canteenexpress26@gmail.com
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        value: Canteen Express <canteenexpress26@gmail.com>
+      - key: EMAIL_TIMEOUT
+        value: 10
