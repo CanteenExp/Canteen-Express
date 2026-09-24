@@ -432,6 +432,7 @@ def send_password_reset_otp(request):
                     recipient_list=[email],
                     fail_silently=False,
                 )
+                print(f"SMTP send OK for password reset OTP -> {email}")
             except Exception as e:
                 email_sent = False
                 print(f"SMTP send failed for password reset OTP: {type(e).__name__}: {e}")
