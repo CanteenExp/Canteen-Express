@@ -151,8 +151,8 @@
                 },
                 getForgotOtp() {
                     if (this.forgotOtpCountdown > 0 || this.forgotSendingOtp) return;
-                    if (!this.forgotEmail || !this.forgotEmail.endsWith('@psu.palawan.edu.ph')) {
-                        this.triggerToast('Please enter a valid institutional email ending in @psu.palawan.edu.ph first.', 'error');
+                    if (!this.forgotEmail || !/^[^@\s]+@psu\.palawan\.edu\.ph$/.test(this.forgotEmail)) {
+                        this.triggerToast('Please enter your @psu.palawan.edu.ph email address first.', 'error');
                         return;
                     }
                     this.forgotSendingOtp = true;
@@ -250,9 +250,8 @@
                 },
                 getOtp() {
                     if (this.otpCountdown > 0) return;
-                    const localPart = this.signupEmail ? this.signupEmail.split('@')[0] : '';
-                    if (!this.signupEmail || !this.signupEmail.endsWith('@psu.palawan.edu.ph') || /^\d+$/.test(localPart) || !/[a-zA-Z]/.test(localPart)) {
-                        this.triggerToast('Institutional email must end with @psu.palawan.edu.ph and cannot consist solely of numbers (must contain letters).', 'error');
+                    if (!this.signupEmail || !/^[^@\s]+@psu\.palawan\.edu\.ph$/.test(this.signupEmail)) {
+                        this.triggerToast('Please enter your @psu.palawan.edu.ph email address first.', 'error');
                         return;
                     }
                     fetch('{% url "accounts:send_signup_otp" %}', {
@@ -404,7 +403,7 @@
                     <i class="fa-solid fa-graduation-cap"></i>
                 </div>
                 <h2 class="text-2xl font-black text-white font-poppins" x-text="mode === 'login' ? 'Faculty/Staff Sign In' : 'Faculty/Staff Sign Up'"></h2>
-                <p class="text-xs text-white/70 leading-relaxed max-w-xs mx-auto">Use your official institutional email ending in @psu.palawan.edu.ph.</p>
+                <p class="text-xs text-white/70 leading-relaxed max-w-xs mx-auto">Use your institutional email ending in @psu.palawan.edu.ph.</p>
             </div>
 
             {% if error %}

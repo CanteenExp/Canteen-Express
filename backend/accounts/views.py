@@ -30,6 +30,11 @@ def is_strong_password(password):
         return False
     return True
 
+_EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+def _is_valid_email(email):
+    return bool(email and _EMAIL_RE.match(email))
+
 def _otp_rate_allowed(session, prefix, limit=5, window=600, cooldown=60):
     now = int(time.time())
     last = session.get(f'{prefix}_sent_at', 0)
@@ -107,11 +112,8 @@ def faculty_auth_view(request):
             password = request.POST.get('password')
             confirm_password = request.POST.get('confirm_password')
             
-            if not email.endswith('@psu.palawan.edu.ph'):
-                error = "Institutional email must end with @psu.palawan.edu.ph"
-                mode = 'signup'
-            elif not email.split('@')[0] or email.split('@')[0].isdigit() or not any(c.isalpha() for c in email.split('@')[0]):
-                error = "Institutional email cannot consist solely of numbers. It must contain letters before @psu.palawan.edu.ph."
+            if not (_is_valid_email(email) and email.endswith('@psu.palawan.edu.ph')):
+                error = "Please enter a valid @psu.palawan.edu.ph email address."
                 mode = 'signup'
             elif password != confirm_password:
                 error = "Passwords do not match."
@@ -123,7 +125,7 @@ def faculty_auth_view(request):
                 error = "Please verify your email with the OTP code first."
                 mode = 'signup'
             elif User.objects.filter(email=email).exists():
-                error = "An account with this institutional email already exists. Please sign in."
+                error = "An account with this email already exists. Please sign in."
                 mode = 'login'
             else:
                 try:
@@ -314,12 +316,9 @@ def send_signup_otp(request):
             email = data.get('email', '').strip().lower()
             otp_code = f"{random.randint(100000, 999999)}"
             
-            if not email.endswith('@psu.palawan.edu.ph'):
-                return JsonResponse({'success': False, 'error': 'Invalid institutional email. Must end with @psu.palawan.edu.ph'}, status=400)
-            local_part = email.split('@')[0] if '@' in email else ''
-            if local_part.isdigit() or not any(c.isalpha() for c in local_part):
-                return JsonResponse({'success': False, 'error': 'Institutional email cannot consist solely of numbers. It must contain letters before @psu.palawan.edu.ph.'}, status=400)
-            
+            if not (_is_valid_email(email) and email.endswith('@psu.palawan.edu.ph')):
+                return JsonResponse({'success': False, 'error': 'Please enter a valid @psu.palawan.edu.ph email address.'}, status=400)
+
             rate_result = _otp_rate_allowed(request.session, 'signup')
             if rate_result:
                 return JsonResponse({'success': False, 'error': 'Please wait a minute before requesting another code.' if rate_result == 'cooldown' else 'Too many OTP requests. Please wait 10 minutes.'}, status=429)
@@ -361,7 +360,7 @@ def send_signup_otp(request):
             return JsonResponse({
                 'success': True,
                 'email_sent': email_sent,
-                'message': 'OTP sent to your institutional email.' if email_sent else 'Email delivery failed. Use the on-screen OTP instead.'
+                'message': 'OTP sent to your email.' if email_sent else 'Email delivery failed. Use the on-screen OTP instead.'
             } | ({'otp_code': otp_code} if not email_sent else {}))
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
@@ -402,11 +401,11 @@ def send_password_reset_otp(request):
             email = data.get('email', '').strip().lower()
             otp_code = f"{random.randint(100000, 999999)}"
             
-            if not email.endswith('@psu.palawan.edu.ph'):
-                return JsonResponse({'success': False, 'error': 'Invalid institutional email. Must end with @psu.palawan.edu.ph'}, status=400)
+            if not (_is_valid_email(email) and email.endswith('@psu.palawan.edu.ph')):
+                return JsonResponse({'success': False, 'error': 'Please enter a valid @psu.palawan.edu.ph email address.'}, status=400)
             
             if not User.objects.filter(email=email).exists():
-                return JsonResponse({'success': False, 'error': 'No account found with this institutional email.'}, status=400)
+                return JsonResponse({'success': False, 'error': 'No account found with this email.'}, status=400)
             
             rate_result = _otp_rate_allowed(request.session, 'reset')
             if rate_result:
@@ -450,7 +449,7 @@ def send_password_reset_otp(request):
             return JsonResponse({
                 'success': True,
                 'email_sent': email_sent,
-                'message': 'OTP sent to your institutional email.' if email_sent else 'Email delivery failed. Use the on-screen OTP instead.'
+                'message': 'OTP sent to your email.' if email_sent else 'Email delivery failed. Use the on-screen OTP instead.'
             } | ({'otp_code': otp_code} if not email_sent else {}))
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
