@@ -345,7 +345,7 @@ def send_signup_otp(request):
                 email_sent = False
                 print(f"Email send failed for signup OTP: {type(e).__name__}: {e}")
                 print(
-                    "Email API cfg: sendgrid_key_set=" + str(bool(os.getenv('SENDGRID_API_KEY', '')))
+                    "Email API cfg: brevo_key_set=" + str(bool(os.getenv('BREVO_API_KEY', '')))
                     + " from=" + str(os.getenv('EMAIL_FROM', settings.DEFAULT_FROM_EMAIL))
                     + " smtp_set=" + str(bool(getattr(settings, 'EMAIL_HOST_PASSWORD', '')))
                 )
@@ -427,7 +427,7 @@ def send_password_reset_otp(request):
                 email_sent = False
                 print(f"Email send failed for password reset OTP: {type(e).__name__}: {e}")
                 print(
-                    "Email API cfg: sendgrid_key_set=" + str(bool(os.getenv('SENDGRID_API_KEY', '')))
+                    "Email API cfg: brevo_key_set=" + str(bool(os.getenv('BREVO_API_KEY', '')))
                     + " from=" + str(os.getenv('EMAIL_FROM', settings.DEFAULT_FROM_EMAIL))
                     + " smtp_set=" + str(bool(getattr(settings, 'EMAIL_HOST_PASSWORD', '')))
                 )
