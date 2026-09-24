@@ -9,6 +9,7 @@ import os
 import re
 import time
 from django.core.mail import send_mail
+from django.conf import settings
 
 User = get_user_model()
 
@@ -339,12 +340,13 @@ def send_signup_otp(request):
                         f'This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n'
                         f'- Canteen Express Team'
                     ),
-                    from_email='Canteen Express <canteenexpress26@gmail.com>',
+                    from_email=None,
                     recipient_list=[email],
                     fail_silently=False,
                 )
-            except Exception:
+            except Exception as e:
                 email_sent = False
+                print(f"SMTP send failed for signup OTP: {type(e).__name__}: {e}")
 
             return JsonResponse({
                 'success': True,
@@ -416,12 +418,13 @@ def send_password_reset_otp(request):
                         f'This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n'
                         f'- Canteen Express Team'
                     ),
-                    from_email='Canteen Express <canteenexpress26@gmail.com>',
+                    from_email=None,
                     recipient_list=[email],
                     fail_silently=False,
                 )
-            except Exception:
+            except Exception as e:
                 email_sent = False
+                print(f"SMTP send failed for password reset OTP: {type(e).__name__}: {e}")
 
             return JsonResponse({
                 'success': True,

@@ -204,7 +204,9 @@ EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True') == 'True'
 EMAIL_USE_TLS = False
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'canteenexpress26@gmail.com')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Canteen Express <canteenexpress26@gmail.com>')
+# From address always follows the authenticated SMTP account so Gmail never
+# rejects a mismatched sender (works on Railway/Render the same as locally).
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', f'Canteen Express <{EMAIL_HOST_USER}>')
 
 
 CSRF_TRUSTED_ORIGINS = [
@@ -215,5 +217,11 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.railway.app',
     'https://*.localhost',
 ]
+
+# Behind Railway/Render/Cloudflare the app is always served over HTTPS, but
+# Django only sees the raw proxy connection. Tell it to trust the proxy's
+# X-Forwarded-Proto so request.is_secure()/CSRF/absolute URLs match the
+# browser's https origin (otherwise fetch POSTs 403/redirect in production).
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 ENFORCE_GEOFENCE = os.getenv('ENFORCE_GEOFENCE', 'True').lower() == 'true'

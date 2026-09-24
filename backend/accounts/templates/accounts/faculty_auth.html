@@ -164,7 +164,15 @@
                         },
                         body: JSON.stringify({ email: this.forgotEmail })
                     })
-                    .then(res => res.json())
+                    .then(async (res) => {
+                        const text = await res.text();
+                        let data = {};
+                        try { data = JSON.parse(text); } catch (e) { data = {}; }
+                        if (!res.ok && !data.error) {
+                            data.error = 'Server error (HTTP ' + res.status + '). Please reload and try again.';
+                        }
+                        return data;
+                    })
                     .then(data => {
                         if (data.success) {
                             this.forgotOtpCountdown = 60;
@@ -189,7 +197,7 @@
                         }
                     })
                     .catch(err => {
-                        this.triggerToast('Network error initializing password reset.', 'error');
+                        this.triggerToast((err && err.message) || 'Network error initializing password reset.', 'error');
                     })
                     .finally(() => {
                         this.forgotSendingOtp = false;
@@ -212,7 +220,15 @@
                             new_password: this.forgotNewPassword
                         })
                     })
-                    .then(res => res.json())
+                    .then(async (res) => {
+                        const text = await res.text();
+                        let data = {};
+                        try { data = JSON.parse(text); } catch (e) { data = {}; }
+                        if (!res.ok && !data.error) {
+                            data.error = 'Server error (HTTP ' + res.status + '). Please reload and try again.';
+                        }
+                        return data;
+                    })
                     .then(data => {
                         if (data.success) {
                             this.triggerToast('Password reset successful! Please sign in with your new password.', 'success');
@@ -229,7 +245,7 @@
                         }
                     })
                     .catch(err => {
-                        this.triggerToast('Error submitting password reset.', 'error');
+                        this.triggerToast((err && err.message) || 'Error submitting password reset.', 'error');
                     });
                 },
                 getOtp() {
