@@ -8,7 +8,7 @@ import json
 import os
 import re
 import time
-from accounts.emailer import send_code_email
+from django.core.mail import send_mail
 from django.conf import settings
 
 User = get_user_model()
@@ -331,7 +331,7 @@ def send_signup_otp(request):
 
             email_sent = True
             try:
-                send_code_email(
+                send_mail(
                     subject='Canteen Express - Your OTP Verification Code',
                     message=(
                         f'Hello,\n\n'
@@ -339,19 +339,22 @@ def send_signup_otp(request):
                         f'This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n'
                         f'- Canteen Express Team'
                     ),
-                    to_email=email,
+                    from_email=None,
+                    recipient_list=[email],
+                    fail_silently=False,
                 )
             except Exception as e:
                 email_sent = False
-                print(f"Email send failed for signup OTP: {type(e).__name__}: {e}")
+                print(f"SMTP send failed for signup OTP: {type(e).__name__}: {e}")
                 print(
-                    "Email API cfg: api_key_set=" + str(bool(os.getenv('EMAIL_API_KEY', '')))
-                    + " from=" + str(os.getenv('EMAIL_FROM', settings.DEFAULT_FROM_EMAIL))
-                    + " | SMTP cfg: host="
+                    "SMTP cfg: host="
                     + str(getattr(settings, 'EMAIL_HOST', ''))
                     + " port=" + str(getattr(settings, 'EMAIL_PORT', ''))
+                    + " ssl=" + str(getattr(settings, 'EMAIL_USE_SSL', ''))
                     + " tls=" + str(getattr(settings, 'EMAIL_USE_TLS', ''))
                     + " user=" + str(getattr(settings, 'EMAIL_HOST_USER', ''))
+                    + " pass_set=" + str(bool(getattr(settings, 'EMAIL_HOST_PASSWORD', '')))
+                    + " from=" + str(getattr(settings, 'DEFAULT_FROM_EMAIL', ''))
                 )
 
             return JsonResponse({
@@ -416,7 +419,7 @@ def send_password_reset_otp(request):
 
             email_sent = True
             try:
-                send_code_email(
+                send_mail(
                     subject='Canteen Express - Your Password Reset OTP',
                     message=(
                         f'Hello,\n\n'
@@ -424,20 +427,23 @@ def send_password_reset_otp(request):
                         f'This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n'
                         f'- Canteen Express Team'
                     ),
-                    to_email=email,
+                    from_email=None,
+                    recipient_list=[email],
+                    fail_silently=False,
                 )
-                print(f"Email send OK for password reset OTP -> {email}")
+                print(f"SMTP send OK for password reset OTP -> {email}")
             except Exception as e:
                 email_sent = False
-                print(f"Email send failed for password reset OTP: {type(e).__name__}: {e}")
+                print(f"SMTP send failed for password reset OTP: {type(e).__name__}: {e}")
                 print(
-                    "Email API cfg: api_key_set=" + str(bool(os.getenv('EMAIL_API_KEY', '')))
-                    + " from=" + str(os.getenv('EMAIL_FROM', settings.DEFAULT_FROM_EMAIL))
-                    + " | SMTP cfg: host="
+                    "SMTP cfg: host="
                     + str(getattr(settings, 'EMAIL_HOST', ''))
                     + " port=" + str(getattr(settings, 'EMAIL_PORT', ''))
+                    + " ssl=" + str(getattr(settings, 'EMAIL_USE_SSL', ''))
                     + " tls=" + str(getattr(settings, 'EMAIL_USE_TLS', ''))
                     + " user=" + str(getattr(settings, 'EMAIL_HOST_USER', ''))
+                    + " pass_set=" + str(bool(getattr(settings, 'EMAIL_HOST_PASSWORD', '')))
+                    + " from=" + str(getattr(settings, 'DEFAULT_FROM_EMAIL', ''))
                 )
 
             return JsonResponse({
