@@ -58,6 +58,15 @@ def delivery_fee_for_order(total_amount):
 delivery_earning_for_order = delivery_fee_for_order
 
 
+def prefetch_delivery_relations(qs):
+    """Apply select_related/prefetch_related so serialize_delivery (which walks
+    order, customer, rider, driver and order items) runs in O(1) queries instead
+    of N+1. Call this on any DeliveryRequest queryset before serializing."""
+    return qs.select_related(
+        'order', 'order__customer', 'rider', 'assigned_to'
+    ).prefetch_related('order__items')
+
+
 def serialize_delivery(d):
     """Shared serializer for a DeliveryRequest shown to the faculty customer side.
 

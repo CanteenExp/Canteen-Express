@@ -12,6 +12,18 @@ from django.core.mail import send_mail
 
 User = get_user_model()
 
+# Central role -> portal map so every login/redirect/access-denied path agrees
+# on where each role belongs. No more surprise cross-portal bounces.
+def role_portal(user):
+    role = getattr(user, 'role', '') or ''
+    if user.is_superuser or user.is_staff or role in ('STAFF', 'ADMIN'):
+        return 'canteen_menu:staff_dashboard'
+    if role in ('DELIVERY', 'RIDER'):
+        return 'deliveries:dashboard'
+    if role == 'FACULTY':
+        return 'accounts:dashboard'
+    return 'customer_portal:kiosk_menu'
+
 def is_strong_password(password):
     if len(password) < 6:
         return False
@@ -34,6 +46,10 @@ def _otp_rate_allowed(session, prefix, limit=5, window=600, cooldown=60):
     return ''
 
 def landing_view(request):
+    # Already logged in? Skip the role-picker and go straight to the role dashboard
+    # instead of bouncing the user around a static landing page.
+    if request.user.is_authenticated:
+        return redirect(role_portal(request.user))
     return render(request, 'accounts/landing.html')
 
 
@@ -55,6 +71,8 @@ def access_denied_view(request):
     elif user_role == 'STUDENT':
         portal_url = 'customer_portal:kiosk_menu'
         login_url = 'accounts:landing'
+    else:
+        portal_url = role_portal(request.user) if request.user.is_authenticated else portal_url
 
     return render(request, 'accounts/access_denied.html', {'portal_url': portal_url, 'login_url': login_url})
 
@@ -182,7 +200,7 @@ def faculty_dashboard_view(request, token=None):
 
     from canteen_menu.models import MenuItem, Category
     import json
-    menu_items = MenuItem.objects.filter(is_available=True)
+    menu_items = MenuItem.objects.select_related('category').filter(is_available=True)
     categories = Category.objects.all()
     
     email = request.session.get('faculty_email', '') or getattr(request.user, 'email', '')
@@ -216,10 +234,10 @@ def faculty_dashboard_view(request, token=None):
         })
 
     from deliveries.models import DeliveryRequest
-    from deliveries.utils import serialize_delivery
+    from deliveries.utils import serialize_delivery, prefetch_delivery_relations
     if request.user.is_authenticated:
-        ongoing_deliveries = DeliveryRequest.objects.filter(
-            order__customer=request.user).order_by('-requested_at')[:5]
+        ongoing_deliveries = prefetch_delivery_relations(DeliveryRequest.objects.filter(
+            order__customer=request.user).order_by('-requested_at')[:5])
     else:
         ongoing_deliveries = []
 
@@ -330,10 +348,9 @@ def send_signup_otp(request):
 
             return JsonResponse({
                 'success': True,
-                'otp_code': otp_code,
                 'email_sent': email_sent,
                 'message': 'OTP sent to your institutional email.' if email_sent else 'Email delivery failed. Use the on-screen OTP instead.'
-            })
+            } | ({'otp_code': otp_code} if not email_sent else {}))
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
     return JsonResponse({'success': False}, status=405)
@@ -408,10 +425,9 @@ def send_password_reset_otp(request):
 
             return JsonResponse({
                 'success': True,
-                'otp_code': otp_code,
                 'email_sent': email_sent,
                 'message': 'OTP sent to your institutional email.' if email_sent else 'Email delivery failed. Use the on-screen OTP instead.'
-            })
+            } | ({'otp_code': otp_code} if not email_sent else {}))
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
     return JsonResponse({'success': False}, status=405)

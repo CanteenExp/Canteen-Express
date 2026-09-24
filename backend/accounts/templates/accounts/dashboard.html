@@ -67,6 +67,26 @@
         .modal-pop { animation: modalPop 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes modalPop { from { opacity: 0; transform: scale(0.92) translateY(14px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
+        /* ===== Compact receipt printing ===== */
+        .receipt-sheet { width: 100%; max-width: 320px; }
+        @media print {
+            body { background: #fff !important; }
+            body * { visibility: hidden; }
+            #order-placed-modal, #pickup-placed-modal,
+            #order-placed-modal *, #pickup-placed-modal * { visibility: visible; }
+            #order-placed-modal, #pickup-placed-modal {
+                position: fixed; inset: 0; gap: 0; padding: 0; background: #fff !important;
+                -webkit-backdrop-filter: none; backdrop-filter: none; display: flex;
+            }
+            #order-placed-modal .glass-panel, #pickup-placed-modal .glass-panel {
+                max-width: 300px; margin: auto; padding: 14px !important; box-shadow: none !important;
+                background: #fff !important; border: 1px solid #e4e4e7 !important;
+                -webkit-backdrop-filter: none; backdrop-filter: none;
+            }
+            #order-placed-modal .glass-panel *:not(.receipt-print-hide), 
+            #pickup-placed-modal .glass-panel *:not(.receipt-print-hide) { color: #111 !important; }
+        }
+
         /* ===== Glassmorphism UI system ===== */
         .glass-backdrop {
             background: rgba(8, 8, 12, 0.55) !important;
@@ -769,6 +789,33 @@
     </div>
 
 
+    <!-- ================= ACTIVE ORDER ALERT MODAL (mirrors student kiosk) ================= -->
+    <div id="active-order-alert-modal" class="fixed inset-0 z-[95] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="modal-pop glass-panel glass-panel-accent rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl relative">
+            <button onclick="closeActiveOrderAlert()" class="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto text-2xl animate-bounce">
+                <i class="fa-solid fa-truck-fast"></i>
+            </div>
+            <div>
+                <h3 class="font-black text-white text-base">Order in Progress</h3>
+                <p class="text-[11px] text-brand-slate font-medium mt-1.5 leading-relaxed">
+                    You have an active order (<b id="active-order-alert-number" class="text-brand-orange">#CE-0000</b>).
+                    Complete payment or cancel it before placing a new one.
+                </p>
+            </div>
+            <div class="space-y-2">
+                <button onclick="closeActiveOrderAlert(); openViewOrderModal();" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-2.5 rounded-xl uppercase tracking-wider text-xs transition active:scale-95 shadow-lg shadow-brand-orange/25 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-location-dot"></i> View My Order
+                </button>
+                <button onclick="closeActiveOrderAlert()" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-xl text-xs transition active:scale-95">
+                    Got it
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= REAL-TIME LEAFLET MAP MODAL ================= -->
     <div id="map-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
         <div class="glass-panel rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col h-[450px]">
@@ -956,47 +1003,47 @@
 
     <!-- ================= ORDER PLACED CONFIRMATION MODAL ================= -->
     <div id="order-placed-modal" class="fixed inset-0 z-[70] glass-backdrop hidden flex items-center justify-center p-4">
-        <div class="modal-pop glass-panel rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl text-center">
-            <div class="relative mx-auto w-20 h-20">
+        <div class="modal-pop glass-panel receipt-sheet rounded-2xl w-full p-4 sm:p-3 space-y-3 shadow-2xl text-center">
+            <div class="relative mx-auto w-12 h-12">
                 <div class="confirm-ring absolute inset-0 rounded-full bg-brand-orange/20"></div>
-                <div class="confirm-check relative w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 via-brand-orange to-orange-600 text-white flex items-center justify-center text-3xl shadow-lg">
+                <div class="confirm-check relative w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 via-brand-orange to-orange-600 text-white flex items-center justify-center text-lg shadow-lg">
                     <i class="fa-solid fa-check"></i>
                 </div>
             </div>
 
-            <div class="space-y-1.5">
-                <h3 class="text-xl font-black text-white">Delivery Order Placed!</h3>
-                <p class="text-[11px] font-black text-brand-orange uppercase tracking-wider">Order <span id="place-order-number">#CE-0000</span></p>
+            <div class="space-y-0.5">
+                <h3 class="text-sm font-black text-white">Delivery Order Placed!</h3>
+                <p class="text-[10px] font-black text-brand-orange uppercase tracking-wider">Order <span id="place-order-number">#CE-0000</span></p>
             </div>
 
-            <div class="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2 text-xs text-left">
-                <div class="flex justify-between gap-4 text-brand-slate border-b border-white/10 pb-2">
-                    <span><i class="fa-solid fa-location-dot text-brand-orange mr-1.5"></i>Delivery To</span>
-                    <span id="place-order-location" class="font-bold text-white text-right">--</span>
+            <div class="bg-white/5 border border-white/10 rounded-xl p-2.5 space-y-1.5 text-[11px] text-left">
+                <div class="flex justify-between gap-3 text-brand-slate">
+                    <span><i class="fa-solid fa-location-dot text-brand-orange mr-1"></i>Delivery To</span>
+                    <span id="place-order-location" class="font-bold text-white text-right max-w-[55%]">--</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate border-b border-white/10 pb-2">
-                    <span><i class="fa-solid fa-motorcycle text-brand-orange mr-1.5"></i>Delivery Fee (Rider)</span>
+                <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
+                    <span><i class="fa-solid fa-motorcycle text-brand-orange mr-1"></i>Delivery Fee (Rider)</span>
                     <span id="place-order-fee" class="font-bold text-brand-orange">₱0.00</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate">
-                    <span><i class="fa-solid fa-credit-card text-brand-orange mr-1.5"></i>Total Payment</span>
-                    <span id="place-order-total" class="font-black text-orange-400 text-base bg-orange-950/80 border border-orange-500/40 px-3 py-1 rounded-full shadow-glow-orange">₱0.00</span>
+                <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
+                    <span><i class="fa-solid fa-credit-card text-brand-orange mr-1"></i>Total Payment</span>
+                    <span id="place-order-total" class="font-black text-orange-400 text-sm bg-orange-950/80 border border-orange-500/40 px-2.5 py-0.5 rounded-full shadow-glow-orange">₱0.00</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate pt-2 border-t border-white/10">
-                    <span><i class="fa-solid fa-coins text-amber-400 mr-1.5"></i>Loyalty Points Earned</span>
+                <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
+                    <span><i class="fa-solid fa-coins text-amber-400 mr-1"></i>Loyalty Points</span>
                     <span id="place-order-points" class="font-bold text-emerald-400">+0 pts</span>
                 </div>
             </div>
 
-            <p class="text-[11px] text-brand-slate leading-relaxed">
-                A rider will be assigned to your order shortly. Track your rider's live location below.
+            <p class="text-[10px] text-brand-slate leading-relaxed">
+                A rider will be assigned shortly. Track your rider's live location below.
             </p>
 
-            <div class="grid grid-cols-2 gap-2.5">
-                <button onclick="closeOrderPlacedModal()" class="py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider transition">
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="closeOrderPlacedModal()" class="py-2.5 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-[11px] uppercase tracking-wider transition">
                     Continue Shopping
                 </button>
-                <button onclick="closeOrderPlacedModal(); openViewOrderModal();" class="py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow flex items-center justify-center gap-1.5">
+                <button onclick="closeOrderPlacedModal(); openViewOrderModal();" class="py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-[11px] uppercase tracking-wider transition shadow flex items-center justify-center gap-1.5">
                     <i class="fa-solid fa-location-dot"></i> Track Order
                 </button>
             </div>
@@ -1005,49 +1052,49 @@
 
     <!-- ================= PICKUP ORDER PLACED CONFIRMATION MODAL ================= -->
     <div id="pickup-placed-modal" class="fixed inset-0 z-[70] glass-backdrop hidden flex items-center justify-center p-4">
-        <div class="modal-pop glass-panel rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl text-center">
-            <div class="relative mx-auto w-20 h-20">
+        <div class="modal-pop glass-panel receipt-sheet rounded-2xl w-full p-4 sm:p-3 space-y-3 shadow-2xl text-center">
+            <div class="relative mx-auto w-12 h-12">
                 <div class="confirm-ring absolute inset-0 rounded-full bg-emerald-500/20"></div>
-                <div class="confirm-check relative w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 text-white flex items-center justify-center text-3xl shadow-lg">
+                <div class="confirm-check relative w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 text-white flex items-center justify-center text-lg shadow-lg">
                     <i class="fa-solid fa-store"></i>
                 </div>
             </div>
 
-            <div class="space-y-1.5">
-                <h3 class="text-xl font-black text-white">Pickup Order Placed!</h3>
-                <p class="text-[11px] font-black text-brand-orange uppercase tracking-wider">Order <span id="pickup-place-number">#CE-0000</span></p>
+            <div class="space-y-0.5">
+                <h3 class="text-sm font-black text-white">Pickup Order Placed!</h3>
+                <p class="text-[10px] font-black text-brand-orange uppercase tracking-wider">Order <span id="pickup-place-number">#CE-0000</span></p>
             </div>
 
-            <div class="bg-white rounded-2xl p-4 space-y-1.5 shadow-inner">
-                <p class="text-[10px] uppercase tracking-widest font-black text-gray-500">Your Queue Slip Barcode</p>
-                <svg id="pickup-place-barcode" class="w-full h-16"></svg>
-                <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Scan at Counter to Process Payment</p>
+            <div class="bg-white rounded-xl p-2.5 space-y-1 shadow-inner">
+                <p class="text-[9px] uppercase tracking-widest font-black text-gray-500">Your Queue Slip Barcode</p>
+                <svg id="pickup-place-barcode" class="w-full h-12"></svg>
+                <p class="text-[8px] text-gray-400 font-bold uppercase tracking-widest">Scan at Counter to Process Payment</p>
             </div>
 
-            <div class="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2 text-xs text-left">
-                <div class="flex justify-between gap-4 text-brand-slate border-b border-white/10 pb-2">
-                    <span><i class="fa-solid fa-store text-emerald-400 mr-1.5"></i>Pickup Location</span>
+            <div class="bg-white/5 border border-white/10 rounded-xl p-2.5 space-y-1.5 text-[11px] text-left">
+                <div class="flex justify-between gap-3 text-brand-slate">
+                    <span><i class="fa-solid fa-store text-emerald-400 mr-1"></i>Pickup Location</span>
                     <span class="font-bold text-white text-right">Canteen Express Counter</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate border-b border-white/10 pb-2">
-                    <span><i class="fa-solid fa-money-bill-wave text-emerald-400 mr-1.5"></i>Delivery Fee</span>
+                <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
+                    <span><i class="fa-solid fa-money-bill-wave text-emerald-400 mr-1"></i>Delivery Fee</span>
                     <span class="font-bold text-emerald-400">Free (Pickup)</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate">
-                    <span><i class="fa-solid fa-credit-card text-brand-orange mr-1.5"></i>Total Payment</span>
-                    <span id="pickup-place-total" class="font-black text-orange-400 text-base bg-orange-950/80 border border-orange-500/40 px-3 py-1 rounded-full shadow-glow-orange">₱0.00</span>
+                <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
+                    <span><i class="fa-solid fa-credit-card text-brand-orange mr-1"></i>Total Payment</span>
+                    <span id="pickup-place-total" class="font-black text-orange-400 text-sm bg-orange-950/80 border border-orange-500/40 px-2.5 py-0.5 rounded-full shadow-glow-orange">₱0.00</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate pt-2 border-t border-white/10">
-                    <span><i class="fa-solid fa-coins text-amber-400 mr-1.5"></i>Loyalty Points Earned</span>
+                <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
+                    <span><i class="fa-solid fa-coins text-amber-400 mr-1"></i>Loyalty Points</span>
                     <span id="pickup-place-points" class="font-bold text-emerald-400">+0 pts</span>
                 </div>
             </div>
 
-            <p class="text-[11px] text-brand-slate leading-relaxed">
-                Head to the Canteen Express counter and show this barcode to pay. Your order will be prepared right away.
+            <p class="text-[10px] text-brand-slate leading-relaxed">
+                Head to the counter and show this barcode to pay.
             </p>
 
-            <button onclick="closePickupPlacedModal()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow">
+            <button onclick="closePickupPlacedModal()" class="w-full py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-[11px] uppercase tracking-wider transition shadow">
                 Continue Shopping
             </button>
         </div>
@@ -1641,6 +1688,11 @@
 
     // Item Details Modal
     function openItemModal(itemId) {
+        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
+        if (activeOrder) {
+            showActiveOrderAlert(activeOrder);
+            return;
+        }
         const item = menuData.find(i => i.id === itemId);
         if (!item) return;
         selectedItemForModal = item;
@@ -1724,8 +1776,7 @@
         if (!selectedItemForModal) return;
         const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
         if (activeOrder) {
-            showCheckoutError('Order in Progress',
-                'You must complete your previous order (' + activeOrder.order_number + ') before ordering again. Please wait for it to be delivered.');
+            showActiveOrderAlert(activeOrder);
             return;
         }
         let basePrice = selectedItemForModal.price + (modalRiceQty * 15);
@@ -2102,10 +2153,10 @@
                 JsBarcode("#pickup-place-barcode", data.order_number.toString(), {
                     format: "CODE128",
                     lineColor: "#111827",
-                    width: 2,
-                    height: 50,
+                    width: 1.6,
+                    height: 36,
                     displayValue: true,
-                    fontSize: 12,
+                    fontSize: 9,
                     margin: 0
                 });
             }, 50);
@@ -2202,6 +2253,12 @@
 
     function openCheckoutModal() {
         if (Object.keys(cart).length === 0) return;
+        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
+        if (activeOrder) {
+            closeCartDrawer();
+            showActiveOrderAlert(activeOrder);
+            return;
+        }
         setFulfillment('delivery');
         updateCheckoutSummary();
         document.getElementById('checkout-modal').classList.remove('hidden');
@@ -2350,12 +2407,11 @@
 
         const activeD = ongoingDeliveriesData.find(isOngoingDelivery);
         if (activeD) {
-            showCheckoutError('Order in Progress',
-                'You must complete your previous order (' + activeD.order_number + ') before ordering again. Please wait for it to be delivered.');
             const submitBtn = document.getElementById('checkout-submit-btn');
             submitBtn.disabled = false;
             submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
             closeCheckoutModal();
+            showActiveOrderAlert(activeD);
             return;
         }
 
@@ -2445,6 +2501,21 @@ if (isDelivery) {
         document.getElementById('checkout-error-title').innerText = title || 'Checkout Error';
         document.getElementById('checkout-error-message').innerText = message || 'Something went wrong. Please try again.';
         document.getElementById('checkout-error-modal').classList.remove('hidden');
+    }
+
+    // Mirrors the student kiosk: any attempt to start a new order while an
+    // active order exists is blocked with a dedicated pop-up until the
+    // current order state is resolved (paid/completed or cancelled).
+    function showActiveOrderAlert(activeOrder) {
+        const numEl = document.getElementById('active-order-alert-number');
+        if (numEl && activeOrder && activeOrder.order_number) {
+            numEl.innerText = activeOrder.order_number;
+        }
+        document.getElementById('active-order-alert-modal').classList.remove('hidden');
+    }
+
+    function closeActiveOrderAlert() {
+        document.getElementById('active-order-alert-modal').classList.add('hidden');
     }
 
     function closeCheckoutErrorModal() {

@@ -19,7 +19,7 @@ def _get_formatted_menu():
     if cached is not None:
         return cached
 
-    db_items = MenuItem.objects.filter(is_available=True).order_by('-id')
+    db_items = MenuItem.objects.select_related('category').filter(is_available=True).order_by('-id')
     formatted_menu = []
     for item in db_items:
         img_url = ''

@@ -5,8 +5,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib import messages
 from django.core.cache import cache
-from .models import MenuItem, Category
 from django.views.decorators.csrf import csrf_exempt
+from accounts.decorators import role_required
 
 try:
     from .forms import MenuItemForm, CategoryForm
@@ -16,12 +16,14 @@ except ImportError:
 
 
 # 1. STAFF SIDE - List all food items (READ) & Categories
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
 def staff_menu_list(request):
-    items = MenuItem.objects.all().order_by('category__name', 'name')
+    items = MenuItem.objects.all().select_related('category').order_by('category__name', 'name')
     categories = Category.objects.all().order_by('name')
     return render(request, 'canteen_menu/menu_list.html', {'items': items, 'categories': categories})
 
 
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
 def staff_menu_toggle_availability(request, pk):
     item = get_object_or_404(MenuItem, pk=pk)
     item.is_available = not item.is_available
@@ -31,6 +33,7 @@ def staff_menu_toggle_availability(request, pk):
 
 
 # Category CRUD Views
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
 def category_create(request):
     if request.method == 'POST':
         form = CategoryForm(request.POST)
@@ -39,6 +42,7 @@ def category_create(request):
             messages.success(request, "New category added successfully!")
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
 def category_update(request, pk):
     category = get_object_or_404(Category, pk=pk)
     if request.method == 'POST':
@@ -48,6 +52,7 @@ def category_update(request, pk):
             messages.success(request, "Category updated successfully!")
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
 def category_delete(request, pk):
     category = get_object_or_404(Category, pk=pk)
     if request.method == 'POST':
@@ -170,6 +175,7 @@ def _generate_auto_desc(name):
 
 
 # 2. STAFF SIDE - Add New Item (CREATE)
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
 def staff_menu_create(request):
     if request.method == 'POST':
         form = MenuItemForm(request.POST, request.FILES)
@@ -191,6 +197,7 @@ def staff_menu_create(request):
 
 
 # 3. STAFF SIDE - Edit Item (UPDATE)
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
 def staff_menu_update(request, pk):
     item = get_object_or_404(MenuItem, pk=pk)
     if request.method == 'POST':
@@ -221,6 +228,7 @@ def staff_menu_update(request, pk):
 
 
 # 4. STAFF SIDE - Delete Item (DELETE)
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
 def staff_menu_delete(request, pk):
     item = get_object_or_404(MenuItem, pk=pk)
     if request.method == 'POST':
@@ -229,6 +237,7 @@ def staff_menu_delete(request, pk):
         messages.success(request, "Menu item deleted successfully!")
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
 def counter_board(request):
     from customer_portal.models import Order
     from django.utils import timezone
@@ -245,6 +254,7 @@ def counter_board(request):
     }
     return render(request, 'canteen_menu/counter_board.html', context)
 
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
 def counter_live_stream(request):
     """
     Real-time SSE stream for the Counter Board.
@@ -295,8 +305,6 @@ def counter_live_stream(request):
         },
     )
 
-from accounts.decorators import role_required
-
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
 def staff_dashboard(request, token=None):
     import uuid
@@ -321,9 +329,13 @@ def staff_dashboard(request, token=None):
     User = get_user_model()
 
     today = timezone.now().date()
-    week_start = today - timezone.timedelta(days=7)
-    month_start = today.replace(day=1)
-    today_orders = Order.objects.filter(created_at__date=today).exclude(status='unpaid')
+    day_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end = day_start + timezone.timedelta(days=1)
+    week_start = day_start - timezone.timedelta(days=7)
+    month_start = day_start.replace(day=1)
+    today_orders = Order.objects.filter(
+        created_at__gte=day_start, created_at__lt=day_end
+    ).exclude(status='unpaid')
     
     total_orders_today = today_orders.count()
     pending_count = Order.objects.filter(status='pending').count()
@@ -331,7 +343,7 @@ def staff_dashboard(request, token=None):
     ready_count = Order.objects.filter(status='ready').count()
     
     recent_orders = Order.objects.exclude(status='completed').exclude(status='unpaid').order_by('-created_at')[:5]
-    menu_items = MenuItem.objects.all().order_by('category__name', 'name')
+    menu_items = MenuItem.objects.all().select_related('category').order_by('category__name', 'name')
     categories = Category.objects.all().order_by('name')
     users_list = User.objects.exclude(role__in=['DELIVERY', 'RIDER']).order_by('-date_joined')[:30] if hasattr(User, 'date_joined') else User.objects.exclude(role__in=['DELIVERY', 'RIDER'])[:30]
     delivery_staff_list = User.objects.filter(role__in=['RIDER', 'DELIVERY'])
@@ -347,23 +359,23 @@ def staff_dashboard(request, token=None):
     kiosk_orders = valid_orders.filter(customer__isnull=True)
     faculty_orders = valid_orders.filter(customer__role='FACULTY')
     from deliveries.models import DeliveryRequest
-    delivery_order_ids = DeliveryRequest.objects.values_list('order_id', flat=True)
+    delivery_order_ids = DeliveryRequest.objects.values('order_id')
     delivery_orders = valid_orders.filter(id__in=delivery_order_ids)
 
     def compute_stats(qs):
-        s_today = qs.filter(created_at__date=today).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        s_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        s_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        c_today = qs.filter(created_at__date=today).count()
-        c_week = qs.filter(created_at__date__gte=week_start).count()
-        c_month = qs.filter(created_at__date__gte=month_start).count()
+        s_today = qs.filter(created_at__gte=day_start, created_at__lt=day_end).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        s_week = qs.filter(created_at__gte=week_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        s_month = qs.filter(created_at__gte=month_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        c_today = qs.filter(created_at__gte=day_start, created_at__lt=day_end).count()
+        c_week = qs.filter(created_at__gte=week_start).count()
+        c_month = qs.filter(created_at__gte=month_start).count()
         return {'today': s_today, 'week': s_week, 'month': s_month, 'count_today': c_today, 'count_week': c_week, 'count_month': c_month}
 
     def compute_delivery_stats(qs):
         base = compute_stats(qs)
-        d_fees_today = qs.filter(created_at__date=today).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
-        d_fees_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
-        d_fees_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
+        d_fees_today = qs.filter(created_at__gte=day_start, created_at__lt=day_end).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
+        d_fees_week = qs.filter(created_at__gte=week_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
+        d_fees_month = qs.filter(created_at__gte=month_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
         base['delivery_fees'] = {'today': d_fees_today, 'week': d_fees_week, 'month': d_fees_month}
         return base
 
@@ -375,11 +387,11 @@ def staff_dashboard(request, token=None):
     def get_rankings(date_filter=None):
         f = Q(assigned_deliveries__status='DELIVERED')
         if date_filter == 'daily':
-            f &= Q(assigned_deliveries__order__created_at__date=today)
+            f &= Q(assigned_deliveries__order__created_at__gte=day_start, assigned_deliveries__order__created_at__lt=day_end)
         elif date_filter == 'weekly':
-            f &= Q(assigned_deliveries__order__created_at__date__gte=week_start)
+            f &= Q(assigned_deliveries__order__created_at__gte=week_start)
         elif date_filter == 'monthly':
-            f &= Q(assigned_deliveries__order__created_at__date__gte=month_start)
+            f &= Q(assigned_deliveries__order__created_at__gte=month_start)
         return list(
             User.objects.filter(role__in=['RIDER', 'DELIVERY'])
             .annotate(
@@ -435,7 +447,7 @@ def staff_dashboard(request, token=None):
     # Audit Logs & Reports Data
     from customer_portal.models import OrderItem
     audit_logs = []
-    for o in Order.objects.all().order_by('-created_at')[:15]:
+    for o in Order.objects.select_related('customer').order_by('-created_at')[:15]:
         audit_logs.append({
             'timestamp': o.created_at,
             'action': f"Order {o.order_number} ({o.status}) - ₱{o.total_amount}",
@@ -749,6 +761,7 @@ def update_user_status_view(request, pk):
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=users')
 
 @csrf_exempt
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
 def process_barcode_api(request):
     if request.method == 'POST':
         try:
@@ -820,5 +833,6 @@ def process_barcode_api(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
 
 
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
 def counter_pos_view(request):
     return render(request, 'canteen_menu/counter_pos.html')

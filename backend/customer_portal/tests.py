@@ -1,5 +1,5 @@
 import json
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from accounts.models import CustomUser
 from canteen_menu.models import Category, MenuItem
@@ -108,6 +108,7 @@ class CheckoutTestCase(TestCase):
         self.assertEqual(float(data['delivery_fee']), 0.0)
         self.assertEqual(float(data['total_payment']), 150.0)
 
+    @override_settings(ENFORCE_GEOFENCE=True)
     def test_delivery_checkout_rejected_outside_campus(self):
         self.client.login(username='faculty_test', password='password123')
         payload = {
@@ -131,6 +132,7 @@ class CheckoutTestCase(TestCase):
         self.assertFalse(data['success'])
         self.assertIn('campus', data['message'].lower())
 
+    @override_settings(ENFORCE_GEOFENCE=True)
     def test_delivery_checkout_rejected_missing_coords(self):
         self.client.login(username='faculty_test', password='password123')
         payload = {

@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_POST
 from django.core.exceptions import ValidationError
+from django.db.models import Count, Sum
 import json
 import time
 from datetime import timedelta
@@ -52,13 +53,11 @@ def delivery_dashboard(request, token=None):
         rider=request.user, status=DeliveryRequest.RequestStatus.DELIVERED
     ).order_by('-delivered_at')[:15]
 
-    completed_count = DeliveryRequest.objects.filter(
-        rider=request.user, status=DeliveryRequest.RequestStatus.DELIVERED
-    ).count()
     completed_qs = DeliveryRequest.objects.filter(
         rider=request.user, status=DeliveryRequest.RequestStatus.DELIVERED
     )
-    total_earnings = sum(float(d.order.delivery_fee) for d in completed_qs)
+    completed_count = completed_qs.count()
+    total_earnings = completed_qs.aggregate(total=Sum('order__delivery_fee'))['total'] or 0
     active_deliveries_count = DeliveryRequest.objects.filter(
         rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED
     ).count()
@@ -103,10 +102,9 @@ def delivery_history(request):
     completed_count = history.filter(
         status=DeliveryRequest.RequestStatus.DELIVERED
     ).count()
-    total_earnings = sum(
-        float(d.order.delivery_fee)
-        for d in history.filter(status=DeliveryRequest.RequestStatus.DELIVERED)
-    )
+    total_earnings = history.filter(
+        status=DeliveryRequest.RequestStatus.DELIVERED
+    ).aggregate(total=Sum('order__delivery_fee'))['total'] or 0
 
     context = {
         'history': history,
@@ -376,13 +374,14 @@ def pool_status(request):
         rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED
     ).values_list('id', flat=True))
 
-    # Unread chat counts across the rider's accepted deliveries
-    unread = {}
-    for d in DeliveryRequest.objects.filter(rider=request.user).exclude(
-        status=DeliveryRequest.RequestStatus.REJECTED):
-        count = d.messages.filter(is_read=False).exclude(sender=request.user).count()
-        if count:
-            unread[d.id] = count
+    # Unread chat counts across the rider's accepted deliveries (one aggregate
+    # query instead of one COUNT per delivery).
+    unread_rows = (DeliveryMessage.objects
+                   .filter(delivery__rider=request.user, is_read=False)
+                   .exclude(sender=request.user)
+                   .values('delivery_id')
+                   .annotate(n=Count('id')))
+    unread = {row['delivery_id']: row['n'] for row in unread_rows}
 
     return JsonResponse({
         'success': True,
@@ -554,10 +553,10 @@ def track_order(request, delivery_id):
 @role_required(allowed_roles=['STUDENT', 'FACULTY'])
 def faculty_delivery_status(request):
     """Polling endpoint for the faculty/student dashboard to live-sync delivery statuses."""
-    from .utils import serialize_delivery
+    from .utils import serialize_delivery, prefetch_delivery_relations
     if request.user.is_authenticated:
-        deliveries = DeliveryRequest.objects.filter(
-            order__customer=request.user).order_by('-requested_at')[:5]
+        deliveries = prefetch_delivery_relations(DeliveryRequest.objects.filter(
+            order__customer=request.user).order_by('-requested_at')[:5])
     else:
         deliveries = []
     data = [serialize_delivery(d) for d in deliveries]
@@ -570,8 +569,7 @@ def rider_earnings_summary(request):
     completed_qs = DeliveryRequest.objects.filter(
         rider=request.user, status=DeliveryRequest.RequestStatus.DELIVERED
     )
-    total_earnings = sum(
-        float(d.order.delivery_fee) for d in completed_qs)
+    total_earnings = completed_qs.aggregate(total=Sum('order__delivery_fee'))['total'] or 0
     return JsonResponse({
         'success': True,
         'total_earnings': total_earnings,
@@ -592,7 +590,7 @@ def rider_live_stream(request):
       - current delivery earnings (based on delivered orders, per full ₱300)
     """
     import hashlib
-    from .utils import serialize_delivery
+    from .utils import serialize_delivery, prefetch_delivery_relations
 
     def event_stream():
         last_hash = None
@@ -625,23 +623,24 @@ def rider_live_stream(request):
 
                 pending_ids = list(pending_pool_for_rider(request.user).values_list('id', flat=True))
 
-                my_deliveries = DeliveryRequest.objects.filter(
+                my_deliveries = prefetch_delivery_relations(DeliveryRequest.objects.filter(
                     rider=request.user).exclude(
-                        status=DeliveryRequest.RequestStatus.REJECTED)
+                        status=DeliveryRequest.RequestStatus.REJECTED)).prefetch_related(
+                            'messages')
                 active = [serialize_delivery(d) for d in my_deliveries.filter(
                     status=DeliveryRequest.RequestStatus.ACCEPTED)]
 
                 completed_qs = my_deliveries.filter(
                     status=DeliveryRequest.RequestStatus.DELIVERED)
-                total_earnings = sum(
-                    float(d.order.delivery_fee) for d in completed_qs)
+                total_earnings = completed_qs.aggregate(total=Sum('order__delivery_fee'))['total'] or 0
 
                 unread = {}
                 total_unread = 0
                 chat_digest = None
                 for d in my_deliveries:
-                    last = d.messages.order_by('-timestamp', '-id').first()
-                    if last is not None:
+                    msgs = list(d.messages.all())
+                    if msgs:
+                        last = max(msgs, key=lambda m: (m.timestamp, m.id))
                         current = f"{d.id}:{last.id}:{last.timestamp.timestamp()}"
                         chat_digest = (chat_digest + '|' + current) if chat_digest else current
                     count = last__count_for(d, request.user)
@@ -703,15 +702,15 @@ def faculty_delivery_stream(request):
     there is something new, instead of polling every 1-2 seconds.
     """
     import hashlib
-    from .utils import serialize_delivery
+    from .utils import serialize_delivery, prefetch_delivery_relations
 
     def event_stream():
         last_hash = None
         last_chat_hash = None
         while True:
             try:
-                deliveries = DeliveryRequest.objects.filter(
-                    order__customer=request.user).order_by('-requested_at')[:5]
+                deliveries = prefetch_delivery_relations(DeliveryRequest.objects.filter(
+                    order__customer=request.user).order_by('-requested_at')[:5])
                 data = [serialize_delivery(d) for d in deliveries]
 
                 payload = {
@@ -725,10 +724,12 @@ def faculty_delivery_stream(request):
                 chat_digest = None
                 chat_deliveries = DeliveryRequest.objects.filter(
                     order__customer=request.user).exclude(
-                        status=DeliveryRequest.RequestStatus.SEARCHING)
+                        status=DeliveryRequest.RequestStatus.SEARCHING).prefetch_related(
+                            'messages')
                 for d in chat_deliveries:
-                    last = d.messages.order_by('-timestamp', '-id').first()
-                    if last is not None:
+                    msgs = list(d.messages.all())
+                    if msgs:
+                        last = max(msgs, key=lambda m: (m.timestamp, m.id))
                         current = f"{d.id}:{last.id}:{last.timestamp.timestamp()}"
                         chat_digest = (chat_digest + '|' + current) if chat_digest else current
                 if chat_digest is not None and chat_digest != last_chat_hash:

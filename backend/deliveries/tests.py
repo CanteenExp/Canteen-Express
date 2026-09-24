@@ -1,5 +1,5 @@
 import json
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from accounts.models import CustomUser
 from customer_portal.models import Order
@@ -177,6 +177,7 @@ class DeliveryRiderFeatureTestCase(TestCase):
         page = self.client.get(reverse('deliveries:track_order', args=[self.delivery.id]))
         self.assertEqual(page.status_code, 200)
 
+    @override_settings(ENFORCE_GEOFENCE=True)
     def test_rider_location_push_outside_campus_is_rejected(self):
         self.client.login(username='rider2', password='password123')
 

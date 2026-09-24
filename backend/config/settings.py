@@ -26,7 +26,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t", "yes")
 # facade falls back to free OpenStreetMap tiles so the app keeps working offline.
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com', '*']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com', '.loca.lt', '.devtunnels.ms', '.railway.app']
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
 # Application definition
@@ -70,7 +70,7 @@ ROOT_URLCONF = 'config.urls'
 # Role-aware post-login fallback (the dedicated role login views redirect explicitly,
 # this only guards the generic /accounts/login/ page from dumping users on a dead URL).
 LOGIN_REDIRECT_URL = 'accounts:landing'
-LOGIN_URL = 'accounts:staff_login'
+LOGIN_URL = 'accounts:landing'
 
 TEMPLATES = [
     {
@@ -165,7 +165,33 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
+
+# Cross-worker cache so menu edits invalidate everywhere (Redis when configured,
+# shared file-based cache otherwise so cache.delete() actually propagates).
+REDIS_URL = os.getenv('REDIS_URL', '')
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+            'LOCATION': os.path.join(BASE_DIR, 'django_cache'),
+        }
+    }
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -177,7 +203,7 @@ EMAIL_PORT = int(os.getenv('EMAIL_PORT', 465))
 EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True') == 'True'
 EMAIL_USE_TLS = False
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'canteenexpress26@gmail.com')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'pwqhlcwxmkiizzwg')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Canteen Express <canteenexpress26@gmail.com>')
 
 
