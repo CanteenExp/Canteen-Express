@@ -1720,6 +1720,20 @@
             });
         </script>
 
+        <script>
+            function togglePassword(fieldId, btn) {
+                const input = document.getElementById(fieldId);
+                const icon = btn.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.className = 'fa-solid fa-eye-slash';
+                } else {
+                    input.type = 'password';
+                    icon.className = 'fa-solid fa-eye';
+                }
+            }
+        </script>
+
     </main>
 
 
@@ -2176,11 +2190,18 @@
                         Password
                     </label>
 
-                    <input
-                        type="password"
-                        name="password"
-                        required
-                        class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    <div class="relative">
+                        <input
+                            type="password"
+                            id="new-staff-password"
+                            name="password"
+                            required
+                            class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+
+                        <button type="button" onclick="togglePassword('new-staff-password', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
 
                 </div>
 

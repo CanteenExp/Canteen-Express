@@ -29,6 +29,20 @@ GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com', '.loca.lt', '.devtunnels.ms', '.railway.app']
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
+# Staff "Admin / System" governance PIN. MUST be overridden via env in production
+# (the default '1234' is a dev fallback only and is intentionally removed from
+# the shipped render.yaml config).
+ADMIN_PIN = os.getenv('ADMIN_PIN', '1234')
+
+# Supabase Storage credentials for menu image uploads. The anon key is public
+# by nature (client-side bucket access) but is centralized here so it can be
+# rotated/overridden per environment without code changes.
+SUPABASE_PROJECT_REF = os.getenv('SUPABASE_PROJECT_REF', 'hchqdkuijbpihraagetz')
+SUPABASE_ANON_KEY = os.getenv(
+    'SUPABASE_ANON_KEY',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjaHFka3VpamJwaWhyYWFnZXR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4MzU1MDMsImV4cCI6MjEwNDQxMTUwM30.FevR0wpG7Kk7YgNO30Hi8Jvz-Z8rXiWNPBVoM4LbqUA',
+)
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -231,6 +245,8 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.onrender.com',
     'https://*.railway.app',
     'https://*.localhost',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
 ]
 
 # Behind Railway/Render/Cloudflare the app is always served over HTTPS, but
@@ -238,5 +254,18 @@ CSRF_TRUSTED_ORIGINS = [
 # X-Forwarded-Proto so request.is_secure()/CSRF/absolute URLs match the
 # browser's https origin (otherwise fetch POSTs 403/redirect in production).
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Production-only transport security: secure session/CSRF cookies, HSTS, and
+# sniffing/referrer protection. Kept off in DEBUG so local forwarded-port
+# (http://localhost:8000) dev keeps working without forced HTTPS redirects.
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'same-origin'
 
 ENFORCE_GEOFENCE = os.getenv('ENFORCE_GEOFENCE', 'True').lower() == 'true'

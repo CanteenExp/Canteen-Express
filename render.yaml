@@ -26,14 +26,16 @@ services:
         value: aws-0-ap-southeast-1.pooler.supabase.com
       - key: DB_PORT
         value: 6543
+      # Email / SMTP -- REQUIRED for faculty OTP (registration & password reset).
+      # EMAIL_HOST_PASSWORD must be set in the Render dashboard (sync: false)
+      # with a Gmail App Password, otherwise deployed OTP emails will fail and
+      # the on-screen fallback is DISABLED in production (no code leak).
       - key: EMAIL_HOST
         value: smtp.gmail.com
       - key: EMAIL_PORT
-        value: 587
-      - key: EMAIL_USE_TLS
-        value: True
+        value: 465
       - key: EMAIL_USE_SSL
-        value: False
+        value: true
       - key: EMAIL_HOST_USER
         value: canteenexpress26@gmail.com
       - key: EMAIL_HOST_PASSWORD
@@ -42,3 +44,7 @@ services:
         value: Canteen Express <canteenexpress26@gmail.com>
       - key: EMAIL_TIMEOUT
         value: 10
+      # Admin/System governance PIN. Replace with your own value in the
+      # Render dashboard; the app defaults to a dev-only fallback otherwise.
+      - key: ADMIN_PIN
+        sync: false

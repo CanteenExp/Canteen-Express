@@ -262,7 +262,7 @@
                                     <h4 class="text-base font-black text-white mt-0.5"><i class="fa-solid fa-building text-green-400 mr-1"></i> {{ d.delivery_location }}</h4>
                                     <p class="text-[11px] text-zinc-400 flex items-center gap-1.5 mt-1">
                                         <i class="fa-solid fa-user-tie text-[9px] text-green-400/70"></i>
-                                        Customer: <span class="font-bold text-white">{% if d.order.customer %}{{ d.order.customer.get_full_name|default:d.order.customer.username }}{% else %}Guest{% endif %}</span>
+                                        Customer: <span class="font-bold text-white">{% if d.order.customer %}{{ d.order.customer.get_full_name|default:d.order.customer.username }}{% elif d.order.guest_name %}{{ d.order.guest_name }}{% else %}Guest{% endif %}</span>
                                     </p>
                                 </button>
                                 <span class="bg-green-500/15 text-green-400 border border-green-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase shrink-0"
@@ -289,40 +289,34 @@
                                     <span>Delivery Fee (Rider)</span>
                                     <span class="font-black text-orange-400">₱{{ d.order.delivery_fee }}</span>
                                 </div>
-<div class="flex justify-between items-center pt-1 border-t border-white/5">
+                                <div class="flex justify-between items-center pt-1 border-t border-white/5">
                                     <span class="text-zinc-500 font-bold uppercase tracking-wider">Total Payment</span>
                                     <span class="font-black text-orange-400 bg-orange-500/15 border border-orange-500/30 px-2.5 py-0.5 rounded-lg">₱{{ d.order.total_payment }}</span>
                                 </div>
+                            </div>
 
-                            <div class="pt-3 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap mt-auto">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <button @click="openChat({{ d.id }}, '{{ d.order.order_number }}', '{% if d.order.customer %}{{ d.order.customer.get_full_name|default:d.order.customer.username|escapejs }}{% else %}Guest{% endif %}')" class="relative bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center gap-2 border border-white/10 active:scale-95">
+                            <div class="pt-4 border-t border-white/5 mt-auto flex flex-col gap-2">
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button @click="openChat({{ d.id }}, '{{ d.order.order_number }}', '{% if d.order.customer %}{{ d.order.customer.get_full_name|default:d.order.customer.username|escapejs }}{% elif d.order.guest_name %}{{ d.order.guest_name|escapejs }}{% else %}Guest{% endif %}')" class="relative bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-2 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 border border-white/10 active:scale-95">
                                         <i class="fa-solid fa-comments text-green-400"></i> Chat
                                         <span x-show="(unread[{{ d.id }}] || 0) > 0"
                                               x-text="unread[{{ d.id }}] || 0"
                                               class="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border border-white/30"></span>
                                     </button>
-                                    <a href="{% url 'deliveries:track_order' d.id %}" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center gap-2 border border-white/10 active:scale-95">
+                                    <a href="{% url 'deliveries:track_order' d.id %}" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-2 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 border border-white/10 active:scale-95">
                                         <i class="fa-solid fa-location-crosshairs text-orange-400"></i> Track
                                     </a>
+                                    <button @click="confirmAction('{% url 'deliveries:cancel_delivery' d.id %}', 'Release this delivery?', 'It will be returned to the pool for another rider.', 'release')"
+                                            class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-2 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 flex items-center justify-center gap-1.5" title="Release back to pool">
+                                        <i class="fa-solid fa-rotate-left"></i> Release
+                                    </button>
                                 </div>
 
-                                <div class="flex items-center gap-2">
-                                    <button type="button"
-                                            onclick="openCameraCapture('{% url 'deliveries:complete_delivery' d.id %}')"
-                                            class="btn-shine bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-black px-3.5 py-2.5 rounded-xl text-xs shadow-glow-green transition active:scale-95 flex items-center gap-1.5" title="Capture a live photo as proof of delivery (gallery uploads are not accepted)">
-                                        <i class="fa-solid fa-camera"></i> Delivered + Photo
-                                    </button>
-                                    <a href="{% url 'deliveries:complete_delivery' d.id %}"
-                                       onclick="return confirm('Complete without a photo proof?');"
-                                       class="bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-300 px-3 py-2.5 rounded-xl text-[10px] font-bold transition border border-white/10" title="Complete without a photo">
-                                        No photo
-                                    </a>
-                                    <button @click="confirmAction('{% url 'deliveries:cancel_delivery' d.id %}', 'Release this delivery?', 'It will be returned to the pool for another rider.', 'release')"
-                                            class="bg-red-500/15 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-3 py-2.5 rounded-xl text-xs font-bold transition active:scale-95" title="Release back to pool">
-                                        <i class="fa-solid fa-rotate-left"></i>
-                                    </button>
-                                </div>
+                                <button type="button"
+                                        onclick="openCameraCapture('{% url 'deliveries:complete_delivery' d.id %}')"
+                                        class="btn-shine w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-black px-3.5 py-3 rounded-xl text-xs shadow-glow-green transition active:scale-95 flex items-center justify-center gap-1.5" title="Capture a live photo as proof of delivery (gallery uploads are not accepted)">
+                                    <i class="fa-solid fa-camera"></i> Delivered + Photo
+                                </button>
                             </div>
                         </div>
                         {% empty %}

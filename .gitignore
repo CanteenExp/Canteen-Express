@@ -7,3 +7,5 @@ db.sqlite3
 staticfiles/
 .vscode/
 node_modules/
+django_cache/
+media/

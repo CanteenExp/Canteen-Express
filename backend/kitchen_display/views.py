@@ -304,17 +304,47 @@ def kitchen_live_stream(request):
 def update_order_status(request, order_id):
     """API endpoint to update order status via AJAX.
 
-    The instant a delivery order is marked READY, it is auto-assigned to the
-    next online rider (if any) so it lands in the rider's incoming queue as
-    ready-for-delivery without waiting for the rider's dashboard to poll.
+    Enforces a sane Kanban flow (unpaid -> pending -> preparing -> ready ->
+    completed) with one-step-back correction and cancel from any active state,
+    so an order can't jump straight past the kitchen or move backwards freely.
+    Completing an order grants loyalty points once; cancelling refunds redeemed
+    points and returns stock to the menu.
     """
     try:
         data = json.loads(request.body)
         new_status = data.get('status', '').lower()
+        ORDER_STATUSES = {s[0] for s in Order.STATUS_CHOICES}
+        if new_status not in ORDER_STATUSES:
+            return JsonResponse({'success': False, 'error': f'Unknown status "{new_status}".'}, status=400)
 
-        order = Order.objects.get(id=order_id)
+        ALLOWED_MOVES = {
+            'unpaid': {'pending', 'cancelled'},
+            'pending': {'preparing', 'ready', 'cancelled'},
+            'preparing': {'pending', 'ready', 'cancelled'},
+            'ready': {'preparing', 'completed', 'cancelled'},
+            'completed': set(),
+            'cancelled': set(),
+        }
+
+        order = Order.objects.select_for_update().get(id=order_id)
+        old_status = order.status
+        if new_status not in ALLOWED_MOVES.get(old_status, set()):
+            return JsonResponse({
+                'success': False,
+                'error': f'Cannot move order from "{old_status}" to "{new_status}".'
+            }, status=400)
+
         order.status = new_status
         order.save()
+
+        if new_status == 'completed' and old_status != 'completed':
+            # Credit loyalty earned once, only at true completion.
+            from customer_portal.views import credit_points_for_order
+            credit_points_for_order(order)
+        elif new_status == 'cancelled' and old_status != 'cancelled':
+            from customer_portal.views import refund_points_for_cancel, restore_stock_for_order
+            refund_points_for_cancel(order)
+            restore_stock_for_order(order)
 
         if new_status == 'ready' and DeliveryRequest.objects.filter(order=order).exists():
             # Fast-track: offer this (and any other waiting) delivery to the
@@ -360,31 +390,46 @@ def toggle_item_availability(request, item_id):
     item = get_object_or_404(MenuItem, id=item_id)
     item.is_available = not item.is_available
     item.save()
+    from django.core.cache import cache
+    cache.delete('formatted_menu_active_kiosk')
     return redirect('kitchen_display:manage_menu')
 
 
 @role_required(allowed_roles=['STAFF'])
 def admin_pin_verify(request):
-    """Prompt staff for a PIN code to access Admin/System governance controls."""
+    """Prompt staff for a PIN code to access Admin/System governance controls.
+
+    The PIN comes from settings (env ADMIN_PIN, overridable per environment)
+    and is compared in constant time so timing can't leak it.
+    """
+    from django.conf import settings as django_settings
+    import secrets as _secrets
     if request.method == 'POST':
         entered_pin = request.POST.get('pin')
-        CORRECT_PIN = '1234'
-        
-        if entered_pin == CORRECT_PIN:
+        correct_pin = str(getattr(django_settings, 'ADMIN_PIN', '1234'))
+        if _secrets.compare_digest(str(entered_pin or ''), correct_pin):
             request.session['admin_verified'] = True
+            request.session['admin_verified_at'] = timezone.now().timestamp()
             return redirect('kitchen_display:admin_governance')
         else:
             return render(request, 'admin_pin_verify.html', {'error': 'Invalid PIN Code. Please try again.'})
-            
+
     return render(request, 'admin_pin_verify.html')
 
 
 @role_required(allowed_roles=['STAFF'])
 def admin_governance(request):
     """Central Governance, User Approvals, and Analytics Dashboard (PIN Protected)."""
-    if not request.session.get('admin_verified'):
+    # PIN verification expires after 2 hours so a shared terminal can't stay
+    # perpetually unlocked after the staff member leaves.
+    verified_at = request.session.get('admin_verified_at')
+    if not request.session.get('admin_verified') or verified_at is None:
         return redirect('kitchen_display:admin_pin_verify')
-        
+    if (timezone.now().timestamp() - float(verified_at)) > 7200:
+        request.session.pop('admin_verified', None)
+        request.session.pop('admin_verified_at', None)
+        return redirect('kitchen_display:admin_pin_verify')
+
     pending_users = User.objects.filter(is_active=False) if hasattr(User, 'is_active') else []
     all_orders = Order.objects.all().order_by('-created_at')[:20]
 

@@ -70,6 +70,18 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unpaid', db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
+    # Loyalty: what this order redeemed at checkout and what it will earn once
+    # it reaches 'completed'. Earned points are ONLY credited on completion so
+    # a cancelled order can never farm points; redeemed points are refunded on
+    # cancellation. Client-sent values never apply -- the server computes both.
+    points_redeemed = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
+    points_earned = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
+
+    # Optional contact info captured for guest/kinless delivery orders so a
+    # rider can reach the customer. Populated from the checkout payload only.
+    guest_name = models.CharField(max_length=150, blank=True, null=True)
+    guest_phone = models.CharField(max_length=30, blank=True, null=True)
+
     def __str__(self):
         return f"Order {self.order_number} - ₱{self.total_amount}"
 
@@ -105,6 +117,15 @@ class OrderFeedback(models.Model):
     rating = models.IntegerField(default=5)
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['order', 'customer'],
+                name='uniq_feedback_order_customer',
+            ),
+        ]
 
     def __str__(self):
         return f"Feedback {self.rating}★ for Order {self.order.order_number if self.order else 'N/A'}"

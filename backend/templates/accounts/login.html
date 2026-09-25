@@ -28,8 +28,13 @@
 
             <div>
                 <label class="block text-xs font-extrabold text-zinc-700 uppercase tracking-wider mb-1">Password</label>
-                <input type="password" name="password" required placeholder="••••••••"
-                       class="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 focus:outline-none text-sm">
+                <div class="relative">
+                    <input type="password" id="login-password" name="password" required placeholder="••••••••"
+                           class="w-full px-4 py-3 pr-12 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-orange-500 focus:outline-none text-sm">
+                    <button type="button" onclick="togglePassword('login-password', this)" title="Show/Hide password" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
             </div>
 
             <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl text-sm shadow-lg shadow-orange-500/20 transition duration-200">
@@ -43,4 +48,17 @@
         </div>
     </div>
 </div>
+<script>
+    function togglePassword(fieldId, btn) {
+        const input = document.getElementById(fieldId);
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'fa-solid fa-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'fa-solid fa-eye';
+        }
+    }
+</script>
 {% endblock %}

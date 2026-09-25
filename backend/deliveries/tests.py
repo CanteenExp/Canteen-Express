@@ -159,7 +159,10 @@ class DeliveryRiderFeatureTestCase(TestCase):
             content_type='application/json'
         )
         self.assertTrue(resp.json()['success'])
-        self.assertEqual(RiderLocationPoint.objects.filter(delivery=self.delivery).count(), 2)
+        # Two location pushes: history points are throttled to one per 4s so
+        # watchPosition bursts don't blow up the table, but the LIVE
+        # coordinates always update immediately (asserted below).
+        self.assertGreaterEqual(RiderLocationPoint.objects.filter(delivery=self.delivery).count(), 1)
 
         track = self.client.get(reverse('deliveries:get_tracking', args=[self.delivery.id])).json()
         self.assertTrue(track['success'])

@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_POST
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
 from django.db.models import Count, Sum
 import json
 import time
@@ -148,7 +149,11 @@ def accept_delivery(request, delivery_id):
     # Atomic compare-and-set: lock the delivery row so two riders can never both
     # accept the same request (prevents the accept/double-assignment race).
     with transaction.atomic():
-        delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+        try:
+            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+        except DeliveryRequest.DoesNotExist:
+            messages.error(request, 'Delivery request not found.')
+            return redirect('deliveries:dashboard')
 
         active_count = DeliveryRequest.objects.filter(
             rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED
@@ -181,7 +186,11 @@ def reject_delivery(request, delivery_id):
     # drops any stale "offered" rider so the order stays visible to everyone
     # in the shared pool. Staff can always dismiss a proposal.
     with transaction.atomic():
-        delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+        try:
+            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+        except DeliveryRequest.DoesNotExist:
+            messages.error(request, 'Delivery request not found.')
+            return redirect('deliveries:dashboard')
         if delivery.status == DeliveryRequest.RequestStatus.SEARCHING:
             delivery.assigned_to = None
             delivery.assigned_at = None
@@ -192,34 +201,47 @@ def reject_delivery(request, delivery_id):
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
 def complete_delivery(request, delivery_id):
-    delivery = get_object_or_404(DeliveryRequest, id=delivery_id, rider=request.user)
+    from django.db import transaction
+    from customer_portal.views import credit_points_for_order
 
-    # Accept an optional proof-of-delivery photo (multipart form upload).
-    proof_photo = request.FILES.get('proof_photo')
-    if proof_photo:
+    # Lock the delivery row so a double-tap can't complete (and double-credit
+    # points on) the same delivery twice.
+    with transaction.atomic():
         try:
-            _validate_image_upload(proof_photo)
-            delivery.proof_photo = proof_photo
-        except ValidationError as e:
-            messages.error(request, f'Photo not saved: {e.message}')
-            proof_photo = None
+            delivery = DeliveryRequest.objects.select_for_update().get(
+                id=delivery_id, rider=request.user)
+        except DeliveryRequest.DoesNotExist:
+            messages.error(request, 'Delivery not found or not assigned to you.')
+            return redirect('deliveries:dashboard')
 
-    if delivery.status == DeliveryRequest.RequestStatus.ACCEPTED:
-        delivery.status = DeliveryRequest.RequestStatus.DELIVERED
-        delivery.delivered_at = timezone.now()
-        delivery.save()
-
-        order = delivery.order
-        order.status = 'completed'
-        order.save()
-        earned = float(order.delivery_fee)
+        # Accept an optional proof-of-delivery photo (multipart form upload).
+        proof_photo = request.FILES.get('proof_photo')
         if proof_photo:
-            messages.success(request, f'Delivery {delivery.order.order_number} completed with photo proof! +₱{earned:.0f} earned.')
+            try:
+                _validate_image_upload(proof_photo)
+                delivery.proof_photo = proof_photo
+            except ValidationError as e:
+                messages.error(request, f'Photo not saved: {e.message}')
+                proof_photo = None
+
+        if delivery.status == DeliveryRequest.RequestStatus.ACCEPTED:
+            delivery.status = DeliveryRequest.RequestStatus.DELIVERED
+            delivery.delivered_at = timezone.now()
+            delivery.save()
+
+            order = delivery.order
+            order.status = 'completed'
+            order.save()
+            # Loyalty earned only now, when the order actually completes.
+            credit_points_for_order(order)
+            earned = float(order.delivery_fee)
+            if proof_photo:
+                messages.success(request, f'Delivery {delivery.order.order_number} completed with photo proof! +₱{earned:.0f} earned.')
+            else:
+                messages.success(request, f'Delivery {delivery.order.order_number} completed! +₱{earned:.0f} earned.')
         else:
-            messages.success(request, f'Delivery {delivery.order.order_number} completed! +₱{earned:.0f} earned.')
-    else:
-        # Still persist the photo if the status raced already to DELIVERED.
-        delivery.save(update_fields=['proof_photo'])
+            # Still persist the photo if the status raced already to DELIVERED.
+            delivery.save(update_fields=['proof_photo'])
 
     return redirect('deliveries:dashboard')
 
@@ -310,6 +332,14 @@ def expire_stale_requests():
             assigned_to__isnull=True,
             requested_at__lte=orphan_cutoff,
         ).update(status=DeliveryRequest.RequestStatus.TIMEOUT)
+
+    # 3) Housekeeping, once per day: purge GPS history older than a week so the
+    # rider-location table doesn't grow forever.
+    if not cache.get('gps_history_purged_today'):
+        cache.set('gps_history_purged_today', now.date().isoformat(), timeout=86400)
+        RiderLocationPoint.objects.filter(
+            timestamp__lt=now - timedelta(days=7)
+        ).delete()
 
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
@@ -412,6 +442,10 @@ def get_order_detail(request, delivery_id):
     if customer:
         customer_name = customer.get_full_name() or customer.username
         customer_phone = customer.phone or None
+    if not customer_name and getattr(order, 'guest_name', None):
+        customer_name = order.guest_name
+    if not customer_phone and getattr(order, 'guest_phone', None):
+        customer_phone = order.guest_phone
 
     return JsonResponse({
         'success': True,
@@ -466,13 +500,18 @@ def update_location(request, delivery_id):
                 speed = compute_speed_kmh(
                     prev.lat, prev.lng, prev.timestamp, lat, lng, now)
 
-            RiderLocationPoint.objects.create(
-                delivery=delivery,
-                rider=request.user,
-                lat=lat,
-                lng=lng,
-                speed_kmh=speed,
-            )
+            # Throttle the HISTORY writes (watchPosition can fire many times a
+            # second): only record a new location point every 4s. The rider's
+            # LIVE coordinates are updated unconditionally below so tracking
+            # stays real-time without an unbounded table blow-up.
+            if prev is None or (now - prev.timestamp).total_seconds() >= 4:
+                RiderLocationPoint.objects.create(
+                    delivery=delivery,
+                    rider=request.user,
+                    lat=lat,
+                    lng=lng,
+                    speed_kmh=speed,
+                )
             delivery.rider_lat = lat
             delivery.rider_lng = lng
             delivery.location_updated_at = now
@@ -487,9 +526,25 @@ def update_location(request, delivery_id):
 def get_tracking(request, delivery_id):
     """Return the rider's latest position plus speed/distance/ETA for live tracking."""
     delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    order = delivery.order
+    user = request.user
+    # Privacy: only the order's OWNER or staff/rider roles may read live GPS.
+    is_owner = order.customer_id is not None and order.customer_id == user.id
+    is_privileged = (
+        user.is_superuser or user.is_staff
+        or user.role in ('RIDER', 'DELIVERY', 'STAFF', 'ADMIN')
+    )
+    if not (is_owner or is_privileged):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
 
     points = list(delivery.location_points.all())
-    total_distance_km = distance_from_points([(p.lat, p.lng) for p in points])
+    # History points are throttled (one per 4s) so include the live rider
+    # position as the final waypoint -- distance stays accurate between writes.
+    coords = [(p.lat, p.lng) for p in points]
+    if points and delivery.rider_lat is not None and delivery.rider_lng is not None:
+        if (delivery.rider_lat, delivery.rider_lng) != coords[-1]:
+            coords.append((delivery.rider_lat, delivery.rider_lng))
+    total_distance_km = distance_from_points(coords)
 
     latest_speed = points[-1].speed_kmh if points else 0.0
 
@@ -531,11 +586,23 @@ def track_order(request, delivery_id):
     """Customer-facing live tracking page (Leaflet map)."""
     delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
     order = delivery.order
-    is_customer = (
-        request.user.is_authenticated and order.customer is not None
-        and order.customer == request.user
-    ) or request.user.role in ['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'] or request.user.is_superuser
-    if not is_customer and not (request.user.is_authenticated and request.user.role == 'FACULTY'):
+    user = request.user
+    # Privacy: page access mirrors get_tracking -- the order's OWNER or
+    # staff/rider roles. A random FACULTY/STUDENT can no longer open any
+    # delivery's tracking page by guessing the id.
+    is_owner = (
+        user.is_authenticated
+        and order.customer_id is not None
+        and order.customer_id == user.id
+    )
+    is_privileged = (
+        user.is_authenticated
+        and (
+            user.is_superuser or user.is_staff
+            or user.role in ('RIDER', 'DELIVERY', 'STAFF', 'ADMIN')
+        )
+    )
+    if not (is_owner or is_privileged):
         messages.error(request, "Access denied.")
         return redirect('accounts:landing')
 
@@ -829,13 +896,26 @@ def staff_dispatch_stream(request):
     )
 
 
+def _can_manage_delivery(request, delivery):
+    """Owner or staff may convert/cancel a delivery. Anyone else is denied."""
+    if request.user.is_superuser or request.user.is_staff:
+        return True
+    if request.user.role in ('STAFF', 'ADMIN'):
+        return True
+    order = delivery.order
+    return order is not None and order.customer_id is not None and order.customer_id == request.user.id
+
+
 @require_POST
+@role_required(allowed_roles=['STUDENT', 'FACULTY', 'STAFF', 'ADMIN'])
 def api_convert_to_pickup(request, delivery_id):
     from django.db import transaction
     from queuing.models import DigitalQueueSlip
     try:
+        delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+        if not _can_manage_delivery(request, delivery):
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
         with transaction.atomic():
-            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
             if delivery.status == DeliveryRequest.RequestStatus.SEARCHING:
                 delivery.status = DeliveryRequest.RequestStatus.TIMEOUT
                 delivery.save(update_fields=['status'])
@@ -854,20 +934,33 @@ def api_convert_to_pickup(request, delivery_id):
 
 
 @require_POST
+@role_required(allowed_roles=['STUDENT', 'FACULTY', 'STAFF', 'ADMIN'])
 def api_cancel_order_with_reason(request, delivery_id):
     from django.db import transaction
+    from customer_portal.views import refund_points_for_cancel, restore_stock_for_order
     try:
         data = json.loads(request.body) if request.body else {}
         reason = data.get('reason', 'Waiting for too long')
         
+        delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+        if not _can_manage_delivery(request, delivery):
+            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
         with transaction.atomic():
-            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+            order = delivery.order
+            was_cancelled = order.status == 'cancelled'
+
             delivery.status = DeliveryRequest.RequestStatus.REJECTED
             delivery.save(update_fields=['status'])
-            
-            order = delivery.order
+
             order.status = 'cancelled'
             order.save(update_fields=['status'])
+
+            # First cancel only: give back any redeemed loyalty points and
+            # return the deducted stock to the menu. Never double-refunds.
+            if not was_cancelled:
+                refund_points_for_cancel(order)
+                restore_stock_for_order(order)
             
         return JsonResponse({'success': True, 'message': 'Order cancelled successfully.'})
     except Exception as e:

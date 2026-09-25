@@ -29,6 +29,7 @@ def staff_menu_toggle_availability(request, pk):
     item = get_object_or_404(MenuItem, pk=pk)
     item.is_available = not item.is_available
     item.save()
+    cache.delete('formatted_menu_active_kiosk')
     messages.success(request, f"Updated availability for {item.name}")
     return redirect('canteen_menu:staff_menu_list')
 
@@ -141,9 +142,12 @@ def upload_to_supabase_storage(image_file):
     if not image_file:
         return None
     try:
-        project_ref = "hchqdkuijbpihraagetz"
+        project_ref = getattr(settings, 'SUPABASE_PROJECT_REF', 'hchqdkuijbpihraagetz')
         bucket_name = "menu-images"
-        anon_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjaHFka3VpamJwaWhyYWFnZXR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4MzU1MDMsImV4cCI6MjEwNDQxMTUwM30.FevR0wpG7Kk7YgNO30Hi8Jvz-Z8rXiWNPBVoM4LbqUA"
+        anon_key = getattr(
+            settings, 'SUPABASE_ANON_KEY',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjaHFka3VpamJwaWhyYWFnZXR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4MzU1MDMsImV4cCI6MjEwNDQxMTUwM30.FevR0wpG7Kk7YgNO30Hi8Jvz-Z8rXiWNPBVoM4LbqUA'
+        )
         
         filename = image_file.name.replace(' ', '_')
         url = f"https://{project_ref}.supabase.co/storage/v1/object/{bucket_name}/{filename}"
@@ -568,6 +572,14 @@ def export_report_view(request, format_type):
     total_count = valid_orders.count()
     
     if format_type == 'excel':
+        def _csv_safe(value):
+            # Neutralize spreadsheet-formula injection (=SUM..., +cmd, -2+3, @x)
+            # and embedded newlines that would break the row layout.
+            value = str(value).replace('\r', ' ').replace('\n', ' ')
+            if value[:1] in ('=', '+', '-', '@'):
+                return "'" + value
+            return value
+
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="canteen_overall_sales_report.csv"'
         response.write("Canteen Express - Overall Sales & Financial Report\n")
@@ -577,7 +589,7 @@ def export_report_view(request, format_type):
         response.write("Order ID,Customer,Total Amount,Status,Date\n")
         for o in valid_orders.order_by('-created_at'):
             cust = o.customer.username if o.customer else 'Guest'
-            response.write(f"{o.order_number},{cust},{o.total_amount},{o.status},{o.created_at.strftime('%Y-%m-%d %H:%M')}\n")
+            response.write(f"{_csv_safe(o.order_number)},{_csv_safe(cust)},{o.total_amount},{_csv_safe(o.status)},{o.created_at.strftime('%Y-%m-%d %H:%M')}\n")
         return response
 
     elif format_type == 'docx':
@@ -643,6 +655,7 @@ def staff_menu_toggle_ajax(request, pk):
     item = get_object_or_404(MenuItem, pk=pk)
     item.is_available = not item.is_available
     item.save()
+    cache.delete('formatted_menu_active_kiosk')
     return JsonResponse({'success': True, 'is_available': item.is_available, 'stock': item.stock})
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
@@ -653,7 +666,11 @@ def staff_menu_edit_ajax(request):
             item = get_object_or_404(MenuItem, pk=item_id)
             item.name = request.POST.get('name', item.name)
             item.price = request.POST.get('price', item.price)
-            item.stock = request.POST.get('stock', item.stock)
+            try:
+                stock_value = int(request.POST.get('stock', item.stock))
+                item.stock = max(0, stock_value)
+            except (TypeError, ValueError):
+                item.stock = item.stock
             if request.POST.get('description') is not None:
                 item.description = request.POST.get('description')
             category_id = request.POST.get('category')
@@ -676,6 +693,7 @@ def staff_menu_edit_ajax(request):
             if not item.image and not item.image_url:
                 _auto_sync_menu_image(item)
             item.save()
+            cache.delete('formatted_menu_active_kiosk')
             messages.success(request, f"Updated {item.name} successfully!")
         except Exception as e:
             messages.error(request, f"Error updating item: {str(e)}")

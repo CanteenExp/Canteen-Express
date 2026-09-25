@@ -1115,6 +1115,29 @@
     let activeChatDeliveryId = null;
     let chatInterval = null;
 
+    // Small non-blocking toast stack (keeps the dark glassmorphism feel).
+    function showToast(message, type = 'info') {
+        let stack = document.getElementById('faculty-toast-stack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.id = 'faculty-toast-stack';
+            stack.style.cssText = 'position:fixed;top:16px;right:16px;z-index:99999;display:flex;flex-direction:column;gap:8px;max-width:320px;pointer-events:none;';
+            document.body.appendChild(stack);
+        }
+        const colors = { info: 'rgba(59,130,246,.92)', success: 'rgba(16,185,129,.92)', error: 'rgba(239,68,68,.92)' };
+        const el = document.createElement('div');
+        el.style.cssText = 'color:#fff;padding:10px 14px;border-radius:12px;font-size:12px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14);opacity:0;transform:translateX(16px);transition:all .25s ease;';
+        el.style.background = colors[type] || colors.info;
+        el.textContent = message;
+        stack.appendChild(el);
+        requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateX(0)'; });
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateX(16px)';
+            setTimeout(() => el.remove(), 250);
+        }, 3200);
+    }
+
     // A delivery still blocks a new faculty order while it is offered/accepted.
     // Once it is DELIVERED (or REJECTED/TIMEOUT) the faculty can order again.
     function isOngoingDelivery(d) {
@@ -2025,7 +2048,7 @@
     function openActiveRiderChat() {
         const activeD = ongoingDeliveriesData.find(hasAssignedRider);
         if (!activeD) {
-            alert('Wala pang rider na nakapag-accept ng delivery para sa chat.');
+            showToast('Wala pang rider na nakapag-accept ng delivery para sa chat.');
             return;
         }
         openRiderChat(activeD.id, activeD.order_number, activeD.rider_name);
@@ -2173,7 +2196,7 @@
         const activeD = ongoingDeliveriesData.find(isOngoingDelivery)
             || [...ongoingDeliveriesData].reverse().find(d => d.raw_status === 'DELIVERED');
         if (!activeD) {
-            alert('Wala kang active order sa ngayon.');
+            showToast('Wala kang active order sa ngayon.');
             return;
         }
         viewOrderDeliveryId = activeD.id;
@@ -2571,7 +2594,7 @@ if (isDelivery) {
         // Rating is locked until the delivery is fully completed.
         const target = (ongoingDeliveriesData || []).find(d => d.id === viewOrderDeliveryId);
         if (!target || target.raw_status !== 'DELIVERED') {
-            alert('Rating is only available after the delivery has been completed.');
+            showToast('Rating is only available after the delivery has been completed.');
             return;
         }
         document.getElementById('faculty-feedback-modal').classList.remove('hidden');
@@ -2598,11 +2621,11 @@ if (isDelivery) {
                 showFeedbackSuccessPopup(`Thank you for your feedback! ${randomEmoji}`);
                 closeFacultyFeedbackModal();
             } else {
-                alert('Error: ' + data.message);
+                showToast('Error: ' + data.message, 'error');
             }
         } catch (err) {
             console.error(err);
-            alert('Failed to submit feedback.');
+            showToast('Failed to submit feedback.', 'error');
         }
     }
 
@@ -2780,7 +2803,7 @@ if (isDelivery) {
                             });
                         }
                     } else {
-                        alert(data.error || "Failed to convert.");
+                        showToast(data.error || "Failed to convert.", 'error');
                     }
                 });
             }
@@ -2804,10 +2827,10 @@ if (isDelivery) {
             body: JSON.stringify({ reason: reason })
         }).then(res => res.json()).then(data => {
             if (data.success) {
-                alert("Order cancelled successfully.");
+                showToast("Order cancelled successfully.", 'success');
                 window.location.reload();
             } else {
-                alert(data.error || "Failed to cancel.");
+                showToast(data.error || "Failed to cancel.", 'error');
             }
         });
     }
