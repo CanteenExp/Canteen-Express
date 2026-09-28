@@ -405,6 +405,11 @@
                     >
                 </div>
 
+                <!-- Order History / Activity Log -->
+                <button onclick="openOrderHistory()" id="history-toggle-btn" class="w-10 h-10 shrink-0 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95" title="Order History & Activity">
+                    <i class="fa-solid fa-clock-rotate-left text-xs"></i>
+                </button>
+
                 <!-- Light / Dark Mode Toggle Button -->
                 <button onclick="toggleTheme()" id="theme-toggle-btn" class="w-10 h-10 shrink-0 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95" title="Toggle Light/Dark Mode">
                     <i class="fa-solid fa-sun text-xs" id="theme-icon"></i>
@@ -537,25 +542,43 @@
     </div>
 
 
+    <!-- ================= ORDER HISTORY / ACTIVITY LOG MODAL ================= -->
+    <div id="order-history-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[80vh] modal-pop">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center glass-panel-head">
+                <h3 class="font-black text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-brand-orange"></i> Order History & Activity
+                </h3>
+                <button onclick="closeOrderHistory()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="order-history-container" class="p-5 overflow-y-auto space-y-3 flex-1 glass-scroll">
+                <!-- Populated dynamically -->
+            </div>
+            <div class="p-4 glass-panel-foot border-t border-white/10 text-center text-xs text-brand-slate">
+                <span>Palawan State University Canteen Express</span>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= QUEUE SLIP MODAL (DOWNLOADABLE & WITH BARCODE) ================= -->
     <div id="queue-slip-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 overflow-y-auto">
         <div class="max-w-sm w-full space-y-4 my-auto">
             
             <!-- Target Printable Queue Slip Container -->
-            <div id="queue-slip-card" class="bg-white text-gray-900 rounded-3xl p-6 shadow-2xl space-y-4 text-center border-2 border-gray-100">
+            <div id="queue-slip-card" class="bg-white text-gray-900 rounded-3xl p-4 shadow-2xl space-y-3 text-center border-2 border-gray-100">
                 
                 <!-- Slip Header -->
-                <div class="border-b border-dashed border-gray-300 pb-3 space-y-1">
-                    <h3 class="text-lg font-black text-gray-900 uppercase tracking-wider">CANTEEN EXPRESS</h3>
+                <div class="border-b border-dashed border-gray-300 pb-2 space-y-0.5">
+                    <h3 class="text-base font-black text-gray-900 uppercase tracking-wider">CANTEEN EXPRESS</h3>
                     <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest" id="slip-title-label">Official Kiosk Queue Slip</p>
                     <p class="text-[9px] text-gray-400 hidden" id="slip-receipt-date"></p>
                 </div>
 
                 <!-- Queue Number & Mode -->
-                <div class="bg-orange-50 rounded-2xl p-4 border border-orange-100 space-y-1">
+                <div class="bg-orange-50 rounded-2xl p-3 border border-orange-100 space-y-0.5">
                     <span class="text-[10px] font-black uppercase tracking-wider text-orange-600 block">Queue Number</span>
-                    <span id="slip-queue-number" class="text-4xl font-black text-orange-600 tracking-tight">#CE-0000</span>
-                    <div class="pt-1 flex items-center justify-center gap-2">
+                    <span id="slip-queue-number" class="text-3xl font-black text-orange-600 tracking-tight">#CE-0000</span>
+                    <div class="pt-0.5 flex items-center justify-center gap-2">
                         <span id="slip-dining-mode" class="inline-block bg-orange-600 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider">DINE-IN</span>
                         <span id="slip-payment-badge" class="hidden inline-block bg-emerald-600 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider">PAID</span>
                     </div>
@@ -564,18 +587,18 @@
                 <!-- Order Summary Items List -->
                 <div class="text-left space-y-2 text-xs">
                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block border-b border-gray-100 pb-1">Order List</span>
-                    <div id="slip-items-list" class="space-y-1 max-h-40 overflow-y-auto pr-1">
+                    <div id="slip-items-list" class="space-y-1 max-h-28 overflow-y-auto pr-1">
                         <!-- Dynamic Item Lines -->
                     </div>
-                    <div class="border-t border-dashed border-gray-300 pt-2 flex justify-between items-center text-sm font-black text-gray-900">
+                    <div class="border-t border-dashed border-gray-300 pt-1.5 flex justify-between items-center text-xs font-black text-gray-900">
                         <span>TOTAL AMOUNT:</span>
-                        <span id="slip-total-amount" class="text-orange-600 text-base">₱0.00</span>
+                        <span id="slip-total-amount" class="text-orange-600 text-sm">₱0.00</span>
                     </div>
                 </div>
 
                 <!-- Barcode Container / Footer -->
-                <div class="border-t border-dashed border-gray-300 pt-3 flex flex-col items-center justify-center" id="slip-footer-container">
-                    <svg id="slip-barcode" class="w-full h-16"></svg>
+                <div class="border-t border-dashed border-gray-300 pt-2 flex flex-col items-center justify-center" id="slip-footer-container">
+                    <svg id="slip-barcode" class="w-full h-12"></svg>
                     <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1" id="slip-footer-text">Scan at Counter to Process Payment</span>
                 </div>
 
@@ -583,10 +606,17 @@
 
             <!-- Action Buttons Below Queue Slip -->
             <div class="glass-panel glass-panel-accent rounded-3xl p-3.5 space-y-2 modal-pop">
-                <button onclick="downloadQueueSlip()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-download"></i>
-                    <span id="slip-download-text">Download Slip as Image</span>
-                </button>
+                <!-- Icon actions: Save Slip + Close (one container, professional) -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="downloadQueueSlip()" id="download-slip-btn" class="w-full h-12 rounded-xl bg-brand-orange hover:bg-orange-600 text-white shadow-lg shadow-brand-orange/25 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer">
+                        <i class="fa-solid fa-download text-sm"></i>
+                        <span id="slip-download-text" class="font-extrabold text-[11px] uppercase tracking-wider">Download</span>
+                    </button>
+                    <button onclick="closeQueueSlipModal()" id="close-slip-btn" class="w-full h-12 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/10 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                        <span class="font-extrabold text-[11px] uppercase tracking-wider">Close</span>
+                    </button>
+                </div>
 
                 <div class="grid grid-cols-2 gap-2" id="slip-actions-grid">
                     <button onclick="editPendingOrder()" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider text-[11px] transition border border-white/10 flex items-center justify-center gap-1.5">
@@ -598,11 +628,6 @@
                         <span>Cancel Order</span>
                     </button>
                 </div>
-
-                <button onclick="closeQueueSlipModal()" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider text-[11px] transition border border-white/10 flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-xmark"></i>
-                    <span>Close / Back to Menu</span>
-                </button>
             </div>
 
         </div>
@@ -1035,6 +1060,7 @@ async function checkoutOrder() {
             };
 
             localStorage.setItem('canteen_pending_order', JSON.stringify(currentPendingOrder));
+            recordOrderInHistory(currentPendingOrder);
 
             cart = {};
             updateCartUI();
@@ -1082,9 +1108,9 @@ function renderQueueSlipUI(order) {
         format: "CODE128",
         lineColor: "#111827",
         width: 2,
-        height: 50,
+        height: 38,
         displayValue: true,
-        fontSize: 12,
+        fontSize: 10,
         margin: 0
     });
 }
@@ -1195,6 +1221,12 @@ function transformToOfficialReceipt() {
     const paymentBadge = document.getElementById('slip-payment-badge');
     if (paymentBadge) paymentBadge.classList.remove('hidden');
 
+    const downloadText = document.getElementById('slip-download-text');
+    if (downloadText) downloadText.textContent = "Download Receipt";
+
+    const actionsGrid = document.getElementById('slip-actions-grid');
+    if (actionsGrid) actionsGrid.style.display = 'none';
+
     const footerContainer = document.getElementById('slip-footer-container');
     if (footerContainer) {
         footerContainer.innerHTML = `
@@ -1216,12 +1248,6 @@ function transformToOfficialReceipt() {
             </div>
         `;
     }
-
-    const downloadText = document.getElementById('slip-download-text');
-    if (downloadText) downloadText.textContent = "Download Official Receipt Image";
-
-    const actionsGrid = document.getElementById('slip-actions-grid');
-    if (actionsGrid) actionsGrid.style.display = 'none';
 }
 
 let currentSelectedRating = 5;
@@ -1336,6 +1362,203 @@ function openQueueSlipModal() {
 function closeQueueSlipModal() {
     document.getElementById('queue-slip-modal').classList.add('hidden');
     stopKioskStatusPolling();
+}
+
+// ================= ORDER HISTORY / ACTIVITY LOG =================
+const ORDER_HISTORY_KEY = 'canteen_order_history';
+
+function getOrderHistory() {
+    try {
+        return JSON.parse(localStorage.getItem(ORDER_HISTORY_KEY)) || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveOrderHistory(list) {
+    try {
+        localStorage.setItem(ORDER_HISTORY_KEY, JSON.stringify(list));
+    } catch (e) { /* storage full/denied — ignore */ }
+}
+
+function recordOrderInHistory(order) {
+    if (!order || !order.order_number) return;
+    const list = getOrderHistory();
+    if (list.some(o => o.order_number === order.order_number)) return;
+    list.unshift({
+        order_number: order.order_number,
+        dining_option: order.dining_option || 'Dine-In',
+        total_amount: order.total_amount,
+        created_at: new Date().toISOString(),
+        items: (order.cart_array || []).map(i => ({ name: i.name, qty: i.qty, price: i.price }))
+    });
+    saveOrderHistory(list.slice(0, 30));
+}
+
+function openOrderHistory() {
+    const modal = document.getElementById('order-history-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    renderOrderHistory();
+}
+
+function closeOrderHistory() {
+    document.getElementById('order-history-modal').classList.add('hidden');
+}
+
+function historyId(num) {
+    return String(num || 'x').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+}
+
+function historyStatusChip(status) {
+    const map = {
+        unpaid: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+        pending: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+        preparing: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+        ready: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+        completed: 'bg-green-500/20 text-green-400 border-green-500/30',
+        delivered: 'bg-green-500/20 text-green-400 border-green-500/30',
+        cancelled: 'bg-red-500/20 text-red-400 border-red-500/30',
+    };
+    const c = map[status] || 'bg-white/10 text-white/70 border-white/10';
+    return `<span class="inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${c}">${status}</span>`;
+}
+
+async function renderOrderHistory() {
+    const container = document.getElementById('order-history-container');
+    if (!container) return;
+    const list = getOrderHistory();
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-10 space-y-3">
+                <div class="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 text-brand-slate flex items-center justify-center mx-auto text-2xl">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+                <p class="text-xs text-brand-slate font-bold">No orders yet on this kiosk.</p>
+                <p class="text-[11px] text-brand-slate/70">Orders you place here will show up as activity for rating & review.</p>
+            </div>`;
+        return;
+    }
+
+    const cards = await Promise.all(list.map(async (rec) => {
+        let status = 'unpaid';
+        try {
+            const res = await fetch(`/kiosk/api/order-status/${encodeURIComponent(rec.order_number)}/`);
+            const data = await res.json();
+            if (data.exists) status = data.status;
+        } catch (e) { /* leave unpaid */ }
+
+        const when = new Date(rec.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        const items = (rec.items || []).slice(0, 3).map(i => {
+            const price = Number(i.price || 0).toFixed(2);
+            const total = (Number(i.price || 0) * Number(i.qty || 1)).toFixed(2);
+            return `<div class="flex justify-between text-xs text-brand-slate">
+                        <span>${i.qty}x ${i.name}</span>
+                        <span class="text-white font-bold">₱${total}</span>
+                    </div>`;
+        }).join('');
+        const more = (rec.items || []).length > 3 ? `<p class="text-[10px] text-brand-slate">+ ${rec.items.length - 3} more item(s)</p>` : '';
+        // Rating is only accepted once the order is fully completed (see
+        // submit_feedback_api), so only then do we offer the Rate & Review button.
+        const rateable = status === 'completed';
+        const rateBtn = rateable
+            ? `<button onclick="openHistoryRating('${rec.order_number}', this)" class="mt-2 w-full bg-brand-orange hover:bg-orange-600 text-white text-[10px] font-extrabold py-2 rounded-xl uppercase tracking-wider transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-star"></i> Rate & Review
+               </button>`
+            : '';
+
+        return `
+            <div class="hist-card bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-black text-white">${rec.order_number}</span>
+                    ${historyStatusChip(status)}
+                </div>
+                <div class="flex items-center justify-between text-[10px] text-brand-slate font-bold">
+                    <span><i class="fa-solid fa-utensils text-brand-orange mr-1"></i>${rec.dining_option}</span>
+                    <span><i class="fa-regular fa-clock mr-1"></i>${when}</span>
+                </div>
+                <div class="space-y-1 pt-1">
+                    ${items}
+                    ${more}
+                </div>
+                <div class="flex justify-between border-t border-white/10 pt-2 text-xs font-black text-white">
+                    <span class="uppercase tracking-wider">Total</span>
+                    <span class="text-brand-orange">₱${Number(rec.total_amount || 0).toFixed(2)}</span>
+                </div>
+                ${rateBtn}
+            </div>`;
+    }));
+
+    container.innerHTML = cards.join('');
+}
+
+const historyRatings = {};
+
+function openHistoryRating(orderNumber, btn) {
+    const slotId = 'rate-' + historyId(orderNumber);
+    if (document.getElementById(slotId)) return;
+    const card = btn ? btn.closest('.hist-card') : null;
+    if (!card) return;
+
+    const slot = document.createElement('div');
+    slot.id = slotId;
+    slot.className = "mt-1 pt-2 border-t border-white/10 space-y-2";
+    slot.innerHTML = `
+        <span class="text-[10px] font-bold text-brand-slate uppercase tracking-wider block text-center">Rate Your Experience</span>
+        <div class="flex justify-center gap-1.5 text-base text-amber-500" id="stars-${historyId(orderNumber)}">
+            <button type="button" onclick="setHistoryRating('${orderNumber}', 1)" class="star-btn text-gray-400" data-val="1"><i class="fa-solid fa-star"></i></button>
+            <button type="button" onclick="setHistoryRating('${orderNumber}', 2)" class="star-btn text-gray-400" data-val="2"><i class="fa-solid fa-star"></i></button>
+            <button type="button" onclick="setHistoryRating('${orderNumber}', 3)" class="star-btn text-gray-400" data-val="3"><i class="fa-solid fa-star"></i></button>
+            <button type="button" onclick="setHistoryRating('${orderNumber}', 4)" class="star-btn text-gray-400" data-val="4"><i class="fa-solid fa-star"></i></button>
+            <button type="button" onclick="setHistoryRating('${orderNumber}', 5)" class="star-btn text-gray-400" data-val="5"><i class="fa-solid fa-star"></i></button>
+        </div>
+        <textarea id="comment-${historyId(orderNumber)}" placeholder="Write feedback or comment..." class="w-full bg-brand-dark/70 border border-white/10 text-white rounded-xl p-2 text-xs placeholder-brand-slate focus:outline-none focus:border-brand-orange resize-none h-12"></textarea>
+        <button onclick="submitHistoryRating('${orderNumber}')" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-2 rounded-xl text-xs uppercase tracking-wider transition">Submit Feedback</button>
+    `;
+    card.appendChild(slot);
+    if (btn) btn.remove();
+    historyRatings[orderNumber] = 5;
+    setHistoryRating(orderNumber, 5);
+}
+
+function setHistoryRating(orderNumber, val) {
+    historyRatings[orderNumber] = val;
+    const stars = document.getElementById('stars-' + historyId(orderNumber));
+    if (!stars) return;
+    stars.querySelectorAll('.star-btn').forEach((b, idx) => {
+        if (idx < val) {
+            b.classList.remove('text-gray-400');
+            b.classList.add('text-amber-500');
+        } else {
+            b.classList.remove('text-amber-500');
+            b.classList.add('text-gray-400');
+        }
+    });
+}
+
+async function submitHistoryRating(orderNumber) {
+    const comment = (document.getElementById('comment-' + historyId(orderNumber)) || {}).value || '';
+    try {
+        const res = await fetch("{% url 'customer_portal:submit_feedback_api' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+            body: JSON.stringify({ order_number: orderNumber, rating: historyRatings[orderNumber] || 5, comment: comment })
+        });
+        const data = await res.json();
+        if (data.success) {
+            const happyEmojis = ['😊', '🎉', '🌟', '🥳', '🙌', '🤩', '✨', '🚀', '💖'];
+            const emoji = happyEmojis[Math.floor(Math.random() * happyEmojis.length)];
+            showFeedbackSuccessPopup(`Thank you for your feedback! ${emoji}`);
+            const slot = document.getElementById('rate-' + historyId(orderNumber));
+            if (slot) slot.innerHTML = `<p class="text-xs text-emerald-400 font-bold text-center py-2"><i class="fa-solid fa-circle-check"></i> Thank you! Feedback submitted. ${emoji}</p>`;
+        } else {
+            kioskToast(data.message || 'Failed to submit feedback.');
+        }
+    } catch (err) {
+        console.error(err);
+        kioskToast('Failed to submit feedback.');
+    }
 }
 
 // ================= FLOATING TOAST NOTIFICATION HELPERS =================
