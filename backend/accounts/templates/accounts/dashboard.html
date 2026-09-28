@@ -559,9 +559,20 @@
                     <span id="drawer-total-amount" class="font-black text-brand-orange text-xl">₱0.00</span>
                 </div>
 
-                <button onclick="closeCartDrawer(); openCheckoutModal()" class="w-full py-3.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-check"></i> Proceed to Checkout
-                </button>
+                <!-- Same 2-up footer as the kiosk cart: keep browsing, or check out.
+                     Both buttons share one structure (icon + label, centred, same
+                     height/weight) so the pair reads as a matched set. Labels are
+                     kept short so neither wraps inside its half-width column. -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="closeCartDrawer()" class="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3.5 rounded-2xl uppercase tracking-wider text-xs border border-white/10 transition active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Add More</span>
+                    </button>
+                    <button type="button" onclick="closeCartDrawer(); openCheckoutModal()" class="w-full py-3.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2 active:scale-95">
+                        <span>Checkout</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
             </div>
 
         </div>
@@ -603,7 +614,7 @@
 
                     <div class="space-y-1.5" id="modal-beverage-container">
                         <label class="text-[11px] font-bold text-brand-slate uppercase tracking-wider block">Optional Beverage Pairing</label>
-                        <select id="modal-beverage-select" onchange="updateModalTotal()" class="w-full bg-white/5 border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange backdrop-blur-md">
+                        <select id="modal-beverage-select" onchange="updateModalTotal()" class="w-full bg-brand-dark border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange">
                             <option value="">-- No Beverage --</option>
                         </select>
                     </div>
@@ -1175,14 +1186,19 @@
         return d.status || 'Processing';
     }
 
+    // Mirrors the kiosk's menuData map field-for-field (kiosk_menu.html) so both
+    // surfaces -- the item grid, the beverage-pairing dropdown and the cart -- read
+    // the same shape and the same ordering.
     let menuData = rawMenuData.map(item => ({
         id: item.id,
         name: item.name,
-        category: item.category ? String(item.category) : 'General',
+        category: item.category ? String(item.category) : '',
         price: parseFloat(item.price || 0),
-        desc: item.desc || '',
+        desc: item.desc || item.description || '',
         badge: item.badge || '',
-        img: item.img || ''
+        isSiomai: item.isSiomai || false,
+        stock: (item.stock === null || item.stock === undefined) ? -1 : parseInt(item.stock, 10),
+        img: item.img || item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
     }));
 
     let cart = {};

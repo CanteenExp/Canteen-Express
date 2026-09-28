@@ -16,6 +16,8 @@ import time
 import hashlib
 import hmac
 
+from customer_portal.views import _get_formatted_menu
+
 User = get_user_model()
 
 # Central role -> portal map so every login/redirect/access-denied path agrees
@@ -284,27 +286,13 @@ def faculty_dashboard_view(request, token=None):
     else:
         faculty_display_name = 'User'
 
-    formatted_menu = []
-    for item in menu_items:
-        img_url = ''
-        if hasattr(item, 'get_image_src'):
-            attr = getattr(item, 'get_image_src')
-            img_url = attr() if callable(attr) else attr
-        elif hasattr(item, 'image') and item.image:
-            try:
-                img_url = item.image.url
-            except ValueError:
-                img_url = ''
-        category_str = item.category.name if item.category else 'General'
-        formatted_menu.append({
-            'id': item.id,
-            'name': item.name,
-            'category': category_str,
-            'price': float(item.price) if item.price else 0.0,
-            'desc': getattr(item, 'description', ''),
-            'badge': getattr(item, 'badge', ''),
-            'img': img_url
-        })
+    # Single source of truth for the menu payload: the kiosk's helper already
+    # applies the canonical filter (is_available), ordering (newest first) and
+    # field set. Reusing it keeps the faculty cart, its beverage-pairing dropdown
+    # and every other menu surface identical to the kiosk instead of relying on a
+    # hand-copied duplicate that silently drifts (that is what made the faculty
+    # beverage list come out in a different, arbitrary order).
+    formatted_menu = _get_formatted_menu()
 
     from deliveries.models import DeliveryRequest
     from deliveries.utils import serialize_delivery, prefetch_delivery_relations
