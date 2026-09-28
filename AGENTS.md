@@ -33,3 +33,10 @@
 - `deliveries`: Delivery requests, rider assignment, real-time live GPS tracking (`watchPosition`), and live chat (`DeliveryMessage`).
 - `queuing`: Digital queue slip tracking models.
 - `admin_dashboard` & `analytics_reports`: Staff oversight, sales reporting, and analytics.
+
+## Order Flow (canonical)
+- **Kiosk (pickup):** Customer builds cart -> checkout -> Order created `unpaid` -> queue slip w/ barcode shown and saved to kiosk order history (`localStorage`). Abandoned `unpaid` slips are cancelled at the counter.
+- **Counter POS (`/canteen/api/process-barcode/` `confirm_payment`):** Staff scans slip -> confirms payment -> Order flips `unpaid -> pending` and is sent to the Kitchen Board. The kiosk receipt auto-pops when polling sees a non-`unpaid` status.
+- **Kitchen Board (`kitchen_display`):** `pending -> preparing -> ready -> completed` for both pickup and delivery orders. Loyalty points credit at completion (`credit_points_for_order` in `update_order_status`); cancelling refunds points and restores stock.
+- **Rider (`deliveries`):** Delivery order -> kitchen marks `ready` -> rider dispatch -> `completed` on handoff (live GPS + chat).
+- **Rating gate (`submit_feedback_api`):** Orders are rateable only once `status == 'completed'` (pickup after the kitchen finishes, delivery after the rider hands off).

@@ -9,3 +9,10 @@ staticfiles/
 node_modules/
 django_cache/
 media/
+
+# Dev-server logs (may contain stack traces / paths — never commit)
+srv.out
+srv.err
+*.log
+*.out
+*.err
