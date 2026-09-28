@@ -33,16 +33,20 @@
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* Basemap is CARTO "dark matter", which is already dark -- so the old
-           invert() hack (that shifted every map colour) is no longer needed.
-           OSM and CARTO both require visible attribution, so the control stays
-           enabled and is only restyled to remain legible on the dark basemap. */
-        .leaflet-control-attribution {
-            background: rgba(10,10,12,0.75) !important;
-            color: #a1a1aa !important;
-            font-size: 9px !important;
+        /* Dark theme applied to ALL app maps (tile images only, markers stay true-color) */
+        #leaflet-map .leaflet-tile-pane .leaflet-layer,
+        #leaflet-map .leaflet-tile-pane .leaflet-tile,
+        #view-order-map .leaflet-tile-pane .leaflet-layer,
+        #view-order-map .leaflet-tile-pane .leaflet-tile,
+        #checkout-mini-map .leaflet-tile-pane .leaflet-layer,
+        #checkout-mini-map .leaflet-tile-pane .leaflet-tile {
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(88%);
         }
-        .leaflet-control-attribution a { color: #d4d4d8 !important; }
+        /* Hide any map attribution text so no API/key notice ever shows */
+        #leaflet-map .leaflet-control-attribution,
+        #view-order-map .leaflet-control-attribution,
+        #checkout-mini-map .leaflet-control-attribution,
+        .leaflet-control-attribution { display: none !important; }
         /* Dark zoom control on the campus checkout map */
         #checkout-mini-map .leaflet-control-zoom {
             border: 1px solid rgba(255,255,255,.12) !important;
@@ -1191,20 +1195,6 @@
     const CAMPUS_CENTER_LNG = 118.73333;
     const CAMPUS_RADIUS_KM = 0.8;
 
-    // Shared basemap for every map on this page: CARTO's free "dark matter"
-    // tiles. They are purpose-built for dark UIs, which means the app no longer
-    // needs a CSS invert() filter over the tile layer (that hack was shifting
-    // every map colour). No API key required.
-    // OSM and CARTO both require visible attribution, so it is supplied here and
-    // the control is left enabled.
-    const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-    function addDarkTiles(mapInstance) {
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19, subdomains: 'abcd', attribution: TILE_ATTRIBUTION
-        }).addTo(mapInstance);
-        return mapInstance;
-    }
-
     // Campus landmark directory used to display the nearest building instead of
     // raw coordinates. Coordinates are approximate (relative to the campus
     // center) and should be tuned to your real campus map if needed.
@@ -1607,8 +1597,11 @@
 
         setTimeout(() => {
             if (!leafletMap) {
-                leafletMap = L.map('leaflet-map').setView([currentLat, currentLng], 16);
-                addDarkTiles(leafletMap);
+                leafletMap = L.map('leaflet-map', { attributionControl: false }).setView([currentLat, currentLng], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19, subdomains: 'abcd',
+                    attribution: ''
+                }).addTo(leafletMap);
                 leafletMarker = L.marker([currentLat, currentLng]).addTo(leafletMap)
                     .bindPopup('<b>Your Current Office Location</b><br>Faculty Delivery Zone').openPopup();
             } else {
@@ -2158,8 +2151,10 @@
             const init = (hasPos && hasDest)
                 ? [(d.rider_lat + d.dest_lat) / 2, (d.rider_lng + d.dest_lng) / 2]
                 : (hasPos ? [d.rider_lat, d.rider_lng] : [currentLat, currentLng]);
-            viewOrderMap = L.map('view-order-map').setView(init, 15);
-            addDarkTiles(viewOrderMap);
+            viewOrderMap = L.map('view-order-map', { attributionControl: false }).setView(init, 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19, subdomains: 'abcd', attribution: ''
+            }).addTo(viewOrderMap);
             if (hasPos) {
                 viewOrderMarker = L.marker([d.rider_lat, d.rider_lng], {
                     icon: L.divIcon({
@@ -2361,6 +2356,7 @@
                 );
 
                 checkoutMap = L.map('checkout-mini-map', {
+                    attributionControl: false,
                     zoomControl: true,
                     minZoom: 15,
                     maxZoom: 19,
@@ -2368,7 +2364,10 @@
                     maxBoundsViscosity: 1.0
                 }).setView([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], 17);
 
-                addDarkTiles(checkoutMap);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19, subdomains: 'abcd',
+                    attribution: ''
+                }).addTo(checkoutMap);
 
                 // Draw the campus delivery zone outline
                 L.circle([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], {

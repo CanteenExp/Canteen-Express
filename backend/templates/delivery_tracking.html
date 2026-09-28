@@ -74,8 +74,11 @@
             border: 1px solid rgba(255,255,255,0.08);
         }
 
-        /* Carto "dark matter" tiles are already dark, so no invert filter is
-           needed -- the old invert hack was shifting every map colour. */
+        /* Dark theme applied to the map tiles only (markers/lines stay true-color) */
+        #map .leaflet-tile-pane .leaflet-layer,
+        #map .leaflet-tile-pane .leaflet-tile {
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(88%);
+        }
 
         /* Live position uncertainty: a soft halo sized to the GPS error radius. */
         .acc-circle {
@@ -86,15 +89,15 @@
         /* Faint GPS trail so the customer can see where the rider has been. */
         #trail-line { stroke-linecap: round; stroke-linejoin: round; }
 
+        /* Recenter is a Leaflet bar button like the zoom controls, so the two
+           read as one aligned control in the bottom-right corner. */
+        .ce-recenter a {
+            color: #FF6117;
+            font-size: 16px;
+        }
+
         /* Ensure the map area never flashes white before tiles load */
         #map { background: #0b0b0d !important; }
-        /* Keep the required tile credit readable on a dark basemap. */
-        .leaflet-control-attribution {
-            background: rgba(10,10,12,0.75) !important;
-            color: #a1a1aa !important;
-            font-size: 9px !important;
-        }
-        .leaflet-control-attribution a { color: #d4d4d8 !important; }
     </style>
 </head>
 <body class="bg-glow text-zinc-100 h-dvh flex flex-col selection:bg-orange-500 selection:text-white overflow-hidden">
@@ -137,13 +140,6 @@
             <p class="text-xs font-black text-white truncate">{{ rider_name|default:"Rider" }}</p>
             <p class="text-[10px] text-emerald-400 font-bold">ETA <span id="eta-val">--</span></p>
         </div>
-
-        <!-- Recentre / fit-route control (bottom-left over map) -->
-        <button type="button" id="recenter-btn"
-                class="absolute bottom-6 left-3 z-[500] glass-card rounded-xl px-3 py-2 flex items-center gap-2 shadow-lg active:scale-95 transition">
-            <i class="fa-solid fa-location-crosshairs text-orange-400"></i>
-            <span class="text-[11px] font-black text-white">Recenter</span>
-        </button>
     </div>
 
     <!-- ===== MAXIM-STYLE FLOATING BOTTOM CARD ===== -->
@@ -205,22 +201,44 @@
         // PSU Main Campus (Tiniguiban Heights) - campus-only delivery scope
         const CAMPUS_CENTER = [9.77778, 118.73333];
         const ZOOM = 15;
-        // Interactive campus map. Basemap is CARTO's free "dark matter" tiles --
-        // purpose-built for dark UIs, so no CSS invert filter is needed and the
-        // colours match the rest of the app. OSM and CARTO both REQUIRE visible
-        // attribution, so the control is kept on (it is styled to be legible).
-        const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+        // Interactive campus map: starts zoomed in on the campus but lets the user
+        // pan and zoom freely. Uses free OpenStreetMap tiles rendered dark via a
+        // CSS invert filter, so no attribution text shows on screen.
         const map = L.map('map', {
+            attributionControl: false,
             zoomControl: true,
             scrollWheelZoom: true
         }).setView(CAMPUS_CENTER, ZOOM);
         L.control.zoom({ position: 'bottomright' }).addTo(map);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        // Free standard tiles (requires no credentials)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            minZoom: 3,
-            subdomains: 'abcd',
-            attribution: TILE_ATTRIBUTION
+            minZoom: 13,
+            attribution: ''
         }).addTo(map);
+
+        // Recenter: a Leaflet bar button, so Leaflet stacks it directly above the
+        // zoom controls in the same corner and they stay aligned at any size.
+        const RecenterControl = L.Control.extend({
+            options: { position: 'bottomright' },
+            onAdd: function () {
+                const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control ce-recenter');
+                const button = L.DomUtil.create('a', '', container);
+                button.href = '#';
+                button.title = 'Recenter on rider';
+                button.setAttribute('role', 'button');
+                button.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i>';
+                L.DomEvent.disableClickPropagation(container);
+                L.DomEvent.disableScrollPropagation(container);
+                L.DomEvent.on(button, 'click', (ev) => {
+                    L.DomEvent.stop(ev);
+                    followRider = true;
+                    fitRoute(true);
+                });
+                return container;
+            },
+        });
+        map.addControl(new RecenterControl());
 
         // Campus-only delivery zone as an irregular polygon that hugs the actual
         // PSU Main Campus footprint (instead of a perfect circle).
@@ -535,13 +553,6 @@
         }
 
         // (boot + live channel started above, right after applyTracking)
-
-        // Recenter button: re-attach the camera to the rider and re-frame the
-        // whole route (the map stops auto-panning as soon as the user pans).
-        document.getElementById('recenter-btn').addEventListener('click', () => {
-            followRider = true;
-            fitRoute(true);
-        });
 
         // Smart Rider Timeout Timer (2 minutes while SEARCHING) - 1-second precision tick
         let searchingSeconds = 0;
