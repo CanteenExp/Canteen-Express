@@ -40,3 +40,8 @@
 - **Kitchen Board (`kitchen_display`):** `pending -> preparing -> ready -> completed` for both pickup and delivery orders. Loyalty points credit at completion (`credit_points_for_order` in `update_order_status`); cancelling refunds points and restores stock.
 - **Rider (`deliveries`):** Delivery order -> kitchen marks `ready` -> rider dispatch -> `completed` on handoff (live GPS + chat).
 - **Rating gate (`submit_feedback_api`):** Orders are rateable only once `status == 'completed'` (pickup after the kitchen finishes, delivery after the rider hands off).
+
+## Delivery Routing (road-following maps)
+- `deliveries/routing.py`: `get_road_route(origin, dest)` returns `{'path': [[lat, lng]...], 'distance_km', 'duration_min', 'provider'}` or `None`. Providers are tried in order — OSRM driving (`OSRM_BASE_URL`), then Valhalla pedestrian (`VALHALLA_BASE_URL`) for campus footpaths a car graph cannot reach.
+- `get_tracking` (`deliveries/views.py`) embeds `path` + `routing_provider` in its JSON; `remaining_km` uses the **road** distance when available, else haversine. `delivery_tracking.html` and `accounts/dashboard.html` draw `data.path` (solid orange + white casing) and fall back to the dashed straight line when `path` is `null` — so a routing outage degrades instead of breaking tracking.
+- **Never fatal:** all provider errors are swallowed, results cached in `cache` (coordinates rounded to 4 decimals ≈ 11 m, `ROUTING_CACHE_SECONDS`), and failures cached for 60s. Set `ROUTING_ENABLED=False` to disable entirely. Routing is force-disabled while the test suite runs (`sys.argv`), so unit tests never touch the network.

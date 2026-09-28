@@ -608,14 +608,15 @@
 
         // Live rider location sharing: watchPosition continuously streams the
         // rider's GPS and pushes each fix to the tracking API so the customer's
-        // pin moves in near-real-time.
+        // pin moves in near-real-time. The reported accuracy (metres) rides
+        // along so the server can reject fuzzy fixes and the customer's map can
+        // draw the real error radius.
         function startLocationWatch() {
             if (!navigator.geolocation) return;
             navigator.geolocation.watchPosition(
                 (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-                    pushRiderLocation(lat, lng);
+                    pushRiderLocation(
+                        pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
                 },
                 (err) => {
                     if (err.code === err.PERMISSION_DENIED) return;
@@ -623,7 +624,8 @@
                     if (!window.__locWatchRetry) {
                         window.__locWatchRetry = setInterval(() => {
                             navigator.geolocation.getCurrentPosition(
-                                (p) => pushRiderLocation(p.coords.latitude, p.coords.longitude),
+                                (p) => pushRiderLocation(
+                                    p.coords.latitude, p.coords.longitude, p.coords.accuracy),
                                 () => {}, { enableHighAccuracy: true, timeout: 10000 }
                             );
                         }, 8000);
@@ -633,7 +635,7 @@
             );
         }
 
-        function pushRiderLocation(lat, lng) {
+        function pushRiderLocation(lat, lng, accuracy) {
             document.querySelectorAll('[data-location-id]').forEach(el => {
                 const id = el.getAttribute('data-location-id');
                 fetch(`/deliveries/api/location/${id}/update/`, {
@@ -642,7 +644,10 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': '{{ csrf_token }}'
                     },
-                    body: JSON.stringify({ lat, lng })
+                    body: JSON.stringify({
+                        lat, lng,
+                        accuracy: (typeof accuracy === 'number') ? accuracy : null
+                    })
                 }).catch(() => {});
             });
         }
@@ -653,7 +658,8 @@
         function pushRiderLocationFromGPS() {
             if (!navigator.geolocation) return;
             navigator.geolocation.getCurrentPosition(
-                (p) => pushRiderLocation(p.coords.latitude, p.coords.longitude),
+                (p) => pushRiderLocation(
+                    p.coords.latitude, p.coords.longitude, p.coords.accuracy),
                 () => {}, { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
             );
         }

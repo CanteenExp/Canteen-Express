@@ -74,13 +74,27 @@
             border: 1px solid rgba(255,255,255,0.08);
         }
 
-        /* Dark theme applied to the map tiles only (markers/lines stay true-color) */
-        #map .leaflet-tile-pane .leaflet-layer,
-        #map .leaflet-tile-pane .leaflet-tile {
-            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(88%);
+        /* Carto "dark matter" tiles are already dark, so no invert filter is
+           needed -- the old invert hack was shifting every map colour. */
+
+        /* Live position uncertainty: a soft halo sized to the GPS error radius. */
+        .acc-circle {
+            background: rgba(96, 165, 250, 0.16);
+            border: 1.5px solid rgba(96, 165, 250, 0.55);
+            border-radius: 50%;
         }
+        /* Faint GPS trail so the customer can see where the rider has been. */
+        #trail-line { stroke-linecap: round; stroke-linejoin: round; }
+
         /* Ensure the map area never flashes white before tiles load */
         #map { background: #0b0b0d !important; }
+        /* Keep the required tile credit readable on a dark basemap. */
+        .leaflet-control-attribution {
+            background: rgba(10,10,12,0.75) !important;
+            color: #a1a1aa !important;
+            font-size: 9px !important;
+        }
+        .leaflet-control-attribution a { color: #d4d4d8 !important; }
     </style>
 </head>
 <body class="bg-glow text-zinc-100 h-dvh flex flex-col selection:bg-orange-500 selection:text-white overflow-hidden">
@@ -123,43 +137,50 @@
             <p class="text-xs font-black text-white truncate">{{ rider_name|default:"Rider" }}</p>
             <p class="text-[10px] text-emerald-400 font-bold">ETA <span id="eta-val">--</span></p>
         </div>
+
+        <!-- Recentre / fit-route control (bottom-left over map) -->
+        <button type="button" id="recenter-btn"
+                class="absolute bottom-6 left-3 z-[500] glass-card rounded-xl px-3 py-2 flex items-center gap-2 shadow-lg active:scale-95 transition">
+            <i class="fa-solid fa-location-crosshairs text-orange-400"></i>
+            <span class="text-[11px] font-black text-white">Recenter</span>
+        </button>
     </div>
 
     <!-- ===== MAXIM-STYLE FLOATING BOTTOM CARD ===== -->
     <div class="shrink-0 z-20">
-        <div class="max-w-3xl mx-auto px-4 pb-4">
-            <div class="glass-card rounded-3xl p-4 slide-up shadow-2xl space-y-3">
+        <div class="max-w-3xl mx-auto px-3 pb-3">
+            <div class="glass-card rounded-3xl p-3.5 slide-up shadow-2xl space-y-2.5">
 
                 <!-- Delivery destination row -->
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-lg shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-base shrink-0">
                         <i class="fa-solid fa-location-dot"></i>
                     </div>
                     <div class="min-w-0">
-                        <p class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Delivering to</p>
-                        <p class="text-sm font-black text-white truncate">{{ delivery_location }}</p>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold leading-none">Delivering to</p>
+                        <p class="text-[13px] font-black text-white truncate leading-tight mt-0.5">{{ delivery_location }}</p>
                     </div>
                 </div>
 
                 <!-- Speed + Distance / Remaining -->
                 <div class="grid grid-cols-3 gap-2">
-                    <div class="bg-black/30 border border-white/5 rounded-2xl p-3 text-center">
-                        <h2 id="speed-val" class="text-2xl font-black text-orange-400 tabular-nums">--</h2>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-0.5">Speed</p>
+                    <div class="bg-black/30 border border-white/5 rounded-2xl p-2 text-center">
+                        <h2 id="speed-val" class="text-xl font-black text-orange-400 tabular-nums leading-none">--</h2>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1">Speed</p>
                     </div>
-                    <div class="bg-black/30 border border-white/5 rounded-2xl p-3 text-center">
-                        <h2 id="dist-val" class="text-2xl font-black text-emerald-400 tabular-nums">--</h2>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-0.5">Distance</p>
+                    <div class="bg-black/30 border border-white/5 rounded-2xl p-2 text-center">
+                        <h2 id="dist-val" class="text-xl font-black text-emerald-400 tabular-nums leading-none">--</h2>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1">Distance</p>
                     </div>
-                    <div class="bg-black/30 border border-white/5 rounded-2xl p-3 text-center">
-                        <h2 id="remain-val" class="text-2xl font-black text-white tabular-nums">--</h2>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-0.5">Remaining</p>
+                    <div class="bg-black/30 border border-white/5 rounded-2xl p-2 text-center">
+                        <h2 id="remain-val" class="text-xl font-black text-white tabular-nums leading-none">--</h2>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1">Remaining</p>
                     </div>
                 </div>
 
                 <!-- Progress bar -->
                 <div class="space-y-1">
-                    <div class="h-2 w-full bg-zinc-800/80 rounded-full overflow-hidden">
+                    <div class="h-1.5 w-full bg-zinc-800/80 rounded-full overflow-hidden">
                         <div id="progress-bar" class="h-full bg-gradient-to-r from-orange-500 to-emerald-500 rounded-full transition-all duration-700" style="width:0%"></div>
                     </div>
                     <div class="flex items-center justify-between text-[10px] text-zinc-500 font-bold">
@@ -169,8 +190,12 @@
                     </div>
                 </div>
 
-                <p id="status-msg" class="text-center text-[11px] text-zinc-400 font-bold"></p>
-                <p id="updated-at" class="text-center text-[9px] text-zinc-600 font-bold uppercase tracking-widest">--</p>
+                <p id="status-msg" class="text-center text-[11px] text-zinc-400 font-bold leading-tight"></p>
+                <p class="text-center text-[9px] text-zinc-600 font-bold uppercase tracking-widest leading-tight whitespace-nowrap">
+                    <span id="live-dot" class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 align-middle mr-1"></span>
+                    <span id="updated-at">--</span>
+                    <span class="mx-1">|</span>GPS <span id="acc-val">--</span>
+                </p>
             </div>
         </div>
     </div>
@@ -180,20 +205,21 @@
         // PSU Main Campus (Tiniguiban Heights) - campus-only delivery scope
         const CAMPUS_CENTER = [9.77778, 118.73333];
         const ZOOM = 15;
-        // Interactive campus map: starts zoomed in on the campus but lets the user
-        // pan and zoom freely. Uses free OpenStreetMap tiles rendered dark via a
-        // CSS invert filter, so no attribution text shows on screen.
+        // Interactive campus map. Basemap is CARTO's free "dark matter" tiles --
+        // purpose-built for dark UIs, so no CSS invert filter is needed and the
+        // colours match the rest of the app. OSM and CARTO both REQUIRE visible
+        // attribution, so the control is kept on (it is styled to be legible).
+        const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
         const map = L.map('map', {
-            attributionControl: false,
             zoomControl: true,
             scrollWheelZoom: true
         }).setView(CAMPUS_CENTER, ZOOM);
         L.control.zoom({ position: 'bottomright' }).addTo(map);
-        // Free standard tiles (requires no credentials)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             maxZoom: 19,
-            minZoom: 13,
-            attribution: ''
+            minZoom: 3,
+            subdomains: 'abcd',
+            attribution: TILE_ATTRIBUTION
         }).addTo(map);
 
         // Campus-only delivery zone as an irregular polygon that hugs the actual
@@ -228,7 +254,18 @@
         let prevLatLng = null;
         let destMarker = null;
         let routeLine = null;
+        let routeCasing = null;
+        let accCircle = null;          // GPS error halo around the rider
+        let trailLine = null;          // faint breadcrumb of where they've been
         let currentHeading = 0;
+        let smoothLatLng = null;       // smoothed position actually drawn
+        let routePts = [];             // current drawn route, used for snapping
+        let routeKey = '';             // change-detector for the route polyline
+        let followRider = true;        // released when the user pans the map
+
+        // Any manual pan/zoom hands control back to the customer; the recenter
+        // button (or a fresh fix) turns following on again.
+        map.on('dragstart', () => { followRider = false; });
 
         // Smoothly animate the marker from its current position to a target latlng
         function animateMarker(marker, targetLatLng, ms) {
@@ -246,111 +283,244 @@
             requestAnimationFrame(step);
         }
 
-        function updateMap() {
-            fetch(`/deliveries/api/location/${DELIVERY_ID}/`)
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.success) return;
-
-                    // Check searching timer
-                    currentStatus = data.status;
-                    checkSearchingTimer(data.status);
-
-                    // Destination pin
-                    if (data.dest_lat != null && data.dest_lng != null && !destMarker) {
-                        destMarker = L.marker([data.dest_lat, data.dest_lng], {
-                            icon: L.divIcon({
-                                className: '',
-                                html: '<div class="text-3xl"><i class="fa-solid fa-location-dot text-emerald-500" style="text-shadow:0 0 14px rgba(34,197,94,0.9)"></i></div>',
-                                iconSize: [30, 30], iconAnchor: [15, 28]
-                            })
-                        }).addTo(map);
-                    }
-
-                    // Rider marker: rotate icon + animate movement
-                    let hasNewPos = false;
-                    if (data.lat != null && data.lng != null) {
-                        const target = L.latLng(data.lat, data.lng);
-                        const moving = ((data.speed_kmh || 0) > 0.5);
-
-                        if (!riderMarker) {
-                            riderMarker = L.marker(target, { icon: makeMotorIcon(0) }).addTo(map);
-                            // cache the rotating element
-                            riderMarker._icon && (riderIconEl = riderMarker._icon.querySelector('.motor-icon'));
-                            prevLatLng = target;
-                        } else {
-                            // Rotate to heading (direction of travel)
-                            if (data.heading != null) {
-                                currentHeading = data.heading;
-                            }
-                            if (riderIconEl) {
-                                riderIconEl.style.transform = `rotate(${currentHeading}deg)`;
-                            }
-                            // Animate movement toward the new point (use fixed duration when moving)
-                            animateMarker(riderMarker, target, moving ? 1500 : 600);
-                        }
-                        hasNewPos = true;
-                    }
-
-                    // "moving" chip visibility
-                    const chip = document.getElementById('moving-chip');
-                    if (hasNewPos && (data.speed_kmh || 0) > 0.5) {
-                        chip.classList.remove('hidden');
-                    } else {
-                        chip.classList.add('hidden');
-                    }
-
-                    // Live route line: connects the rider to the pinned customer destination.
-                    // Updates every poll so the rider visibly "approaches" the customer's pin.
-                    if (hasNewPos && data.dest_lat != null && data.dest_lng != null) {
-                        const pts = [[data.lat, data.lng], [data.dest_lat, data.dest_lng]];
-                        if (!routeLine) {
-                            routeLine = L.polyline(pts, {
-                                color: '#FF6117', weight: 3, opacity: 0.8,
-                                dashArray: '7 6'
-                            }).addTo(map);
-                        } else {
-                            routeLine.setLatLngs(pts);
-                        }
-                    }
-
-                    // Stats
-                    document.getElementById('speed-val').textContent = formatSpeed(data.speed_kmh);
-                    document.getElementById('dist-val').textContent = formatDist(data.total_distance_km);
-                    document.getElementById('remain-val').textContent = formatDist(data.remaining_km);
-                    document.getElementById('eta-val').textContent = formatEta(data.eta_minutes);
-
-                    // Progress
-                    const traveled = data.total_distance_km || 0;
-                    const remaining = data.remaining_km;
-                    if (remaining != null && (traveled + remaining) > 0) {
-                        const pct = Math.min(100, Math.round((traveled / (traveled + remaining)) * 100));
-                        document.getElementById('progress-bar').style.width = pct + '%';
-                        document.getElementById('progress-pct').textContent = pct + '%';
-                    } else if (data.status === 'DELIVERED') {
-                        document.getElementById('progress-bar').style.width = '100%';
-                        document.getElementById('progress-pct').textContent = '100%';
-                    }
-
-                    // Status
-                    const badge = document.getElementById('status-badge');
-                    const msg = document.getElementById('status-msg');
-                    const updated = document.getElementById('updated-at');
-                    updated.textContent = data.updated_at ? 'Updated ' + data.updated_at : '--';
-
-                    if (data.status === 'DELIVERED') {
-                        msg.textContent = 'Delivery completed!';
-                        badge.textContent = 'Delivered';
-                        badge.className = 'shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full uppercase border border-emerald-500/30 bg-emerald-500/20 text-emerald-400';
-                    } else if (hasNewPos) {
-                        msg.textContent = 'Rider heading to ' + (data.delivery_location || 'your location');
-                    } else {
-                        msg.textContent = 'Waiting for rider location...';
-                        document.getElementById('speed-val').textContent = '--';
-                        document.getElementById('eta-val').textContent = '--';
-                    }
-                });
+        // Phone GPS jitters 10-25 m even at a standstill. An exponential moving
+        // average plus a snap onto the road makes the rider glide along the route
+        // instead of wobbling across it. This is a DISPLAY smoothing only -- the
+        // numbers the server stores stay raw.
+        const SMOOTH_ALPHA = 0.4;
+        const SNAP_MAX_M = 45;
+        function smoothPosition(raw, snapped) {
+            if (!smoothLatLng) return raw;
+            // A big jump means a long gap (tab was backgrounded); do not lag.
+            if (map.distance(smoothLatLng, raw) > 120) return raw;
+            return L.latLng(
+                smoothLatLng.lat + (snapped.lat - smoothLatLng.lat) * SMOOTH_ALPHA,
+                smoothLatLng.lng + (snapped.lng - smoothLatLng.lng) * SMOOTH_ALPHA
+            );
         }
+        function snapToRoute(point) {
+            if (routePts.length < 2) return point;
+            let best = null, bestDist = Infinity;
+            for (const p of routePts) {
+                const d = map.distance(point, p);
+                if (d < bestDist) { bestDist = d; best = p; }
+            }
+            return (best && bestDist <= SNAP_MAX_M) ? best : point;
+        }
+        function smoothHeading(target) {
+            if (target == null) return currentHeading;
+            let delta = ((target - currentHeading + 540) % 360) - 180;
+            return (currentHeading + delta * 0.35 + 360) % 360;
+        }
+
+        // Recentre on the rider (and optionally zoom to the whole route).
+        function fitRoute(includeRider) {
+            const pts = routePts.slice();
+            if (includeRider && smoothLatLng) pts.push(smoothLatLng);
+            if (pts.length < 2) {
+                if (smoothLatLng) map.setView(smoothLatLng, ZOOM);
+                return;
+            }
+            map.fitBounds(L.latLngBounds(pts), { padding: [56, 56], maxZoom: 17 });
+        }
+
+        // Apply one tracking payload to the map + cards. Used by both the SSE
+        // push channel and the polling fallback so they can never disagree.
+        function applyTracking(data) {
+            if (!data || !data.success) return;
+
+            currentStatus = data.status;
+            checkSearchingTimer(data.status);
+
+            // Destination pin
+            if (data.dest_lat != null && data.dest_lng != null && !destMarker) {
+                destMarker = L.marker([data.dest_lat, data.dest_lng], {
+                    icon: L.divIcon({
+                        className: '',
+                        html: '<div class="text-3xl"><i class="fa-solid fa-location-dot text-emerald-500" style="text-shadow:0 0 14px rgba(34,197,94,0.9)"></i></div>',
+                        iconSize: [30, 30], iconAnchor: [15, 28]
+                    })
+                }).addTo(map);
+            }
+
+            // Route line: follows the real campus roads/paths when the server
+            // could route us, otherwise it degrades to a dashed straight line
+            // (a routing outage must never break tracking).
+            let hasNewPos = false;
+            if (data.lat != null && data.lng != null && data.dest_lat != null && data.dest_lng != null) {
+                const routed = Array.isArray(data.path) && data.path.length > 1;
+                const pts = routed
+                    ? data.path.map(p => [p[0], p[1]])
+                    : [[data.lat, data.lng], [data.dest_lat, data.dest_lng]];
+                routePts = pts;
+                const key = (routed ? 'R' : 'S') + pts.length + ':' + pts[0] + ':' + pts[pts.length - 1];
+                if (key !== routeKey) {
+                    routeKey = key;
+                    const style = routed
+                        ? { color: '#FF6117', weight: 5, opacity: 0.95 }
+                        : { color: '#FF6117', weight: 3, opacity: 0.8, dashArray: '7 6' };
+                    if (!routeLine) {
+                        // White casing underneath so the route stays legible over
+                        // dark tiles, the way nav apps draw it.
+                        routeCasing = L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.35 }).addTo(map);
+                        routeLine = L.polyline(pts, style).addTo(map);
+                    } else {
+                        routeLine.setLatLngs(pts);
+                        routeLine.setStyle(style);
+                        if (routeCasing) routeCasing.setLatLngs(pts);
+                    }
+                }
+                hasNewPos = true;
+            }
+
+            // Rider marker: smoothed position, snap onto the road, smoothed
+            // rotation, plus the GPS accuracy halo and a short breadcrumb trail.
+            if (data.lat != null && data.lng != null) {
+                const raw = L.latLng(data.lat, data.lng);
+                const target = smoothPosition(raw, snapToRoute(raw));
+                smoothLatLng = target;
+                const moving = ((data.speed_kmh || 0) > 0.5);
+
+                if (!riderMarker) {
+                    riderMarker = L.marker(target, { icon: makeMotorIcon(0), zIndexOffset: 1000 }).addTo(map);
+                    riderMarker._icon && (riderIconEl = riderMarker._icon.querySelector('.motor-icon'));
+                    prevLatLng = target;
+                    fitRoute(true);
+                } else {
+                    currentHeading = smoothHeading(data.heading);
+                    if (riderIconEl) {
+                        riderIconEl.style.transform = `rotate(${currentHeading}deg)`;
+                    }
+                    animateMarker(riderMarker, target, moving ? 1500 : 600);
+                    if (followRider) {
+                        map.panTo(target, { animate: true, duration: 0.6 });
+                    }
+                }
+
+                // Accuracy halo: shows how wide the real error radius is.
+                const acc = data.accuracy_m;
+                if (acc) {
+                    if (!accCircle) {
+                        accCircle = L.circle(target, {
+                            radius: acc, className: 'acc-circle',
+                            interactive: false, stroke: true, weight: 1.5,
+                        }).addTo(map);
+                    } else {
+                        accCircle.setLatLng(target);
+                        accCircle.setRadius(acc);
+                    }
+                } else if (accCircle) {
+                    accCircle.remove();
+                    accCircle = null;
+                }
+
+                // Short breadcrumb trail.
+                const trail = (trailLine ? trailLine.getLatLngs() : []).concat([target]);
+                if (trail.length > 40) trail.shift();
+                const trailStyle = { color: '#60a5fa', weight: 2, opacity: 0.4 };
+                if (!trailLine) trailLine = L.polyline(trail, Object.assign({ className: 'trail-line' }, trailStyle)).addTo(map);
+                else trailLine.setLatLngs(trail);
+            }
+
+            // "moving" chip visibility
+            const chip = document.getElementById('moving-chip');
+            if (hasNewPos && (data.speed_kmh || 0) > 0.5) {
+                chip.classList.remove('hidden');
+            } else {
+                chip.classList.add('hidden');
+            }
+
+            // Stats
+            document.getElementById('speed-val').textContent = formatSpeed(data.speed_kmh);
+            document.getElementById('dist-val').textContent = formatDist(data.total_distance_km);
+            document.getElementById('remain-val').textContent = formatDist(data.remaining_km);
+            document.getElementById('eta-val').textContent = formatEta(data.eta_minutes);
+            const accEl = document.getElementById('acc-val');
+            if (accEl) accEl.textContent = data.accuracy_m ? '±' + Math.round(data.accuracy_m) + 'm' : '--';
+
+            // Progress
+            const traveled = data.total_distance_km || 0;
+            const remaining = data.remaining_km;
+            if (remaining != null && (traveled + remaining) > 0) {
+                const pct = Math.min(100, Math.round((traveled / (traveled + remaining)) * 100));
+                document.getElementById('progress-bar').style.width = pct + '%';
+                document.getElementById('progress-pct').textContent = pct + '%';
+            } else if (data.status === 'DELIVERED') {
+                document.getElementById('progress-bar').style.width = '100%';
+                document.getElementById('progress-pct').textContent = '100%';
+            }
+
+            // Status
+            const badge = document.getElementById('status-badge');
+            const msg = document.getElementById('status-msg');
+            const updated = document.getElementById('updated-at');
+            updated.textContent = data.updated_at ? 'Updated ' + data.updated_at : '--';
+
+            if (data.status === 'DELIVERED') {
+                msg.textContent = 'Delivery completed!';
+                badge.textContent = 'Delivered';
+                badge.className = 'shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full uppercase border border-emerald-500/30 bg-emerald-500/20 text-emerald-400';
+            } else if (hasNewPos) {
+                msg.textContent = 'Rider heading to ' + (data.delivery_location || 'your location');
+            } else {
+                msg.textContent = 'Waiting for rider location...';
+                document.getElementById('speed-val').textContent = '--';
+                document.getElementById('eta-val').textContent = '--';
+            }
+        }
+
+        // Polling fallback / recovery path.
+        function updateMap() {
+            return fetch(`/deliveries/api/location/${DELIVERY_ID}/`)
+                .then(r => r.json())
+                .then(applyTracking)
+                .catch(() => {});
+        }
+
+        // ===== Live channel =====
+        // SSE pushes every accepted GPS fix immediately (<1s) instead of the
+        // rider appearing up to 4s stale. The 4s poll stays as a fallback for
+        // proxies that block EventSource, plus a slow 20s safety net.
+        let stream = null;
+        let pollTimer = null;
+        let safetyTimer = null;
+
+        function startPolling() {
+            if (pollTimer) return;
+            pollTimer = setInterval(updateMap, 4000);
+        }
+        function stopPolling() {
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        }
+        function setLive(on) {
+            const el = document.getElementById('live-dot');
+            if (el) el.className = 'inline-block w-1.5 h-1.5 rounded-full ' + (on ? 'bg-emerald-400' : 'bg-amber-400');
+        }
+        function startTracking() {
+            if (typeof EventSource === 'undefined') { startPolling(); return; }
+            try {
+                stream = new EventSource(`/deliveries/api/location/${DELIVERY_ID}/stream/`);
+            } catch (e) {
+                startPolling();
+                return;
+            }
+            stream.onmessage = (ev) => {
+                try { applyTracking(JSON.parse(ev.data)); } catch (e) {}
+            };
+            stream.onopen = () => { setLive(true); stopPolling(); };
+            // Browser auto-reconnects; poll in the meantime so the page is never
+            // frozen if the stream cannot be established at all.
+            stream.onerror = () => { setLive(false); startPolling(); };
+        }
+
+        updateMap();
+        startTracking();
+        safetyTimer = setInterval(updateMap, 20000);
+        window.addEventListener('beforeunload', () => {
+            if (stream) stream.close();
+            stopPolling();
+            if (safetyTimer) clearInterval(safetyTimer);
+        });
 
         function formatSpeed(v) { return v == null ? '--' : v.toFixed(0) + ''; }
         function formatDist(v) {
@@ -364,8 +534,14 @@
             return Math.floor(mins / 60) + 'h ' + Math.round(mins % 60) + 'm';
         }
 
-        updateMap();
-        setInterval(updateMap, 4000);
+        // (boot + live channel started above, right after applyTracking)
+
+        // Recenter button: re-attach the camera to the rider and re-frame the
+        // whole route (the map stops auto-panning as soon as the user pans).
+        document.getElementById('recenter-btn').addEventListener('click', () => {
+            followRider = true;
+            fitRoute(true);
+        });
 
         // Smart Rider Timeout Timer (2 minutes while SEARCHING) - 1-second precision tick
         let searchingSeconds = 0;

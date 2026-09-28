@@ -33,20 +33,16 @@
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* Dark theme applied to ALL app maps (tile images only, markers stay true-color) */
-        #leaflet-map .leaflet-tile-pane .leaflet-layer,
-        #leaflet-map .leaflet-tile-pane .leaflet-tile,
-        #view-order-map .leaflet-tile-pane .leaflet-layer,
-        #view-order-map .leaflet-tile-pane .leaflet-tile,
-        #checkout-mini-map .leaflet-tile-pane .leaflet-layer,
-        #checkout-mini-map .leaflet-tile-pane .leaflet-tile {
-            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(88%);
+        /* Basemap is CARTO "dark matter", which is already dark -- so the old
+           invert() hack (that shifted every map colour) is no longer needed.
+           OSM and CARTO both require visible attribution, so the control stays
+           enabled and is only restyled to remain legible on the dark basemap. */
+        .leaflet-control-attribution {
+            background: rgba(10,10,12,0.75) !important;
+            color: #a1a1aa !important;
+            font-size: 9px !important;
         }
-        /* Hide any map attribution text so no API/key notice ever shows */
-        #leaflet-map .leaflet-control-attribution,
-        #view-order-map .leaflet-control-attribution,
-        #checkout-mini-map .leaflet-control-attribution,
-        .leaflet-control-attribution { display: none !important; }
+        .leaflet-control-attribution a { color: #d4d4d8 !important; }
         /* Dark zoom control on the campus checkout map */
         #checkout-mini-map .leaflet-control-zoom {
             border: 1px solid rgba(255,255,255,.12) !important;
@@ -1195,6 +1191,20 @@
     const CAMPUS_CENTER_LNG = 118.73333;
     const CAMPUS_RADIUS_KM = 0.8;
 
+    // Shared basemap for every map on this page: CARTO's free "dark matter"
+    // tiles. They are purpose-built for dark UIs, which means the app no longer
+    // needs a CSS invert() filter over the tile layer (that hack was shifting
+    // every map colour). No API key required.
+    // OSM and CARTO both require visible attribution, so it is supplied here and
+    // the control is left enabled.
+    const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    function addDarkTiles(mapInstance) {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19, subdomains: 'abcd', attribution: TILE_ATTRIBUTION
+        }).addTo(mapInstance);
+        return mapInstance;
+    }
+
     // Campus landmark directory used to display the nearest building instead of
     // raw coordinates. Coordinates are approximate (relative to the campus
     // center) and should be tuned to your real campus map if needed.
@@ -1597,11 +1607,8 @@
 
         setTimeout(() => {
             if (!leafletMap) {
-                leafletMap = L.map('leaflet-map', { attributionControl: false }).setView([currentLat, currentLng], 16);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19, subdomains: 'abcd',
-                    attribution: ''
-                }).addTo(leafletMap);
+                leafletMap = L.map('leaflet-map').setView([currentLat, currentLng], 16);
+                addDarkTiles(leafletMap);
                 leafletMarker = L.marker([currentLat, currentLng]).addTo(leafletMap)
                     .bindPopup('<b>Your Current Office Location</b><br>Faculty Delivery Zone').openPopup();
             } else {
@@ -2072,6 +2079,50 @@
     // Called on open and then on every SSE push so the rider's pin moves in
     // real-time and the status badge stays fresh. The delivery destination is
     // pinned too so the faculty can always see where the order is heading.
+    // The road-following path comes from the tracking endpoint, so it is
+    // fetched on a throttle here instead of riding along on every SSE push.
+    let viewOrderRoutePath = null;
+    let viewOrderRouteCasing = null;
+    let viewOrderRouteAt = 0;
+    let viewOrderRouteFor = null;
+    let viewOrderRouteLoading = false;
+    const VIEW_ORDER_ROUTE_MIN_MS = 8000;
+
+    async function loadViewOrderRoute(d) {
+        if (!d || typeof d.id === 'undefined') return;
+        if (viewOrderRouteLoading) return;
+        if (Date.now() - viewOrderRouteAt < VIEW_ORDER_ROUTE_MIN_MS) return;
+        viewOrderRouteLoading = true;
+        viewOrderRouteAt = Date.now();
+        try {
+            const res = await fetch(`/deliveries/api/location/${d.id}/`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            // A new delivery resets the throttle so switching orders shows a route.
+            if (viewOrderRouteFor !== d.id) {
+                viewOrderRouteFor = d.id;
+                viewOrderRouteAt = 0;
+            }
+            viewOrderRoutePath = (data && Array.isArray(data.path) && data.path.length > 1)
+                ? data.path
+                : null;
+            if (viewOrderMap) {
+                if (viewOrderRouteLine && viewOrderRoutePath) {
+                    viewOrderRouteLine.setLatLngs(viewOrderRoutePath.map(p => [p[0], p[1]]));
+                    viewOrderRouteLine.setStyle({ color: '#FF6117', weight: 5, opacity: 0.95 });
+                    if (viewOrderRouteCasing) viewOrderRouteCasing.setLatLngs(viewOrderRoutePath.map(p => [p[0], p[1]]));
+                }
+            }
+        } catch (err) {
+            // Offline or not authorised for this delivery: keep the straight line.
+            viewOrderRoutePath = null;
+        } finally {
+            viewOrderRouteLoading = false;
+        }
+    }
+
     function refreshViewOrderTracking(d) {
         const statusEl = document.getElementById('view-order-status');
         if (statusEl) statusEl.innerText = `Status: ${deliveryStatusLabel(d)}`;
@@ -2107,10 +2158,8 @@
             const init = (hasPos && hasDest)
                 ? [(d.rider_lat + d.dest_lat) / 2, (d.rider_lng + d.dest_lng) / 2]
                 : (hasPos ? [d.rider_lat, d.rider_lng] : [currentLat, currentLng]);
-            viewOrderMap = L.map('view-order-map', { attributionControl: false }).setView(init, 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19, subdomains: 'abcd', attribution: ''
-            }).addTo(viewOrderMap);
+            viewOrderMap = L.map('view-order-map').setView(init, 15);
+            addDarkTiles(viewOrderMap);
             if (hasPos) {
                 viewOrderMarker = L.marker([d.rider_lat, d.rider_lng], {
                     icon: L.divIcon({
@@ -2134,13 +2183,25 @@
             if (hasPos) viewOrderMarker.setLatLng([d.rider_lat, d.rider_lng]);
             if (hasDest && viewOrderDestMarker) viewOrderDestMarker.setLatLng([d.dest_lat, d.dest_lng]);
 
-            // Route line from rider to the pinned destination (out-for-delivery view).
+            // Route line: real campus roads when the tracking endpoint could
+            // route us, else the dashed straight line. The path is fetched
+            // separately (see loadViewOrderRoute) because the faculty SSE
+            // payload carries positions but not the routed geometry.
             if (hasPos && hasDest) {
-                const pts = [[d.rider_lat, d.rider_lng], [d.dest_lat, d.dest_lng]];
+                const routed = Array.isArray(viewOrderRoutePath) && viewOrderRoutePath.length > 1;
+                const pts = routed
+                    ? viewOrderRoutePath.map(p => [p[0], p[1]])
+                    : [[d.rider_lat, d.rider_lng], [d.dest_lat, d.dest_lng]];
+                const style = routed
+                    ? { color: '#FF6117', weight: 5, opacity: 0.95 }
+                    : { color: '#FF6117', weight: 3, opacity: 0.8, dashArray: '7 6' };
                 if (!viewOrderRouteLine) {
-                    viewOrderRouteLine = L.polyline(pts, { color: '#FF6117', weight: 3, opacity: 0.8, dashArray: '7 6' }).addTo(viewOrderMap);
+                    viewOrderRouteCasing = L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.35 }).addTo(viewOrderMap);
+                    viewOrderRouteLine = L.polyline(pts, style).addTo(viewOrderMap);
                 } else {
                     viewOrderRouteLine.setLatLngs(pts);
+                    viewOrderRouteLine.setStyle(style);
+                    if (viewOrderRouteCasing) viewOrderRouteCasing.setLatLngs(pts);
                 }
             }
 
@@ -2151,6 +2212,10 @@
             }
             viewOrderMap.invalidateSize();
         }
+
+        // Kick off (throttled) fetch of the road-following path for the order
+        // currently being viewed. Runs on open and on every SSE push.
+        loadViewOrderRoute(d);
     }
 
     // Pro-level success screen shown right after an order is placed.
@@ -2296,7 +2361,6 @@
                 );
 
                 checkoutMap = L.map('checkout-mini-map', {
-                    attributionControl: false,
                     zoomControl: true,
                     minZoom: 15,
                     maxZoom: 19,
@@ -2304,10 +2368,7 @@
                     maxBoundsViscosity: 1.0
                 }).setView([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], 17);
 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19, subdomains: 'abcd',
-                    attribution: ''
-                }).addTo(checkoutMap);
+                addDarkTiles(checkoutMap);
 
                 // Draw the campus delivery zone outline
                 L.circle([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], {
