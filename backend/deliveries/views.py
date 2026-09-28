@@ -12,9 +12,29 @@ from datetime import timedelta
 from accounts.decorators import role_required
 from .models import DeliveryRequest, DeliveryMessage, RiderLocationPoint
 from .utils import haversine_km, distance_from_points, compute_speed_kmh, compute_bearing, is_within_campus
+from .routing import get_road_route
 
 # How long a delivery waits as a proposal with NO online rider before timing out.
 UNASSIGNED_TIMEOUT_MINUTES = 5
+
+# Seconds between keep-alive comments on the customer tracking SSE stream.
+_TRACK_STREAM_HEARTBEAT = 15
+# How often the stream wakes up to check whether the rider moved.
+_TRACK_STREAM_TICK = 1
+
+
+def tracking_version_key(delivery_id):
+    """Cache key holding a timestamp bumped whenever a delivery's live state changes."""
+    return f'tracking:ver:{delivery_id}'
+
+
+def bump_tracking_version(delivery):
+    """Signal any open tracking stream that this delivery changed.
+
+    The stream diffs this single cheap key instead of rebuilding the whole
+    tracking payload (several queries plus a routing lookup) on every tick.
+    """
+    cache.set(tracking_version_key(delivery.id), time.time(), 300)
 
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
@@ -168,6 +188,7 @@ def accept_delivery(request, delivery_id):
             delivery.assigned_to = None
             delivery.accepted_at = timezone.now()
             delivery.save()
+            bump_tracking_version(delivery)
 
             order = delivery.order
             if order.status != 'ready':
@@ -228,6 +249,7 @@ def complete_delivery(request, delivery_id):
             delivery.status = DeliveryRequest.RequestStatus.DELIVERED
             delivery.delivered_at = timezone.now()
             delivery.save()
+            bump_tracking_version(delivery)
 
             order = delivery.order
             order.status = 'completed'
@@ -342,7 +364,11 @@ def expire_stale_requests():
         ).delete()
 
 
-@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
+# 'STUDENT' must be listed here: every one of these views allows the order's
+# OWNER (is_customer / can_view_tracking), but without STUDENT in the decorator
+# a student customer is redirected to the access-denied page before that
+# ownership check ever runs. The per-order check below is the real gate.
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
 def get_delivery_messages(request, delivery_id):
     delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
     user = request.user
@@ -367,7 +393,11 @@ def get_delivery_messages(request, delivery_id):
     return JsonResponse({'success': True, 'messages': msg_list, 'unread_count': unread_ids})
 
 
-@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
+# 'STUDENT' must be listed here: every one of these views allows the order's
+# OWNER (is_customer / can_view_tracking), but without STUDENT in the decorator
+# a student customer is redirected to the access-denied page before that
+# ownership check ever runs. The per-order check below is the real gate.
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
 def send_delivery_message(request, delivery_id):
     if request.method == 'POST':
         try:
@@ -482,9 +512,29 @@ def update_location(request, delivery_id):
             lat = float(lat)
             lng = float(lng)
 
+            # How good this fix is, in metres. Devices that do not report it
+            # (or report a wildly wrong value) are treated as "good enough" so
+            # older riders are never locked out of tracking.
+            accuracy = data.get('accuracy')
+            accuracy = float(accuracy) if accuracy is not None else None
+            if accuracy is not None and not (0 < accuracy <= 5000):
+                accuracy = None
+
+            from django.conf import settings
+            max_accuracy = getattr(settings, 'GPS_MAX_ACCURACY_M', 40)
+            if accuracy is not None and accuracy > max_accuracy:
+                # Too fuzzy to trust: keep showing the last good position rather
+                # than teleporting the rider across campus.
+                return JsonResponse({
+                    'success': False,
+                    'message': 'GPS signal too weak',
+                    'accuracy_m': round(accuracy, 1),
+                    'max_accuracy_m': max_accuracy,
+                    'ignored': True,
+                }, status=422)
+
             # Campus-only scope: reject location pushes outside the campus geofence.
             # Toggle-able for testing/demo via ENFORCE_GEOFENCE=False.
-            from django.conf import settings
             enforce_geofence = getattr(settings, 'ENFORCE_GEOFENCE', True)
             if enforce_geofence and not is_within_campus(lat, lng):
                 return JsonResponse({
@@ -511,32 +561,46 @@ def update_location(request, delivery_id):
                     lat=lat,
                     lng=lng,
                     speed_kmh=speed,
+                    accuracy=accuracy,
                 )
             delivery.rider_lat = lat
             delivery.rider_lng = lng
+            delivery.rider_acc = accuracy
             delivery.location_updated_at = now
-            delivery.save(update_fields=['rider_lat', 'rider_lng', 'location_updated_at'])
+            delivery.save(update_fields=['rider_lat', 'rider_lng', 'rider_acc', 'location_updated_at'])
+
+            # Bump a cheap version counter so the live-tracking SSE stream can
+            # notice a move without rebuilding the whole payload every tick.
+            bump_tracking_version(delivery)
             return JsonResponse({'success': True, 'speed_kmh': round(speed, 1)})
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=500)
     return JsonResponse({'success': False}, status=400)
 
 
-@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
-def get_tracking(request, delivery_id):
-    """Return the rider's latest position plus speed/distance/ETA for live tracking."""
-    delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
-    order = delivery.order
+def can_view_tracking(request, delivery):
+    """Live GPS is private: only the order's OWNER or a staff/rider role."""
     user = request.user
-    # Privacy: only the order's OWNER or staff/rider roles may read live GPS.
-    is_owner = order.customer_id is not None and order.customer_id == user.id
-    is_privileged = (
+    order = delivery.order
+    is_owner = (
+        user.is_authenticated
+        and order.customer_id is not None
+        and order.customer_id == user.id
+    )
+    is_privileged = user.is_authenticated and (
         user.is_superuser or user.is_staff
         or user.role in ('RIDER', 'DELIVERY', 'STAFF', 'ADMIN')
     )
-    if not (is_owner or is_privileged):
-        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    return is_owner or is_privileged
 
+
+def _tracking_payload(delivery):
+    """Build the live-tracking JSON for a delivery.
+
+    Shared by the polling endpoint and the SSE stream so both always send the
+    exact same shape.
+    """
+    order = delivery.order
     points = list(delivery.location_points.all())
     # History points are throttled (one per 4s) so include the live rider
     # position as the final waypoint -- distance stays accurate between writes.
@@ -555,19 +619,33 @@ def get_tracking(request, delivery_id):
 
     remaining_km = None
     eta_minutes = None
+    road_route = None
     if delivery.dest_lat is not None and delivery.rider_lat is not None:
-        remaining_km = haversine_km(
-            delivery.rider_lat, delivery.rider_lng, delivery.dest_lat, delivery.dest_lng)
+        # A real road-following path (OSRM, then Valhalla for campus footpaths).
+        # Falls back to None -- and the map to a straight line -- whenever no
+        # provider answers, so a routing outage can never break tracking.
+        road_route = get_road_route(
+            delivery.rider_lat, delivery.rider_lng,
+            delivery.dest_lat, delivery.dest_lng,
+        )
+        remaining_km = (
+            road_route['distance_km'] if road_route
+            else haversine_km(delivery.rider_lat, delivery.rider_lng,
+                              delivery.dest_lat, delivery.dest_lng)
+        )
         if latest_speed > 0.5 and delivery.status != DeliveryRequest.RequestStatus.DELIVERED:
             eta_minutes = (remaining_km / latest_speed) * 60.0
         else:
             eta_minutes = None
 
-    return JsonResponse({
+    return {
         'success': True,
         'status': delivery.status,
         'lat': delivery.rider_lat,
         'lng': delivery.rider_lng,
+        # Radius (metres) of the rider's GPS error circle -- the map draws it so
+        # the customer sees how precise the fix actually is.
+        'accuracy_m': round(delivery.rider_acc, 1) if delivery.rider_acc else None,
         'dest_lat': delivery.dest_lat,
         'dest_lng': delivery.dest_lng,
         'speed_kmh': round(latest_speed, 1),
@@ -575,34 +653,102 @@ def get_tracking(request, delivery_id):
         'total_distance_km': round(total_distance_km, 2),
         'remaining_km': round(remaining_km, 2) if remaining_km is not None else None,
         'eta_minutes': round(eta_minutes) if eta_minutes is not None else None,
+        # Road route for the map: [[lat, lng], ...] following the actual campus
+        # roads. Null when routing is unavailable, which tells the map to draw
+        # the old straight line instead.
+        'path': road_route['path'] if road_route else None,
+        'routing_provider': road_route['provider'] if road_route else None,
+        'route_duration_min': (
+            round(road_route['duration_min']) if road_route else None
+        ),
         'updated_at': delivery.location_updated_at.strftime('%I:%M %p') if delivery.location_updated_at else None,
-        'order_number': delivery.order.order_number,
+        'order_number': order.order_number,
         'delivery_location': delivery.delivery_location,
-    })
+    }
 
 
-@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
+# 'STUDENT' must be listed here: every one of these views allows the order's
+# OWNER (is_customer / can_view_tracking), but without STUDENT in the decorator
+# a student customer is redirected to the access-denied page before that
+# ownership check ever runs. The per-order check below is the real gate.
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
+def get_tracking(request, delivery_id):
+    """Return the rider's latest position plus speed/distance/ETA for live tracking."""
+    delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    # Privacy: only the order's OWNER or staff/rider roles may read live GPS.
+    if not can_view_tracking(request, delivery):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    return JsonResponse(_tracking_payload(delivery))
+
+
+# 'STUDENT' must be listed here: every one of these views allows the order's
+# OWNER (is_customer / can_view_tracking), but without STUDENT in the decorator
+# a student customer is redirected to the access-denied page before that
+# ownership check ever runs. The per-order check below is the real gate.
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
+def tracking_stream(request, delivery_id):
+    """Server-Sent Events push channel for the customer tracking page.
+
+    The page used to poll every 4s, so a rider could appear up to 4 seconds
+    stale. This pushes each accepted GPS fix immediately. The 4s poll stays as
+    a client-side fallback for when EventSource cannot connect.
+    """
+    delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    if not can_view_tracking(request, delivery):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    def event_stream():
+        last_version = None
+        last_frame = None
+        sent_first = False
+        last_beat = time.time()
+        key = tracking_version_key(delivery_id)
+
+        while True:
+            try:
+                version = cache.get(key)
+                changed = (not sent_first) or (
+                    version is not None and version != last_version)
+                if changed:
+                    fresh = DeliveryRequest.objects.select_related('order').get(pk=delivery_id)
+                    frame = json.dumps(_tracking_payload(fresh))
+                    if frame != last_frame:
+                        yield f'data: {frame}\n\n'
+                        last_frame = frame
+                        last_beat = time.time()
+                    last_version = version
+                    sent_first = True
+                elif time.time() - last_beat > _TRACK_STREAM_HEARTBEAT:
+                    # Comment frame: keeps proxies from closing an idle stream.
+                    yield ': keep-alive\n\n'
+                    last_beat = time.time()
+            except GeneratorExit:
+                raise
+            except Exception:
+                # A transient DB/cache error must never kill the stream -- the
+                # client simply waits for the next tick.
+                pass
+            time.sleep(_TRACK_STREAM_TICK)
+
+    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
+
+
+# 'STUDENT' must be listed here: every one of these views allows the order's
+# OWNER (is_customer / can_view_tracking), but without STUDENT in the decorator
+# a student customer is redirected to the access-denied page before that
+# ownership check ever runs. The per-order check below is the real gate.
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
 def track_order(request, delivery_id):
     """Customer-facing live tracking page (Leaflet map)."""
     delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
     order = delivery.order
-    user = request.user
     # Privacy: page access mirrors get_tracking -- the order's OWNER or
     # staff/rider roles. A random FACULTY/STUDENT can no longer open any
     # delivery's tracking page by guessing the id.
-    is_owner = (
-        user.is_authenticated
-        and order.customer_id is not None
-        and order.customer_id == user.id
-    )
-    is_privileged = (
-        user.is_authenticated
-        and (
-            user.is_superuser or user.is_staff
-            or user.role in ('RIDER', 'DELIVERY', 'STAFF', 'ADMIN')
-        )
-    )
-    if not (is_owner or is_privileged):
+    if not can_view_tracking(request, delivery):
         messages.error(request, "Access denied.")
         return redirect('accounts:landing')
 

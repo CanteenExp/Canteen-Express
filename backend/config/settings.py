@@ -26,6 +26,26 @@ DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t", "yes")
 # facade falls back to free OpenStreetMap tiles so the app keeps working offline.
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
+# Road-following routes for the live delivery maps. Both defaults are free,
+# key-less public servers, so no account is required to get real road routes.
+# Point these at a self-hosted OSRM/Valhalla for production traffic.
+# When routing is off -- or every provider is unreachable -- the maps fall back
+# to drawing a straight line, so tracking never breaks.
+ROUTING_ENABLED = os.getenv('ROUTING_ENABLED', 'True').lower() == 'true'
+OSRM_BASE_URL = os.getenv('OSRM_BASE_URL', 'https://router.project-osrm.org')
+VALHALLA_BASE_URL = os.getenv('VALHALLA_BASE_URL', 'https://valhalla1.openstreetmap.de')
+# Fail fast: a slow routing server must not hold up a tracking poll.
+ROUTING_TIMEOUT = int(os.getenv('ROUTING_TIMEOUT', '4'))
+# How long a computed route is reused (seconds). The rider only needs a new
+# route every few metres, and the tracking page polls every few seconds.
+ROUTING_CACHE_SECONDS = int(os.getenv('ROUTING_CACHE_SECONDS', '600'))
+
+# Live GPS quality gate. A phone fix whose accuracy radius is worse than this
+# (metres) is ignored and the last known good position stays on the map, so a
+# weak signal cannot teleport the rider across campus. The map also draws the
+# accuracy circle so customers see how precise the fix really is.
+GPS_MAX_ACCURACY_M = float(os.getenv('GPS_MAX_ACCURACY_M', '40'))
+
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com', '.loca.lt', '.devtunnels.ms', '.railway.app']
 AUTH_USER_MODEL = 'accounts.CustomUser'
 

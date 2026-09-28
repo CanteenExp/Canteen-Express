@@ -35,6 +35,8 @@ class DeliveryRequest(models.Model):
     # Live rider tracking
     rider_lat = models.FloatField(null=True, blank=True)
     rider_lng = models.FloatField(null=True, blank=True)
+    # Radius (metres) of the GPS error circle reported by the rider's device.
+    rider_acc = models.FloatField(null=True, blank=True)
     location_updated_at = models.DateTimeField(null=True, blank=True)
 
     # Delivery destination coordinates (captured from customer at checkout)
@@ -63,6 +65,8 @@ class RiderLocationPoint(models.Model):
     lat = models.FloatField()
     lng = models.FloatField()
     speed_kmh = models.FloatField(default=0)
+    # Radius (metres) of the GPS error circle for this fix, when reported.
+    accuracy = models.FloatField(null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:

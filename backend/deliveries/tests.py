@@ -433,3 +433,209 @@ class DeliverySyncTestCase(TestCase):
 
         self.delivery.refresh_from_db()
         self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.TIMEOUT)
+
+
+class RoadRoutingTestCase(TestCase):
+    """The routing helpers must work without ever touching the network."""
+
+    def test_decode_polyline_round_trip(self):
+        from .routing import decode_polyline
+        # A real Valhalla shape (precision 6) for a campus route, so this pins
+        # the decoder against known-good coordinates rather than against itself.
+        shape = r'{gxsQec|maF@_JEci@xh@yB~k@cCaIwPkDmHqDeHo@`AoA\wABuFaAuE_BQO'
+        path = decode_polyline(shape)
+        self.assertEqual(len(path), 14)
+        self.assertAlmostEqual(path[0][0], 9.777806, places=5)
+        self.assertAlmostEqual(path[0][1], 118.733379, places=5)
+        self.assertAlmostEqual(path[-1][0], 9.777102, places=5)
+        self.assertAlmostEqual(path[-1][1], 118.734977, places=5)
+        # Every point stays on the campus and the path travels east.
+        for lat, lng in path:
+            self.assertTrue(9.776 < lat < 9.779)
+            self.assertTrue(118.733 < lng < 118.736)
+        self.assertGreater(path[-1][1], path[0][1])
+
+    def test_get_road_route_is_disabled_during_tests(self):
+        """No outbound call may ever happen from the test suite."""
+        from .routing import get_road_route
+        self.assertIsNone(get_road_route(9.77800, 118.73338, 9.77725, 118.73480))
+
+    def test_get_road_route_requires_both_endpoints(self):
+        from .routing import get_road_route
+        self.assertIsNone(get_road_route(9.77800, 118.73338, None, None))
+
+    @override_settings(ROUTING_ENABLED=False)
+    def test_routing_can_be_switched_off_by_setting(self):
+        from .routing import get_road_route
+        self.assertIsNone(get_road_route(9.77800, 118.73338, 9.77725, 118.73480))
+
+    def test_tracking_payload_exposes_path_keys(self):
+        """The map falls back to a straight line, so the keys must always exist
+        even when no provider answered."""
+        from accounts.models import CustomUser
+        from django.core.cache import cache
+        cache.clear()
+        rider = CustomUser.objects.create_user(
+            username='route_rider', password='password123', role='DELIVERY'
+        )
+        order = Order.objects.create(
+            order_number='#CE-7777', total_amount=100.00, status='pending'
+        )
+        delivery = DeliveryRequest.objects.create(
+            order=order, rider=rider, delivery_location='Gymnasium',
+            status=DeliveryRequest.RequestStatus.ACCEPTED,
+            dest_lat=9.77725, dest_lng=118.73480,
+            rider_lat=9.77800, rider_lng=118.73338,
+        )
+        self.client.login(username='route_rider', password='password123')
+        data = self.client.get(
+            reverse('deliveries:get_tracking', args=[delivery.id])).json()
+        self.assertTrue(data['success'])
+        self.assertIn('path', data)
+        self.assertIn('routing_provider', data)
+        # Routing is off in tests, so the map gets the straight-line fallback and
+        # remaining_km stays the haversine value.
+        self.assertIsNone(data['path'])
+        self.assertIsNone(data['routing_provider'])
+        self.assertIsNotNone(data['remaining_km'])
+
+
+class GpsAccuracyTestCase(TestCase):
+    """GPS quality gate: a fuzzy fix must never move the rider on the map."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.rider = CustomUser.objects.create_user(
+            username='acc_rider', password='password123', role='DELIVERY'
+        )
+        self.order = Order.objects.create(
+            order_number='#CE-8100', total_amount=100.00, status='pending'
+        )
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, rider=self.rider, delivery_location='Gymnasium',
+            status=DeliveryRequest.RequestStatus.ACCEPTED,
+            dest_lat=9.77725, dest_lng=118.73480,
+            rider_lat=9.77800, rider_lng=118.73338,
+        )
+        self.client.login(username='acc_rider', password='password123')
+        self.url = reverse('deliveries:update_location', args=[self.delivery.id])
+
+    def _push(self, **overrides):
+        payload = {'lat': 9.77810, 'lng': 118.73350}
+        payload.update(overrides)
+        return self.client.post(
+            self.url, json.dumps(payload), content_type='application/json')
+
+    def test_accurate_fix_is_stored_and_exposed(self):
+        res = self._push(accuracy=8.5)
+        self.assertEqual(res.status_code, 200)
+        self.delivery.refresh_from_db()
+        self.assertAlmostEqual(self.delivery.rider_acc, 8.5, places=1)
+        self.assertEqual(self.delivery.location_points.count(), 1)
+        point = self.delivery.location_points.first()
+        self.assertAlmostEqual(point.accuracy, 8.5, places=1)
+
+    def test_fuzzy_fix_is_rejected_and_last_good_position_kept(self):
+        self._push(accuracy=8.5)
+        res = self._push(lat=9.77950, lng=118.73450, accuracy=250)
+        self.assertEqual(res.status_code, 422)
+        body = res.json()
+        self.assertFalse(body['success'])
+        self.assertTrue(body['ignored'])
+        self.assertEqual(body['max_accuracy_m'], 40)
+        # The rider must NOT have jumped to the noisy fix.
+        self.delivery.refresh_from_db()
+        self.assertAlmostEqual(self.delivery.rider_lat, 9.77810, places=5)
+        self.assertAlmostEqual(self.delivery.rider_acc, 8.5, places=1)
+
+    def test_missing_accuracy_is_accepted_for_older_devices(self):
+        """Devices that do not report accuracy must still be able to push."""
+        res = self._push()
+        self.assertEqual(res.status_code, 200)
+        self.delivery.refresh_from_db()
+        self.assertIsNone(self.delivery.rider_acc)
+
+    def test_nonsense_accuracy_is_treated_as_unreported(self):
+        res = self._push(accuracy=-5)
+        self.assertEqual(res.status_code, 200)
+        self.delivery.refresh_from_db()
+        self.assertIsNone(self.delivery.rider_acc)
+
+    def test_accuracy_threshold_is_configurable(self):
+        with override_settings(GPS_MAX_ACCURACY_M=500):
+            res = self._push(accuracy=250)
+            self.assertEqual(res.status_code, 200)
+
+    def test_tracking_payload_reports_accuracy(self):
+        self._push(accuracy=12.0)
+        data = self.client.get(
+            reverse('deliveries:get_tracking', args=[self.delivery.id])).json()
+        self.assertAlmostEqual(data['accuracy_m'], 12.0, places=1)
+
+
+class TrackingStreamTestCase(TestCase):
+    """The customer tracking page is pushed over SSE, with the 4s poll as the
+    fallback. Both must expose the identical payload shape."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.customer = CustomUser.objects.create_user(
+            username='track_owner', password='password123', role='STUDENT'
+        )
+        self.stranger = CustomUser.objects.create_user(
+            username='track_stranger', password='password123', role='STUDENT'
+        )
+        self.rider = CustomUser.objects.create_user(
+            username='stream_rider', password='password123', role='DELIVERY'
+        )
+        self.order = Order.objects.create(
+            order_number='#CE-8200', total_amount=100.00, status='pending',
+            customer=self.customer,
+        )
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, rider=self.rider, delivery_location='Library',
+            status=DeliveryRequest.RequestStatus.ACCEPTED,
+            dest_lat=9.77725, dest_lng=118.73480,
+            rider_lat=9.77800, rider_lng=118.73338, rider_acc=10.0,
+        )
+        self.url = reverse('deliveries:tracking_stream', args=[self.delivery.id])
+
+    def test_owner_receives_event_stream(self):
+        self.client.login(username='track_owner', password='password123')
+        res = self.client.get(self.url)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res['Content-Type'], 'text/event-stream')
+        self.assertEqual(res['Cache-Control'], 'no-cache')
+        # Read only the first frame so the test never blocks on the open stream.
+        frame = next(res.streaming_content).decode()
+        self.assertTrue(frame.startswith('data: '))
+        payload = json.loads(frame[len('data: '):])
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['order_number'], self.order.order_number)
+
+    def test_stream_payload_matches_polling_payload_shape(self):
+        self.client.login(username='track_owner', password='password123')
+        frame = next(self.client.get(self.url).streaming_content).decode()
+        pushed = json.loads(frame[len('data: '):])
+        polled = self.client.get(
+            reverse('deliveries:get_tracking', args=[self.delivery.id])).json()
+        self.assertEqual(sorted(pushed), sorted(polled))
+
+    def test_stream_denied_to_other_customers(self):
+        self.client.login(username='track_stranger', password='password123')
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+
+    def test_stream_denied_to_anonymous(self):
+        self.assertEqual(self.client.get(self.url).status_code, 302)
+
+    def test_location_push_bumps_the_stream_version(self):
+        from django.core.cache import cache
+        from deliveries.views import tracking_version_key
+        self.client.login(username='stream_rider', password='password123')
+        self.client.post(
+            reverse('deliveries:update_location', args=[self.delivery.id]),
+            json.dumps({'lat': 9.77811, 'lng': 118.73351, 'accuracy': 9.0}),
+            content_type='application/json')
+        self.assertIsNotNone(cache.get(tracking_version_key(self.delivery.id)))
