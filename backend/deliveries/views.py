@@ -11,7 +11,10 @@ import time
 from datetime import timedelta
 from accounts.decorators import role_required
 from .models import DeliveryRequest, DeliveryMessage, RiderLocationPoint
-from .utils import haversine_km, distance_from_points, compute_speed_kmh, compute_bearing, is_within_campus
+from .utils import (
+    haversine_km, distance_from_points, compute_speed_kmh, compute_bearing,
+    is_within_campus,
+)
 from .routing import get_road_route
 
 # How long a delivery waits as a proposal with NO online rider before timing out.
@@ -638,6 +641,28 @@ def _tracking_payload(delivery):
         else:
             eta_minutes = None
 
+    # Total length of the whole pickup->drop-off trip, used as the denominator for
+    # the progress bar: (total_route_km - remaining_km) / total_route_km.
+    # The trip's real origin is the rider's FIRST recorded fix -- the canteen
+    # pickup point. Deriving it from real data (rather than a hard-coded canteen
+    # coordinate, which can coincide with a customer's own drop-off and collapse
+    # the total to zero) keeps the denominator equal to the actual route length.
+    # That origin/destination pair never changes, so get_road_route's cache makes
+    # this one provider call for the whole delivery, not one per GPS fix.
+    total_route_km = None
+    if delivery.dest_lat is not None and delivery.dest_lng is not None and points:
+        origin = points[0]
+        if (origin.lat, origin.lng) != (delivery.dest_lat, delivery.dest_lng):
+            pickup_route = get_road_route(
+                origin.lat, origin.lng,
+                delivery.dest_lat, delivery.dest_lng,
+            )
+            total_route_km = (
+                pickup_route['distance_km'] if pickup_route
+                else haversine_km(origin.lat, origin.lng,
+                                  delivery.dest_lat, delivery.dest_lng)
+            )
+
     return {
         'success': True,
         'status': delivery.status,
@@ -652,6 +677,9 @@ def _tracking_payload(delivery):
         'heading': round(heading, 1) if heading is not None else None,
         'total_distance_km': round(total_distance_km, 2),
         'remaining_km': round(remaining_km, 2) if remaining_km is not None else None,
+        # True length of the whole canteen->drop-off trip. This is the denominator
+        # for the progress bar: (total_route_km - remaining_km) / total_route_km.
+        'route_total_km': round(total_route_km, 2) if total_route_km is not None else None,
         'eta_minutes': round(eta_minutes) if eta_minutes is not None else None,
         # Road route for the map: [[lat, lng], ...] following the actual campus
         # roads. Null when routing is unavailable, which tells the map to draw

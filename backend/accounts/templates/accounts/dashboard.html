@@ -42,11 +42,22 @@
         #checkout-mini-map .leaflet-tile-pane .leaflet-tile {
             filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(88%);
         }
-        /* Hide any map attribution text so no API/key notice ever shows */
+        /* Tile credit (required by the OpenStreetMap tile usage policy) styled
+           to stay legible on the dark, inverted basemap. */
         #leaflet-map .leaflet-control-attribution,
         #view-order-map .leaflet-control-attribution,
-        #checkout-mini-map .leaflet-control-attribution,
-        .leaflet-control-attribution { display: none !important; }
+        #checkout-mini-map .leaflet-control-attribution {
+            background: rgba(8,8,12,.7) !important;
+            color: #d4d4d8 !important;
+            font-size: 10px !important;
+            padding: 1px 6px !important;
+            border-radius: 6px 0 0 0;
+        }
+        #leaflet-map .leaflet-control-attribution a,
+        #view-order-map .leaflet-control-attribution a,
+        #checkout-mini-map .leaflet-control-attribution a {
+            color: #fb923c !important;
+        }
         /* Dark zoom control on the campus checkout map */
         #checkout-mini-map .leaflet-control-zoom {
             border: 1px solid rgba(255,255,255,.12) !important;
@@ -1195,6 +1206,9 @@
     const CAMPUS_CENTER_LNG = 118.73333;
     const CAMPUS_RADIUS_KM = 0.8;
 
+    // Required tile credit for the free OpenStreetMap tile servers.
+    const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+
     // Campus landmark directory used to display the nearest building instead of
     // raw coordinates. Coordinates are approximate (relative to the campus
     // center) and should be tuned to your real campus map if needed.
@@ -1597,10 +1611,10 @@
 
         setTimeout(() => {
             if (!leafletMap) {
-                leafletMap = L.map('leaflet-map', { attributionControl: false }).setView([currentLat, currentLng], 16);
+                leafletMap = L.map('leaflet-map').setView([currentLat, currentLng], 16);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19, subdomains: 'abcd',
-                    attribution: ''
+                    attribution: OSM_ATTRIBUTION
                 }).addTo(leafletMap);
                 leafletMarker = L.marker([currentLat, currentLng]).addTo(leafletMap)
                     .bindPopup('<b>Your Current Office Location</b><br>Faculty Delivery Zone').openPopup();
@@ -2151,9 +2165,9 @@
             const init = (hasPos && hasDest)
                 ? [(d.rider_lat + d.dest_lat) / 2, (d.rider_lng + d.dest_lng) / 2]
                 : (hasPos ? [d.rider_lat, d.rider_lng] : [currentLat, currentLng]);
-            viewOrderMap = L.map('view-order-map', { attributionControl: false }).setView(init, 15);
+            viewOrderMap = L.map('view-order-map').setView(init, 15);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19, subdomains: 'abcd', attribution: ''
+                maxZoom: 19, subdomains: 'abcd', attribution: OSM_ATTRIBUTION
             }).addTo(viewOrderMap);
             if (hasPos) {
                 viewOrderMarker = L.marker([d.rider_lat, d.rider_lng], {
@@ -2356,7 +2370,6 @@
                 );
 
                 checkoutMap = L.map('checkout-mini-map', {
-                    attributionControl: false,
                     zoomControl: true,
                     minZoom: 15,
                     maxZoom: 19,
@@ -2366,7 +2379,7 @@
 
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19, subdomains: 'abcd',
-                    attribution: ''
+                    attribution: OSM_ATTRIBUTION
                 }).addTo(checkoutMap);
 
                 // Draw the campus delivery zone outline

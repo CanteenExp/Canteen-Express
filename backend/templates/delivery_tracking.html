@@ -89,12 +89,22 @@
         /* Faint GPS trail so the customer can see where the rider has been. */
         #trail-line { stroke-linecap: round; stroke-linejoin: round; }
 
-        /* Recenter is a Leaflet bar button like the zoom controls, so the two
-           read as one aligned control in the bottom-right corner. */
+        // Recenter is a Leaflet bar button like the zoom controls, so the two
+        // read as one aligned control in the bottom-right corner. */
         .ce-recenter a {
             color: #FF6117;
             font-size: 16px;
         }
+
+        /* Required tile credit, kept legible on the dark inverted basemap. */
+        #map .leaflet-control-attribution {
+            background: rgba(8,8,12,.7) !important;
+            color: #d4d4d8 !important;
+            font-size: 10px !important;
+            padding: 1px 6px !important;
+            border-radius: 6px 0 0 0;
+        }
+        #map .leaflet-control-attribution a { color: #fb923c !important; }
 
         /* Ensure the map area never flashes white before tiles load */
         #map { background: #0b0b0d !important; }
@@ -145,52 +155,83 @@
     <!-- ===== MAXIM-STYLE FLOATING BOTTOM CARD ===== -->
     <div class="shrink-0 z-20">
         <div class="max-w-3xl mx-auto px-3 pb-3">
-            <div class="glass-card rounded-3xl p-3.5 slide-up shadow-2xl space-y-2.5">
+            <div class="glass-card rounded-3xl p-3.5 slide-up shadow-2xl space-y-3">
 
-                <!-- Delivery destination row -->
-                <div class="flex items-center gap-2.5">
+                <!-- Drop-off address: the single source of truth for the destination -->
+                <div class="flex items-start gap-2.5">
                     <div class="w-9 h-9 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-base shrink-0">
                         <i class="fa-solid fa-location-dot"></i>
                     </div>
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                         <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold leading-none">Delivering to</p>
-                        <p class="text-[13px] font-black text-white truncate leading-tight mt-0.5">{{ delivery_location }}</p>
+                        <p class="text-[13px] font-black text-white normal-case leading-snug mt-1 break-words">{{ delivery_location }}</p>
                     </div>
                 </div>
 
-                <!-- Speed + Distance / Remaining -->
+                <!-- Live ride stats: big number + muted unit, label underneath -->
                 <div class="grid grid-cols-3 gap-2">
-                    <div class="bg-black/30 border border-white/5 rounded-2xl p-2 text-center">
-                        <h2 id="speed-val" class="text-xl font-black text-orange-400 tabular-nums leading-none">--</h2>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1">Speed</p>
+                    <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
+                        <p class="flex items-baseline justify-center gap-1 leading-none">
+                            <span id="speed-val" class="text-xl font-black text-orange-400 tabular-nums">--</span>
+                            <span id="speed-unit" class="text-[10px] font-bold text-zinc-500">km/h</span>
+                        </p>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Speed</p>
                     </div>
-                    <div class="bg-black/30 border border-white/5 rounded-2xl p-2 text-center">
-                        <h2 id="dist-val" class="text-xl font-black text-emerald-400 tabular-nums leading-none">--</h2>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1">Distance</p>
+                    <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
+                        <p class="flex items-baseline justify-center gap-1 leading-none">
+                            <span id="dist-val" class="text-xl font-black text-emerald-400 tabular-nums">--</span>
+                            <span id="dist-unit" class="text-[10px] font-bold text-zinc-500">km</span>
+                        </p>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Distance</p>
                     </div>
-                    <div class="bg-black/30 border border-white/5 rounded-2xl p-2 text-center">
-                        <h2 id="remain-val" class="text-xl font-black text-white tabular-nums leading-none">--</h2>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1">Remaining</p>
+                    <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
+                        <p class="flex items-baseline justify-center gap-1 leading-none">
+                            <span id="remain-val" class="text-xl font-black text-white tabular-nums">--</span>
+                            <span id="remain-unit" class="text-[10px] font-bold text-zinc-500">km</span>
+                        </p>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Remaining</p>
                     </div>
                 </div>
 
-                <!-- Progress bar -->
-                <div class="space-y-1">
-                    <div class="h-1.5 w-full bg-zinc-800/80 rounded-full overflow-hidden">
+                <!-- Trip progress: same 3-column tile row as the stats above, so the
+                     columns line up and each endpoint sits under its side of the bar -->
+                <div class="space-y-1.5">
+                    <div class="h-2 w-full bg-zinc-800/80 rounded-full overflow-hidden">
                         <div id="progress-bar" class="h-full bg-gradient-to-r from-orange-500 to-emerald-500 rounded-full transition-all duration-700" style="width:0%"></div>
                     </div>
-                    <div class="flex items-center justify-between text-[10px] text-zinc-500 font-bold">
-                        <span><i class="fa-solid fa-store mr-1 text-orange-400"></i> Canteen</span>
-                        <span id="progress-pct">0%</span>
-                        <span><i class="fa-solid fa-flag-checkered mr-1 text-emerald-400"></i> {{ delivery_location }}</span>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
+                            <p class="flex items-center justify-center gap-1.5 leading-none min-w-0">
+                                <i class="fa-solid fa-store text-[13px] text-orange-400 shrink-0"></i>
+                                <span class="text-[13px] font-black text-orange-400 truncate">Canteen</span>
+                            </p>
+                            <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">From</p>
+                        </div>
+                        <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
+                            <p class="leading-none">
+                                <span id="progress-pct" class="text-xl font-black text-white tabular-nums">0%</span>
+                            </p>
+                            <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Progress</p>
+                        </div>
+                        <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
+                            <p class="flex items-center justify-center gap-1.5 leading-none min-w-0">
+                                <span class="text-[13px] font-black text-emerald-400 truncate">Drop-off</span>
+                                <i class="fa-solid fa-flag-checkered text-[13px] text-emerald-400 shrink-0"></i>
+                            </p>
+                            <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">To</p>
+                        </div>
                     </div>
                 </div>
 
-                <p id="status-msg" class="text-center text-[11px] text-zinc-400 font-bold leading-tight"></p>
-                <p class="text-center text-[9px] text-zinc-600 font-bold uppercase tracking-widest leading-tight whitespace-nowrap">
-                    <span id="live-dot" class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 align-middle mr-1"></span>
-                    <span id="updated-at">--</span>
-                    <span class="mx-1">|</span>GPS <span id="acc-val">--</span>
+                <!-- Live feed footer: last update + GPS accuracy (only when known) -->
+                <p class="flex items-center justify-center gap-1.5 text-[9px] text-zinc-600 font-bold uppercase tracking-widest leading-tight">
+                    <span id="live-dot" class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+                    <span id="updated-at" class="normal-case tracking-normal font-semibold">Waiting for update</span>
+                    <span id="gps-group" class="hidden items-center gap-1.5">
+                        <span class="text-zinc-700 normal-case tracking-normal">&#8226;</span>
+                        <span>GPS</span>
+                        <span id="acc-val" class="text-zinc-500 normal-case tracking-normal tabular-nums">--</span>
+                    </span>
                 </p>
             </div>
         </div>
@@ -202,19 +243,20 @@
         const CAMPUS_CENTER = [9.77778, 118.73333];
         const ZOOM = 15;
         // Interactive campus map: starts zoomed in on the campus but lets the user
-        // pan and zoom freely. Uses free OpenStreetMap tiles rendered dark via a
-        // CSS invert filter, so no attribution text shows on screen.
+        // pan and zoom freely. Free OpenStreetMap tiles rendered dark via a CSS
+        // invert filter, with the required tile credit shown bottom-right.
+        const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
         const map = L.map('map', {
-            attributionControl: false,
-            zoomControl: true,
+            zoomControl: false,
             scrollWheelZoom: true
         }).setView(CAMPUS_CENTER, ZOOM);
+        // Single zoom control, bottom-right, with the recenter button stacked above it
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         // Free standard tiles (requires no credentials)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             minZoom: 13,
-            attribution: ''
+            attribution: OSM_ATTRIBUTION
         }).addTo(map);
 
         // Recenter: a Leaflet bar button, so Leaflet stacks it directly above the
@@ -277,6 +319,7 @@
         let trailLine = null;          // faint breadcrumb of where they've been
         let currentHeading = 0;
         let smoothLatLng = null;       // smoothed position actually drawn
+        let tripTotalKm = null;        // real canteen->drop-off route length (progress denominator)
         let routePts = [];             // current drawn route, used for snapping
         let routeKey = '';             // change-detector for the route polyline
         let followRider = true;        // released when the user pans the map
@@ -448,41 +491,42 @@
                 chip.classList.add('hidden');
             }
 
-            // Stats
-            document.getElementById('speed-val').textContent = formatSpeed(data.speed_kmh);
-            document.getElementById('dist-val').textContent = formatDist(data.total_distance_km);
-            document.getElementById('remain-val').textContent = formatDist(data.remaining_km);
+            // Stats: value in the big span, unit in the small muted span.
+            // "Distance" is the whole canteen->drop-off trip, so it and "Remaining"
+            // are two views of the same route and always add up coherently.
+            setSpeed(data.speed_kmh);
+            setDist('dist', data.route_total_km);
+            setDist('remain', data.remaining_km);
             document.getElementById('eta-val').textContent = formatEta(data.eta_minutes);
-            const accEl = document.getElementById('acc-val');
-            if (accEl) accEl.textContent = data.accuracy_m ? '±' + Math.round(data.accuracy_m) + 'm' : '--';
-
-            // Progress
-            const traveled = data.total_distance_km || 0;
-            const remaining = data.remaining_km;
-            if (remaining != null && (traveled + remaining) > 0) {
-                const pct = Math.min(100, Math.round((traveled / (traveled + remaining)) * 100));
-                document.getElementById('progress-bar').style.width = pct + '%';
-                document.getElementById('progress-pct').textContent = pct + '%';
-            } else if (data.status === 'DELIVERED') {
-                document.getElementById('progress-bar').style.width = '100%';
-                document.getElementById('progress-pct').textContent = '100%';
+            const gpsGroup = document.getElementById('gps-group');
+            if (data.accuracy_m != null) {
+                document.getElementById('acc-val').textContent = '±' + Math.round(data.accuracy_m) + ' m';
+                gpsGroup.classList.remove('hidden');
+                gpsGroup.classList.add('flex');
+            } else {
+                gpsGroup.classList.add('hidden');
+                gpsGroup.classList.remove('flex');
             }
+
+            // Progress = how much of the real route is behind the rider, measured
+            // as (total - remaining) / total. The previous formula divided the
+            // rider's GPS breadcrumb trail by itself, which drifted with GPS
+            // jitter and read 0% whenever tracking started mid-trip.
+            if (data.route_total_km != null && data.route_total_km > 0) tripTotalKm = data.route_total_km;
+            const pct = computeProgress(data.remaining_km, data.status);
+            document.getElementById('progress-bar').style.width = pct + '%';
+            document.getElementById('progress-pct').textContent = pct + '%';
 
             // Status
             const badge = document.getElementById('status-badge');
-            const msg = document.getElementById('status-msg');
             const updated = document.getElementById('updated-at');
             updated.textContent = data.updated_at ? 'Updated ' + data.updated_at : '--';
 
             if (data.status === 'DELIVERED') {
-                msg.textContent = 'Delivery completed!';
                 badge.textContent = 'Delivered';
                 badge.className = 'shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full uppercase border border-emerald-500/30 bg-emerald-500/20 text-emerald-400';
-            } else if (hasNewPos) {
-                msg.textContent = 'Rider heading to ' + (data.delivery_location || 'your location');
-            } else {
-                msg.textContent = 'Waiting for rider location...';
-                document.getElementById('speed-val').textContent = '--';
+            } else if (!hasNewPos) {
+                setSpeed(null);
                 document.getElementById('eta-val').textContent = '--';
             }
         }
@@ -540,10 +584,41 @@
             if (safetyTimer) clearInterval(safetyTimer);
         });
 
-        function formatSpeed(v) { return v == null ? '--' : v.toFixed(0) + ''; }
-        function formatDist(v) {
-            if (v == null) return '--';
-            return (v < 1 ? (v * 1000).toFixed(0) + ' m' : v.toFixed(1) + ' km');
+        function setSpeed(v) {
+            document.getElementById('speed-val').textContent = v == null ? '--' : Math.max(0, v).toFixed(0);
+        }
+        // Progress along the canteen->drop-off route. Uses the server's real route
+        // length as the denominator so the bar tracks the distance actually left,
+        // not the rider's jittery breadcrumb trail. Until the first route_total_km
+        // arrives, the first remaining_km we see is taken as the full trip (the
+        // rider is still at the canteen then), so the bar never jumps or sticks.
+        function computeProgress(remainingKm, status) {
+            if (status === 'DELIVERED') return 100;
+            if (tripTotalKm == null) {
+                if (remainingKm != null && remainingKm > 0) tripTotalKm = remainingKm;
+                return 0;
+            }
+            if (remainingKm == null) return 0;
+            const pct = Math.round(((tripTotalKm - remainingKm) / tripTotalKm) * 100);
+            return Math.max(0, Math.min(100, pct));
+        }
+        // Splits a distance into a value and its unit so the card can style them
+        // separately (big number + small muted unit) instead of one pre-joined string.
+        function setDist(prefix, v) {
+            const valEl = document.getElementById(prefix + '-val');
+            const unitEl = document.getElementById(prefix + '-unit');
+            if (v == null) {
+                valEl.textContent = '--';
+                unitEl.textContent = '';
+                return;
+            }
+            if (v < 1) {
+                valEl.textContent = Math.round(v * 1000).toLocaleString();
+                unitEl.textContent = 'm';
+            } else {
+                valEl.textContent = v.toFixed(1);
+                unitEl.textContent = 'km';
+            }
         }
         function formatEta(mins) {
             if (mins == null) return '--';

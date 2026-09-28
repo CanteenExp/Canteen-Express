@@ -499,6 +499,73 @@ class RoadRoutingTestCase(TestCase):
         self.assertIsNone(data['routing_provider'])
         self.assertIsNotNone(data['remaining_km'])
 
+    def test_route_total_is_measured_from_the_first_recorded_fix(self):
+        """Progress is (route_total_km - remaining_km) / route_total_km, so the
+        total must be the length of the real pickup->drop-off trip -- taken from
+        the rider's FIRST fix (the canteen), not a hard-coded canteen coordinate
+        that could coincide with the customer's own drop-off."""
+        from accounts.models import CustomUser
+        from deliveries.models import RiderLocationPoint
+        from deliveries.utils import haversine_km
+        from django.core.cache import cache
+        cache.clear()
+        rider = CustomUser.objects.create_user(
+            username='progress_rider', password='password123', role='DELIVERY'
+        )
+        order = Order.objects.create(
+            order_number='#CE-8888', total_amount=100.00, status='pending'
+        )
+        dest_lat, dest_lng = 9.77725, 118.73480
+        # First fix = canteen pickup. Second fix = rider a little closer.
+        start_lat, start_lng = 9.77800, 118.73338
+        mid_lat, mid_lng = 9.77760, 118.73410
+        delivery = DeliveryRequest.objects.create(
+            order=order, rider=rider, delivery_location='Library',
+            status=DeliveryRequest.RequestStatus.ACCEPTED,
+            dest_lat=dest_lat, dest_lng=dest_lng,
+            rider_lat=mid_lat, rider_lng=mid_lng,
+        )
+        RiderLocationPoint.objects.create(
+            delivery=delivery, rider=rider, lat=start_lat, lng=start_lng)
+        RiderLocationPoint.objects.create(
+            delivery=delivery, rider=rider, lat=mid_lat, lng=mid_lng)
+
+        self.client.login(username='progress_rider', password='password123')
+        data = self.client.get(
+            reverse('deliveries:get_tracking', args=[delivery.id])).json()
+        # Routing is disabled in tests, so both fall back to haversine.
+        expected_total = haversine_km(start_lat, start_lng, dest_lat, dest_lng)
+        self.assertAlmostEqual(data['route_total_km'], expected_total, places=2)
+        # The total describes the whole trip, so it must be the LONGER of the two
+        # legs -- never the shorter remaining leg.
+        self.assertGreater(data['route_total_km'], data['remaining_km'])
+        pct = round(
+            ((data['route_total_km'] - data['remaining_km']) / data['route_total_km']) * 100)
+        self.assertTrue(0 < pct < 100, f"expected mid-trip progress, got {pct}%")
+
+    def test_route_total_is_none_before_the_first_fix(self):
+        """With no history yet there is no trip origin, so the client must fall
+        back to seeding the total from the first remaining_km it sees."""
+        from accounts.models import CustomUser
+        from django.core.cache import cache
+        cache.clear()
+        rider = CustomUser.objects.create_user(
+            username='noorigin_rider', password='password123', role='DELIVERY'
+        )
+        order = Order.objects.create(
+            order_number='#CE-9999', total_amount=100.00, status='pending'
+        )
+        delivery = DeliveryRequest.objects.create(
+            order=order, rider=rider, delivery_location='Gymnasium',
+            status=DeliveryRequest.RequestStatus.ACCEPTED,
+            dest_lat=9.77725, dest_lng=118.73480,
+            rider_lat=9.77800, rider_lng=118.73338,
+        )
+        self.client.login(username='noorigin_rider', password='password123')
+        data = self.client.get(
+            reverse('deliveries:get_tracking', args=[delivery.id])).json()
+        self.assertIsNone(data['route_total_km'])
+
 
 class GpsAccuracyTestCase(TestCase):
     """GPS quality gate: a fuzzy fix must never move the rider on the map."""
