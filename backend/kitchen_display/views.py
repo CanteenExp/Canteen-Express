@@ -2,6 +2,7 @@ import json
 import time
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, StreamingHttpResponse
+from django.db import transaction
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -294,7 +295,6 @@ def kitchen_live_stream(request):
         headers={
             'Cache-Control': 'no-cache',
             'X-Accel-Buffering': 'no',
-            'Connection': 'keep-alive',
         },
     )
 
@@ -326,25 +326,26 @@ def update_order_status(request, order_id):
             'cancelled': set(),
         }
 
-        order = Order.objects.select_for_update().get(id=order_id)
-        old_status = order.status
-        if new_status not in ALLOWED_MOVES.get(old_status, set()):
-            return JsonResponse({
-                'success': False,
-                'error': f'Cannot move order from "{old_status}" to "{new_status}".'
-            }, status=400)
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(id=order_id)
+            old_status = order.status
+            if new_status not in ALLOWED_MOVES.get(old_status, set()):
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Cannot move order from "{old_status}" to "{new_status}".'
+                }, status=400)
 
-        order.status = new_status
-        order.save()
+            order.status = new_status
+            order.save()
 
-        if new_status == 'completed' and old_status != 'completed':
-            # Credit loyalty earned once, only at true completion.
-            from customer_portal.views import credit_points_for_order
-            credit_points_for_order(order)
-        elif new_status == 'cancelled' and old_status != 'cancelled':
-            from customer_portal.views import refund_points_for_cancel, restore_stock_for_order
-            refund_points_for_cancel(order)
-            restore_stock_for_order(order)
+            if new_status == 'completed' and old_status != 'completed':
+                # Credit loyalty earned once, only at true completion.
+                from customer_portal.views import credit_points_for_order
+                credit_points_for_order(order)
+            elif new_status == 'cancelled' and old_status != 'cancelled':
+                from customer_portal.views import refund_points_for_cancel, restore_stock_for_order
+                refund_points_for_cancel(order)
+                restore_stock_for_order(order)
 
         if new_status == 'ready' and DeliveryRequest.objects.filter(order=order).exists():
             # Fast-track: offer this (and any other waiting) delivery to the

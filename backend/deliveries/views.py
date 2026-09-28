@@ -747,7 +747,6 @@ def rider_live_stream(request):
         headers={
             'Cache-Control': 'no-cache',
             'X-Accel-Buffering': 'no',
-            'Connection': 'keep-alive',
         },
     )
 
@@ -821,7 +820,6 @@ def faculty_delivery_stream(request):
         headers={
             'Cache-Control': 'no-cache',
             'X-Accel-Buffering': 'no',
-            'Connection': 'keep-alive',
         },
     )
 
@@ -891,7 +889,6 @@ def staff_dispatch_stream(request):
         headers={
             'Cache-Control': 'no-cache',
             'X-Accel-Buffering': 'no',
-            'Connection': 'keep-alive',
         },
     )
 
@@ -912,10 +909,10 @@ def api_convert_to_pickup(request, delivery_id):
     from django.db import transaction
     from queuing.models import DigitalQueueSlip
     try:
-        delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
-        if not _can_manage_delivery(request, delivery):
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
         with transaction.atomic():
+            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+            if not _can_manage_delivery(request, delivery):
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
             if delivery.status == DeliveryRequest.RequestStatus.SEARCHING:
                 delivery.status = DeliveryRequest.RequestStatus.TIMEOUT
                 delivery.save(update_fields=['status'])
@@ -941,12 +938,12 @@ def api_cancel_order_with_reason(request, delivery_id):
     try:
         data = json.loads(request.body) if request.body else {}
         reason = data.get('reason', 'Waiting for too long')
-        
-        delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
-        if not _can_manage_delivery(request, delivery):
-            return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
 
         with transaction.atomic():
+            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+            if not _can_manage_delivery(request, delivery):
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
             order = delivery.order
             was_cancelled = order.status == 'cancelled'
 

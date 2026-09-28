@@ -1,11 +1,16 @@
 import json
 from django.test import TestCase, Client
 from django.urls import reverse
+from accounts.models import CustomUser
 from customer_portal.models import Order, OrderItem
 
 class ProcessBarcodeAPITestCase(TestCase):
     def setUp(self):
         self.client = Client()
+        self.staff = CustomUser.objects.create_user(
+            username="pos_staff", password="testpass", role="STAFF"
+        )
+        self.client.login(username="pos_staff", password="testpass")
         self.order = Order.objects.create(
             order_number="#CE-8888",
             total_amount=65.00,
