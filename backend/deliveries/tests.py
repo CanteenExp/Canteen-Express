@@ -835,9 +835,14 @@ class RiderRoutePayloadTestCase(TestCase):
         self.assertIn("#FF6117", html)
         self.assertIn("data.path", html)
         # The travelled track is drawn from the server payload, not a local
-        # accumulator, and is explained in the legend.
+        # accumulator, and stays dimmer than the live route.
         self.assertIn("data.trail", html)
-        self.assertIn("Already travelled", html)
+        self.assertIn("opacity: 0.35", html)
+        # The route legend overlay was removed at the user's request; the map is
+        # meant to read on its own.
+        for removed in ('Route legend', 'Already travelled', 'Rider route',
+                        'fa-route'):
+            self.assertNotIn(removed, html)
         # Approximate-distance labelling is wired to the server flag.
         self.assertIn("distance_is_approximate", html)
         self.assertIn("approx-badge", html)
