@@ -25,7 +25,7 @@ geofence_status = os.getenv('ENFORCE_GEOFENCE', 'True').lower() == 'true'
 print(f"Geofence Enforcement: {'ENABLED (Strict Campus Radius)' if geofence_status else 'DISABLED (Testing Anywhere Mode)'}")
 # Surface the transport that will actually be used. Misconfigured email is the
 # single most common reason faculty OTP signup silently stops working.
-print(f"Email transport: {'BREVO_HTTPS (port 443)' if os.getenv('BREVO_API_KEY', '').strip() else 'SMTP (%s:%s)' % (os.getenv('EMAIL_HOST', 'smtp.gmail.com'), os.getenv('EMAIL_PORT', '465'))}")
+print(f"Email transport: SMTP %s:%s" % (os.getenv('EMAIL_HOST', 'smtp.gmail.com'), os.getenv('EMAIL_PORT', '465')))
 print("="*40 + "\n")
 
 # Quick-start development settings - unsuitable for production
@@ -142,7 +142,31 @@ WSGI_APPLICATION = 'config.wsgi.application'
 USE_SQLITE = os.getenv('USE_SQLITE', 'False').lower() == 'true'
 db_host = os.getenv('DB_HOST', '')
 
-if USE_SQLITE or not db_host:
+# The test suite always runs against a local in-memory SQLite database, never the
+# remote Supabase PostgreSQL instance. Two reasons:
+#   1. Speed. Each query against the pooled remote host costs ~50-60 ms, and
+#      Django's test runner also has to create and tear down a *remote* test
+#      database per run, which pushed the suite past 600 s and past CI timeouts.
+#   2. Reliability. Supabase's pooler drops idle sockets, so a long suite failed
+#      at random points with InterfaceError/tearDownClass errors that had nothing
+#      to do with the code under test. A local database removes both failure modes.
+# Tests never touch real data, so this is safe; set TEST_USE_REMOTE_DB=True to
+# opt back into the remote host when diagnosing database-specific behaviour.
+_RUNNING_TESTS = len(sys.argv) > 1 and sys.argv[1] == 'test'
+_TEST_USE_REMOTE = os.getenv('TEST_USE_REMOTE_DB', 'False').lower() == 'true'
+
+if _RUNNING_TESTS and not _TEST_USE_REMOTE:
+    USE_SQLITE = True
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+            'TEST': {
+                'NAME': ':memory:',
+            },
+        }
+    }
+elif USE_SQLITE or not db_host:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -258,19 +282,14 @@ else:
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Email transport.
-# Render's free plan and Railway's Free/Hobby/Trial plans BLOCK outbound SMTP on
-# ports 25/465/587, so a pure-SMTP setup fails there with
-# "OSError: [Errno 101] Network is unreachable" and faculty OTP delivery
-# (signup + password reset) is impossible. When a Brevo API key is configured we
-# therefore switch to the HTTPS transport in config/email_backends/brevo.py,
-# which rides on port 443 and is never blocked. With no key, SMTP is used and
-# local development is unchanged.
-BREVO_API_KEY = os.getenv('BREVO_API_KEY', '').strip()
-if BREVO_API_KEY:
-    EMAIL_BACKEND = 'config.email_backends.brevo.BrevoBackend'
-else:
-    EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+# Email transport: SMTP only.
+# WARNING: Render's free plan and Railway's Free/Hobby/Trial plans BLOCK outbound
+# TCP on ports 25/465/587, so on those hosts sends fail with
+# "OSError: [Errno 101] Network is unreachable" and faculty OTP (signup and
+# password reset) cannot be delivered. EMAIL_TIMEOUT below makes the failure fast
+# instead of hanging the worker, and the OTP session state is cleared on failure
+# so the user gets an honest error rather than a misleading 400.
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 465))
@@ -290,24 +309,12 @@ else:
     EMAIL_USE_TLS = EMAIL_PORT == 587
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'canteenexpress26@gmail.com')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-
-# Display name and verified sender used by the Brevo transport. Brevo only
-# accepts a sender that has been verified in the Brevo console, so it needs its
-# own explicit address rather than inheriting the Gmail SMTP account.
-BREVO_SENDER_EMAIL = os.getenv('BREVO_SENDER_EMAIL', '').strip()
-BREVO_SENDER_NAME = os.getenv('BREVO_SENDER_NAME', 'Canteen Express')
 # Fail fast when SMTP is unreachable/blocked (e.g. Railway egress) instead of
 # blocking the worker until gunicorn kills it; the OTP fallback then takes over.
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', 10))
 # From address always follows the authenticated SMTP account so Gmail never
 # rejects a mismatched sender (works on Railway/Render the same as locally).
-# Under Brevo the sender must be a Brevo-verified address instead, otherwise
-# the API rejects every request with "unverified sender".
-if BREVO_API_KEY:
-    DEFAULT_FROM_EMAIL = os.getenv(
-        'DEFAULT_FROM_EMAIL', f'{BREVO_SENDER_NAME} <{BREVO_SENDER_EMAIL or EMAIL_HOST_USER}>')
-else:
-    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', f'Canteen Express <{EMAIL_HOST_USER}>')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', f'Canteen Express <{EMAIL_HOST_USER}>')
 
 
 CSRF_TRUSTED_ORIGINS = [
