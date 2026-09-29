@@ -418,7 +418,9 @@ def send_signup_otp(request):
                 email_sent = False
                 print(f"SMTP send failed for signup OTP: {type(e).__name__}: {e}")
                 print(
-                    "SMTP cfg: host="
+                    "Email transport in use: "
+                    + str(getattr(settings, 'EMAIL_BACKEND', ''))
+                    + " | host="
                     + str(getattr(settings, 'EMAIL_HOST', ''))
                     + " port=" + str(getattr(settings, 'EMAIL_PORT', ''))
                     + " ssl=" + str(getattr(settings, 'EMAIL_USE_SSL', ''))
@@ -434,6 +436,11 @@ def send_signup_otp(request):
                     'email_sent': True,
                     'message': 'OTP sent to your email.'
                 })
+            # The code never left the server, so discard the half-open signup
+            # state; otherwise the verification endpoint sees a plausible
+            # session and rejects the user with an opaque 400.
+            for _key in ('signup_otp', 'signup_email', 'signup_otp_created_at', 'signup_otp_attempts'):
+                request.session.pop(_key, None)
             # SMTP failed. In DEBUG the code is shown on-screen as a dev
             # convenience; in production the code is NEVER returned in the
             # response (that would leak it to the client) -- the user retries.
@@ -523,7 +530,9 @@ def send_password_reset_otp(request):
                 email_sent = False
                 print(f"SMTP send failed for password reset OTP: {type(e).__name__}: {e}")
                 print(
-                    "SMTP cfg: host="
+                    "Email transport in use: "
+                    + str(getattr(settings, 'EMAIL_BACKEND', ''))
+                    + " | host="
                     + str(getattr(settings, 'EMAIL_HOST', ''))
                     + " port=" + str(getattr(settings, 'EMAIL_PORT', ''))
                     + " ssl=" + str(getattr(settings, 'EMAIL_USE_SSL', ''))
@@ -539,6 +548,15 @@ def send_password_reset_otp(request):
                     'email_sent': True,
                     'message': 'OTP sent to your email.'
                 })
+            # The code never left the server, so a live reset must NOT stay
+            # armed in the session: it would otherwise look valid to the
+            # confirm endpoint and surface to the user as a confusing HTTP 400
+            # instead of the real cause. Clear every trace of the attempt.
+            request.session.pop('reset_otp', None)
+            request.session.pop('reset_email', None)
+            request.session.pop('reset_otp_verified', None)
+            request.session.pop('reset_otp_created_at', None)
+            request.session.pop('reset_otp_attempts', None)
             # Same DEBUG-only on-screen fallback; production never returns the code.
             if settings.DEBUG:
                 return JsonResponse({

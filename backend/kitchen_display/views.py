@@ -7,6 +7,8 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from accounts.decorators import role_required
+from activity_log.models import ActivityLog
+from activity_log.services import log_activity
 
 from customer_portal.models import Order 
 from canteen_menu.models import MenuItem 
@@ -352,6 +354,28 @@ def update_order_status(request, order_id):
             # next online rider right now. Idempotent if the rider already has it.
             from deliveries.views import expire_stale_requests
             expire_stale_requests()
+
+        # Logged after the transaction block so a rolled-back status change
+        # never leaves a row claiming the move succeeded.
+        if old_status != new_status:
+            is_delivery = DeliveryRequest.objects.filter(order=order).exists()
+            log_activity(
+                request,
+                action=f"Order {order.order_number}: {old_status} -> {new_status}",
+                category=ActivityLog.Category.DELIVERY if is_delivery else ActivityLog.Category.ORDER,
+                level=(ActivityLog.Level.DANGER if new_status == 'cancelled'
+                       else ActivityLog.Level.SUCCESS if new_status == 'completed'
+                       else ActivityLog.Level.INFO),
+                target=order.order_number,
+                is_guest=order.customer_id is None,
+                metadata={
+                    'order_id': order.id,
+                    'from_status': old_status,
+                    'to_status': new_status,
+                    'is_delivery': is_delivery,
+                    'total': float(order.total_amount),
+                },
+            )
 
         return JsonResponse({'success': True, 'message': 'Status updated successfully'})
     except Order.DoesNotExist:

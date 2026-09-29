@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Enter Supervisor PIN - Canteen Express{% endblock %}
 
@@ -19,7 +20,7 @@
     </div>
     {% endif %}
 
-    <form method="POST" class="space-y-4">
+    <form method="POST" data-auth-submit="Verifying PIN..." data-auth-status aria-live="polite" class="space-y-4">
         {% csrf_token %}
         <div class="relative">
             <input type="password" id="supervisor-pin" name="pin" maxlength="4" placeholder="••••" required autofocus
@@ -29,7 +30,9 @@
             </button>
         </div>
             
-        <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 rounded-2xl text-sm transition shadow-md shadow-brand-500/20">
+        <p data-auth-status class="hidden text-xs font-bold text-brand-600" role="status"></p>
+
+        <button type="submit" data-auth-submit-btn class="w-full inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 rounded-2xl text-sm transition shadow-md shadow-brand-500/20">
             Verify PIN
         </button>
     </form>
@@ -47,6 +50,7 @@
             }
         }
     </script>
+    <script src="{% static 'js/auth-submit.js' %}"></script>
 
     <a href="{% url 'kitchen_display:dashboard' %}" class="block text-xs font-bold text-gray-400 hover:text-gray-600">
         <i class="fa-solid fa-arrow-left mr-1"></i> Back to Staff Dashboard

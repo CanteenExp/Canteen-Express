@@ -970,6 +970,35 @@
                     <div id="view-order-map" class="w-full h-48 rounded-2xl border border-white/10 overflow-hidden bg-zinc-800"></div>
                 </div>
 
+                <!-- E-Receipt: final once the rider has delivered with photo proof -->
+                <div id="view-order-ereceipt" class="hidden space-y-2">
+                    <h4 class="text-xs font-black text-brand-slate uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-receipt text-orange-400"></i> E-Receipt
+                    </h4>
+                    <div class="bg-white/5 border border-orange-500/25 rounded-2xl p-3.5 space-y-1.5 text-xs">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-brand-slate">Order number</span>
+                            <span id="ereceipt-no" class="font-black text-white">--</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-brand-slate">Delivered by</span>
+                            <span id="ereceipt-rider" class="font-bold text-white">--</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-brand-slate">Handed over</span>
+                            <span id="ereceipt-time" class="font-bold text-white">--</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-brand-slate">Photo proof</span>
+                            <span id="ereceipt-proof" class="font-bold text-emerald-400">--</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2 pt-1.5 mt-1.5 border-t border-white/10">
+                            <span class="text-brand-slate font-black uppercase tracking-wider">Amount paid</span>
+                            <span id="ereceipt-total" class="font-black text-orange-400 text-sm">--</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Proof of Delivery Photo -->
                 <div id="view-order-proof-wrap" class="hidden space-y-2">
                     <h4 class="text-xs font-black text-brand-slate uppercase tracking-wider flex items-center gap-1.5">
@@ -1222,8 +1251,13 @@
     const CAMPUS_CENTER_LNG = 118.73333;
     const CAMPUS_RADIUS_KM = 0.8;
 
-    // Required tile credit for the free OpenStreetMap tile servers.
-    const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+    // Required basemap credits. Esri hosts the tiles; the data is OpenStreetMap.
+    // tile.openstreetmap.org is NOT used: its usage policy forbids production apps
+    // on shared cloud IPs, and it answers this deployment with a blocking
+    // "app is not following the tile usage policy" placeholder tile. CARTO's
+    // keyless basemaps were also rejected here -- they return one identical
+    // placeholder tile for every location. Esri serves real per-location tiles.
+    const OSM_ATTRIBUTION = 'Tiles &copy; <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a> &mdash; Esri, HERE, Garmin, FAO, NOAA, USGS, &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
 
     // Campus landmark directory used to display the nearest building instead of
     // raw coordinates. Coordinates are approximate (relative to the campus
@@ -1628,8 +1662,8 @@
         setTimeout(() => {
             if (!leafletMap) {
                 leafletMap = L.map('leaflet-map').setView([currentLat, currentLng], 16);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19, subdomains: 'abcd',
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19,
                     attribution: OSM_ATTRIBUTION
                 }).addTo(leafletMap);
                 leafletMarker = L.marker([currentLat, currentLng]).addTo(leafletMap)
@@ -2097,6 +2131,10 @@
     let viewOrderDestMarker = null;
     let viewOrderRouteLine = null;
     let viewOrderDeliveryId = null;
+    // Slip number of the order currently in the view-order modal. Kept as its own
+    // variable because the heading element also carries prose ("Order Details &
+    // Live Tracking (#CE-1234)") and must never be parsed for the slip number.
+    let viewOrderNumber = null;
 
     // Live-track the rider's actual position inside the view-order modal.
     // Called on open and then on every SSE push so the rider's pin moves in
@@ -2146,6 +2184,20 @@
         }
     }
 
+    // A delivery is rateable once the rider marked it DELIVERED and attached the
+    // proof-of-delivery photo -- the moment the e-receipt is final. Mirrors
+    // _feedback_gate() in customer_portal/views.py so the button and the server
+    // never disagree about whether a rating can be submitted.
+    function isRateable(d) {
+        return !!d && d.raw_status === 'DELIVERED' && !!d.proof_photo;
+    }
+    function rateBlockedReason(d) {
+        if (!d) return 'No order selected.';
+        if (d.raw_status !== 'DELIVERED') return 'Rating opens once the rider marks this delivery as delivered.';
+        if (!d.proof_photo) return 'Rating opens once the rider attaches the proof-of-delivery photo.';
+        return '';
+    }
+
     function refreshViewOrderTracking(d) {
         const statusEl = document.getElementById('view-order-status');
         if (statusEl) statusEl.innerText = `Status: ${deliveryStatusLabel(d)}`;
@@ -2154,7 +2206,7 @@
 
         // Rating is only meaningful once the order has actually been received.
         const rateBtn = document.getElementById('view-order-rate-btn');
-        if (rateBtn) rateBtn.style.display = isDelivered ? '' : 'none';
+        if (rateBtn) rateBtn.style.display = isRateable(d) ? '' : 'none';
 
         const chatBtn = document.getElementById('view-order-chat-btn');
         if (chatBtn) chatBtn.style.display = (isDelivered ? 'none' : hasAssignedRider(d) ? '' : 'none');
@@ -2173,6 +2225,23 @@
             }
         }
 
+        // E-Receipt: shown only once the handover is real (delivered + photo),
+        // so the totals and the proof always appear together.
+        const receipt = document.getElementById('view-order-ereceipt');
+        if (receipt) {
+            if (isRateable(d)) {
+                receipt.classList.remove('hidden');
+                const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+                set('ereceipt-no', d.order_number || '--');
+                set('ereceipt-rider', d.assigned_rider_name || d.rider_name || '--');
+                set('ereceipt-time', d.delivered_at || '--');
+                set('ereceipt-proof', 'Verified');
+                set('ereceipt-total', '₱' + Number(d.total_payment || d.total_amount || 0).toFixed(2));
+            } else {
+                receipt.classList.add('hidden');
+            }
+        }
+
         if (typeof L === 'undefined') return;
         const hasPos = typeof d.rider_lat === 'number' && typeof d.rider_lng === 'number';
         const hasDest = typeof d.dest_lat === 'number' && typeof d.dest_lng === 'number';
@@ -2182,8 +2251,8 @@
                 ? [(d.rider_lat + d.dest_lat) / 2, (d.rider_lng + d.dest_lng) / 2]
                 : (hasPos ? [d.rider_lat, d.rider_lng] : [currentLat, currentLng]);
             viewOrderMap = L.map('view-order-map').setView(init, 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19, subdomains: 'abcd', attribution: OSM_ATTRIBUTION
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19, attribution: OSM_ATTRIBUTION
             }).addTo(viewOrderMap);
             if (hasPos) {
                 viewOrderMarker = L.marker([d.rider_lat, d.rider_lng], {
@@ -2290,6 +2359,7 @@
             return;
         }
         viewOrderDeliveryId = activeD.id;
+        viewOrderNumber = activeD.order_number;
 
         document.getElementById('view-order-no').innerText = `Order Details & Live Tracking (${activeD.order_number})`;
         document.getElementById('view-order-status').innerText = `Status: ${deliveryStatusLabel(activeD)}`;
@@ -2318,7 +2388,7 @@
         document.getElementById('view-order-modal').classList.remove('hidden');
 
         const rateBtn = document.getElementById('view-order-rate-btn');
-        if (rateBtn) rateBtn.style.display = (activeD.raw_status === 'DELIVERED') ? '' : 'none';
+        if (rateBtn) rateBtn.style.display = isRateable(activeD) ? '' : 'none';
 
         setTimeout(() => refreshViewOrderTracking(activeD), 150);
     }
@@ -2393,8 +2463,8 @@
                     maxBoundsViscosity: 1.0
                 }).setView([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], 17);
 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19, subdomains: 'abcd',
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19,
                     attribution: OSM_ATTRIBUTION
                 }).addTo(checkoutMap);
 
@@ -2680,10 +2750,12 @@ if (isDelivery) {
     }
 
     function openFacultyFeedbackModal() {
-        // Rating is locked until the delivery is fully completed.
+        // Rating is locked until the rider has delivered AND attached the
+        // proof-of-delivery photo (same rule the server enforces).
         const target = (ongoingDeliveriesData || []).find(d => d.id === viewOrderDeliveryId);
-        if (!target || target.raw_status !== 'DELIVERED') {
-            showToast('Rating is only available after the delivery has been completed.');
+        const blocked = rateBlockedReason(target);
+        if (blocked) {
+            showToast(blocked);
             return;
         }
         document.getElementById('faculty-feedback-modal').classList.remove('hidden');
@@ -2695,8 +2767,14 @@ if (isDelivery) {
 
     async function submitFacultyFeedback() {
         const comment = document.getElementById('faculty-feedback-comment').value;
-        const orderNumEl = document.getElementById('view-order-no');
-        const orderNum = orderNumEl ? orderNumEl.innerText.replace('Order', '').trim() : '';
+        // Read the slip number from the delivery data, NOT from the heading text:
+        // the heading reads "Order Details & Live Tracking (#CE-1234)" and
+        // stripping the word "Order" from it leaves prose, not a slip number.
+        const orderNum = viewOrderNumber;
+        if (!orderNum) {
+            showToast('Could not tell which order to rate. Reopen the order and try again.', 'error');
+            return;
+        }
         try {
             const res = await fetch("{% url 'customer_portal:submit_feedback_api' %}", {
                 method: 'POST',

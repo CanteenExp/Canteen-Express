@@ -596,6 +596,12 @@
                     </div>
                 </div>
 
+                <!-- Expiry Callout: pay at the counter before this time -->
+                <div id="slip-expiry-line" class="hidden rounded-2xl bg-amber-50 border border-amber-200 px-3 py-2 text-center">
+                    <span class="text-[9px] font-black uppercase tracking-wider text-amber-700 block"><i class="fa-regular fa-clock"></i> Counter payment only · valid for <span id="slip-expiry-hours">1</span>h</span>
+                    <span class="text-xs font-black text-amber-800 block mt-0.5">Pay before <span id="slip-expires-at">--:--</span></span>
+                </div>
+
                 <!-- Barcode Container / Footer -->
                 <div class="border-t border-dashed border-gray-300 pt-2 flex flex-col items-center justify-center" id="slip-footer-container">
                     <svg id="slip-barcode" class="w-full h-12"></svg>
@@ -1056,7 +1062,9 @@ async function checkoutOrder() {
                 cart: cart,
                 cart_array: cartArray,
                 total_amount: totalAmount,
-                dining_option: diningOption
+                dining_option: diningOption,
+                expires_at: data.expires_at,
+                expiry_hours: data.expiry_hours
             };
 
             localStorage.setItem('canteen_pending_order', JSON.stringify(currentPendingOrder));
@@ -1083,6 +1091,26 @@ async function checkoutOrder() {
 }
 
 // ================= QUEUE SLIP & BARCODE RENDERER =================
+function slipExpiryDate(order) {
+    const iso = order && order.expires_at;
+    if (iso) {
+        const d = new Date(iso);
+        if (!isNaN(d.getTime())) return d;
+    }
+    // No server timestamp (older localStorage record): fall back to now + 1h.
+    return new Date(Date.now() + 60 * 60 * 1000);
+}
+
+function renderQueueSlipExpiry(order) {
+    const line = document.getElementById('slip-expiry-line');
+    if (!line) return;
+    line.classList.remove('hidden');
+    const hoursEl = document.getElementById('slip-expiry-hours');
+    if (hoursEl) hoursEl.textContent = (order && order.expiry_hours) ? order.expiry_hours : 1;
+    const atEl = document.getElementById('slip-expires-at');
+    if (atEl) atEl.textContent = slipExpiryDate(order).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
 // 1. RENDER FUNCTION (Pinalitan ng float/table layout ang flexbox para hindi i-cut ng html2canvas ang text)
 function renderQueueSlipUI(order) {
     document.getElementById('slip-queue-number').innerText = order.order_number;
@@ -1113,6 +1141,8 @@ function renderQueueSlipUI(order) {
         fontSize: 10,
         margin: 0
     });
+
+    renderQueueSlipExpiry(order);
 }
 
 // 2. DOWNLOAD FUNCTION (Hihintayin munang ma-load ang custom fonts + explicit line-height reset bago i-capture)
@@ -1186,7 +1216,15 @@ function startKioskStatusPolling() {
                 })
             });
             const data = await response.json();
-            if (data.status === 'success' && data.order) {
+
+            // Client-side deadline first: even if the sweep did not run yet,
+            // never let a slip older than 1h sit around pretending to be valid.
+            if (data.status === 'success' && data.order && currentPendingOrder) {
+                const deadline = slipExpiryDate(currentPendingOrder);
+                const overdue = Date.now() > deadline.getTime();
+                if (overdue || data.order.status === 'cancelled') {
+                    return showSlipExpired(overdue);
+                }
                 if (data.order.status && data.order.status !== 'unpaid') {
                     transformToOfficialReceipt();
                 }
@@ -1195,6 +1233,38 @@ function startKioskStatusPolling() {
             console.error("Error polling order status:", err);
         }
     }, 2500);
+}
+
+function showSlipExpired(overdue) {
+    stopKioskStatusPolling();
+    localStorage.removeItem('canteen_pending_order');
+    currentPendingOrder = null;
+
+    const titleLabel = document.getElementById('slip-title-label');
+    if (titleLabel) titleLabel.textContent = "Queue Slip Expired";
+
+    const paymentBadge = document.getElementById('slip-payment-badge');
+    if (paymentBadge) paymentBadge.classList.add('hidden');
+
+    const downloadBtn = document.getElementById('download-slip-btn');
+    if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.classList.add('opacity-40', 'cursor-not-allowed'); }
+
+    const actionsGrid = document.getElementById('slip-actions-grid');
+    if (actionsGrid) actionsGrid.style.display = 'none';
+
+    const footerContainer = document.getElementById('slip-footer-container');
+    if (footerContainer) {
+        footerContainer.innerHTML = `
+            <div class="text-[10px] text-red-600 font-extrabold uppercase tracking-wider py-1">
+                <i class="fa-solid fa-hourglass-end"></i> ${overdue ? 'Payment window has passed' : 'This slip was cancelled'}
+            </div>
+            <p class="text-[9px] text-gray-400 mt-0.5">Please build a new order at the kiosk.</p>
+        `;
+    }
+
+    if (typeof kioskToast === 'function') {
+        kioskToast(overdue ? 'This queue slip has expired. Please reorder.' : 'This queue slip is no longer valid. Please reorder.');
+    }
 }
 
 function stopKioskStatusPolling() {
@@ -1208,6 +1278,9 @@ function transformToOfficialReceipt() {
     stopKioskStatusPolling();
     localStorage.removeItem('canteen_pending_order');
     currentPendingOrder = null;
+
+    const expLine = document.getElementById('slip-expiry-line');
+    if (expLine) expLine.classList.add('hidden');
 
     const titleLabel = document.getElementById('slip-title-label');
     if (titleLabel) titleLabel.textContent = "Official Payment Receipt";
@@ -1443,10 +1516,14 @@ async function renderOrderHistory() {
 
     const cards = await Promise.all(list.map(async (rec) => {
         let status = 'unpaid';
+        let expiresAt = rec.expires_at;
         try {
             const res = await fetch(`/kiosk/api/order-status/${encodeURIComponent(rec.order_number)}/`);
             const data = await res.json();
-            if (data.exists) status = data.status;
+            if (data.exists) {
+                status = data.status;
+                if (data.expires_at) expiresAt = data.expires_at;
+            }
         } catch (e) { /* leave unpaid */ }
 
         const when = new Date(rec.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -1459,6 +1536,22 @@ async function renderOrderHistory() {
                     </div>`;
         }).join('');
         const more = (rec.items || []).length > 3 ? `<p class="text-[10px] text-brand-slate">+ ${rec.items.length - 3} more item(s)</p>` : '';
+        // Kiosk slips are payable ONLY at the counter; give the clock so the
+        // customer can see the deadline and the cancelled state reads clearly.
+        let expiryHint = '';
+        if (status === 'unpaid' && expiresAt) {
+            const d = new Date(expiresAt);
+            if (!isNaN(d.getTime())) {
+                const at = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                expiryHint = `<div class="mt-1.5 flex items-center gap-1.5 text-[10px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1">
+                    <i class="fa-regular fa-clock"></i> Pay at counter before ${at}
+                </div>`;
+            }
+        } else if (status === 'cancelled') {
+            expiryHint = `<div class="mt-1.5 flex items-center gap-1.5 text-[10px] text-red-400 font-bold bg-red-500/10 border border-red-500/20 rounded-lg px-2 py-1">
+                <i class="fa-solid fa-hourglass-end"></i> Slip cancelled — expired or voided
+            </div>`;
+        }
         // Rating is only accepted once the order is fully completed (see
         // submit_feedback_api), so only then do we offer the Rate & Review button.
         const rateable = status === 'completed';
@@ -1486,6 +1579,7 @@ async function renderOrderHistory() {
                     <span class="uppercase tracking-wider">Total</span>
                     <span class="text-brand-orange">₱${Number(rec.total_amount || 0).toFixed(2)}</span>
                 </div>
+                ${expiryHint}
                 ${rateBtn}
             </div>`;
     }));

@@ -89,11 +89,34 @@
         /* Faint GPS trail so the customer can see where the rider has been. */
         #trail-line { stroke-linecap: round; stroke-linejoin: round; }
 
-        // Recenter is a Leaflet bar button like the zoom controls, so the two
-        // read as one aligned control in the bottom-right corner. */
+        /* Recenter is a Leaflet bar button like the zoom controls, so the two
+           read as one aligned control in the bottom-right corner.
+           NOTE: this must be a real block comment. A double-slash line here is
+           not valid CSS: the parser treats everything up to the next brace as a
+           selector, so the whole rule (declarations included) is silently
+           discarded and the button renders unstyled. */
         .ce-recenter a {
             color: #FF6117;
             font-size: 16px;
+            /* Same box as .leaflet-bar a so it lines up with the zoom buttons. */
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+        .ce-recenter a:hover,
+        .ce-recenter a:focus-visible {
+            background: rgba(255, 97, 23, 0.25);
+            color: #fff;
+        }
+        .ce-recenter a:active { background: rgba(255, 97, 23, 0.45); }
+        /* While the map is following the rider, the button reads as "on". */
+        .ce-recenter.is-following a {
+            color: #34d399;
+            text-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
         }
 
         /* Required tile credit, kept legible on the dark inverted basemap. */
@@ -149,6 +172,17 @@
         <div class="absolute top-3 right-3 z-[500] glass-card rounded-xl px-3 py-2 text-right shadow-lg max-w-[55%]">
             <p class="text-xs font-black text-white truncate">{{ rider_name|default:"Rider" }}</p>
             <p class="text-[10px] text-emerald-400 font-bold">ETA <span id="eta-val">--</span></p>
+        </div>
+
+        <!-- Route legend: bottom-left, clear of the Leaflet zoom/recenter stack -->
+        <div class="absolute bottom-3 left-3 z-[500] glass-card rounded-xl px-2.5 py-2 space-y-1 shadow-lg">
+            <p class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-zinc-400">
+                <i class="fa-solid fa-route text-orange-400"></i> Route
+            </p>
+            <p class="flex items-center gap-1.5 text-[9px] font-bold text-zinc-300">
+                <span class="inline-block w-5 h-[3px] rounded" style="background:#FF6117"></span>
+                Rider route
+            </p>
         </div>
     </div>
 
@@ -223,6 +257,7 @@
                     </div>
                 </div>
 
+
                 <!-- Live feed footer: last update + GPS accuracy (only when known) -->
                 <p class="flex items-center justify-center gap-1.5 text-[9px] text-zinc-600 font-bold uppercase tracking-widest leading-tight">
                     <span id="live-dot" class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
@@ -243,9 +278,13 @@
         const CAMPUS_CENTER = [9.77778, 118.73333];
         const ZOOM = 15;
         // Interactive campus map: starts zoomed in on the campus but lets the user
-        // pan and zoom freely. Free OpenStreetMap tiles rendered dark via a CSS
-        // invert filter, with the required tile credit shown bottom-right.
-        const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+        // pan and zoom freely. Esri-hosted basemap tiles (free, no credentials)
+        // rendered dark via a CSS invert filter, with the required credits shown
+        // bottom-right. tile.openstreetmap.org is deliberately avoided: its usage
+        // policy blocks production apps on shared cloud IPs and it answers this
+        // deployment with a placeholder tile. CARTO's keyless basemaps were also
+        // rejected -- they return one identical placeholder for every location.
+        const OSM_ATTRIBUTION = 'Tiles &copy; <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a> &mdash; Esri, HERE, Garmin, FAO, NOAA, USGS, &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
         const map = L.map('map', {
             zoomControl: false,
             scrollWheelZoom: true
@@ -253,7 +292,7 @@
         // Single zoom control, bottom-right, with the recenter button stacked above it
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         // Free standard tiles (requires no credentials)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 19,
             minZoom: 13,
             attribution: OSM_ATTRIBUTION
@@ -269,18 +308,32 @@
                 button.href = '#';
                 button.title = 'Recenter on rider';
                 button.setAttribute('role', 'button');
+                button.setAttribute('aria-label', 'Recenter map on the rider');
                 button.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i>';
+                // Keep the control out of the map's own click/drag handling, but
+                // NOT out of keyboard focus -- the button must stay reachable by
+                // keyboard, so propagation is disabled on the container while the
+                // anchor itself keeps normal focus behaviour.
                 L.DomEvent.disableClickPropagation(container);
                 L.DomEvent.disableScrollPropagation(container);
                 L.DomEvent.on(button, 'click', (ev) => {
                     L.DomEvent.stop(ev);
-                    followRider = true;
-                    fitRoute(true);
+                    recenter();
+                });
+                // Enter/Space on a focused anchor, so the control works without a
+                // pointer.
+                L.DomEvent.on(button, 'keydown', (ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') {
+                        L.DomEvent.stop(ev);
+                        recenter();
+                    }
                 });
                 return container;
             },
         });
         map.addControl(new RecenterControl());
+        // Following is on from the start, so the button starts in its "on" state.
+        document.querySelector('.ce-recenter')?.classList.add('is-following');
 
         // Campus-only delivery zone as an irregular polygon that hugs the actual
         // PSU Main Campus footprint (instead of a perfect circle).
@@ -326,7 +379,11 @@
 
         // Any manual pan/zoom hands control back to the customer; the recenter
         // button (or a fresh fix) turns following on again.
-        map.on('dragstart', () => { followRider = false; });
+        map.on('dragstart', () => {
+            followRider = false;
+            const el = document.querySelector('.ce-recenter');
+            if (el) el.classList.remove('is-following');
+        });
 
         // Smoothly animate the marker from its current position to a target latlng
         function animateMarker(marker, targetLatLng, ms) {
@@ -379,14 +436,33 @@
             const pts = routePts.slice();
             if (includeRider && smoothLatLng) pts.push(smoothLatLng);
             if (pts.length < 2) {
-                if (smoothLatLng) map.setView(smoothLatLng, ZOOM);
+                // Nothing to frame yet: fall back so the button is never a no-op.
+                map.setView(smoothLatLng || CAMPUS_CENTER, ZOOM, { animate: true });
                 return;
             }
             map.fitBounds(L.latLngBounds(pts), { padding: [56, 56], maxZoom: 17 });
         }
 
+        // The recenter button: re-enable following and frame the whole trip.
+        // Declared as a hoisted function so the control can call it from the
+        // handler defined above.
+        function recenter() {
+            followRider = true;
+            const el = document.querySelector('.ce-recenter');
+            if (el) el.classList.add('is-following');
+            fitRoute(true);
+            // A fix that landed just before the click may be a frame behind;
+            // pull the latest payload so the map does not stay a beat behind.
+            updateMap();
+        }
+
         // Apply one tracking payload to the map + cards. Used by both the SSE
         // push channel and the polling fallback so they can never disagree.
+        // The rider's route is the single solid orange line: it follows the real
+        // campus roads/paths when the server could route us, and degrades to a
+        // dashed straight line when routing is unavailable, so a routing outage
+        // never breaks tracking.
+
         function applyTracking(data) {
             if (!data || !data.success) return;
 
@@ -408,6 +484,7 @@
             // could route us, otherwise it degrades to a dashed straight line
             // (a routing outage must never break tracking).
             let hasNewPos = false;
+
             if (data.lat != null && data.lng != null && data.dest_lat != null && data.dest_lng != null) {
                 const routed = Array.isArray(data.path) && data.path.length > 1;
                 const pts = routed

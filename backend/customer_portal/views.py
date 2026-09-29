@@ -284,6 +284,8 @@ def process_checkout(request):
             'points_earned': points_earned,
             'points_redeemed': points_redeemed,
             'new_points': new_points,
+            'expires_at': slip_expires_at(order),
+            'expiry_hours': KIOSK_SLIP_EXPIRY_HOURS,
         })
 
     except CheckoutError as e:
@@ -341,13 +343,145 @@ def restore_stock_for_order(order):
     if matched_ids:
         cache.delete('formatted_menu_active_kiosk')
 
-def check_order_status_api(request, order_num):
-    clean_num = order_num.replace('#', '').strip()
+# How long an unpaid kiosk queue slip stays valid before it is auto-cancelled.
+# Mirrors a real canteen ticket window: walk up, pay, or the slip lapses.
+KIOSK_SLIP_EXPIRY_HOURS = 1
+
+_KIOSK_EXPIRY_SWEEP_KEY = 'kiosk_unpaid_expiry_sweep'
+_KIOSK_EXPIRY_SWEEP_TTL = 60
+
+from datetime import timedelta
+
+
+def slip_expires_at(order):
+    """ISO timestamp when an unpaid slip lapses, or None once paid/cancelled."""
+    if order.status != 'unpaid':
+        return None
+    from datetime import timedelta
+    return timezone.localtime(order.created_at + timedelta(hours=KIOSK_SLIP_EXPIRY_HOURS)).isoformat()
+
+
+def expire_stale_unpaid_orders():
+    """Lazily auto-cancel pickup slips never paid within the expiry window.
+
+    Runs from inside request handlers (kiosk status poll, counter scan, order
+    history) instead of a cron job: this project has no worker process, so the
+    sweep piggybacks on the read traffic the slip itself generates. A short
+    cache lock keeps several kiosks on the same counter from sweeping twice in
+    the same minute. Cancelling restores stock and refunds redeemed points, and
+    records the cancellation in the staff Activity Log.
+    """
+    if not cache.add(_KIOSK_EXPIRY_SWEEP_KEY, '1', _KIOSK_EXPIRY_SWEEP_TTL):
+        return 0
     try:
-        order = Order.objects.get(order_number__iexact=clean_num)
-        return JsonResponse({'exists': True, 'status': order.status})
-    except Order.DoesNotExist:
+        cutoff = timezone.now() - timedelta(hours=KIOSK_SLIP_EXPIRY_HOURS)
+        stale_ids = list(
+            Order.objects.filter(status='unpaid', created_at__lt=cutoff)
+            .order_by('created_at')
+            .values_list('id', flat=True)[:200]
+        )
+        count = 0
+        for oid in stale_ids:
+            with transaction.atomic():
+                order = Order.objects.select_for_update() \
+                    .filter(pk=oid, status='unpaid').first()
+                if not order:
+                    continue
+                order.status = 'cancelled'
+                order.save(update_fields=['status'])
+                try:
+                    refund_points_for_cancel(order)
+                    restore_stock_for_order(order)
+                except Exception:
+                    pass
+                from activity_log.models import ActivityLog
+                from activity_log.services import log_activity
+                log_activity(
+                    None,
+                    action=f"Auto-cancelled expired queue slip {order.order_number} "
+                           f"(P{float(order.total_amount):.2f})",
+                    category=ActivityLog.Category.ORDER,
+                    level=ActivityLog.Level.WARNING,
+                    target=order.order_number,
+                    is_guest=order.customer_id is None,
+                    metadata={
+                        'order_id': order.id,
+                        'expiry_hours': KIOSK_SLIP_EXPIRY_HOURS,
+                    },
+                )
+                count += 1
+        return count
+    finally:
+        cache.delete(_KIOSK_EXPIRY_SWEEP_KEY)
+
+
+def find_order_by_number(raw):
+    """Look an order up by slip number, tolerating every spelling in use.
+
+    Stored numbers keep the hash prefix (``#CE-5151``) but callers send any of
+    ``#CE-5151``, ``CE-5151``, ``5151`` or ``Order #CE-5151`` scraped out of the
+    UI. Normalising to one canonical set of candidates is what keeps the status
+    poll, the barcode scan and the rating form from disagreeing about whether an
+    order exists.
+    """
+    from django.db.models import Q
+
+    raw = str(raw or '').strip()
+    # Pull a bare slip number out of a longer label such as
+    # "Order Details & Live Tracking (#CE-5151)".
+    import re
+    match = re.search(r'#?\s*CE-?\s*(\d+)', raw, re.IGNORECASE)
+    digits = match.group(1) if match else None
+    if digits is None:
+        digits = re.sub(r'[^0-9]', '', raw) or None
+
+    numbers = {raw}
+    if digits:
+        numbers.update({f'#CE-{digits}', f'CE-{digits}', digits})
+
+    query = Q()
+    for n in numbers:
+        if n:
+            query |= Q(order_number__iexact=n)
+    return Order.objects.filter(query).first()
+
+
+def check_order_status_api(request, order_num):
+    # Lazy sweep so an abandoned slip reads as cancelled in the history panel.
+    expire_stale_unpaid_orders()
+    order = find_order_by_number(order_num)
+    if order is None:
         return JsonResponse({'exists': False})
+    return JsonResponse({
+        'exists': True,
+        'status': order.status,
+        'expires_at': slip_expires_at(order),
+        'expired': order.status == 'cancelled',
+        'expiry_hours': KIOSK_SLIP_EXPIRY_HOURS,
+    })
+
+
+def _feedback_gate(order):
+    """Decide whether an order is rateable, and say why not when it isn't.
+
+    Returns ``(ok, reason)``. A delivery is rateable once the rider has marked it
+    DELIVERED *and* attached a proof-of-delivery photo, which is the moment the
+    e-receipt becomes final. A counter pickup has no rider, so the order's own
+    completed status is the whole gate.
+    """
+    from deliveries.models import DeliveryRequest
+
+    delivery = DeliveryRequest.objects.filter(order=order).select_related().first()
+    if delivery is None:
+        if order.status != 'completed':
+            return False, 'Rating is only available after the order has been completed.'
+        return True, ''
+
+    if delivery.status != DeliveryRequest.RequestStatus.DELIVERED:
+        return False, 'Rating opens once the rider marks this delivery as delivered.'
+    if not delivery.proof_photo:
+        return False, 'Rating opens once the rider attaches the proof-of-delivery photo.'
+    return True, ''
 
 
 @require_POST
@@ -358,26 +492,37 @@ def submit_feedback_api(request):
         rating = int(data.get('rating', 5))
         comment = data.get('comment', '')
 
-        order = None
-        if order_number:
-            clean_num = order_number.replace('#', '').strip()
-            order = Order.objects.filter(order_number__iexact=clean_num).first()
-
-        # Ratings are only allowed once a delivery has fully completed.
-        # Orders still pending/preparing/out-for-delivery must not be rated.
-        if order is None or order.status != 'completed':
+        order = find_order_by_number(order_number) if order_number else None
+        if order is None:
             return JsonResponse(
-                {'success': False, 'message': 'Rating is only available after the delivery has been completed.'},
-                status=400)
+                {'success': False, 'message': 'Order not found. Check the order number and try again.'},
+                status=404)
+
+        customer = request.user if request.user.is_authenticated else None
+
+        # Only the account that placed the order may rate it. Otherwise any
+        # signed-in user could tank an order's score by posting a 1-star against
+        # a slip number they guessed or read off someone else's screen.
+        if order.customer_id is not None and customer is not None and order.customer_id != customer.pk:
+            return JsonResponse(
+                {'success': False, 'message': 'You can only rate your own order.'},
+                status=403)
+        if order.customer_id is not None and customer is None:
+            return JsonResponse(
+                {'success': False, 'message': 'Please log in to rate this order.'},
+                status=403)
+
+        ok, reason = _feedback_gate(order)
+        if not ok:
+            return JsonResponse({'success': False, 'message': reason}, status=400)
 
         from .models import OrderFeedback
 
         # Ratings are one-per-customer-per-order: submitting again updates the
         # original instead of stacking on a pile of duplicates (which could
-        # otherwise tank an order's score with 1★ spam).
+        # otherwise tank an order's score with 1-star spam).
         rating = max(1, min(5, int(rating or 5)))
         comment = str(comment or '')[:2000]
-        customer = request.user if request.user.is_authenticated else None
 
         if customer is not None:
             feedback = OrderFeedback.objects.filter(order=order, customer=customer).first()

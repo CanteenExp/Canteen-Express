@@ -7,7 +7,10 @@ from django.contrib import messages
 from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
 from accounts.decorators import role_required
+from activity_log.models import ActivityLog
+from activity_log.services import log_activity
 from .models import MenuItem, Category
+from customer_portal.models import OrderItem
 
 try:
     from .forms import MenuItemForm, CategoryForm
@@ -30,7 +33,16 @@ def staff_menu_toggle_availability(request, pk):
     item.is_available = not item.is_available
     item.save()
     cache.delete('formatted_menu_active_kiosk')
+    now_available = item.is_available
     messages.success(request, f"Updated availability for {item.name}")
+    log_activity(
+        request,
+        action=f"{'Made available' if now_available else 'Marked unavailable'}: {item.name}",
+        category=ActivityLog.Category.MENU,
+        level=ActivityLog.Level.INFO,
+        target=item.name,
+        metadata={'item_id': item.pk, 'is_available': now_available, 'stock': item.stock},
+    )
     return redirect('canteen_menu:staff_menu_list')
 
 
@@ -40,8 +52,16 @@ def category_create(request):
     if request.method == 'POST':
         form = CategoryForm(request.POST)
         if form.is_valid():
-            form.save()
+            category = form.save()
             messages.success(request, "New category added successfully!")
+            log_activity(
+                request,
+                action=f"Created category: {category.name}",
+                category=ActivityLog.Category.MENU,
+                level=ActivityLog.Level.SUCCESS,
+                target=category.name,
+                metadata={'category_id': category.pk},
+            )
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
@@ -50,16 +70,42 @@ def category_update(request, pk):
     if request.method == 'POST':
         form = CategoryForm(request.POST, instance=category)
         if form.is_valid():
+            previous_name = category.name
             form.save()
             messages.success(request, "Category updated successfully!")
+            log_activity(
+                request,
+                action=f"Updated category: {previous_name}",
+                category=ActivityLog.Category.MENU,
+                level=ActivityLog.Level.INFO,
+                target=category.name,
+                metadata={
+                    'category_id': category.pk,
+                    'previous_name': previous_name,
+                    'new_name': category.name,
+                },
+            )
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
 def category_delete(request, pk):
     category = get_object_or_404(Category, pk=pk)
     if request.method == 'POST':
+        # Capture the item count before the CASCADE removes them, so the log
+        # explains the blast radius of the delete rather than just the name.
+        name = category.name
+        affected_items = category.items.count()
+        category_id = category.pk
         category.delete()
         messages.success(request, "Category deleted successfully!")
+        log_activity(
+            request,
+            action=f"Deleted category: {name} ({affected_items} menu item(s) removed)",
+            category=ActivityLog.Category.MENU,
+            level=ActivityLog.Level.DANGER,
+            target=name,
+            metadata={'category_id': category_id, 'items_removed': affected_items},
+        )
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
 
@@ -168,6 +214,19 @@ def upload_to_supabase_storage(image_file):
     return None
 
 
+def _diff_menu_fields(before, after):
+    """Return only the fields that actually changed, as {field: {from, to}}.
+
+    Logging a full before/after snapshot for every edit would bury the one line
+    the staff member actually cares about ("what did I just change?").
+    """
+    return {
+        field: {'from': before[field], 'to': after[field]}
+        for field in after
+        if before.get(field) != after[field]
+    }
+
+
 def _generate_auto_desc(name):
     name_lower = name.lower()
     if 'turon' in name_lower or 'banana' in name_lower or 'meryenda' in name_lower:
@@ -192,6 +251,19 @@ def staff_menu_create(request):
             item.save()
             cache.delete('formatted_menu_active_kiosk')
             messages.success(request, f"Menu item '{item.name}' added successfully with auto-synced image!")
+            log_activity(
+                request,
+                action=f"Added menu item: {item.name} (P{float(item.price):.2f}, stock {item.stock})",
+                category=ActivityLog.Category.MENU,
+                level=ActivityLog.Level.SUCCESS,
+                target=item.name,
+                metadata={
+                    'item_id': item.pk,
+                    'price': float(item.price),
+                    'stock': item.stock,
+                    'category': item.category.name if item.category else None,
+                },
+            )
             return redirect('canteen_menu:staff_menu_list')
         else:
             messages.error(request, "Please correct the errors in the form.")
@@ -208,6 +280,13 @@ def staff_menu_update(request, pk):
     if request.method == 'POST':
         form = MenuItemForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
+            # Snapshot the fields whose change is worth explaining in the log.
+            before = {
+                'name': item.name,
+                'price': float(item.price),
+                'stock': item.stock,
+                'is_available': item.is_available,
+            }
             menu_item = form.save(commit=False)
             if request.FILES.get('image'):
                 pub_url = upload_to_supabase_storage(request.FILES.get('image'))
@@ -223,6 +302,22 @@ def staff_menu_update(request, pk):
             menu_item.save()
             cache.delete('formatted_menu_active_kiosk')
             messages.success(request, "Menu item updated successfully!")
+            log_activity(
+                request,
+                action=f"Edited menu item: {menu_item.name}",
+                category=ActivityLog.Category.MENU,
+                level=ActivityLog.Level.INFO,
+                target=menu_item.name,
+                metadata={
+                    'item_id': menu_item.pk,
+                    'changes': _diff_menu_fields(before, {
+                        'name': menu_item.name,
+                        'price': float(menu_item.price),
+                        'stock': menu_item.stock,
+                        'is_available': menu_item.is_available,
+                    }),
+                },
+            )
             return redirect('canteen_menu:staff_menu_list')
         else:
             messages.error(request, "Error updating item. Please check the form.")
@@ -237,9 +332,20 @@ def staff_menu_update(request, pk):
 def staff_menu_delete(request, pk):
     item = get_object_or_404(MenuItem, pk=pk)
     if request.method == 'POST':
+        name = item.name
+        price = float(item.price)
+        item_id = item.pk
         item.delete()
         cache.delete('formatted_menu_active_kiosk')
         messages.success(request, "Menu item deleted successfully!")
+        log_activity(
+            request,
+            action=f"Deleted menu item: {name} (P{price:.2f})",
+            category=ActivityLog.Category.MENU,
+            level=ActivityLog.Level.DANGER,
+            target=name,
+            metadata={'item_id': item_id, 'price': price},
+        )
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
@@ -448,25 +554,6 @@ def staff_dashboard(request, token=None):
     sales_week = overall_stats['week']
     sales_month = overall_stats['month']
 
-    # Audit Logs & Reports Data
-    from customer_portal.models import OrderItem
-    audit_logs = []
-    for o in Order.objects.select_related('customer').order_by('-created_at')[:15]:
-        audit_logs.append({
-            'timestamp': o.created_at,
-            'action': f"Order {o.order_number} ({o.status}) - ₱{o.total_amount}",
-            'user': o.customer.username if o.customer else 'Guest / Walk-in',
-            'type': 'ORDER'
-        })
-    for u in User.objects.all().order_by('-date_joined')[:10]:
-        audit_logs.append({
-            'timestamp': u.date_joined if hasattr(u, 'date_joined') else timezone.now(),
-            'action': f"User account registered: {u.username} ({getattr(u, 'role', 'STUDENT')})",
-            'user': u.username,
-            'type': 'USER'
-        })
-    audit_logs = sorted(audit_logs, key=lambda x: x['timestamp'], reverse=True)[:20]
-
     # Category Sales for Pie Chart
     pie_labels = []
     pie_data = []
@@ -516,6 +603,20 @@ def staff_dashboard(request, token=None):
         _auto_sync_menu_image(item)
         item.save()
         messages.success(request, "New menu item added successfully with auto-synced image!")
+        log_activity(
+            request,
+            action=f"Added menu item: {item.name} (P{float(item.price):.2f}, stock {item.stock})",
+            category=ActivityLog.Category.MENU,
+            level=ActivityLog.Level.SUCCESS,
+            target=item.name,
+            metadata={
+                'item_id': item.pk,
+                'price': float(item.price),
+                'stock': item.stock,
+                'category': category.name if category else None,
+                'source': 'dashboard',
+            },
+        )
         return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
 
     staff_name = request.user.first_name if request.user.is_authenticated and request.user.first_name else (request.user.username if request.user.is_authenticated else 'Staff')
@@ -544,7 +645,6 @@ def staff_dashboard(request, token=None):
         'sales_today': sales_today,
         'sales_week': sales_week,
         'sales_month': sales_month,
-        'audit_logs': audit_logs,
         'pie_chart_data': pie_chart_data,
         'line_chart_data': line_chart_data,
         'pie_chart_data_json': json.dumps(pie_chart_data),
@@ -655,6 +755,15 @@ def staff_menu_toggle_ajax(request, pk):
     item.is_available = not item.is_available
     item.save()
     cache.delete('formatted_menu_active_kiosk')
+    now_available = item.is_available
+    log_activity(
+        request,
+        action=f"{'Made available' if now_available else 'Marked unavailable'}: {item.name}",
+        category=ActivityLog.Category.MENU,
+        level=ActivityLog.Level.WARNING if not now_available else ActivityLog.Level.SUCCESS,
+        target=item.name,
+        metadata={'item_id': item.pk, 'is_available': now_available, 'stock': item.stock},
+    )
     return JsonResponse({'success': True, 'is_available': item.is_available, 'stock': item.stock})
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
@@ -663,6 +772,11 @@ def staff_menu_edit_ajax(request):
         try:
             item_id = request.POST.get('item_id')
             item = get_object_or_404(MenuItem, pk=item_id)
+            before = {
+                'name': item.name,
+                'price': float(item.price),
+                'stock': item.stock,
+            }
             item.name = request.POST.get('name', item.name)
             item.price = request.POST.get('price', item.price)
             try:
@@ -694,6 +808,19 @@ def staff_menu_edit_ajax(request):
             item.save()
             cache.delete('formatted_menu_active_kiosk')
             messages.success(request, f"Updated {item.name} successfully!")
+            changes = _diff_menu_fields(before, {
+                'name': item.name,
+                'price': float(item.price),
+                'stock': item.stock,
+            })
+            log_activity(
+                request,
+                action=f"Edited {item.name}" + (f" ({', '.join(sorted(changes))})" if changes else ' (no changes)'),
+                category=ActivityLog.Category.MENU,
+                level=ActivityLog.Level.INFO,
+                target=item.name,
+                metadata={'item_id': item.pk, 'changes': changes},
+            )
         except Exception as e:
             messages.error(request, f"Error updating item: {str(e)}")
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=menu')
@@ -720,7 +847,7 @@ def create_delivery_staff_view(request):
         else:
             final_email = email if email else f"{username.lower()}@canteen.express"
             try:
-                User.objects.create_user(
+                created = User.objects.create_user(
                     username=username,
                     email=final_email,
                     password=password,
@@ -732,6 +859,18 @@ def create_delivery_staff_view(request):
                     is_active=True
                 )
                 messages.success(request, f"Delivery staff '{username}' created successfully!")
+                log_activity(
+                    request,
+                    action=f"Created rider account: {username}",
+                    category=ActivityLog.Category.USER,
+                    level=ActivityLog.Level.SUCCESS,
+                    target=username,
+                    metadata={
+                        'user_id': created.pk,
+                        'role': 'DELIVERY',
+                        'vehicle_plate': vehicle_plate or None,
+                    },
+                )
             except Exception as e:
                 messages.error(request, f"Error creating account: {str(e)}")
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=deliveries')
@@ -743,6 +882,7 @@ def update_delivery_staff_status_view(request, pk):
         User = get_user_model()
         rider = get_object_or_404(User, pk=pk, role='DELIVERY')
         action = request.POST.get('action')
+        before_status = rider.account_status
         if action == 'hold':
             rider.account_status = 'held'
             rider.is_active = False
@@ -755,6 +895,25 @@ def update_delivery_staff_status_view(request, pk):
             rider.account_status = 'active' if rider.is_active else 'inactive'
             messages.success(request, f"Rider {rider.username} status toggled.")
         rider.save()
+        if action in ('hold', 'penalize', 'toggle_active'):
+            verb = {
+                'hold': 'Put on hold',
+                'penalize': 'Penalized',
+                'toggle_active': ('Reactivated' if rider.is_active else 'Deactivated'),
+            }[action]
+            log_activity(
+                request,
+                action=f"{verb} rider account: {rider.username}",
+                category=ActivityLog.Category.USER,
+                level=ActivityLog.Level.DANGER if action in ('hold', 'penalize') else ActivityLog.Level.WARNING,
+                target=rider.username,
+                metadata={
+                    'user_id': rider.pk,
+                    'action': action,
+                    'from_status': before_status,
+                    'to_status': rider.account_status,
+                },
+            )
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=deliveries')
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
@@ -764,6 +923,7 @@ def update_user_status_view(request, pk):
         User = get_user_model()
         user = get_object_or_404(User, pk=pk)
         action = request.POST.get('action')
+        before_status = user.account_status
         if action == 'ban':
             user.is_active = False
             user.account_status = 'banned'
@@ -776,6 +936,22 @@ def update_user_status_view(request, pk):
             user.account_status = 'active'
             messages.success(request, f"User {user.username} activated.")
         user.save()
+        if action in ('ban', 'restrict', 'activate'):
+            verb = {'ban': 'Banned', 'restrict': 'Restricted', 'activate': 'Reactivated'}[action]
+            log_activity(
+                request,
+                action=f"{verb} user account: {user.username}",
+                category=ActivityLog.Category.USER,
+                level=ActivityLog.Level.DANGER if action == 'ban' else ActivityLog.Level.WARNING,
+                target=user.username,
+                metadata={
+                    'user_id': user.pk,
+                    'action': action,
+                    'target_role': getattr(user, 'role', None),
+                    'from_status': before_status,
+                    'to_status': user.account_status,
+                },
+            )
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=users')
 
 @csrf_exempt
@@ -792,6 +968,12 @@ def process_barcode_api(request):
 
         if not raw_order_id:
             return JsonResponse({'status': 'error', 'message': 'Order ID missing'}, status=400)
+
+        # Lazy sweep: keeping idle slips alive forever wastes kitchen stock and
+        # menu slots. A slip older than the window is cancelled before anything
+        # else happens, so both the kiosk poll and the cashier scan see it dead.
+        from customer_portal.views import expire_stale_unpaid_orders, slip_expires_at
+        expire_stale_unpaid_orders()
 
         # Try to find order in customer_portal
         from customer_portal.models import Order as KioskOrder
@@ -818,8 +1000,31 @@ def process_barcode_api(request):
             return JsonResponse({'status': 'error', 'message': f'Queue Slip #{clean_code} not found or already processed!'}, status=404)
 
         if action == 'confirm_payment':
+            if order.status != 'unpaid':
+                # Cancelled (expired or voided) and already-paid slips are dead
+                # ends: the kitchen will not cook a slip that was never paid or
+                # one that was paid twice.
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'This queue slip is no longer payable'
+                               f' ({order.get_status_display()}). Please reorder.'
+                }, status=400)
             order.status = 'pending'
             order.save()
+            log_activity(
+                request,
+                action=f"Confirmed payment for {order.order_number} (P{float(order.total_amount):.2f})",
+                category=ActivityLog.Category.PAYMENT,
+                level=ActivityLog.Level.SUCCESS,
+                target=order.order_number,
+                is_guest=order.customer_id is None,
+                metadata={
+                    'order_id': order.id,
+                    'total': float(order.total_amount),
+                    'delivery_fee': float(order.delivery_fee),
+                    'item_count': sum(i.quantity for i in order.items.all()),
+                },
+            )
             return JsonResponse({
                 'status': 'success',
                 'message': f'Order {order.order_number} verified and moved to kitchen board.'
@@ -844,7 +1049,8 @@ def process_barcode_api(request):
                 'type': 'DINE-IN',
                 'status': order.status,
                 'total': float(order.total_amount),
-                'items': items
+                'items': items,
+                'expires_at': slip_expires_at(order),
             }
         })
 

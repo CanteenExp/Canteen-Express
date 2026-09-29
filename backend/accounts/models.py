@@ -20,8 +20,14 @@ class CustomUser(AbstractUser):
     phone = models.CharField(max_length=20, blank=True, null=True)
     vehicle_plate = models.CharField(max_length=50, blank=True, null=True)
     loyalty_points = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
+
+    # Rider availability. is_available is the GO/STOP intent; presence also
+    # requires a fresh heartbeat (availability_updated_at) -- see
+    # is_really_online below. Declared once only: an earlier duplicate pair of
+    # these fields shadowed the values above and was silently discarded.
     is_available = models.BooleanField(default=True)
     availability_updated_at = models.DateTimeField(blank=True, null=True)
+
     account_status = models.CharField(
         max_length=20,
         choices=[
@@ -34,21 +40,6 @@ class CustomUser(AbstractUser):
         default='active'
     )
 
-    # Rider availability
-    is_available = models.BooleanField(default=True)
-    availability_updated_at = models.DateTimeField(blank=True, null=True)
-    
-    # OTP Fields
-    otp_code = models.CharField(max_length=6, blank=True, null=True)
-    otp_created_at = models.DateTimeField(blank=True, null=True)
-
-    def generate_otp(self):
-        code = str(random.randint(100000, 999999))
-        self.otp_code = code
-        self.otp_created_at = timezone.now()
-        self.save()
-        return code
-
     @property
     def is_really_online(self):
         """True only while the rider's dashboard is actually connected.
@@ -59,10 +50,3 @@ class CustomUser(AbstractUser):
         if not self.is_available or self.availability_updated_at is None:
             return False
         return (timezone.now() - self.availability_updated_at) <= self.RIDER_ONLINE_TIMEOUT
-
-    def is_otp_valid(self, input_code):
-        # OTP is valid for 10 minutes
-        if self.otp_code == input_code and self.otp_created_at:
-            expiry_time = self.otp_created_at + timedelta(minutes=10)
-            return timezone.now() <= expiry_time
-        return False

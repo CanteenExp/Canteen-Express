@@ -10,6 +10,8 @@ import json
 import time
 from datetime import timedelta
 from accounts.decorators import role_required
+from activity_log.models import ActivityLog
+from activity_log.services import log_activity
 from .models import DeliveryRequest, DeliveryMessage, RiderLocationPoint
 from .utils import (
     haversine_km, distance_from_points, compute_speed_kmh, compute_bearing,
@@ -198,6 +200,20 @@ def accept_delivery(request, delivery_id):
                 order.status = 'pending'
                 order.save()
             messages.success(request, f'Delivery {delivery.order.order_number} accepted!')
+            log_activity(
+                request,
+                action=f"Rider {request.user.get_username()} accepted delivery {order.order_number}",
+                category=ActivityLog.Category.DELIVERY,
+                level=ActivityLog.Level.INFO,
+                target=order.order_number,
+                is_guest=order.customer_id is None,
+                metadata={
+                    'order_id': order.id,
+                    'delivery_id': delivery.id,
+                    'rider_id': request.user.pk,
+                    'rider': request.user.get_username(),
+                },
+            )
 
     return redirect('deliveries:dashboard')
 
@@ -264,6 +280,23 @@ def complete_delivery(request, delivery_id):
                 messages.success(request, f'Delivery {delivery.order.order_number} completed with photo proof! +₱{earned:.0f} earned.')
             else:
                 messages.success(request, f'Delivery {delivery.order.order_number} completed! +₱{earned:.0f} earned.')
+            log_activity(
+                request,
+                action=f"Delivered {order.order_number} (P{float(order.total_amount):.2f} + P{earned:.2f} fee)",
+                category=ActivityLog.Category.DELIVERY,
+                level=ActivityLog.Level.SUCCESS,
+                target=order.order_number,
+                is_guest=order.customer_id is None,
+                metadata={
+                    'order_id': order.id,
+                    'delivery_id': delivery.id,
+                    'rider': request.user.get_username(),
+                    'has_proof_photo': bool(proof_photo),
+                    'delivery_fee': earned,
+                    # Signals the faculty e-receipt/feedback prompt to open.
+                    'faculty_receipt_due': not order.customer_id is None,
+                },
+            )
         else:
             # Still persist the photo if the status raced already to DELIVERED.
             delivery.save(update_fields=['proof_photo'])
@@ -1132,7 +1165,24 @@ def api_cancel_order_with_reason(request, delivery_id):
             if not was_cancelled:
                 refund_points_for_cancel(order)
                 restore_stock_for_order(order)
-            
+
+        # Only the first cancellation is logged, matching the refund guard.
+        if not was_cancelled:
+            log_activity(
+                request,
+                action=f"Cancelled order {order.order_number} (P{float(order.total_amount):.2f}): {reason}",
+                category=ActivityLog.Category.ORDER,
+                level=ActivityLog.Level.DANGER,
+                target=order.order_number,
+                is_guest=order.customer_id is None,
+                metadata={
+                    'order_id': order.id,
+                    'delivery_id': delivery.id,
+                    'reason': reason,
+                    'total': float(order.total_amount),
+                },
+            )
+
         return JsonResponse({'success': True, 'message': 'Order cancelled successfully.'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)

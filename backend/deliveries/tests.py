@@ -1,9 +1,11 @@
 import json
-from django.test import TestCase, Client, override_settings
+import re
+from django.conf import settings
+from django.test import TestCase, Client, SimpleTestCase, override_settings
 from django.urls import reverse
 from accounts.models import CustomUser
 from customer_portal.models import Order
-from deliveries.models import DeliveryRequest, DeliveryMessage
+from deliveries.models import DeliveryRequest, DeliveryMessage, RiderLocationPoint
 
 class DeliveryChatTestCase(TestCase):
     def setUp(self):
@@ -706,3 +708,158 @@ class TrackingStreamTestCase(TestCase):
             json.dumps({'lat': 9.77811, 'lng': 118.73351, 'accuracy': 9.0}),
             content_type='application/json')
         self.assertIsNotNone(cache.get(tracking_version_key(self.delivery.id)))
+
+class RiderRoutePayloadTestCase(TestCase):
+    """The tracking payload carries the rider's route only.
+
+    The map draws a single solid orange line for the rider's route: the live
+    remaining leg when the server could route it, or a dashed straight line when
+    routing is down. A separate whole-trip "campus route" layer and a
+    calculation-details panel were both removed at the user's request, so this
+    pins that neither silently comes back. Routing is stubbed here because the
+    suite must not touch the network.
+    """
+
+    def setUp(self):
+        from accounts.models import CustomUser
+        from django.core.cache import cache
+        cache.clear()
+        self.rider = CustomUser.objects.create_user(
+            username='route_rider', password='testpass', role='DELIVERY')
+        self.order = Order.objects.create(
+            order_number='#CE-6600', total_amount=100.00, status='pending')
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, rider=self.rider, delivery_location='Library',
+            status=DeliveryRequest.RequestStatus.ACCEPTED,
+            dest_lat=9.77725, dest_lng=118.73480,
+            rider_lat=9.77790, rider_lng=118.73350)
+        # The trip origin is the rider's FIRST recorded fix.
+        RiderLocationPoint.objects.create(
+            delivery=self.delivery, rider=self.rider,
+            lat=9.77810, lng=118.73320, speed_kmh=12.0, accuracy=8.0)
+
+    def _stub_route(self, patch_target):
+        from unittest import mock
+        def fake(origin_lat, origin_lng, dest_lat, dest_lng):
+            return {
+                'path': [[origin_lat, origin_lng], [9.77760, 118.73410],
+                         [dest_lat, dest_lng]],
+                'distance_km': 0.42,
+                'duration_min': 6.0,
+                'provider': 'stub',
+            }
+        return mock.patch(patch_target, side_effect=fake)
+
+    def test_payload_carries_rider_route_and_no_campus_layer(self):
+        import deliveries.views as dv
+        with self._stub_route('deliveries.views.get_road_route'):
+            payload = dv._tracking_payload(self.delivery)
+        # The orange rider route is present and routed.
+        self.assertIsNotNone(payload['path'])
+        self.assertGreater(len(payload['path']), 1)
+        self.assertEqual(payload['routing_provider'], 'stub')
+        self.assertEqual(payload['route_duration_min'], 6)
+        # The progress denominator is still derived from the real trip.
+        self.assertIsNotNone(payload['route_total_km'])
+        self.assertAlmostEqual(payload['route_total_km'], 0.42, places=2)
+        # The removed campus-route keys must stay gone.
+        for key in ('campus_path', 'campus_provider', 'campus_duration_min',
+                    'is_campus_routed', 'is_road_routed'):
+            self.assertNotIn(key, payload)
+
+    def test_routing_outage_degrades_to_straight_line(self):
+        """When routing is unavailable the map still gets coordinates, and
+        route_total_km falls back to haversine instead of vanishing."""
+        self.client.force_login(self.rider)
+        data = self.client.get(
+            reverse('deliveries:get_tracking', args=[self.delivery.id])).json()
+        self.assertTrue(data['success'])
+        self.assertIsNone(data['path'])
+        self.assertIsNone(data['routing_provider'])
+        # Straight-line estimate still drives the progress bar.
+        self.assertIsNotNone(data['route_total_km'])
+
+    def test_tracking_page_draws_only_the_orange_route(self):
+        self.client.force_login(self.rider)
+        res = self.client.get(
+            reverse('deliveries:track_order', args=[self.delivery.id]))
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        # The single orange route line, driven by the payload's `path`.
+        self.assertIn("#FF6117", html)
+        self.assertIn("data.path", html)
+        # No campus route layer, no calculation panel.
+        for removed in ('campus_path', 'Campus route (shortest)',
+                        'calc-total-val', 'calc-covered-val', 'calc-basis'):
+            self.assertNotIn(removed, html)
+        # Recenter control is present and wired to the recenter() handler.
+        self.assertIn("ce-recenter", html)
+        self.assertIn("recenter()", html)
+        # The recenter button's styling must survive CSS parsing: a "//" comment
+        # in the <style> block used to swallow the whole .ce-recenter a rule.
+        self.assertIn(".ce-recenter a {", html)
+
+
+class TileProviderPolicyTestCase(SimpleTestCase):
+    """Guard the basemap tile host.
+
+    tile.openstreetmap.org is unusable for this deployment: its usage policy
+    forbids production apps on shared cloud IPs, and it answers Render/Railway
+    with a placeholder tile instead of map data (the "app is not following the
+    tile usage policy" page the user reported). CARTO's keyless basemaps were
+    tried as a replacement and also return one identical placeholder tile for
+    every location, so neither may come back.
+    """
+
+    BLOCKED_HOSTS = ('tile.openstreetmap.org', 'basemaps.cartocdn.com')
+    EXPECTED_HOST = 'server.arcgisonline.com'
+
+    def _sources(self):
+        from pathlib import Path
+        base = Path(settings.BASE_DIR)
+        roots = [base / 'templates', base / 'static' / 'js',
+                 base / 'accounts' / 'templates']
+        for root in roots:
+            if not root.exists():
+                continue
+            for path in root.rglob('*'):
+                if path.suffix in ('.html', '.js') and path.is_file():
+                    yield path
+
+    @staticmethod
+    def _code_only(text):
+        """Drop comment lines.
+
+        The blocked hosts are named on purpose in comments explaining why they
+        are not used, so scanning raw text would always fail. Only real code
+        (a tile layer, a config default) must be free of them.
+        """
+        markers = ('//', '*', '#', '<!--')
+        return '\n'.join(
+            line for line in text.splitlines()
+            if not line.strip().startswith(markers))
+
+    def test_no_blocked_tile_host_is_referenced(self):
+        offenders = []
+        for path in self._sources():
+            text = self._code_only(
+                path.read_text(encoding='utf-8', errors='ignore'))
+            for host in self.BLOCKED_HOSTS:
+                if host in text:
+                    offenders.append('%s -> %s' % (path.name, host))
+        self.assertEqual(
+            offenders, [],
+            'Blocked/broken tile hosts referenced: %s' % offenders)
+
+    def test_every_tile_layer_uses_the_verified_provider(self):
+        layers = 0
+        for path in self._sources():
+            text = path.read_text(encoding='utf-8', errors='ignore')
+            for match in re.finditer(r"L\.tileLayer\(\s*'([^']+)'", text):
+                layers += 1
+                self.assertIn(
+                    self.EXPECTED_HOST, match.group(1),
+                    'Tile layer in %s uses an unverified host: %s'
+                    % (path.name, match.group(1)))
+        # Guards against the test passing simply because no layer was found.
+        self.assertGreaterEqual(layers, 5)

@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -11,10 +12,20 @@ dotenv_loaded = load_dotenv(env_file, override=True)
 
 print("\n" + "="*40)
 print(f"Checking .env path: {env_file}")
-print(f"File exists: {env_file.exists()}")
+# A missing .env is NORMAL in production: Render/Railway inject the same
+# variables from the service dashboard, and os.getenv() below picks them up.
+# Only local development depends on this file, so say so rather than printing
+# a scary "File exists: False" that looks like a boot failure.
+if not env_file.exists():
+    print("File exists: False (expected in production; using environment variables)")
+else:
+    print("File exists: True (loaded from file)")
 print(f"DB_PASSWORD Loaded: {'YES' if os.getenv('DB_PASSWORD') else 'NO (Empty/None)'}")
 geofence_status = os.getenv('ENFORCE_GEOFENCE', 'True').lower() == 'true'
 print(f"Geofence Enforcement: {'ENABLED (Strict Campus Radius)' if geofence_status else 'DISABLED (Testing Anywhere Mode)'}")
+# Surface the transport that will actually be used. Misconfigured email is the
+# single most common reason faculty OTP signup silently stops working.
+print(f"Email transport: {'BREVO_HTTPS (port 443)' if os.getenv('BREVO_API_KEY', '').strip() else 'SMTP (%s:%s)' % (os.getenv('EMAIL_HOST', 'smtp.gmail.com'), os.getenv('EMAIL_PORT', '465'))}")
 print("="*40 + "\n")
 
 # Quick-start development settings - unsuitable for production
@@ -86,6 +97,7 @@ INSTALLED_APPS = [
     'admin_dashboard',
     'kitchen_display',
     'core_app',
+    'activity_log',
 ]
 
 MIDDLEWARE = [
@@ -140,17 +152,23 @@ if USE_SQLITE or not db_host:
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
+            # Custom wrapper: retries transient DNS/socket failures so a router
+            # blip does not crash runserver or 500 every request.
+            'ENGINE': 'config.db_backends.postgresql',
             'NAME': os.getenv('DB_NAME', 'postgres'),
             'USER': os.getenv('DB_USER', ''),
             'PASSWORD': os.getenv('DB_PASSWORD', ''),
             'HOST': os.getenv('DB_HOST', ''),
             'PORT': os.getenv('DB_PORT', '6543'),
             'CONN_MAX_AGE': 600,
+            'CONN_HEALTH_CHECKS': True,
             'OPTIONS': {
                 'sslmode': 'require',
                 'connect_timeout': 5,
             },
+            # Retry budget: 4 attempts, 0.5s * attempt backoff (~3s of waiting).
+            'CONNECT_ATTEMPTS': int(os.getenv('DB_CONNECT_ATTEMPTS', '4')),
+            'CONNECT_BACKOFF': float(os.getenv('DB_CONNECT_BACKOFF', '0.5')),
         },
         'sqlite_backup': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -181,6 +199,16 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+# Password hashing speed for the test suite only.
+# Django 5's default PBKDF2 runs 1.2M iterations, which costs 1-2 s per hash on
+# this machine, and every setUp in this project creates one to three users. That
+# made a 9-test class take over a minute, which is slow enough that people stop
+# running the tests before committing. Swapping in MD5 is the standard Django
+# test speed-up: it is applied ONLY when the test runner is what loaded these
+# settings, so production and local-dev hashing are untouched.
+if 'test' in sys.argv:
+    PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 
 
 # Internationalization
@@ -230,8 +258,20 @@ else:
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Email Settings (Real-time SMTP Gmail SSL Port 465)
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+# Email transport.
+# Render's free plan and Railway's Free/Hobby/Trial plans BLOCK outbound SMTP on
+# ports 25/465/587, so a pure-SMTP setup fails there with
+# "OSError: [Errno 101] Network is unreachable" and faculty OTP delivery
+# (signup + password reset) is impossible. When a Brevo API key is configured we
+# therefore switch to the HTTPS transport in config/email_backends/brevo.py,
+# which rides on port 443 and is never blocked. With no key, SMTP is used and
+# local development is unchanged.
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '').strip()
+if BREVO_API_KEY:
+    EMAIL_BACKEND = 'config.email_backends.brevo.BrevoBackend'
+else:
+    EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 465))
 _use_ssl = (os.getenv('EMAIL_USE_SSL') or '').lower() == 'true'
@@ -250,12 +290,24 @@ else:
     EMAIL_USE_TLS = EMAIL_PORT == 587
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'canteenexpress26@gmail.com')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+
+# Display name and verified sender used by the Brevo transport. Brevo only
+# accepts a sender that has been verified in the Brevo console, so it needs its
+# own explicit address rather than inheriting the Gmail SMTP account.
+BREVO_SENDER_EMAIL = os.getenv('BREVO_SENDER_EMAIL', '').strip()
+BREVO_SENDER_NAME = os.getenv('BREVO_SENDER_NAME', 'Canteen Express')
 # Fail fast when SMTP is unreachable/blocked (e.g. Railway egress) instead of
 # blocking the worker until gunicorn kills it; the OTP fallback then takes over.
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', 10))
 # From address always follows the authenticated SMTP account so Gmail never
 # rejects a mismatched sender (works on Railway/Render the same as locally).
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', f'Canteen Express <{EMAIL_HOST_USER}>')
+# Under Brevo the sender must be a Brevo-verified address instead, otherwise
+# the API rejects every request with "unverified sender".
+if BREVO_API_KEY:
+    DEFAULT_FROM_EMAIL = os.getenv(
+        'DEFAULT_FROM_EMAIL', f'{BREVO_SENDER_NAME} <{BREVO_SENDER_EMAIL or EMAIL_HOST_USER}>')
+else:
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', f'Canteen Express <{EMAIL_HOST_USER}>')
 
 
 CSRF_TRUSTED_ORIGINS = [

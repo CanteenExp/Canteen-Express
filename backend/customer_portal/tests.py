@@ -1,8 +1,15 @@
 import json
+from datetime import timedelta
+
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
+from django.utils import timezone
+
 from accounts.models import CustomUser
 from canteen_menu.models import Category, MenuItem
+from customer_portal.models import Order
+from customer_portal.views import expire_stale_unpaid_orders
+from deliveries.models import DeliveryRequest
 
 class CheckoutTestCase(TestCase):
     def setUp(self):
@@ -150,3 +157,212 @@ class CheckoutTestCase(TestCase):
             content_type='application/json'
         )
         self.assertEqual(response.status_code, 422)
+
+
+class KioskSlipExpiryTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.staff = CustomUser.objects.create_user(
+            username='expiry_staff', password='testpass', role='STAFF',
+        )
+        self.client.login(username='expiry_staff', password='testpass')
+        self.category = Category.objects.create(name='Rice Meals')
+        self.item = MenuItem.objects.create(
+            category=self.category, name='Pork Adobo', price=75.00, stock=10)
+        self.checkout_url = reverse('customer_portal:process_checkout')
+
+    def _place_pickup(self, qty=2):
+        payload = {
+            'cart': [{'id': self.item.id, 'name': 'Pork Adobo', 'price': 75.00, 'qty': qty}],
+            'total_amount': 75.0 * qty,
+            'is_delivery': False,
+        }
+        res = self.client.post(self.checkout_url, data=json.dumps(payload),
+                               content_type='application/json')
+        self.assertEqual(res.status_code, 200)
+        return Order.objects.get(order_number=res.json()['order_number'])
+
+    def _backdate(self, order, hours=2):
+        Order.objects.filter(pk=order.pk).update(
+            created_at=timezone.now() - timedelta(hours=hours))
+        order.refresh_from_db()
+
+    def test_pickup_checkout_sends_expiry_clock(self):
+        order = self._place_pickup()
+        self.assertEqual(order.status, 'unpaid')
+        res = self.client.post(self.checkout_url, data=json.dumps({
+            'cart': [{'id': self.item.id, 'name': 'Pork Adobo', 'price': 75.00, 'qty': 1}],
+            'total_amount': 75.0, 'is_delivery': False,
+        }), content_type='application/json')
+        data = res.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['expiry_hours'], 1)
+        self.assertIsNotNone(data['expires_at'])
+
+    def test_fresh_unpaid_slip_is_not_expired(self):
+        order = self._place_pickup()
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.stock, 8)
+        swept = expire_stale_unpaid_orders()
+        self.assertEqual(swept, 0)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'unpaid')
+
+    def test_stale_unpaid_slip_is_cancelled_and_stock_restored(self):
+        order = self._place_pickup()
+        self._backdate(order, hours=2)
+        swept = expire_stale_unpaid_orders()
+        self.assertEqual(swept, 1)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'cancelled')
+        # Stock released back to the menu, like a counter cancellation.
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.stock, 10)
+        from activity_log.models import ActivityLog
+        log = ActivityLog.objects.filter(target=order.order_number).first()
+        self.assertIsNotNone(log)
+        self.assertIn('expired', log.action.lower())
+
+    def test_late_payment_of_expired_slip_is_rejected(self):
+        order = self._place_pickup()
+        self._backdate(order, hours=2)
+        res = self.client.post(
+            reverse('canteen_menu:process_barcode_api'),
+            data=json.dumps({'action': 'confirm_payment',
+                             'order_id': order.order_number}),
+            content_type='application/json',
+        )
+        self.assertEqual(res.status_code, 400)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'cancelled')
+
+    def test_kiosk_status_api_reports_expired(self):
+        order = self._place_pickup()
+        self._backdate(order, hours=2)
+        url = reverse('customer_portal:check_order_status_api',
+                      args=[order.order_number])
+        res = self.client.get(url)
+        data = res.json()
+        self.assertTrue(data['exists'])
+        self.assertEqual(data['status'], 'cancelled')
+        self.assertTrue(data['expired'])
+        self.assertIsNone(data['expires_at'])
+
+    def test_paid_order_has_no_expiry_clock(self):
+        order = self._place_pickup()
+        order.status = 'pending'
+        order.save(update_fields=['status'])
+        url = reverse('customer_portal:check_order_status_api',
+                      args=[order.order_number])
+        data = self.client.get(url).json()
+        self.assertEqual(data['status'], 'pending')
+        self.assertIsNone(data['expires_at'])
+
+class FeedbackRatingTestCase(TestCase):
+    """Ratings must work for a delivered order with a proof photo.
+
+    Regression cover for the bug where submit_feedback_api stripped the "#"
+    from the slip number before looking the order up. Stored numbers keep the
+    prefix ("#CE-5151"), so the lookup never matched and every rating -- from
+    both the faculty portal and the kiosk history panel -- came back 400.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.customer = CustomUser.objects.create_user(
+            username='rate_cust', password='testpass', role='FACULTY',
+        )
+        self.stranger = CustomUser.objects.create_user(
+            username='rate_stranger', password='testpass', role='FACULTY',
+        )
+        self.rider = CustomUser.objects.create_user(
+            username='rate_rider', password='testpass', role='DELIVERY',
+        )
+        self.url = reverse('customer_portal:submit_feedback_api')
+
+    def _order(self, number, status='completed'):
+        return Order.objects.create(
+            order_number=number, total_amount=120.00,
+            delivery_fee=30.00, status=status, customer=self.customer,
+        )
+
+    def _delivered(self, order, with_photo=True):
+        delivery = DeliveryRequest.objects.create(
+            order=order, rider=self.rider,
+            status=DeliveryRequest.RequestStatus.DELIVERED,
+        )
+        if with_photo:
+            delivery.proof_photo = 'delivery_proofs/proof.png'
+            delivery.save(update_fields=['proof_photo'])
+        return delivery
+
+    def _post(self, number, rating=5, user=None):
+        client = Client()
+        if user is not None:
+            client.force_login(user)
+        return client.post(self.url, data=json.dumps({
+            'order_number': number, 'rating': rating, 'comment': 'Great meal',
+        }), content_type='application/json')
+
+    def test_hash_prefixed_slip_number_is_accepted(self):
+        order = self._order('#CE-5151')
+        self._delivered(order)
+        res = self._post('#CE-5151', user=self.customer)
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertTrue(res.json()['success'])
+        self.assertEqual(order.feedbacks.count(), 1)
+
+    def test_prose_label_from_the_view_order_heading_is_accepted(self):
+        # The faculty modal heading is "Order Details & Live Tracking (#CE-5151)";
+        # the old code scraped that and sent the prose instead of the slip number.
+        order = self._order('#CE-5152')
+        self._delivered(order)
+        res = self._post('Order Details & Live Tracking (#CE-5152)', user=self.customer)
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(order.feedbacks.count(), 1)
+
+    def test_unknown_slip_number_is_404_not_a_false_completed_message(self):
+        res = self._post('#CE-0000', user=self.customer)
+        self.assertEqual(res.status_code, 404)
+
+    def test_rating_blocked_until_rider_marks_delivered(self):
+        order = self._order('#CE-5153', status='pending')
+        delivery = DeliveryRequest.objects.create(
+            order=order, rider=self.rider,
+            status=DeliveryRequest.RequestStatus.ACCEPTED)
+        delivery.proof_photo = 'delivery_proofs/proof.png'
+        delivery.save(update_fields=['proof_photo'])
+        res = self._post('#CE-5153', user=self.customer)
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('delivered', res.json()['message'].lower())
+        self.assertEqual(order.feedbacks.count(), 0)
+
+    def test_rating_blocked_until_proof_photo_is_attached(self):
+        order = self._order('#CE-5154')
+        self._delivered(order, with_photo=False)
+        res = self._post('#CE-5154', user=self.customer)
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('photo', res.json()['message'].lower())
+        self.assertEqual(order.feedbacks.count(), 0)
+
+    def test_pickup_order_rates_on_completed_status(self):
+        # No rider is involved, so the order's own status is the whole gate.
+        order = self._order('#CE-5155')
+        res = self._post('#CE-5155', user=self.customer)
+        self.assertEqual(res.status_code, 200, res.content)
+        self.assertEqual(order.feedbacks.count(), 1)
+
+    def test_stranger_cannot_rate_someone_elses_order(self):
+        order = self._order('#CE-5156')
+        self._delivered(order)
+        res = self._post('#CE-5156', user=self.stranger)
+        self.assertEqual(res.status_code, 403)
+        self.assertEqual(order.feedbacks.count(), 0)
+
+    def test_resubmitting_updates_instead_of_duplicating(self):
+        order = self._order('#CE-5157')
+        self._delivered(order)
+        self._post('#CE-5157', rating=1, user=self.customer)
+        self._post('#CE-5157', rating=5, user=self.customer)
+        self.assertEqual(order.feedbacks.count(), 1)
+        self.assertEqual(order.feedbacks.first().rating, 5)

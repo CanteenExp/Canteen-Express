@@ -92,6 +92,9 @@ def serialize_delivery(d):
         'dest_lat': d.dest_lat,
         'dest_lng': d.dest_lng,
         'location_updated_at': d.location_updated_at.strftime('%H:%M %p') if d.location_updated_at else None,
+        # When the rider handed the order over. Together with proof_photo this is
+        # what makes the e-receipt final, and what unlocks the rating.
+        'delivered_at': d.delivered_at.strftime('%b %d, %Y - %I:%M %p') if d.delivered_at else None,
         'items': [{'name': i.item_name, 'qty': i.quantity, 'price': float(i.price)} for i in d.order.items.all()],
         'proof_photo': d.proof_photo.url if d.proof_photo else None
     }

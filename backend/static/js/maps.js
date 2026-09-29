@@ -319,10 +319,9 @@
         if (opts.minZoom != null) map.setMinZoom(opts.minZoom);
         if (opts.maxZoom != null) map.setMaxZoom(opts.maxZoom);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: opts.maxZoom || 19,
             minZoom: opts.minZoom || 13,
-            subdomains: 'abcd',
             attribution: ''
         }).addTo(map);
 

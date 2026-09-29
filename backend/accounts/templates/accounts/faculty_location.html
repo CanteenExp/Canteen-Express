@@ -114,7 +114,7 @@
         </div>
 
         <!-- Form -->
-        <form method="POST" id="location-form" class="space-y-3">
+        <form method="POST" id="location-form" onsubmit="handleLocationSubmit(this)" class="space-y-3">
             {% csrf_token %}
             
             <input type="hidden" name="latitude" id="latitude" value="9.77778">
@@ -127,15 +127,15 @@
             </div>
 
             <!-- Action Button -->
-            <button type="button" id="detect-btn" onclick="getLocation()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl shadow-xl shadow-brand-orange/30 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20 font-poppins">
-                <i class="fa-solid fa-crosshairs"></i>
-                <span>Allow & Detect Location</span>
+            <button type="button" id="detect-btn" onclick="getLocation()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-2xl shadow-xl shadow-brand-orange/30 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20 font-poppins">
+                <i id="detect-icon" class="fa-solid fa-crosshairs"></i>
+                <span id="detect-label">Allow &amp; Detect Location</span>
             </button>
 
             <!-- Submit Button (Hidden initially until location is obtained) -->
-            <button type="submit" id="next-btn" class="hidden w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-600/30 transition text-xs uppercase tracking-wider items-center justify-center gap-2 cursor-pointer relative z-25 font-poppins">
-                <span>Continue to Sign in / Sign up</span>
-                <i class="fa-solid fa-arrow-right"></i>
+            <button type="submit" id="next-btn" class="hidden w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-2xl shadow-lg shadow-emerald-600/30 transition text-xs uppercase tracking-wider items-center justify-center gap-2 cursor-pointer relative z-25 font-poppins">
+                <i id="next-icon" class="fa-solid fa-arrow-right"></i>
+                <span id="next-label">Continue to Sign in / Sign up</span>
             </button>
         </form>
 
@@ -155,17 +155,60 @@
             }
         });
 
+        function handleLocationSubmit(form) {
+            // The Continue button is only revealed once coordinates exist, but a
+            // cached session can restore it against an empty hidden input.
+            const lat = document.getElementById('latitude').value;
+            const lng = document.getElementById('longitude').value;
+            if (!lat || !lng) {
+                const statusBox = document.getElementById('status-box');
+                const statusText = document.getElementById('status-text');
+                const statusIcon = document.getElementById('status-icon');
+                statusBox.className = "p-3 bg-red-500/10 border border-red-500/30 rounded-2xl text-center backdrop-blur-md";
+                statusIcon.className = "fa-solid fa-triangle-exclamation text-2xl text-red-400 mb-1";
+                statusText.innerHTML = `<span class="text-red-300 font-bold">Location not detected yet</span><br><span class="text-[11px] text-red-400/80">Please tap "Allow &amp; Detect Location" before continuing.</span>`;
+                document.getElementById('next-btn').classList.add('hidden');
+                document.getElementById('next-btn').classList.remove('flex');
+                return false;
+            }
+            const btn = document.getElementById('next-btn');
+            btn.disabled = true;
+            document.getElementById('next-icon').className = "fa-solid fa-spinner fa-spin";
+            document.getElementById('next-label').innerText = "Loading...";
+            return true;
+        }
+
+        window.addEventListener('pageshow', () => {
+            const btn = document.getElementById('next-btn');
+            const icon = document.getElementById('next-icon');
+            const label = document.getElementById('next-label');
+            if (btn) btn.disabled = false;
+            if (icon) icon.className = "fa-solid fa-arrow-right";
+            if (label) label.innerText = "Continue to Sign in / Sign up";
+        });
+
         function getLocation() {
             const statusBox = document.getElementById('status-box');
             const statusText = document.getElementById('status-text');
             const statusIcon = document.getElementById('status-icon');
             const detectBtn = document.getElementById('detect-btn');
             const nextBtn = document.getElementById('next-btn');
+            const detectIcon = document.getElementById('detect-icon');
+            const detectLabel = document.getElementById('detect-label');
 
             if (navigator.geolocation) {
                 statusText.innerText = "Locating your exact device position...";
                 statusIcon.className = "fa-solid fa-spinner fa-spin text-2xl text-brand-orange mb-1";
                 statusBox.className = "p-3 bg-white/5 border border-white/15 rounded-2xl text-center transition-all duration-300";
+
+                // Lock the button while the GPS prompt is open: getCurrentPosition
+                // can hang for the full 8s timeout, and a second click would
+                // stack overlapping permission prompts.
+                if (detectBtn) {
+                    detectBtn.disabled = true;
+                    detectIcon.className = "fa-solid fa-spinner fa-spin";
+                    detectLabel.innerText = "Detecting Location...";
+                }
 
                 const geoOptions = {
                     enableHighAccuracy: true,
@@ -173,17 +216,29 @@
                     maximumAge: 0
                 };
 
+                const restoreDetectBtn = () => {
+                    if (!detectBtn) return;
+                    detectBtn.disabled = false;
+                    detectIcon.className = "fa-solid fa-crosshairs";
+                    detectLabel.innerText = "Allow & Detect Location";
+                };
+
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
+                        restoreDetectBtn();
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
                         setCoordinates(lat, lng, false);
                     },
                     (error) => {
+                        restoreDetectBtn();
                         console.warn("Geolocation error:", error);
                         statusBox.className = "p-3 bg-red-500/10 border border-red-500/30 rounded-2xl text-center backdrop-blur-md";
                         statusIcon.className = "fa-solid fa-triangle-exclamation text-2xl text-red-400 mb-1";
-                        statusText.innerHTML = `<span class="text-red-300 font-bold">Location access required!</span><br><span class="text-[11px] text-red-400/80">Please turn on your device GPS / location services and click Allow.</span>`;
+                        const reason = error && error.code === 1
+                            ? "Permission denied. Please allow location access in your browser settings and try again."
+                            : "Could not get a GPS fix. Please try again in an open area.";
+                        statusText.innerHTML = `<span class="text-red-300 font-bold">Location access required!</span><br><span class="text-[11px] text-red-400/80">${reason}</span>`;
                     },
                     geoOptions
                 );

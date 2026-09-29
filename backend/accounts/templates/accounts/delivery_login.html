@@ -115,7 +115,7 @@
                 <p class="text-xs text-white/70 max-w-xs mx-auto">Sign in with your Delivery Rider credentials</p>
             </div>
 
-            <form method="POST" onsubmit="showLogoLoading(event)" class="space-y-3.5">
+            <form method="POST" onsubmit="showLogoLoading(event)" data-auth-submit="Signing in..." class="space-y-3.5" data-auth-status aria-live="polite">
                 {% csrf_token %}
 
                 {% if error %}
@@ -141,7 +141,9 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-shine w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-black py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-glow-orange transition active:scale-95 cursor-pointer font-poppins">
+                <p data-auth-status class="hidden text-xs font-bold text-center text-brand-orange mb-1" role="status"></p>
+
+                <button type="submit" data-auth-submit-btn class="btn-shine w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-black py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-glow-orange transition active:scale-95 cursor-pointer font-poppins">
                     <i class="fa-solid fa-right-to-bracket mr-1.5"></i> Rider Login
                 </button>
             </form>
@@ -188,6 +190,7 @@
             }
         });
     </script>
+    <script src="{% static 'js/auth-submit.js' %}"></script>
 
 </body>
 </html>

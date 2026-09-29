@@ -32,6 +32,154 @@
          },
          filterCategory: 'all',
          searchQuery: '',
+         activityEntries: [],
+         activityTotal: 0,
+         activityPage: 1,
+         activityPages: 1,
+         activityCategory: 'ALL',
+         activityLevel: 'ALL',
+         activityDays: '7',
+         activitySearch: '',
+         activityLoading: false,
+         activityError: '',
+         activityUnread: 0,
+         _activityTimer: null,
+         _activitySearchTimer: null,
+         levelStyle(level) {
+             const map = {
+                 SUCCESS: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                 WARNING: 'bg-amber-50 text-amber-700 border-amber-200',
+                 DANGER:  'bg-red-50 text-red-700 border-red-200',
+                 INFO:    'bg-blue-50 text-blue-700 border-blue-200'
+             };
+             return map[level] || map.INFO;
+         },
+         levelIcon(level) {
+             const map = {
+                 SUCCESS: 'fa-circle-check',
+                 WARNING: 'fa-triangle-exclamation',
+                 DANGER:  'fa-circle-xmark',
+                 INFO:    'fa-circle-info'
+             };
+             return map[level] || map.INFO;
+         },
+         levelLabel(level) {
+             const map = {
+                 SUCCESS: 'Success',
+                 WARNING: 'Warning',
+                 DANGER:  'Critical',
+                 INFO:    'Info'
+             };
+             return map[level] || 'Info';
+         },
+         categoryStyle(category) {
+             const map = {
+                 ORDER:    'bg-orange-50 text-orange-700 border-orange-200',
+                 MENU:     'bg-indigo-50 text-indigo-700 border-indigo-200',
+                 PAYMENT:  'bg-emerald-50 text-emerald-700 border-emerald-200',
+                 USER:     'bg-purple-50 text-purple-700 border-purple-200',
+                 DELIVERY: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+                 SYSTEM:   'bg-gray-50 text-gray-600 border-gray-200'
+             };
+             return map[category] || 'bg-gray-50 text-gray-600 border-gray-200';
+         },
+         markActivityRead() {
+             this.activityUnread = 0;
+         },
+         describeChanges(changes) {
+             if (!changes) return [];
+             return Object.keys(changes).map(function (field) {
+                 const pair = changes[field];
+                 const from = pair && pair.from !== undefined ? pair.from : '-';
+                 const to = pair && pair.to !== undefined ? pair.to : '-';
+                 return field + ': ' + from + ' -> ' + to;
+             });
+         },
+         loadActivityLog(page) {
+             if (page) this.activityPage = page;
+             this.activityLoading = true;
+             this.activityError = '';
+             const self = this;
+             const params = new URLSearchParams({
+                 page: this.activityPage,
+                 category: this.activityCategory,
+                 level: this.activityLevel,
+                 days: this.activityDays
+             });
+             if (this.activitySearch.trim()) {
+                 params.set('q', this.activitySearch.trim());
+             }
+             fetch('{% url "activity_log:activity_log_api" %}?' + params.toString(), {
+                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+             })
+                 .then(function (res) {
+                     if (res.status === 401 || res.status === 403) {
+                         throw new Error('Your session expired. Please sign in again to view the activity log.');
+                     }
+                     if (!res.ok) {
+                         throw new Error('Could not load the activity log (HTTP ' + res.status + ').');
+                     }
+                     return res.json();
+                 })
+                 .then(function (data) {
+                     if (!data.success) {
+                         throw new Error(data.error || 'Could not load the activity log.');
+                     }
+                     if (self.activeTab === 'logs') {
+                         self.activityUnread = 0;
+                     } else if (self.activityEntries.length) {
+                         const seen = {};
+                         self.activityEntries.forEach(function (e) { seen[e.id] = true; });
+                         const fresh = data.results.filter(function (e) { return !seen[e.id]; });
+                         self.activityUnread += fresh.length;
+                     }
+                     self.activityEntries = data.results;
+                     self.activityTotal = data.total;
+                     self.activityPage = data.page;
+                     self.activityPages = Math.max(data.num_pages, 1);
+                     self.activityRefreshSeconds = data.refresh_seconds || 60;
+                 })
+                 .catch(function (err) {
+                     self.activityError = err && err.message
+                         ? err.message
+                         : 'Network error. Please check your connection and try again.';
+                 })
+                 .finally(function () {
+                     self.activityLoading = false;
+                 });
+         },
+         onActivitySearch() {
+             const self = this;
+             clearTimeout(this._activitySearchTimer);
+             this._activitySearchTimer = setTimeout(function () {
+                 self.activityPage = 1;
+                 self.loadActivityLog();
+             }, 350);
+         },
+         resetActivityFilters() {
+             this.activityCategory = 'ALL';
+             this.activityLevel = 'ALL';
+             this.activityDays = '7';
+             this.activitySearch = '';
+             this.activityPage = 1;
+             this.loadActivityLog();
+         },
+         stopActivityPolling() {
+             if (this._activityTimer) {
+                 clearInterval(this._activityTimer);
+                 this._activityTimer = null;
+             }
+         },
+         startActivityPolling() {
+             const self = this;
+             this.stopActivityPolling();
+             this._activityTimer = setInterval(function () {
+                 if (!document.hidden) {
+                     self.loadActivityLog();
+                 }
+             }, (this.activityRefreshSeconds || 60) * 1000);
+         },
+
          editItem: { id: '', name: '', price: '', stock: '', category_id: '', image_url: '', description: '' },
          openEdit(id, name, price, stock, catId, imgUrl, desc) {
              this.editItem = {
@@ -45,7 +193,8 @@
              };
              this.showEditModal = true;
          }
-     }">
+     }"
+     x-init="loadActivityLog(1); startActivityPolling()">
 
     <!-- ========================================= -->
     <!-- DESKTOP SIDEBAR - FIXED -->
@@ -137,7 +286,23 @@
                     class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition text-left">
 
                     <i class="fa-solid fa-file-invoice-dollar w-5 text-center text-base"></i>
-                    <span>Reports & Sales</span>
+                    <span>Reports &amp; Sales</span>
+                </button>
+
+                <button
+                    @click="activeTab = 'logs'; loadActivityLog()"
+                    :class="activeTab === 'logs'
+                        ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/25'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'"
+                    class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition text-left">
+
+                    <i class="fa-solid fa-clock-rotate-left w-5 text-center text-base"></i>
+                    <span class="flex-1">Activity Log</span>
+                    <span
+                        x-show="activityUnread > 0"
+                        x-cloak
+                        class="bg-brand-500 text-white text-[10px] font-black rounded-full px-1.5 py-0.5 min-w-[20px] text-center"
+                        x-text="activityUnread > 99 ? '99+' : activityUnread"></span>
                 </button>
 
             </nav>
@@ -268,6 +433,20 @@
                     : 'bg-white/10 text-gray-300'"
                 class="px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition">
                 Reports
+            </button>
+
+            <button
+                @click="activeTab = 'logs'; loadActivityLog()"
+                :class="activeTab === 'logs'
+                    ? 'bg-brand-500 text-white font-bold'
+                    : 'bg-white/10 text-gray-300'"
+                class="px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition flex items-center gap-1.5">
+                Activity
+                <span
+                    x-show="activityUnread > 0"
+                    x-cloak
+                    class="bg-brand-500 text-white text-[9px] font-black rounded-full px-1.5 min-w-[16px] text-center"
+                    x-text="activityUnread > 99 ? '99+' : activityUnread"></span>
             </button>
 
         </div>
@@ -1549,41 +1728,249 @@
             </div>
 
             <!-- Audit Reports Section -->
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
-                <div class="flex justify-between items-center">
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
-                        <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">System Audit Reports & Activity Logs</h3>
-                        <p class="text-xs text-gray-400">Recent staff, customer orders, and registration events.</p>
+                        <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">System Activity Log</h3>
+                        <p class="text-xs text-gray-400">Every order, menu, user, and delivery change, newest first.</p>
                     </div>
-                    <span class="px-3 py-1 bg-gray-100 text-gray-600 font-bold rounded-xl text-xs">Live Logs</span>
+                    <a href="#logs" @click.p.prevent="activeTab = 'logs'; loadActivityLog()"
+                       class="inline-flex items-center gap-2 px-3.5 py-2 bg-dark-900 text-white text-xs font-bold rounded-xl hover:bg-brand-500 transition">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Open Activity Log
+                    </a>
                 </div>
-                <div class="overflow-x-auto">
+            </div>
+        </div>
+
+        <div x-show="activeTab === 'logs'" class="space-y-6" style="display: none;" @click="markActivityRead()">
+
+            <!-- Activity Log Header -->
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-black text-dark-900">Activity Log</h3>
+                        <p class="text-xs text-gray-400 mt-1">
+                            Every order, menu, payment, user, and delivery action across the canteen.
+                            <span x-text="'Refreshes automatically every ' + activityRefreshSeconds + 's.'"></span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-3 py-1.5 bg-gray-100 text-gray-600 font-bold rounded-xl text-xs">
+                            <span x-text="activityTotal"></span> entries
+                        </span>
+                        <button
+                            @click="loadActivityLog()"
+                            class="inline-flex items-center gap-2 px-3.5 py-2 bg-dark-900 text-white text-xs font-bold rounded-xl hover:bg-brand-500 transition">
+                            <i class="fa-solid fa-rotate" :class="activityLoading ? 'fa-spin' : ''"></i>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">Category</span>
+                        <select
+                            x-model="activityCategory"
+                            @change="activityPage = 1; loadActivityLog()"
+                            class="mt-1 w-full text-xs bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 font-semibold text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="ALL">All categories</option>
+                            <option value="ORDER">Orders</option>
+                            <option value="MENU">Menu & Stock</option>
+                            <option value="PAYMENT">Payments</option>
+                            <option value="USER">User Management</option>
+                            <option value="DELIVERY">Deliveries</option>
+                            <option value="SYSTEM">System</option>
+                        </select>
+                    </label>
+
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">Level</span>
+                        <select
+                            x-model="activityLevel"
+                            @change="activityPage = 1; loadActivityLog()"
+                            class="mt-1 w-full text-xs bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 font-semibold text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="ALL">All levels</option>
+                            <option value="INFO">Info</option>
+                            <option value="SUCCESS">Success</option>
+                            <option value="WARNING">Warning</option>
+                            <option value="DANGER">Critical</option>
+                        </select>
+                    </label>
+
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">Time Range</span>
+                        <select
+                            x-model="activityDays"
+                            @change="activityPage = 1; loadActivityLog()"
+                            class="mt-1 w-full text-xs bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 font-semibold text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="1">Last 24 hours</option>
+                            <option value="3">Last 3 days</option>
+                            <option value="7">Last 7 days</option>
+                            <option value="30">Last 30 days</option>
+                            <option value="90">Last 90 days</option>
+                        </select>
+                    </label>
+
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">Search</span>
+                        <div class="relative mt-1">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                            <input
+                                type="text"
+                                x-model="activitySearch"
+                                @input="onActivitySearch()"
+                                placeholder="Order #, item, user..."
+                                class="w-full text-xs bg-gray-50 rounded-xl pl-8 pr-8 py-2 border border-gray-200 font-semibold text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <button
+                                x-show="activitySearch"
+                                x-cloak
+                                @click="activitySearch = ''; onActivitySearch()"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 text-xs">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                            </button>
+                        </div>
+                    </label>
+                </div>
+
+                <div x-show="activityCategory !== 'ALL' || activityLevel !== 'ALL' || activityDays !== '7' || activitySearch" x-cloak class="mt-3">
+                    <button
+                        @click="resetActivityFilters()"
+                        class="text-[11px] font-bold text-brand-600 hover:text-brand-700 inline-flex items-center gap-1.5">
+                        <i class="fa-solid fa-filter-circle-xmark"></i> Clear all filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results / Timeline -->
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm">
+
+                <!-- Error state -->
+                <div x-show="activityError && !activityLoading" x-cloak
+                     class="flex flex-col items-center justify-center py-14 text-center">
+                    <div class="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 text-xl mb-3">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <p class="text-sm font-bold text-dark-900">Could not load the activity log</p>
+                    <p class="text-xs text-gray-400 mt-1 max-w-sm" x-text="activityError"></p>
+                    <button
+                        @click="loadActivityLog()"
+                        class="mt-4 px-4 py-2 bg-dark-900 text-white text-xs font-bold rounded-xl hover:bg-brand-500 transition">
+                        Try again
+                    </button>
+                </div>
+
+                <!-- Empty state -->
+                <div x-show="!activityLoading && !activityError && activityEntries.length === 0" x-cloak
+                     class="flex flex-col items-center justify-center py-14 text-center">
+                    <div class="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 text-xl mb-3">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                    <p class="text-sm font-bold text-dark-900">No activity found</p>
+                    <p class="text-xs text-gray-400 mt-1">Try widening the time range or clearing the filters.</p>
+                </div>
+
+                <!-- Loading skeletons -->
+                <div x-show="activityLoading && activityEntries.length === 0" class="space-y-3 py-2">
+                    <template x-for="i in 6" :key="i">
+                        <div class="flex items-center gap-4 animate-pulse">
+                            <div class="w-9 h-9 rounded-xl bg-gray-200"></div>
+                            <div class="flex-1 space-y-2">
+                                <div class="h-3 bg-gray-200 rounded-full w-1/2"></div>
+                                <div class="h-2.5 bg-gray-100 rounded-full w-1/3"></div>
+                            </div>
+                            <div class="h-4 bg-gray-200 rounded-full w-16"></div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Timeline table -->
+                <div x-show="activityEntries.length > 0" class="overflow-x-auto">
                     <table class="w-full text-left text-xs">
                         <thead>
                             <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
-                                <th class="py-3 px-4">Timestamp</th>
-                                <th class="py-3 px-4">Event / Action</th>
-                                <th class="py-3 px-4">Actor / User</th>
-                                <th class="py-3 px-4">Type</th>
+                                <th class="py-3 pr-4">Time</th>
+                                <th class="py-3 pr-4">Activity</th>
+                                <th class="py-3 pr-4">Actor</th>
+                                <th class="py-3">Type</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
-                            {% for log in audit_logs %}
-                            <tr class="hover:bg-gray-50">
-                                <td class="py-3 px-4 text-gray-500 font-mono text-[11px]">{{ log.timestamp|date:"M j, Y, g:i a" }}</td>
-                                <td class="py-3 px-4 font-bold text-dark-900">{{ log.action }}</td>
-                                <td class="py-3 px-4 font-semibold">{{ log.user }}</td>
-                                <td class="py-3 px-4">
-                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-black {% if log.type == 'ORDER' %}bg-orange-100 text-orange-700{% else %}bg-blue-100 text-blue-700{% endif %}">
-                                        {{ log.type }}
-                                    </span>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="py-6 text-center text-gray-400">No audit logs recorded yet.</td></tr>
-                            {% endfor %}
+                            <template x-for="e in activityEntries" :key="e.id">
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="py-3.5 pr-4 whitespace-nowrap text-gray-400 font-mono text-[11px]"
+                                        x-text="e.created_display"></td>
+                                    <td class="py-3.5 pr-4">
+                                        <div class="font-bold text-dark-900" x-text="e.action"></div>
+                                        <div x-show="e.metadata && e.metadata.changes && Object.keys(e.metadata.changes).length" x-cloak class="mt-1.5 space-y-0.5">
+                                            <template x-for="line in describeChanges(e.metadata.changes)" :key="line">
+                                                <div class="text-[11px] font-semibold text-gray-500 flex items-center gap-1.5">
+                                                    <span class="inline-flex items-center justify-center w-4 h-4 rounded bg-gray-100 text-gray-500">
+                                                        <i class="fa-solid fa-right-left text-[8px]"></i>
+                                                    </span>
+                                                    <span x-text="line"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                        <div x-show="e.target" x-cloak class="mt-1 text-[11px] font-semibold text-gray-400"
+                                             x-text="e.target"></div>
+                                    </td>
+                                    <td class="py-3.5 pr-4 whitespace-nowrap">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-7 h-7 rounded-full bg-brand-500/10 text-brand-600 flex items-center justify-center text-[10px] font-black uppercase"
+                                                  x-text="(e.actor || 'S').charAt(0)"></span>
+                                            <div>
+                                                <div class="font-semibold" x-text="e.actor"></div>
+                                                <div x-show="e.is_guest" x-cloak class="text-[10px] text-gray-400">Guest / Walk-in</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3.5 whitespace-nowrap">
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black border"
+                                              :class="categoryStyle(e.category)">
+                                            <i :class="'fa-solid ' + levelIcon(e.level)"></i>
+                                            <span x-text="e.category_label || e.category"></span>
+                                        </span>
+                                        <div class="mt-1">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border"
+                                                  :class="levelStyle(e.level)">
+                                                <i :class="'fa-solid ' + levelIcon(e.level)" class="mr-0.5"></i>
+                                                <span x-text="levelLabel(e.level)"></span>
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Pagination -->
+                <div x-show="activityEntries.length > 0" x-cloak
+                     class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-5 mt-2 border-t border-gray-100">
+                    <p class="text-[11px] text-gray-400 font-semibold">
+                        Page <span x-text="activityPage"></span> of <span x-text="activityPages"></span> ·
+                        <span x-text="activityTotal"></span> total
+                    </p>
+                    <div class="flex gap-2">
+                        <button
+                            @click="loadActivityLog(activityPage - 1)"
+                            :disabled="activityPage <= 1"
+                            class="px-3.5 py-2 rounded-xl text-xs font-bold transition inline-flex items-center gap-2
+                                   disabled:opacity-40 disabled:cursor-not-allowed
+                                   bg-gray-100 text-gray-700 hover:bg-gray-200">
+                            <i class="fa-solid fa-chevron-left text-[10px]"></i> Previous
+                        </button>
+                        <button
+                            @click="loadActivityLog(activityPage + 1)"
+                            :disabled="activityPage >= activityPages"
+                            class="px-3.5 py-2 rounded-xl text-xs font-bold transition inline-flex items-center gap-2
+                                   disabled:opacity-40 disabled:cursor-not-allowed
+                                   bg-dark-900 text-white hover:bg-brand-500">
+                            Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
