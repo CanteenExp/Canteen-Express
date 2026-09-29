@@ -15,7 +15,7 @@ from activity_log.services import log_activity
 from .models import DeliveryRequest, DeliveryMessage, RiderLocationPoint
 from .utils import (
     haversine_km, distance_from_points, compute_speed_kmh, compute_bearing,
-    is_within_campus,
+    is_within_campus, thin_trail,
 )
 from .routing import get_road_route
 
@@ -683,6 +683,7 @@ def _tracking_payload(delivery):
     # That origin/destination pair never changes, so get_road_route's cache makes
     # this one provider call for the whole delivery, not one per GPS fix.
     total_route_km = None
+    total_is_approximate = False
     if delivery.dest_lat is not None and delivery.dest_lng is not None and points:
         origin = points[0]
         if (origin.lat, origin.lng) != (delivery.dest_lat, delivery.dest_lng):
@@ -695,6 +696,7 @@ def _tracking_payload(delivery):
                 else haversine_km(origin.lat, origin.lng,
                                   delivery.dest_lat, delivery.dest_lng)
             )
+            total_is_approximate = pickup_route is None
 
     return {
         'success': True,
@@ -721,6 +723,20 @@ def _tracking_payload(delivery):
         'routing_provider': road_route['provider'] if road_route else None,
         'route_duration_min': (
             round(road_route['duration_min']) if road_route else None
+        ),
+        # The ground the rider has ALREADY covered, pickup -> current position.
+        # Sent from the server rather than accumulated in the browser so the
+        # travelled track survives a page reload and every viewer sees the same
+        # history. Thinned by thin_trail() to drop GPS jitter and stay bounded.
+        'trail': [[round(lat, 5), round(lng, 5)] for lat, lng in thin_trail(coords)],
+        # True when a displayed distance could only be measured as the crow flies
+        # because no routing provider answered. The card labels those figures
+        # "approx." so a routing outage is never mistaken for an exact road
+        # distance. Covers BOTH the remaining leg and the whole-trip total, since
+        # each independently falls back to haversine.
+        'distance_is_approximate': (
+            (remaining_km is not None and road_route is None)
+            or total_is_approximate
         ),
         'updated_at': delivery.location_updated_at.strftime('%I:%M %p') if delivery.location_updated_at else None,
         'order_number': order.order_number,

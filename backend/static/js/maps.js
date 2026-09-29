@@ -319,9 +319,12 @@
         if (opts.minZoom != null) map.setMinZoom(opts.minZoom);
         if (opts.maxZoom != null) map.setMaxZoom(opts.maxZoom);
 
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: opts.maxZoom || 19,
             minZoom: opts.minZoom || 13,
+            // OSM serves a/b/c only. Listing a 'd' makes every fourth tile
+            // request fail DNS, leaving grey holes all over the map.
+            subdomains: 'abc',
             attribution: ''
         }).addTo(map);
 

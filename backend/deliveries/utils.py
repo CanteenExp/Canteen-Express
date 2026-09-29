@@ -137,6 +137,60 @@ def distance_from_points(points):
     return total
 
 
+# A fix closer than this to the previously kept point is treated as GPS jitter
+# rather than real movement. 6 m is comfortably below the ~10-25 m noise floor of
+# a phone GPS at a standstill, so a parked rider collapses to a dot while genuine
+# movement is preserved.
+TRAIL_MIN_GAP_KM = 0.006
+# Upper bound on how many points the trail sent to the browser may contain. The
+# payload is re-sent on every SSE tick and every poll, so an unbounded trail
+# would grow without limit on a long delivery.
+TRAIL_MAX_POINTS = 180
+
+
+def thin_trail(points, min_gap_km=TRAIL_MIN_GAP_KM, max_points=TRAIL_MAX_POINTS):
+    """Reduce a raw GPS breadcrumb into a clean, bounded polyline.
+
+    ``RiderLocationPoint`` rows are written every few seconds, so a single
+    delivery accumulates hundreds of fixes that jitter 10-25 m even when the
+    rider is stationary. Sending them all draws a fuzzy, misleading squiggle and
+    bloats a payload that is re-transmitted continuously.
+
+    Guarantees, in order:
+      * fixes within ``min_gap_km`` of the last kept point are dropped as noise,
+      * the first and last fixes always survive, so the trail still spans the
+        whole pickup -> now journey,
+      * the result never exceeds ``max_points``, downsampled evenly but never
+        losing the endpoints.
+
+    Returns a list of ``(lat, lng)`` floats in the original order.
+    """
+    pts = [(float(lat), float(lng)) for lat, lng in points]
+    if len(pts) <= 2:
+        return pts
+
+    kept = [pts[0]]
+    for point in pts[1:-1]:
+        prev = kept[-1]
+        if haversine_km(prev[0], prev[1], point[0], point[1]) >= min_gap_km:
+            kept.append(point)
+    # The rider's most recent fix is the whole point of a live trail.
+    if kept[-1] != pts[-1]:
+        kept.append(pts[-1])
+
+    if len(kept) > max_points:
+        step = (len(kept) - 1) / float(max_points - 1)
+        sampled = []
+        for i in range(max_points):
+            point = kept[min(int(round(i * step)), len(kept) - 1)]
+            if not sampled or sampled[-1] != point:
+                sampled.append(point)
+        sampled[-1] = pts[-1]
+        kept = sampled
+
+    return kept
+
+
 def compute_speed_kmh(lat1, lng1, t1, lat2, lng2, t2):
     """Speed between two points given their timestamps (seconds). Returns km/h."""
     if lat1 is None or lat2 is None:

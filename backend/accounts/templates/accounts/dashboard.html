@@ -1251,13 +1251,13 @@
     const CAMPUS_CENTER_LNG = 118.73333;
     const CAMPUS_RADIUS_KM = 0.8;
 
-    // Required basemap credits. Esri hosts the tiles; the data is OpenStreetMap.
-    // tile.openstreetmap.org is NOT used: its usage policy forbids production apps
-    // on shared cloud IPs, and it answers this deployment with a blocking
-    // "app is not following the tile usage policy" placeholder tile. CARTO's
-    // keyless basemaps were also rejected here -- they return one identical
-    // placeholder tile for every location. Esri serves real per-location tiles.
-    const OSM_ATTRIBUTION = 'Tiles &copy; <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a> &mdash; Esri, HERE, Garmin, FAO, NOAA, USGS, &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
+    // Required basemap credit. Standard OSM raster tiles, free and keyless.
+    // Verified to return real tiles at z19 for this campus, so building
+    // footprints render when zoomed in. Rejected alternatives: Esri
+    // World_Street_Map (and World_Imagery) return their "Map data not yet
+    // available" placeholder from z18/z17 onward here, and CARTO's keyless
+    // basemaps return one identical placeholder for every location and style.
+    const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
 
     // Campus landmark directory used to display the nearest building instead of
     // raw coordinates. Coordinates are approximate (relative to the campus
@@ -1662,10 +1662,11 @@
         setTimeout(() => {
             if (!leafletMap) {
                 leafletMap = L.map('leaflet-map').setView([currentLat, currentLng], 16);
-                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-                    maxZoom: 19,
-                    attribution: OSM_ATTRIBUTION
-                }).addTo(leafletMap);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            subdomains: 'abc',
+            attribution: OSM_ATTRIBUTION
+        }).addTo(leafletMap);
                 leafletMarker = L.marker([currentLat, currentLng]).addTo(leafletMap)
                     .bindPopup('<b>Your Current Office Location</b><br>Faculty Delivery Zone').openPopup();
             } else {
@@ -2251,9 +2252,9 @@
                 ? [(d.rider_lat + d.dest_lat) / 2, (d.rider_lng + d.dest_lng) / 2]
                 : (hasPos ? [d.rider_lat, d.rider_lng] : [currentLat, currentLng]);
             viewOrderMap = L.map('view-order-map').setView(init, 15);
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19, attribution: OSM_ATTRIBUTION
-            }).addTo(viewOrderMap);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19, subdomains: 'abc', attribution: OSM_ATTRIBUTION
+        }).addTo(viewOrderMap);
             if (hasPos) {
                 viewOrderMarker = L.marker([d.rider_lat, d.rider_lng], {
                     icon: L.divIcon({
@@ -2463,10 +2464,9 @@
                     maxBoundsViscosity: 1.0
                 }).setView([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], 17);
 
-                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-                    maxZoom: 19,
-                    attribution: OSM_ATTRIBUTION
-                }).addTo(checkoutMap);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19, subdomains: 'abc', attribution: OSM_ATTRIBUTION
+        }).addTo(checkoutMap);
 
                 // Draw the campus delivery zone outline
                 L.circle([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], {

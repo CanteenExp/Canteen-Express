@@ -778,6 +778,52 @@ class RiderRoutePayloadTestCase(TestCase):
         self.assertIsNone(data['routing_provider'])
         # Straight-line estimate still drives the progress bar.
         self.assertIsNotNone(data['route_total_km'])
+        # ...and the card is told to label those figures as approximate, so a
+        # shorter-than-real crow-flight distance is never shown as exact.
+        self.assertTrue(data['distance_is_approximate'])
+
+    def test_routed_delivery_is_not_flagged_approximate(self):
+        """A real road route means the figures are exact, so no "approx." badge."""
+        import deliveries.views as dv
+        with self._stub_route('deliveries.views.get_road_route'):
+            payload = dv._tracking_payload(self.delivery)
+        self.assertFalse(payload['distance_is_approximate'])
+
+    def test_payload_carries_travelled_trail(self):
+        """The ridden ground is served from the DB, not rebuilt in the browser.
+
+        The previous breadcrumb only ever contained fixes that arrived while the
+        tracking page happened to be open, so it restarted empty on every reload.
+        """
+        import deliveries.views as dv
+        for lat, lng in ((9.77780, 118.73360), (9.77740, 118.73410)):
+            RiderLocationPoint.objects.create(
+                delivery=self.delivery, rider=self.rider,
+                lat=lat, lng=lng, speed_kmh=11.0, accuracy=7.0)
+        with self._stub_route('deliveries.views.get_road_route'):
+            payload = dv._tracking_payload(self.delivery)
+        trail = payload['trail']
+        self.assertGreaterEqual(len(trail), 2)
+        # Starts at the recorded pickup and ends at the rider's live position.
+        self.assertAlmostEqual(trail[0][0], 9.77810, places=4)
+        self.assertAlmostEqual(trail[-1][1], 118.73350, places=4)
+        # Coordinates are [lat, lng] pairs rounded to 5dp, JSON-serialisable.
+        self.assertIsInstance(json.dumps(trail), str)
+
+    def test_trail_is_thinned_and_bounded(self):
+        """A stationary rider collapses to a short trail instead of hundreds of
+        jittery fixes, and a long trip cannot bloat the payload."""
+        from deliveries.utils import thin_trail
+        # Sub-metre wobble (~0.06 m per fix): what a phone reports while parked.
+        parked = [(9.77778 + i * 0.0000005, 118.73333) for i in range(120)]
+        self.assertLessEqual(len(thin_trail(parked)), 4)
+        # ~22 m per fix: genuine travel, so it must NOT be thinned away.
+        moving = [(9.77778 + i * 0.0002, 118.73333) for i in range(400)]
+        trail = thin_trail(moving)
+        self.assertLessEqual(len(trail), 180)
+        # Endpoints always survive the thinning.
+        self.assertEqual(trail[0], moving[0])
+        self.assertEqual(trail[-1], moving[-1])
 
     def test_tracking_page_draws_only_the_orange_route(self):
         self.client.force_login(self.rider)
@@ -788,6 +834,13 @@ class RiderRoutePayloadTestCase(TestCase):
         # The single orange route line, driven by the payload's `path`.
         self.assertIn("#FF6117", html)
         self.assertIn("data.path", html)
+        # The travelled track is drawn from the server payload, not a local
+        # accumulator, and is explained in the legend.
+        self.assertIn("data.trail", html)
+        self.assertIn("Already travelled", html)
+        # Approximate-distance labelling is wired to the server flag.
+        self.assertIn("distance_is_approximate", html)
+        self.assertIn("approx-badge", html)
         # No campus route layer, no calculation panel.
         for removed in ('campus_path', 'Campus route (shortest)',
                         'calc-total-val', 'calc-covered-val', 'calc-basis'):
@@ -801,18 +854,29 @@ class RiderRoutePayloadTestCase(TestCase):
 
 
 class TileProviderPolicyTestCase(SimpleTestCase):
-    """Guard the basemap tile host.
+    """Guard the basemap tile host and the subdomain list.
 
-    tile.openstreetmap.org is unusable for this deployment: its usage policy
-    forbids production apps on shared cloud IPs, and it answers Render/Railway
-    with a placeholder tile instead of map data (the "app is not following the
-    tile usage policy" page the user reported). CARTO's keyless basemaps were
-    tried as a replacement and also return one identical placeholder tile for
-    every location, so neither may come back.
+    Standard OSM raster tiles are the only keyless provider verified to return
+    real per-location tiles at z19 for this campus, which is what makes building
+    footprints render when the map is zoomed in. Verified by hashing four
+    adjacent tiles at z17/18/19 near the campus centre: OSM gave four distinct
+    tiles at every zoom, while Esri's World_Street_Map collapsed to one
+    identical tile from z18 and its World_Imagery from z17 -- that placeholder
+    is literally the "Map data not yet available" graphic the user reported --
+    and CARTO's keyless basemaps returned one identical tile for every location
+    and style at every zoom.
+
+    An earlier note here claimed OSM was blocked. That was a testing artefact:
+    OSM rejects requests that send no User-Agent, and the check that produced
+    that conclusion was a scripted fetch without one. Browsers always send a
+    User-Agent, so standard tiles are correct here.
     """
 
-    BLOCKED_HOSTS = ('tile.openstreetmap.org', 'basemaps.cartocdn.com')
-    EXPECTED_HOST = 'server.arcgisonline.com'
+    BLOCKED_HOSTS = ('server.arcgisonline.com', 'basemaps.cartocdn.com')
+    EXPECTED_HOST = 'tile.openstreetmap.org'
+    # OSM runs a/b/c only. 'd' does not resolve, so listing it makes every
+    # fourth tile request fail and leaves grey holes across the map.
+    FORBIDDEN_SUBDOMAINS = ('abcd',)
 
     def _sources(self):
         from pathlib import Path
@@ -863,3 +927,14 @@ class TileProviderPolicyTestCase(SimpleTestCase):
                     % (path.name, match.group(1)))
         # Guards against the test passing simply because no layer was found.
         self.assertGreaterEqual(layers, 5)
+
+    def test_no_dead_tile_subdomain_is_requested(self):
+        offenders = []
+        for path in self._sources():
+            text = path.read_text(encoding='utf-8', errors='ignore')
+            for bad in self.FORBIDDEN_SUBDOMAINS:
+                if re.search(r"subdomains:\s*['\"]%s['\"]" % bad, text):
+                    offenders.append('%s -> %s' % (path.name, bad))
+        self.assertEqual(
+            offenders, [],
+            'Tile layers requesting non-existent OSM subdomains: %s' % offenders)

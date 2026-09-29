@@ -183,6 +183,10 @@
                 <span class="inline-block w-5 h-[3px] rounded" style="background:#FF6117"></span>
                 Rider route
             </p>
+            <p class="flex items-center gap-1.5 text-[9px] font-bold text-zinc-300">
+                <span class="inline-block w-5 h-[3px] rounded" style="background:#FF6117;opacity:.35"></span>
+                Already travelled
+            </p>
         </div>
     </div>
 
@@ -223,7 +227,9 @@
                             <span id="remain-val" class="text-xl font-black text-white tabular-nums">--</span>
                             <span id="remain-unit" class="text-[10px] font-bold text-zinc-500">km</span>
                         </p>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Remaining</p>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">
+                            Remaining<span id="approx-badge" class="hidden text-amber-400 normal-case tracking-normal"> · approx.</span>
+                        </p>
                     </div>
                 </div>
 
@@ -278,23 +284,32 @@
         const CAMPUS_CENTER = [9.77778, 118.73333];
         const ZOOM = 15;
         // Interactive campus map: starts zoomed in on the campus but lets the user
-        // pan and zoom freely. Esri-hosted basemap tiles (free, no credentials)
-        // rendered dark via a CSS invert filter, with the required credits shown
-        // bottom-right. tile.openstreetmap.org is deliberately avoided: its usage
-        // policy blocks production apps on shared cloud IPs and it answers this
-        // deployment with a placeholder tile. CARTO's keyless basemaps were also
-        // rejected -- they return one identical placeholder for every location.
-        const OSM_ATTRIBUTION = 'Tiles &copy; <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a> &mdash; Esri, HERE, Garmin, FAO, NOAA, USGS, &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
+        // pan and zoom freely. Standard OSM raster tiles (free, no credentials)
+        // rendered dark via a CSS invert filter, with the required credit shown
+        // bottom-right.
+        //
+        // Why OSM: it is the only keyless provider verified to return real tiles at
+        // z19 for this campus, which is what makes building footprints visible.
+        //   - Esri World_Street_Map returns its "Map data not yet available"
+        //     placeholder from z18 onward here, so zooming in showed that text
+        //     instead of buildings. Its World_Imagery service stops at z17 too.
+        //   - CARTO's keyless basemaps return one identical placeholder tile for
+        //     every location and style.
+        // OSM only blocks clients that send no User-Agent; browsers always send
+        // one, so the earlier "OSM is blocked" reading was a testing artefact.
+        const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
         const map = L.map('map', {
             zoomControl: false,
             scrollWheelZoom: true
         }).setView(CAMPUS_CENTER, ZOOM);
         // Single zoom control, bottom-right, with the recenter button stacked above it
         L.control.zoom({ position: 'bottomright' }).addTo(map);
-        // Free standard tiles (requires no credentials)
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        // Free standard tiles (requires no credentials). {s} spreads load over
+        // OSM's a/b/c servers; 'd' does not exist and would fail every request.
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             minZoom: 13,
+            subdomains: 'abc',
             attribution: OSM_ATTRIBUTION
         }).addTo(map);
 
@@ -552,12 +567,27 @@
                     accCircle = null;
                 }
 
-                // Short breadcrumb trail.
-                const trail = (trailLine ? trailLine.getLatLngs() : []).concat([target]);
-                if (trail.length > 40) trail.shift();
-                const trailStyle = { color: '#60a5fa', weight: 2, opacity: 0.4 };
-                if (!trailLine) trailLine = L.polyline(trail, Object.assign({ className: 'trail-line' }, trailStyle)).addTo(map);
-                else trailLine.setLatLngs(trail);
+                // Travelled track: the ground the rider has ALREADY covered, from
+                // the canteen pickup to their current position. The server sends
+                // the whole history in data.trail (thinned of GPS jitter), so the
+                // track survives a page reload and every viewer sees the same
+                // path -- the previous breadcrumb was built only from fixes that
+                // arrived while the page happened to be open. Same orange hue as
+                // the live route but dimmed, so ridden and remaining read as one
+                // journey. Falls back to accumulating locally if the payload has
+                // no trail.
+                const serverTrail = Array.isArray(data.trail) && data.trail.length > 1
+                    ? data.trail.map(p => [p[0], p[1]])
+                    : null;
+                const trailPts = serverTrail
+                    ? serverTrail.concat([target])
+                    : (trailLine ? trailLine.getLatLngs() : []).concat([target]);
+                const trailStyle = { color: '#FF6117', weight: 3, opacity: 0.35 };
+                if (!trailLine) {
+                    trailLine = L.polyline(trailPts, Object.assign({ className: 'trail-line' }, trailStyle)).addTo(map);
+                } else {
+                    trailLine.setLatLngs(trailPts);
+                }
             }
 
             // "moving" chip visibility
@@ -574,6 +604,10 @@
             setSpeed(data.speed_kmh);
             setDist('dist', data.route_total_km);
             setDist('remain', data.remaining_km);
+            // When no routing provider answered, the figures above are straight-line
+            // measurements, not road distances. Say so rather than quietly
+            // presenting a shorter-than-real distance as exact.
+            document.getElementById('approx-badge').classList.toggle('hidden', !data.distance_is_approximate);
             document.getElementById('eta-val').textContent = formatEta(data.eta_minutes);
             const gpsGroup = document.getElementById('gps-group');
             if (data.accuracy_m != null) {
