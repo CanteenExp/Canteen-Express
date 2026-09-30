@@ -55,6 +55,41 @@ class ProcessBarcodeAPITestCase(TestCase):
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, "pending")
 
+    def test_confirm_payment_already_paid_reissues_receipt(self):
+        # The counter scanned and paid this slip once already.
+        self.order.status = "pending"
+        self.order.save()
+        # Scanning and confirming it again must NOT warn "no longer payable":
+        # the customer already cleared payment, so the cashier simply gets the
+        # e-receipt re-issued and the order is untouched.
+        response = self.client.post(
+            self.url,
+            data=json.dumps({"action": "confirm_payment", "order_id": "#CE-8888"}),
+            content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "success")
+        self.assertTrue(data.get("already_paid"))
+        self.assertNotIn("no longer payable", data.get("message", ""))
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "pending")
+
+    def test_confirm_payment_cancelled_slip_rejected(self):
+        self.order.status = "cancelled"
+        self.order.save()
+        response = self.client.post(
+            self.url,
+            data=json.dumps({"action": "confirm_payment", "order_id": "#CE-8888"}),
+            content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertEqual(data["status"], "error")
+        self.assertIn("cancelled", data["message"])
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "cancelled")
+
     def test_order_not_found(self):
         response = self.client.post(
             self.url,

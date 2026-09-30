@@ -639,6 +639,40 @@
         </div>
     </div>
 
+    <!-- ================= OPTIONAL FEEDBACK MODAL (after e-receipt) ================= -->
+    <div id="feedback-modal" class="fixed inset-0 z-[80] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl modal-pop">
+            <div class="flex items-start justify-between gap-2">
+                <div>
+                    <h3 class="font-black text-white text-base"><i class="fa-solid fa-star text-amber-400 mr-1.5"></i>Rate your experience</h3>
+                    <p class="text-[10px] text-gray-400 font-semibold mt-0.5" id="feedback-order-label"></p>
+                </div>
+                <button onclick="skipFeedback()" class="text-gray-400 hover:text-white text-lg px-1 shrink-0" aria-label="Close feedback form">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="flex justify-center gap-1.5 text-2xl text-amber-500" id="feedback-star-container">
+                <button type="button" onclick="setRating(1)" class="star-btn text-amber-500" data-star="1"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setRating(2)" class="star-btn text-amber-500" data-star="2"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setRating(3)" class="star-btn text-amber-500" data-star="3"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setRating(4)" class="star-btn text-amber-500" data-star="4"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setRating(5)" class="star-btn text-amber-500" data-star="5"><i class="fa-solid fa-star"></i></button>
+            </div>
+
+            <p class="text-[10px] text-gray-400 text-center font-semibold">Tap your rating and optionally leave a comment.</p>
+
+            <textarea id="feedback-comment-input" placeholder="Write feedback or comment (optional)..." class="w-full bg-white/5 border border-white/10 text-white placeholder:text-gray-500 rounded-xl p-3 text-xs focus:outline-none focus:border-brand-orange resize-none h-20"></textarea>
+
+            <p id="feedback-note" class="hidden text-[10px] font-bold text-amber-400 text-center leading-relaxed"></p>
+
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="skipFeedback()" class="w-full bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 font-bold py-2.5 rounded-xl uppercase tracking-wider text-[11px] transition active:scale-95">Skip</button>
+                <button onclick="submitKioskFeedback()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider text-[11px] transition active:scale-95">Submit</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= CANCEL QUEUE SLIP CONFIRMATION MODAL ================= -->
     <div id="queue-cancel-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4" style="background: rgba(8, 8, 12, 0.35); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);">
         <div class="glass-panel glass-panel-accent rounded-3xl p-6 sm:p-7 max-w-xs w-full text-center space-y-5 modal-pop relative">
@@ -1306,24 +1340,24 @@ function transformToOfficialReceipt() {
             <div class="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wider py-1">
                 <i class="fa-solid fa-circle-check"></i> Payment Verified & Sent to Kitchen
             </div>
-            <p class="text-[9px] text-gray-400 mt-0.5">Salamat sa pagtangkilik sa Canteen Express!</p>
-            <div class="mt-3 pt-3 border-t border-dashed border-gray-300 space-y-2 text-left w-full">
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider block text-center">Rate Your Experience</span>
-                <div class="flex justify-center gap-1.5 text-lg text-amber-500" id="star-rating-container">
-                    <button type="button" onclick="setRating(1)" class="star-btn text-amber-500" data-star="1"><i class="fa-solid fa-star"></i></button>
-                    <button type="button" onclick="setRating(2)" class="star-btn text-amber-500" data-star="2"><i class="fa-solid fa-star"></i></button>
-                    <button type="button" onclick="setRating(3)" class="star-btn text-amber-500" data-star="3"><i class="fa-solid fa-star"></i></button>
-                    <button type="button" onclick="setRating(4)" class="star-btn text-amber-500" data-star="4"><i class="fa-solid fa-star"></i></button>
-                    <button type="button" onclick="setRating(5)" class="star-btn text-amber-500" data-star="5"><i class="fa-solid fa-star"></i></button>
-                </div>
-                <textarea id="feedback-comment-input" placeholder="Write feedback or comment..." class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl p-2 text-xs focus:outline-none focus:border-orange-500 resize-none h-14"></textarea>
-                <button onclick="submitKioskFeedback()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-2 rounded-xl text-xs uppercase tracking-wider transition">Submit Feedback</button>
-            </div>
+            <p class="text-[9px] text-gray-400 mt-0.5">Thank you, enjoy your meal!</p>
+            <button onclick="showFeedbackModal()" id="rate-open-btn"
+                class="mt-3 mx-auto flex items-center gap-1.5 text-[10px] font-bold text-brand-orange hover:text-orange-600 transition">
+                <i class="fa-solid fa-star"></i> Rate your experience <span class="text-gray-400 font-semibold">(optional)</span>
+            </button>
         `;
     }
+    // The rating form is optional: show it as a small pop-up right after the
+    // e-receipt appears, then again the moment the order actually completes
+    // (the backend only accepts ratings once a pickup is completed / a delivery
+    // is handed off). The customer can dismiss it either time.
+    scheduleFeedbackPrompt();
 }
 
 let currentSelectedRating = 5;
+let feedbackOrderNumber = null;
+let feedbackSkipped = false;
+let feedbackWatcher = null;
 function getCSRFToken() {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -1337,6 +1371,72 @@ function getCSRFToken() {
         }
     }
     return cookieValue || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
+function showFeedbackModal() {
+    const modal = document.getElementById('feedback-modal');
+    if (!modal) return;
+    const label = document.getElementById('feedback-order-label');
+    if (label && feedbackOrderNumber) label.textContent = `Order ${feedbackOrderNumber}`;
+    const note = document.getElementById('feedback-note');
+    if (note) note.classList.add('hidden');
+    modal.classList.remove('hidden');
+}
+
+function hideFeedbackModal() {
+    const modal = document.getElementById('feedback-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function skipFeedback() {
+    feedbackSkipped = true;
+    stopFeedbackWatcher();
+    hideFeedbackModal();
+}
+
+function stopFeedbackWatcher() {
+    if (feedbackWatcher) {
+        clearInterval(feedbackWatcher);
+        feedbackWatcher = null;
+    }
+}
+
+// After the e-receipt appears, quietly watch for the moment this order
+// becomes rateable (completed for pickup, delivered for delivery) and only
+// then surface the optional rating pop-up. Feedback never blocks anything.
+function scheduleFeedbackPrompt() {
+    stopFeedbackWatcher();
+    if (feedbackSkipped) return;
+    const orderNumEl = document.getElementById('slip-queue-number');
+    feedbackOrderNumber = orderNumEl ? orderNumEl.innerText.trim() : feedbackOrderNumber;
+    if (!feedbackOrderNumber) return;
+
+    // Warm the modal up right away so the customer knows it exists...
+    setTimeout(() => {
+        const modal = document.getElementById('feedback-modal');
+        if (!feedbackSkipped && modal && modal.classList.contains('hidden')) {
+            showFeedbackModal();
+        }
+    }, 1200);
+
+    // ...then re-pop it once the kitchen has actually completed the order,
+    // when a rating can genuinely be saved.
+    feedbackWatcher = setInterval(async () => {
+        try {
+            const res = await fetch("{% url 'canteen_menu:process_barcode_api' %}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'fetch', order_id: feedbackOrderNumber })
+            });
+            const data = await res.json();
+            if (data.status === 'success' && data.order && data.order.status === 'completed') {
+                stopFeedbackWatcher();
+                if (!feedbackSkipped) showFeedbackModal();
+            }
+        } catch (err) {
+            console.error('Error watching for completed order:', err);
+        }
+    }, 8000);
 }
 
 function setRating(r) {
@@ -1354,7 +1454,8 @@ function setRating(r) {
 
 async function submitKioskFeedback() {
     const comment = document.getElementById('feedback-comment-input').value;
-    const orderNum = document.getElementById('slip-queue-number').innerText;
+    const orderNum = feedbackOrderNumber || (document.getElementById('slip-queue-number') ? document.getElementById('slip-queue-number').innerText : '');
+    const note = document.getElementById('feedback-note');
     try {
         const res = await fetch("{% url 'customer_portal:submit_feedback_api' %}", {
             method: 'POST',
@@ -1363,16 +1464,28 @@ async function submitKioskFeedback() {
         });
         const data = await res.json();
         if (data.success) {
+            hideFeedbackModal();
+            stopFeedbackWatcher();
             const happyEmojis = ['😊', '🎉', '🌟', '🥳', '🙌', '🤩', '✨', '🚀', '💖'];
             const randomEmoji = happyEmojis[Math.floor(Math.random() * happyEmojis.length)];
             showFeedbackSuccessPopup(`Thank you for your feedback! ${randomEmoji}`);
-            document.getElementById('slip-footer-container').innerHTML = `<p class="text-xs text-emerald-600 font-bold text-center py-4"><i class="fa-solid fa-circle-check"></i> Thank you! Feedback & Rating submitted successfully. ${randomEmoji}</p>`;
+            const footerContainer = document.getElementById('slip-footer-container');
+            if (footerContainer) {
+                footerContainer.innerHTML = `<p class="text-xs text-emerald-600 font-bold text-center py-4"><i class="fa-solid fa-circle-check"></i> Thank you! Feedback & Rating submitted successfully. ${randomEmoji}</p>`;
+            }
         } else {
-            kioskToast(data.message || 'Failed to submit feedback.');
+            // Not rateable yet (e.g. still cooking): explain and stay optional.
+            if (note) {
+                note.textContent = data.message || 'Feedback is not available for this order yet.';
+                note.classList.remove('hidden');
+            }
         }
     } catch (err) {
         console.error(err);
-        kioskToast('Failed to submit feedback.');
+        if (note) {
+            note.textContent = 'Could not submit feedback. Please try again.';
+            note.classList.remove('hidden');
+        }
     }
 }
 

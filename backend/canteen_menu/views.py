@@ -972,43 +972,41 @@ def process_barcode_api(request):
         # Lazy sweep: keeping idle slips alive forever wastes kitchen stock and
         # menu slots. A slip older than the window is cancelled before anything
         # else happens, so both the kiosk poll and the cashier scan see it dead.
-        from customer_portal.views import expire_stale_unpaid_orders, slip_expires_at
+        from customer_portal.views import expire_stale_unpaid_orders, slip_expires_at, find_order_by_number
         expire_stale_unpaid_orders()
 
         # Try to find order in customer_portal
         from customer_portal.models import Order as KioskOrder
 
         clean_code = raw_order_id.replace('#', '').strip()
-        possible_numbers = [
-            raw_order_id,
-            clean_code,
-            f"#{clean_code}",
-            f"CE-{clean_code}" if not clean_code.startswith("CE-") else clean_code,
-            f"#CE-{clean_code.replace('CE-', '')}"
-        ]
 
-        order = None
-        for p_num in possible_numbers:
-            try:
-                order = KioskOrder.objects.get(order_number__iexact=p_num)
-                if order:
-                    break
-            except KioskOrder.DoesNotExist:
-                continue
+        # The CE- prefix is added automatically: the cashier only ever types the
+        # 4-digit slip number, and the helper also tolerates "CE-1149",
+        # "CE1149", "#CE-1149" and even a full "Order #CE-1149" label scraped
+        # from the camera scanner.
+        order = find_order_by_number(raw_order_id)
 
         if not order:
             return JsonResponse({'status': 'error', 'message': f'Queue Slip #{clean_code} not found or already processed!'}, status=404)
 
         if action == 'confirm_payment':
             if order.status != 'unpaid':
-                # Cancelled (expired or voided) and already-paid slips are dead
-                # ends: the kitchen will not cook a slip that was never paid or
-                # one that was paid twice.
+                if order.status == 'cancelled':
+                    # Cancelled (expired or voided) slips are dead ends: the
+                    # kitchen will not cook a slip that was never paid.
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'This queue slip was cancelled. Please reorder.'
+                    }, status=400)
+                # Already paid (pending/preparing/ready/completed): never charge
+                # the customer twice, but do not scare the cashier into thinking
+                # the payment failed. The e-receipt is identical either way, so
+                # re-issue it rather than shouting "no longer payable".
                 return JsonResponse({
-                    'status': 'error',
-                    'message': 'This queue slip is no longer payable'
-                               f' ({order.get_status_display()}). Please reorder.'
-                }, status=400)
+                    'status': 'success',
+                    'already_paid': True,
+                    'message': f'Order already paid ({order.get_status_display()}). Receipt re-issued.',
+                })
             order.status = 'pending'
             order.save()
             log_activity(
