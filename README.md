@@ -1,40 +1,47 @@
-# Canteen Express - Django Web Application & PWA Suite
+<div align="center">
 
-Welcome to the **Canteen Express** project! A comprehensive, enterprise-grade Django web application and Progressive Web App (PWA) suite designed for automated Canteen Ordering, Counter POS, Kitchen Display, Digital Queuing, and Campus Delivery.
+# Canteen Express
+### Enterprise Django Web Application & Progressive Web App Suite
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Django-5.1.5-092E20?style=for-the-badge&logo=django&logoColor=white" alt="Django">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/PostgreSQL-Supabase-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Tailwind_CSS-3.x-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/PWA-Enabled-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white" alt="PWA">
+</p>
+
+<p align="center">
+  <b>Comprehensive Canteen Ordering, Counter POS, Kitchen Display, Digital Queuing, and Campus Delivery Suite.</b>
+</p>
+
+</div>
 
 ---
 
-## 📱 Progressive Web App (PWA) Support by Role
+## Role-Based Progressive Web App (PWA) Support
 
 Canteen Express is fully optimized as a Progressive Web App across all user tiers, enabling offline caching, standalone app installation, and native-like performance:
 
-1. **Customer Student / Walk-in Kiosk (`manifest-kiosk.json`)**
-   - **Start URL:** `/kiosk/`
-   - **Theme:** Dark theme (`#121212`, accent `#f97316`)
-   - **Features:** Self-service kiosk ordering, guest/student ordering, QR/barcode queue slip generation, smart category-based customization (e.g., Steamed Rice add-ons exclusively for Rice Meals).
-2. **Customer Faculty / Staff (`manifest-faculty.json`)**
-   - **Start URL:** `/accounts/dashboard/`
-   - **Theme:** Dark theme (`#121212`, accent `#f97316`)
-   - **Features:** Authenticated faculty/staff ordering (`@psu.palawan.edu.ph`), loyalty points accumulation, order history, and delivery tracking.
-3. **Canteen Staff / Admin Portal (`manifest-staff.json`)**
-   - **Start URL:** `/canteen/staff/`
-   - **Theme:** Light/Brand dark (`#f97316` theme)
-   - **Features:** Counter POS screen (`counter_pos.html`), barcode & queue slip scanning API (`/canteen/api/process-barcode/`), menu item management, delivery rider creation, and comprehensive sales reports.
-4. **Delivery Personnel / Rider Hub (`manifest-rider.json`)**
-   - **Start URL:** `/deliveries/dashboard/`
-   - **Theme:** Dark brand theme (`#08080b`, accent `#FF6117`)
-   - **Features:** Real-time delivery dispatch, accept/update delivery status, live GPS tracking (`navigator.geolocation.watchPosition`), and real-time customer chat (`DeliveryMessage`).
+| Role | Start URL | Theme | Key Features |
+| :--- | :--- | :--- | :--- |
+| **Student / Walk-in Kiosk** | `/kiosk/` | Dark (`#121212`, `#f97316`) | Self-service ordering, guest/student ordering, barcode queue slip generation, smart category-based customization. |
+| **Faculty / Staff Portal** | `/accounts/dashboard/` | Dark (`#121212`, `#f97316`) | Authenticated faculty/staff ordering (`@psu.palawan.edu.ph`), loyalty points accumulation, order tracking. |
+| **Canteen Staff / Admin** | `/canteen/staff/` | Light / Brand (`#f97316`) | Counter POS screen, barcode & queue slip scanning API (`/canteen/api/process-barcode/`), menu management, sales reports. |
+| **Delivery Rider Hub** | `/deliveries/dashboard/` | Dark Brand (`#08080b`, `#FF6117`) | Real-time dispatch, accept/update delivery status, live GPS tracking (`watchPosition`), real-time customer chat. |
 
 ---
 
-## 🚀 Core System Modules & Features
+## Core System Modules & Features
 
 - **Kitchen Display Kanban Board (`kitchen_display`)**
   - Real-time 3-column workflow: **Kiosk Accepted** (Walk-in Kiosk), **Delivery** (Campus Delivery), and **Orders Ready** (Ready for pickup/dispatch).
-  - AJAX status updates (`/kitchen/order/<id>/update-status/`) with robust null-safety for walk-in kiosk orders.
+  - AJAX status updates with robust null-safety for walk-in kiosk orders.
 - **Campus Geofence Enforcement (`deliveries`)**
   - Official campus center: `9.77778, 118.73333` (PSU Tiniguiban Heights).
   - Strict radius check: `0.8` km (`deliveries/utils.py`). Out-of-campus delivery orders or missing destination coordinates are automatically rejected at checkout with HTTP `422 Unprocessable Entity`.
+- **Advanced Road-Following Routing (`deliveries/routing.py`)**
+  - OSRM driving and Valhalla pedestrian routing with fallback to Haversine straight-line distance, fully cached.
 - **Sales Reports & Analytics (`analytics_reports`, `admin_dashboard`)**
   - Interactive Chart.js bar graphs with filter tabs for **Daily (7 Days)**, **Weekly (4 Weeks)**, and **Monthly (6 Months)** sales performance and financial breakdown tables.
 - **Convenience Fee & Loyalty Points**
@@ -44,7 +51,7 @@ Canteen Express is fully optimized as a Progressive Web App across all user tier
 
 ---
 
-## 📋 Prerequisites
+## Prerequisites
 
 Ensure you have the following installed on your system:
 - **Python 3.10+** (Recommended: **Python 3.12**)
@@ -52,7 +59,7 @@ Ensure you have the following installed on your system:
 
 ---
 
-## 🛠️ Quick Start Guide
+## Quick Start Guide
 
 ### 1. Clone the Repository & Navigate to Backend
 ```bash
@@ -83,7 +90,7 @@ Create a `.env` file directly inside the `backend/` folder alongside `manage.py`
 SECRET_KEY="django-insecure-your-secret-key-here"
 DEBUG=True
 
-# Supabase PostgreSQL Database Credentials (falls back to local SQLite if absent or unreachable)
+# Supabase PostgreSQL Database Credentials (leave DB_HOST empty or set USE_SQLITE=True to fall back to local SQLite)
 DB_NAME="postgres"
 DB_USER="postgres.hchqdkuijbpihraagetz"
 DB_PASSWORD="<YOUR_DB_PASSWORD>"
@@ -109,7 +116,7 @@ Access the application in your browser at: `http://127.0.0.1:8000/`
 
 ---
 
-## 🧪 Testing & Common Commands
+## Testing & Management Commands
 
 Always run Django tests inside the `backend/` directory with `--keepdb` to avoid slow/flaky Supabase PostgreSQL test DB recreation prompts:
 
@@ -121,23 +128,15 @@ python manage.py test --keepdb
 python manage.py test deliveries customer_portal
 ```
 
-### Reset / Clear All Orders (Testing Utility)
-To clear all orders and order items in the database for testing:
-1. Open Django interactive shell:
-   ```bash
-   python manage.py shell
-   ```
-2. Run:
-   ```python
-   from customer_portal.models import Order, OrderItem
-   OrderItem.objects.all().delete()
-   Order.objects.all().delete()
-   exit()
-   ```
+### Reset Orders & Feedback Utility
+To reset all orders, order items, feedback/ratings, and delivery records while preserving accounts and menu management intact:
+```bash
+python manage.py reset_orders
+```
 
 ---
 
-## 🔌 Key API Endpoints
+## Key API Endpoints
 
 1. **Barcode & Queue Slip Processing API (`canteen_menu`)**
    - **Endpoint:** `/canteen/api/process-barcode/`
@@ -160,7 +159,7 @@ To clear all orders and order items in the database for testing:
 
 ---
 
-## 📂 Project Directory Structure
+## Project Directory Structure
 
 ```text
 CANTEEN-EXPRESS/
@@ -194,9 +193,9 @@ CANTEEN-EXPRESS/
 
 ---
 
-## 💡 Troubleshooting & Notes
+## Troubleshooting & Notes
 
-- **Windows CP1252 Encoding Error:** Avoid complex Unicode emojis in backend print statements and management commands; use FontAwesome icons in HTML templates instead.
-- **Database Fallback:** If the `.env` file is missing or Supabase PostgreSQL is unreachable, the system automatically falls back to local SQLite (`backend/db.sqlite3`).
+- **Database Fallback:** If the `.env` file is missing or Supabase PostgreSQL is unreachable, the system automatically falls back to local SQLite (`backend/db.sqlite3`) or when `USE_SQLITE=True` is configured in `.env`.
+- **Offline / Local Dev:** Set `USE_SQLITE=True` in `backend/.env` to bypass remote PostgreSQL timeout issues during local development.
 
-**Happy coding, team!**
+---
