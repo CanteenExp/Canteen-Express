@@ -29,6 +29,22 @@
         </div>
     </div>
 
+    <!-- Status Error Dialog -->
+    <div id="status-dialog" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-dark-900/70 backdrop-blur-sm" onclick="closeStatusDialog()"></div>
+        <div class="relative bg-white rounded-3xl border border-gray-200/80 shadow-2xl max-w-sm w-full p-6 text-center">
+            <div class="mx-auto w-14 h-14 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center text-red-500 text-2xl mb-4">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-lg font-black text-dark-900 tracking-tight">Cannot update order</h3>
+            <p id="status-dialog-order" class="text-xs font-extrabold text-gray-400 uppercase tracking-wider mt-1"></p>
+            <p id="status-dialog-message" class="text-sm text-gray-600 mt-3 leading-relaxed"></p>
+            <button onclick="closeStatusDialog()" class="mt-5 w-full bg-dark-900 hover:bg-dark-800 text-white rounded-xl px-4 py-2.5 text-sm font-bold transition active:scale-[0.98]">
+                Got it
+            </button>
+        </div>
+    </div>
+
     <!-- Live Counter Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="bg-white p-5 rounded-3xl border border-gray-200/80 shadow-sm flex justify-between items-center">
@@ -90,7 +106,7 @@
             <div class="bg-white rounded-3xl p-6 border-2 border-emerald-500 shadow-md space-y-4 relative" id="order-card-{{ order.id }}" data-order-row="{{ order.id }}">
                 <div class="flex justify-between items-start border-b border-gray-100 pb-3">
                     <div>
-                        <span class="text-lg font-black text-emerald-600 uppercase tracking-wider">
+                        <span class="status-title text-lg font-black text-emerald-600 uppercase tracking-wider">
                             Order #{{ order.id }} ({{ order.order_number }})
                         </span>
                     </div>
@@ -141,7 +157,7 @@
             <div class="bg-white rounded-3xl p-6 border-2 border-orange-500 shadow-md space-y-4" id="order-card-{{ order.id }}" data-order-row="{{ order.id }}">
                 <div class="flex justify-between items-start border-b border-gray-100 pb-3">
                     <div>
-                        <span class="text-[11px] font-black text-orange-600 uppercase tracking-wider">
+                        <span class="status-title text-[11px] font-black text-orange-600 uppercase tracking-wider">
                             Order #{{ order.id }} ({{ order.order_number }})
                         </span>
                         <h3 class="text-base font-black text-dark-900">{% if order.customer %}{{ order.customer.get_full_name|default:order.customer.username }}{% else %}Walk-in Guest{% endif %}</h3>
@@ -193,7 +209,7 @@
             <div class="bg-gray-50 rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4" id="order-card-{{ order.id }}" data-order-row="{{ order.id }}">
                 <div class="flex justify-between items-start border-b border-gray-200 pb-3">
                     <div>
-                        <span class="text-[11px] font-black text-emerald-600 uppercase tracking-wider">
+                        <span class="status-title text-[11px] font-black text-emerald-600 uppercase tracking-wider">
                             Order #{{ order.id }} ({{ order.order_number }})
                         </span>
                         <h3 class="text-base font-black text-dark-900">{% if order.customer %}{{ order.customer.get_full_name|default:order.customer.username }}{% else %}Walk-in Guest{% endif %}</h3>
@@ -311,7 +327,7 @@ function cardHTML(board, o) {
     return `<div class="${st.card}" id="order-card-${o.id}" data-order-row="${o.id}">
         <div class="flex justify-between items-start border-b ${board === 'ready' ? 'border-gray-200' : 'border-gray-100'} pb-3">
             <div>
-                <span class="text-[11px] ${st.label} uppercase tracking-wider">Order #${o.id} (${escapeHtml(o.order_number)})</span>
+                <span class="status-title text-[11px] ${st.label} uppercase tracking-wider">Order #${o.id} (${escapeHtml(o.order_number)})</span>
                 ${nameHtml}
             </div>
             ${badgeHtml}
@@ -368,12 +384,29 @@ function bindStatusBtn(button) {
                 }
                 setTimeout(() => { window.location.reload(); }, 250);
             } else {
-                alert('Error: ' + (data.error || 'Failed to update order status.'));
+                const orderNum = document.querySelector(`#order-card-${orderId} .status-title`)?.textContent || '';
+                showStatusDialog(orderNum, data.error || 'Failed to update order status.');
             }
         })
         .catch(error => console.error('Error:', error));
     });
 }
+
+function showStatusDialog(orderNumber, message) {
+    const dialog = document.getElementById('status-dialog');
+    if (!dialog) return;
+    document.getElementById('status-dialog-order').textContent = orderNumber ? `Order ${orderNumber}` : '';
+    document.getElementById('status-dialog-message').textContent = message || 'Failed to update order status.';
+    dialog.classList.remove('hidden');
+}
+
+function closeStatusDialog() {
+    document.getElementById('status-dialog').classList.add('hidden');
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeStatusDialog();
+});
 
 function playChime() {
     try {

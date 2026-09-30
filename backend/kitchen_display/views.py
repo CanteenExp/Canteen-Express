@@ -25,14 +25,14 @@ def staff_dashboard(request):
     today = timezone.now().date()
     week_start = today - timezone.timedelta(days=7)
     month_start = today.replace(day=1)
-    today_orders = Order.objects.filter(created_at__date=today).exclude(status='unpaid')
+    today_orders = Order.objects.filter(created_at__date=today).exclude(status__in=['unpaid', 'cancelled'])
     
     total_orders_today = today_orders.count()
     pending_count = Order.objects.filter(status='pending').count()
     preparing_count = Order.objects.filter(status='preparing').count()
     ready_count = Order.objects.filter(status='ready').count()
     
-    recent_orders = Order.objects.exclude(status='completed').exclude(status='unpaid').order_by('-created_at')[:5]
+    recent_orders = Order.objects.exclude(status__in=['completed', 'unpaid', 'cancelled']).order_by('-created_at')[:5]
     menu_items = MenuItem.objects.all().order_by('name')
     users_list = User.objects.all().order_by('-date_joined')[:30] if hasattr(User, 'date_joined') else User.objects.all()[:30]
     
@@ -185,8 +185,11 @@ def staff_dashboard(request):
 @role_required(allowed_roles=['STAFF'])
 def kitchen_display(request):
     """Kanban-style Order Board for real-time order processing."""
-    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status='completed').exclude(status='ready').exclude(status='unpaid').order_by('created_at')
-    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status='completed').exclude(status='ready').order_by('created_at')
+    # A cancelled order is NOT active work: once cancel is pressed the card must
+    # vanish from every column immediately, or staff keep tapping a dead order
+    # and hit "Cannot move order from 'cancelled'..." errors.
+    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).order_by('created_at')
+    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).order_by('created_at')
     ready_orders = Order.objects.filter(status='ready').order_by('created_at')
 
     for o in list(kiosk_orders) + list(delivery_orders) + list(ready_orders):
@@ -217,8 +220,8 @@ def kitchen_orders_json_api(request):
             'total_payment': str(o.total_payment),
         }
 
-    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status='completed').exclude(status='ready').exclude(status='unpaid').order_by('created_at')
-    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status='completed').exclude(status='ready').order_by('created_at')
+    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).order_by('created_at')
+    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).order_by('created_at')
     ready_orders = Order.objects.filter(status='ready').order_by('created_at')
 
     boards = {
@@ -258,8 +261,8 @@ def kitchen_live_stream(request):
         }
 
     def boards():
-        kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status='completed').exclude(status='ready').exclude(status='unpaid').order_by('created_at')
-        delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status='completed').exclude(status='ready').order_by('created_at')
+        kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).order_by('created_at')
+        delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).order_by('created_at')
         ready_orders = Order.objects.filter(status='ready').order_by('created_at')
         return {
             'kiosk': [order_map(o, False) for o in kiosk_orders],
