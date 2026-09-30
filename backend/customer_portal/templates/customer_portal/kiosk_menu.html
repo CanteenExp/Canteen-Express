@@ -1239,27 +1239,23 @@ function startKioskStatusPolling() {
     kioskPollInterval = setInterval(async () => {
         if (!currentPendingOrder || !currentPendingOrder.order_number) return;
         try {
-            const response = await fetch("{% url 'canteen_menu:process_barcode_api' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'fetch',
-                    order_id: currentPendingOrder.order_number
-                })
-            });
+            // The kiosk is public (no login), so it polls the dedicated
+            // anonymous order-status endpoint, NOT the staff-gated barcode API
+            // (which answers anonymous guests with a 302 to the staff login
+            // page, killing the e-receipt auto-pop).
+            const orderNum = encodeURIComponent(currentPendingOrder.order_number);
+            const response = await fetch("{% url 'customer_portal:check_order_status_api' 'KIOKS-PLACEHOLDER' %}".replace('KIOKS-PLACEHOLDER', orderNum));
             const data = await response.json();
 
             // Client-side deadline first: even if the sweep did not run yet,
             // never let a slip older than 1h sit around pretending to be valid.
-            if (data.status === 'success' && data.order && currentPendingOrder) {
+            if (data.exists && currentPendingOrder) {
                 const deadline = slipExpiryDate(currentPendingOrder);
                 const overdue = Date.now() > deadline.getTime();
-                if (overdue || data.order.status === 'cancelled') {
+                if (overdue || data.status === 'cancelled') {
                     return showSlipExpired(overdue);
                 }
-                if (data.order.status && data.order.status !== 'unpaid') {
+                if (data.status && data.status !== 'unpaid') {
                     transformToOfficialReceipt();
                 }
             }
@@ -1423,13 +1419,10 @@ function scheduleFeedbackPrompt() {
     // when a rating can genuinely be saved.
     feedbackWatcher = setInterval(async () => {
         try {
-            const res = await fetch("{% url 'canteen_menu:process_barcode_api' %}", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'fetch', order_id: feedbackOrderNumber })
-            });
+            const orderNum = encodeURIComponent(feedbackOrderNumber);
+            const res = await fetch("{% url 'customer_portal:check_order_status_api' 'KIOKS-PLACEHOLDER' %}".replace('KIOKS-PLACEHOLDER', orderNum));
             const data = await res.json();
-            if (data.status === 'success' && data.order && data.order.status === 'completed') {
+            if (data.exists && data.status === 'completed') {
                 stopFeedbackWatcher();
                 if (!feedbackSkipped) showFeedbackModal();
             }

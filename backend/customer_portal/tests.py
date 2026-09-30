@@ -366,3 +366,38 @@ class FeedbackRatingTestCase(TestCase):
         self._post('#CE-5157', rating=5, user=self.customer)
         self.assertEqual(order.feedbacks.count(), 1)
         self.assertEqual(order.feedbacks.first().rating, 5)
+
+
+class KioskStatusPollEndpointTests(TestCase):
+    """The kiosk is public (no login), so its receipt auto-pop must poll the
+    anonymous order-status endpoint. process_barcode_api is gated to STAFF and
+    answers anonymous guests with a 302 to the staff login page, which silently
+    killed the kiosk e-receipt: the slip stayed on the queue screen even after
+    the POS had paid the order."""
+
+    def setUp(self):
+        self.order = Order.objects.create(
+            order_number='#CE-7777', total_amount=50.00, status='unpaid'
+        )
+
+    def test_anonymous_kiosk_reads_unpaid_status(self):
+        url = reverse('customer_portal:check_order_status_api', args=['#CE-7777'])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['status'], 'unpaid')
+
+    def test_anonymous_kiosk_sees_paid_status(self):
+        self.order.status = 'pending'
+        self.order.save()
+        url = reverse('customer_portal:check_order_status_api', args=['#CE-7777'])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['status'], 'pending')
+
+    def test_kiosk_polls_public_endpoint_not_staff_gated_one(self):
+        resp = self.client.get(reverse('customer_portal:kiosk_menu'))
+        content = resp.content.decode()
+        # The rendered template resolves the URL, so assert on the path and the
+        # runtime placeholder the JS swaps for the encoded slip number.
+        self.assertIn('/kiosk/api/order-status/KIOKS-PLACEHOLDER/', content)
+        self.assertNotIn('process_barcode_api', content)
