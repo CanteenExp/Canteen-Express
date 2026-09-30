@@ -1,4 +1,5 @@
 from django.conf import settings
+from core_app.utils import is_operating_hours
 
 
 def map_key(request):
@@ -12,4 +13,11 @@ def map_key(request):
     return {
         'GOOGLE_MAPS_API_KEY': key,
         'USE_GOOGLE_MAPS': bool(key),
+    }
+
+
+def operating_hours_status(request):
+    """Inject whether the store is within operating hours (Mon-Fri 8am-5pm) into context."""
+    return {
+        'IS_OPERATING_HOURS': is_operating_hours(),
     }

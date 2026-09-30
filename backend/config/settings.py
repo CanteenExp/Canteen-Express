@@ -141,6 +141,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core_app.context_processors.map_key',
+                'core_app.context_processors.operating_hours_status',
             ],
         },
     },

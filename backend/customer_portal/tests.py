@@ -1,5 +1,6 @@
 import json
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
@@ -401,3 +402,16 @@ class KioskStatusPollEndpointTests(TestCase):
         # runtime placeholder the JS swaps for the encoded slip number.
         self.assertIn('/kiosk/api/order-status/KIOKS-PLACEHOLDER/', content)
         self.assertNotIn('process_barcode_api', content)
+
+
+class OperatingHoursTestCase(TestCase):
+    @patch('core_app.utils.is_operating_hours', return_value=False)
+    def test_checkout_blocked_outside_operating_hours(self, mock_hours):
+        url = reverse('customer_portal:process_checkout')
+        resp = self.client.post(
+            url,
+            data=json.dumps({'cart': [{'id': 1, 'qty': 1}], 'is_delivery': False}),
+            content_type='application/json'
+        )
+        self.assertEqual(resp.status_code, 422)
+        self.assertFalse(resp.json()['success'])

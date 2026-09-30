@@ -83,6 +83,13 @@ def get_kiosk_menu_api(request):
 @require_POST
 def process_checkout(request):
     try:
+        from core_app.utils import is_operating_hours
+        if not is_operating_hours():
+            return JsonResponse({
+                'success': False,
+                'message': 'Canteen is currently closed. Operating hours are Monday to Friday, 8:00 AM to 5:00 PM.'
+            }, status=422)
+
         data = json.loads(request.body)
         cart_items = data.get('cart', [])
         is_delivery = data.get('is_delivery', False)
