@@ -40,6 +40,10 @@ Canteen Express is fully optimized as a Progressive Web App across all user tier
 - **Campus Geofence Enforcement (`deliveries`)**
   - Official campus center: `9.77778, 118.73333` (PSU Tiniguiban Heights).
   - Strict radius check: `0.8` km (`deliveries/utils.py`). Out-of-campus delivery orders or missing destination coordinates are automatically rejected at checkout with HTTP `422 Unprocessable Entity`.
+- **Real-Time Operating Hours Schedule (`core_app`)**
+  - Restricts customer ordering, faculty ordering, and delivery dispatches to **Monday to Friday, 8:00 AM to 5:00 PM**.
+  - **Canteen Staff and Admin portals operate 24/7** (exempted from time restrictions).
+  - Configurable via `ENFORCE_OPERATING_HOURS=True` (or `False` to bypass during night/weekend testing).
 - **Advanced Road-Following Routing (`deliveries/routing.py`)**
   - OSRM driving and Valhalla pedestrian routing with fallback to Haversine straight-line distance, fully cached.
 - **Sales Reports & Analytics (`analytics_reports`, `admin_dashboard`)**
@@ -96,6 +100,10 @@ DB_USER="postgres.hchqdkuijbpihraagetz"
 DB_PASSWORD="<YOUR_DB_PASSWORD>"
 DB_HOST="aws-0-ap-southeast-1.pooler.supabase.com"
 DB_PORT="6543"
+
+# Optional Feature Toggles
+ENFORCE_GEOFENCE=True
+ENFORCE_OPERATING_HOURS=False  # Set to True to enforce Mon-Fri 8am-5pm schedule for customers/riders
 ```
 
 ### 5. Run Database Migrations
@@ -151,7 +159,7 @@ python manage.py reset_orders
 3. **Customer Kiosk & Ordering APIs (`customer_portal`)**
    - **Endpoint:** `/kiosk/`
    - **Method:** `GET`, `POST`
-   - **Purpose:** Manages kiosk menu items, cart sessions, and order checkout with geofence validation.
+   - **Purpose:** Manages kiosk menu items, cart sessions, and order checkout with geofence and operating hours validation.
 4. **Delivery & Live Chat APIs (`deliveries`)**
    - **Endpoints:** `/deliveries/...`
    - **Method:** `GET`, `POST`
@@ -197,5 +205,6 @@ CANTEEN-EXPRESS/
 
 - **Database Fallback:** If the `.env` file is missing or Supabase PostgreSQL is unreachable, the system automatically falls back to local SQLite (`backend/db.sqlite3`) or when `USE_SQLITE=True` is configured in `.env`.
 - **Offline / Local Dev:** Set `USE_SQLITE=True` in `backend/.env` to bypass remote PostgreSQL timeout issues during local development.
+- **Night Testing Mode:** Set `ENFORCE_OPERATING_HOURS=False` in `backend/.env` to test ordering and delivery features outside of the 8:00 AM – 5:00 PM operating window.
 
 ---
