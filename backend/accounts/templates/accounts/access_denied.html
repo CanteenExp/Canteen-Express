@@ -23,14 +23,8 @@
         </div>
 
         <div class="space-y-2.5 pt-1">
-            {% if portal_url %}
-                <a href="{% url portal_url %}"
-                   class="block w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 rounded-2xl text-xs transition shadow-lg shadow-brand-500/25">
-                    <i class="fa-solid fa-gauge-high mr-1.5"></i> Go to My Dashboard
-                </a>
-            {% endif %}
-            <a href="{% url 'accounts:staff_login' %}"
-               class="block w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-2xl text-xs transition">
+            <a href="{% url login_url %}"
+               class="block w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 rounded-2xl text-xs transition shadow-lg shadow-brand-500/25">
                 <i class="fa-solid fa-right-to-bracket mr-1.5"></i> Go Back to Log In
             </a>
         </div>

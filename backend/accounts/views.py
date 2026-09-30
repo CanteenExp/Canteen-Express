@@ -117,25 +117,27 @@ def landing_view(request):
 def access_denied_view(request):
     """Shown when a logged-in user opens a page meant for a different role."""
     user_role = getattr(request.user, 'role', '')
-    portal_url = 'customer_portal:kiosk_menu'
+    referer = request.META.get('HTTP_REFERER', '')
+    
     login_url = 'accounts:landing'
 
-    if user_role in ('STAFF', 'ADMIN') or request.user.is_staff:
-        portal_url = 'canteen_menu:staff_dashboard'
-        login_url = 'accounts:staff_login'
-    elif user_role in ('DELIVERY', 'RIDER'):
-        portal_url = 'deliveries:dashboard'
-        login_url = 'accounts:delivery_login'
-    elif user_role == 'FACULTY':
-        portal_url = 'accounts:dashboard'
+    if 'faculty' in referer or 'dashboard' in referer or user_role == 'FACULTY':
         login_url = 'accounts:faculty_auth'
+    elif 'staff' in referer or 'canteen' in referer or user_role in ('STAFF', 'ADMIN') or request.user.is_staff:
+        login_url = 'accounts:staff_login'
+    elif 'delivery' in referer or 'rider' in referer or user_role in ('DELIVERY', 'RIDER'):
+        login_url = 'accounts:delivery_login'
     elif user_role == 'STUDENT':
-        portal_url = 'customer_portal:kiosk_menu'
         login_url = 'accounts:landing'
     else:
-        portal_url = role_portal(request.user) if request.user.is_authenticated else portal_url
+        if user_role == 'FACULTY':
+            login_url = 'accounts:faculty_auth'
+        elif user_role in ('STAFF', 'ADMIN') or request.user.is_staff:
+            login_url = 'accounts:staff_login'
+        elif user_role in ('DELIVERY', 'RIDER'):
+            login_url = 'accounts:delivery_login'
 
-    return render(request, 'accounts/access_denied.html', {'portal_url': portal_url, 'login_url': login_url})
+    return render(request, 'accounts/access_denied.html', {'login_url': login_url})
 
 # STEP 1: Faculty Location Check
 @ensure_csrf_cookie
