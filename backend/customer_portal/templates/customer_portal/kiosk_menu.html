@@ -701,6 +701,28 @@
     </div>
 
 
+    <!-- ================= CHECKOUT ERROR MODAL (Matching Image 1) ================= -->
+    <div id="checkout-error-modal" class="fixed inset-0 z-[90] hidden flex items-center justify-center p-4" style="background: rgba(8, 8, 12, 0.65); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);">
+        <div class="glass-panel glass-panel-accent rounded-3xl p-6 sm:p-7 max-w-xs sm:max-w-sm w-full text-center space-y-5 modal-pop relative shadow-2xl">
+            <button onclick="closeCheckoutErrorModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 w-8 h-8 rounded-full flex items-center justify-center transition cursor-pointer" aria-label="Close error modal">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+            <div class="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-400 flex items-center justify-center mx-auto text-2xl shadow-lg shadow-red-500/10">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="space-y-1.5">
+                <h3 class="text-lg font-black text-white tracking-wide">Checkout Error</h3>
+                <p id="checkout-error-message" class="text-xs text-gray-300 font-medium leading-relaxed">
+                    Canteen is currently closed. Operating hours are Monday to Friday, 8:00 AM to 5:00 PM.
+                </p>
+            </div>
+            <button onclick="closeCheckoutErrorModal()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3.5 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/30 transition active:scale-95 cursor-pointer">
+                GOT IT
+            </button>
+        </div>
+    </div>
+
+
     <!-- ================= ITEM EXPAND / DETAILS MODAL ================= -->
     <div id="item-details-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 overflow-y-auto">
         <div class="glass-panel glass-panel-accent rounded-3xl max-w-md w-full overflow-hidden modal-pop relative my-8">
@@ -725,6 +747,16 @@
                 <!-- ADD-ONS / CUSTOMIZERS -->
                 <div class="space-y-4 pt-3 border-t border-white/10" id="modal-addons-container">
                     
+                    <!-- Size / Volume Selector for Nature's Spring & Bottled Water -->
+                    <div class="space-y-1.5" id="modal-size-container" style="display: none;">
+                        <label class="text-[11px] font-bold text-brand-slate uppercase tracking-wider block flex items-center gap-1.5">
+                            <i class="fa-solid fa-bottle-water text-brand-orange"></i> Select Size / Volume
+                        </label>
+                        <select id="modal-size-select" onchange="updateModalTotal()" class="w-full bg-brand-dark border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
                     <!-- Rice Counter (- / +) -->
                     <div id="modal-rice-container" class="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
                         <div>
@@ -866,8 +898,8 @@ function renderMenu() {
             openItemModal(item.id);
         };
         card.innerHTML = `
-            <div class="relative aspect-[16/10] overflow-hidden bg-white/5">
-                <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+            <div class="relative h-36 w-full overflow-hidden bg-white/5 flex items-center justify-center p-3">
+                <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-300">
                 ${badgeHTML}
                 ${stockBadgeHTML}
                 <span class="absolute bottom-2 right-2 w-7 h-7 rounded-xl bg-white/5 group-hover:bg-brand-orange/25 group-hover:text-brand-orange text-brand-slate flex items-center justify-center transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg></span>
@@ -942,42 +974,45 @@ function kioskToast(msg) {
     t._h = setTimeout(() => { t.style.opacity = '0'; }, 2200);
 }
 
-function addToCart(itemId) {
+function addToCart(itemId, customItem = null) {
     if (currentPendingOrder && Object.keys(cart).length === 0) {
         showPendingBanner();
         return;
     }
 
     const item = menuData.find(i => i.id === itemId);
-    if (!item) return;
+    if (!item && !customItem) return;
 
-    if (item.stock === 0) {
+    const baseItem = customItem || item;
+    const cartKey = customItem && customItem.cartKey ? customItem.cartKey : itemId;
+
+    if (baseItem.stock === 0) {
         kioskToast('This item is sold out.');
         return;
     }
 
-    if (cart[itemId]) {
-        if (item.stock !== -1 && cart[itemId].qty >= item.stock) {
-            kioskToast(`Only ${item.stock} left in stock.`);
+    if (cart[cartKey]) {
+        if (baseItem.stock !== -1 && cart[cartKey].qty >= baseItem.stock) {
+            kioskToast(`Only ${baseItem.stock} left in stock.`);
             return;
         }
-        cart[itemId].qty += 1;
+        cart[cartKey].qty += 1;
     } else {
-        cart[itemId] = { ...item, qty: 1 };
+        cart[cartKey] = { ...baseItem, id: itemId, qty: 1 };
     }
     updateCartUI();
 }
 
-function updateQuantity(itemId, change) {
-    if (cart[itemId]) {
-        const stock = cart[itemId].stock === undefined ? -1 : cart[itemId].stock;
-        if (change > 0 && stock !== -1 && cart[itemId].qty + change > stock) {
+function updateQuantity(cartKey, change) {
+    if (cart[cartKey]) {
+        const stock = cart[cartKey].stock === undefined ? -1 : cart[cartKey].stock;
+        if (change > 0 && stock !== -1 && cart[cartKey].qty + change > stock) {
             kioskToast(`Only ${stock} left in stock.`);
             return;
         }
-        cart[itemId].qty += change;
-        if (cart[itemId].qty <= 0) {
-            delete cart[itemId];
+        cart[cartKey].qty += change;
+        if (cart[cartKey].qty <= 0) {
+            delete cart[cartKey];
         }
     }
     updateCartUI();
@@ -1111,11 +1146,11 @@ async function checkoutOrder() {
             openQueueSlipModal();
             showPendingBanner();
         } else {
-            kioskToast(data.message || 'Unable to process your order.');
+            showCheckoutErrorModal(data.message || 'Unable to process your order.');
         }
     } catch (error) {
         console.error("Checkout error:", error);
-        kioskToast('Failed to process queue slip. Please check server.');
+        showCheckoutErrorModal('Failed to process queue slip. Please check server.');
     } finally {
         if (drawerPayBtn) {
             drawerPayBtn.disabled = false;
@@ -1509,6 +1544,18 @@ function closeQueueCancelModal() {
     document.getElementById('queue-cancel-modal').classList.add('hidden');
 }
 
+function showCheckoutErrorModal(msg) {
+    const el = document.getElementById('checkout-error-message');
+    if (el) el.textContent = msg || 'Unable to process your order.';
+    const modal = document.getElementById('checkout-error-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeCheckoutErrorModal() {
+    const modal = document.getElementById('checkout-error-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
 function confirmCancelPendingOrder() {
     currentPendingOrder = null;
     localStorage.removeItem('canteen_pending_order');
@@ -1823,6 +1870,29 @@ function checkPendingOrderOnLoad() {
 let currentModalItem = null;
 let modalRiceQty = 0;
 
+function parseSizePrices(desc, basePrice) {
+    let p350 = basePrice;
+    let p500 = basePrice + 5.00;
+    let p1L = basePrice + 20.00;
+
+    if (!desc) return { p350, p500, p1L };
+
+    const regex350 = /350\s*ml\s*[:=]\s*(?:₱)?([0-9]+(?:\.[0-9]+)?)/i;
+    const regex500 = /500\s*ml\s*[:=]\s*(?:₱)?([0-9]+(?:\.[0-9]+)?)/i;
+    const regex1l = /(?:1\s*l|1000\s*ml)\s*[:=]\s*(?:₱)?([0-9]+(?:\.[0-9]+)?)/i;
+
+    const m350 = desc.match(regex350);
+    if (m350) p350 = parseFloat(m350[1]);
+
+    const m500 = desc.match(regex500);
+    if (m500) p500 = parseFloat(m500[1]);
+
+    const m1l = desc.match(regex1l);
+    if (m1l) p1L = parseFloat(m1l[1]);
+
+    return { p350, p500, p1L };
+}
+
 function openItemModal(itemId) {
     const item = menuData.find(i => i.id === itemId);
     if (!item) return;
@@ -1880,6 +1950,24 @@ function openItemModal(itemId) {
         }
     }
 
+    // Size / Volume selector for Nature's Spring & Bottled Water
+    const sizeContainer = document.getElementById('modal-size-container');
+    const sizeSelect = document.getElementById('modal-size-select');
+    if (sizeContainer && sizeSelect) {
+        if (nameL.includes("nature's spring") || nameL.includes("natures spring") || (catL.includes('beverage') && (nameL.includes('water') || nameL.includes('nature')))) {
+            sizeContainer.style.display = 'block';
+            const prices = parseSizePrices(item.desc || item.description, item.price);
+            sizeSelect.innerHTML = `
+                <option value="350ml" data-price="${prices.p350}">350ml - ₱${prices.p350.toFixed(2)}</option>
+                <option value="500ml" data-price="${prices.p500}">500ml - ₱${prices.p500.toFixed(2)}</option>
+                <option value="1L" data-price="${prices.p1L}">1 Liter (1L) - ₱${prices.p1L.toFixed(2)}</option>
+            `;
+        } else {
+            sizeContainer.style.display = 'none';
+            sizeSelect.innerHTML = '';
+        }
+    }
+
     // Populate beverage options
     const bevSelect = document.getElementById('modal-beverage-select');
     if (bevSelect) {
@@ -1907,6 +1995,15 @@ function updateModalTotal() {
     if (!currentModalItem) return;
     let total = currentModalItem.price;
 
+    const sizeSelect = document.getElementById('modal-size-select');
+    const sizeContainer = document.getElementById('modal-size-container');
+    if (sizeContainer && sizeContainer.style.display !== 'none' && sizeSelect) {
+        const selectedSizeOpt = sizeSelect.options[sizeSelect.selectedIndex];
+        if (selectedSizeOpt && selectedSizeOpt.getAttribute('data-price')) {
+            total = parseFloat(selectedSizeOpt.getAttribute('data-price'));
+        }
+    }
+
     const currentCatL = currentModalItem ? String(currentModalItem.category).toLowerCase() : '';
     if (currentCatL.includes('rice')) {
         total += (modalRiceQty * 15.00);
@@ -1926,8 +2023,29 @@ function updateModalTotal() {
 function addCustomizedItemToCart() {
     if (!currentModalItem) return;
     
-    // Add main item
-    addToCart(currentModalItem.id);
+    let itemName = currentModalItem.name;
+    let itemPrice = currentModalItem.price;
+    let cartKey = String(currentModalItem.id);
+
+    const sizeSelect = document.getElementById('modal-size-select');
+    const sizeContainer = document.getElementById('modal-size-container');
+    if (sizeContainer && sizeContainer.style.display !== 'none' && sizeSelect && sizeSelect.value) {
+        const selectedSizeOpt = sizeSelect.options[sizeSelect.selectedIndex];
+        if (selectedSizeOpt) {
+            const sizeLabel = sizeSelect.value;
+            itemPrice = parseFloat(selectedSizeOpt.getAttribute('data-price') || currentModalItem.price);
+            itemName = `${currentModalItem.name} (${sizeLabel})`;
+            cartKey = `${currentModalItem.id}_${sizeLabel}`;
+        }
+    }
+
+    // Add main item (with size variant)
+    addToCart(currentModalItem.id, {
+        ...currentModalItem,
+        name: itemName,
+        price: itemPrice,
+        cartKey: cartKey
+    });
 
     // Add rice portions if > 0
     if (modalRiceQty > 0) {

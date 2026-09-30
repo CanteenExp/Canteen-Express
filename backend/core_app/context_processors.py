@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.utils import timezone
 from core_app.utils import is_operating_hours
 
 
@@ -18,6 +19,9 @@ def map_key(request):
 
 def operating_hours_status(request):
     """Inject whether the store is within operating hours (Mon-Fri 8am-5pm) into context."""
+    now = timezone.localtime()
     return {
         'IS_OPERATING_HOURS': is_operating_hours(),
+        'CURRENT_DAY_NAME': now.strftime('%A'),
+        'CURRENT_TIME_FORMATTED': now.strftime('%B %d, %Y - %I:%M %p'),
     }
