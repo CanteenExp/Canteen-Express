@@ -2675,6 +2675,57 @@
             return;
         }
 
+        const submitBtn = document.getElementById('checkout-submit-btn');
+
+        if (isDelivery) {
+            if (!navigator.geolocation) {
+                showCheckoutError('Location Not Supported', 'Your browser does not support geolocation. Location access is required for campus delivery orders.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sensing Live Location...`;
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    
+                    if (!isOnCampus(lat, lng)) {
+                        showCheckoutError('Outside Campus Geofence', 'Your current GPS location is outside the Palawan State University campus. Delivery is strictly campus-only.');
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
+                        return;
+                    }
+
+                    currentLat = lat;
+                    currentLng = lng;
+                    proceedWithFacultyOrder();
+                },
+                (err) => {
+                    let errMessage = 'Location access is required for campus delivery orders. Please enable location permissions in your browser/device settings and try again.';
+                    if (err.code === err.PERMISSION_DENIED) {
+                        errMessage = 'Location permission was denied. You must allow location access to place a campus delivery order.';
+                    } else if (err.code === err.POSITION_UNAVAILABLE) {
+                        errMessage = 'Location information is unavailable. Please ensure your device GPS/location is turned on.';
+                    } else if (err.code === err.TIMEOUT) {
+                        errMessage = 'Location request timed out. Please check your GPS signal and try again.';
+                    }
+                    showCheckoutError('Location Access Required', errMessage);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
+                },
+                { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
+            );
+        } else {
+            proceedWithFacultyOrder();
+        }
+    }
+
+    function proceedWithFacultyOrder() {
+        const isDelivery = fulfillmentMode === 'delivery';
         let subtotal = getCartSubtotal();
         let fee = isDelivery ? getConvenienceFee(subtotal) : 0;
         let pointsToUse = parseInt(document.getElementById('points-redeem-input').value) || 0;
@@ -2737,7 +2788,7 @@
                 closeCheckoutModal();
                 updateCartUI();
                 submitBtn.disabled = false;
-if (isDelivery) {
+                if (isDelivery) {
                     submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
                     openOrderPlacedModal(data, deliveryLoc, pointsEarned);
                 } else {
