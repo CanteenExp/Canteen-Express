@@ -121,7 +121,10 @@
                     </div>
                 </div>
 
-                <div class="shrink-0">
+                <div class="flex items-center gap-2 shrink-0">
+                    <button @click="showChangePasswordModal = true" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2">
+                        <i class="fa-solid fa-key"></i> Password
+                    </button>
                     <a href="{% url 'accounts:delivery_logout' %}" class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 backdrop-blur-md px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2">
                         <i class="fa-solid fa-right-from-bracket"></i> Logout
                     </a>
@@ -721,6 +724,10 @@
             newMessage: '',
             pollInterval: null,
             statusInterval: null,
+            showChangePasswordModal: false,
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
 
             // Live refresh + unread badges
             lastPendingCount: {{ reachable_loc_count }},
@@ -1297,5 +1304,88 @@
             document.head.appendChild(css);
         })();
     </script>
+
+    <!-- Change Password Modal -->
+    <div x-show="showChangePasswordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4" x-cloak>
+        <div class="glass-strong rounded-3xl max-w-md w-full p-6 shadow-glass space-y-4 text-zinc-100 border border-white/10" @click.outside="showChangePasswordModal = false">
+            <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                <h3 class="text-base font-black flex items-center gap-2"><i class="fa-solid fa-key text-orange-400"></i> Change Password</h3>
+                <button @click="showChangePasswordModal = false" class="text-zinc-400 hover:text-white font-bold text-sm">✕</button>
+            </div>
+            <form @submit.prevent="
+                fetch('{% url "accounts:change_password" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    })
+                })
+                .then(async res => {
+                    const data = await res.json().catch(() => ({ success: false, error: 'Invalid server response' }));
+                    if (res.ok && data.success) {
+                        addToast('success', 'Success', 'Password successfully updated!');
+                        showChangePasswordModal = false;
+                        currentPassword = '';
+                        newPassword = '';
+                        confirmPassword = '';
+                    } else {
+                        addToast('error', 'Error', data.error || 'Failed to update password');
+                    }
+                })
+                .catch(err => addToast('error', 'Error', 'Error connecting to server: ' + err.message))
+            " class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1">Current Password</label>
+                    <div class="relative">
+                        <input type="password" id="rider-cp-current" x-model="currentPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <button type="button" onclick="togglePassword('rider-cp-current', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-800 cursor-pointer text-base p-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1">New Password</label>
+                    <div class="relative">
+                        <input type="password" id="rider-cp-new" x-model="newPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <button type="button" onclick="togglePassword('rider-cp-new', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-800 cursor-pointer text-base p-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1">Confirm New Password</label>
+                    <div class="relative">
+                        <input type="password" id="rider-cp-confirm" x-model="confirmPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <button type="button" onclick="togglePassword('rider-cp-confirm', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-800 cursor-pointer text-base p-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+    <script>
+        function togglePassword(fieldId, btn) {
+            const input = document.getElementById(fieldId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
+    </script>
+                <div class="flex justify-end gap-2 pt-2 border-t border-white/10">
+                    <button type="button" @click="showChangePasswordModal = false" class="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-bold hover:bg-zinc-700 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-bold hover:from-orange-600 hover:to-orange-700 transition shadow-glow-orange">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

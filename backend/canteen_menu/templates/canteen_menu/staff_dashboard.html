@@ -10,6 +10,35 @@
          showEditModal: false,
          showRiderModal: false,
          showCategoryModal: false,
+         showChangePasswordModal: false,
+         currentPassword: '',
+         newPassword: '',
+         confirmPassword: '',
+         showReasonModal: false,
+         reasonFormUrl: '',
+         reasonFormAction: '',
+         reasonActionName: '',
+         reasonPresets: [
+             'Spamming orders / Flooding queue',
+             'Fake ordering / No-show pickup',
+             'Fraudulent payment / Scammer',
+             'Violation of canteen policies',
+             'Inappropriate behavior',
+             'Other reason'
+         ],
+         selectedReason: 'Spamming orders / Flooding queue',
+         customReason: '',
+         get finalReason() {
+             return this.selectedReason === 'Other reason' ? (this.customReason || 'Other reason') : this.selectedReason;
+         },
+         openReasonModal(url, actionName) {
+             this.reasonFormUrl = url;
+             this.reasonFormAction = actionName;
+             this.reasonActionName = actionName;
+             this.selectedReason = 'Spamming orders / Flooding queue';
+             this.customReason = '';
+             this.showReasonModal = true;
+         },
          showDeleteModal: false,
          deleteItemId: '',
          deleteItemName: '',
@@ -328,6 +357,13 @@
                 <i class="fa-solid fa-barcode"></i>
                 Counter POS ↗
             </a>
+
+            <button
+                @click="showChangePasswordModal = true"
+                class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-key"></i>
+                Change Password
+            </button>
 
             <a
                 href="{% url 'accounts:staff_logout' %}"
@@ -1029,48 +1065,39 @@
 
                                 </td>
 
-                                <td class="py-3.5 px-3 text-right space-x-1">
+                                 <td class="py-3.5 px-3 text-right space-x-1">
 
-                                    <form
-                                        method="POST"
-                                        action="{% url 'canteen_menu:update_user_status' u.id %}"
-                                        class="inline">
+                                     {% if u.account_status != 'restricted' and u.account_status != 'banned' and u.is_active %}
+                                     <button
+                                         type="button"
+                                         @click="openReasonModal('{% url 'canteen_menu:update_user_status' u.id %}', 'restrict')"
+                                         class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">
+                                         Restrict
+                                     </button>
+                                     {% endif %}
 
-                                        {% csrf_token %}
+                                     {% if u.account_status != 'banned' and u.is_active %}
+                                     <button
+                                         type="button"
+                                         @click="openReasonModal('{% url 'canteen_menu:update_user_status' u.id %}', 'ban')"
+                                         class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">
+                                         Ban
+                                     </button>
+                                     {% endif %}
 
-                                        {% if u.is_active and u.account_status != 'restricted' %}
+                                     {% if not u.is_active or u.account_status == 'restricted' or u.account_status == 'banned' %}
+                                     <form method="POST" action="{% url 'canteen_menu:update_user_status' u.id %}" class="inline">
+                                         {% csrf_token %}
+                                         <input type="hidden" name="action" value="activate">
+                                         <button
+                                             type="submit"
+                                             class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1.5 rounded-xl transition">
+                                             Activate
+                                         </button>
+                                     </form>
+                                     {% endif %}
 
-                                        <input type="hidden" name="action" value="restrict">
-
-                                        <button
-                                            type="submit"
-                                            class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">
-                                            Restrict
-                                        </button>
-
-                                        <input type="hidden" name="action" value="ban">
-
-                                        <button
-                                            type="submit"
-                                            class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">
-                                            Ban
-                                        </button>
-
-                                        {% else %}
-
-                                        <input type="hidden" name="action" value="activate">
-
-                                        <button
-                                            type="submit"
-                                            class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1.5 rounded-xl transition">
-                                            Activate
-                                        </button>
-
-                                        {% endif %}
-
-                                    </form>
-
-                                </td>
+                                 </td>
 
                             </tr>
 
@@ -1242,11 +1269,12 @@
                                             name="action"
                                             value="hold">
 
-                                        <button
-                                            type="submit"
-                                            class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">
-                                            Hold
-                                        </button>
+                                     <button
+                                         type="button"
+                                         @click="openReasonModal('{% url 'canteen_menu:update_delivery_staff_status' rider.id %}', 'hold')"
+                                         class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">
+                                         Hold
+                                     </button>
 
                                     </form>
 
@@ -1263,11 +1291,12 @@
                                             name="action"
                                             value="penalize">
 
-                                        <button
-                                            type="submit"
-                                            class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">
-                                            Penalize
-                                        </button>
+                                     <button
+                                         type="button"
+                                         @click="openReasonModal('{% url 'canteen_menu:update_delivery_staff_status' rider.id %}', 'penalize')"
+                                         class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">
+                                         Penalize
+                                     </button>
 
                                     </form>
 
@@ -2729,5 +2758,115 @@
         </div>
     </div>
 
+    <!-- Change Password Modal -->
+    <div x-show="showChangePasswordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" x-cloak style="display: none;">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-dark-900 border border-gray-100" @click.outside="showChangePasswordModal = false">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+                <h3 class="text-base font-black flex items-center gap-2"><i class="fa-solid fa-key text-brand-500"></i> Change Password</h3>
+                <button @click="showChangePasswordModal = false" class="text-gray-400 hover:text-gray-700 font-bold text-sm">✕</button>
+            </div>
+            <form @submit.prevent="
+                fetch('{% url "accounts:change_password" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    })
+                })
+                .then(async res => {
+                    const data = await res.json().catch(() => ({ success: false, error: 'Invalid server response' }));
+                    if (res.ok && data.success) {
+                        alert('Password successfully updated!');
+                        showChangePasswordModal = false;
+                        currentPassword = '';
+                        newPassword = '';
+                        confirmPassword = '';
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to update password'));
+                    }
+                })
+                .catch(err => alert('Error connecting to server: ' + err.message))
+            " class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Current Password</label>
+                    <div class="relative">
+                        <input type="password" id="cp-current" x-model="currentPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs text-dark-900 font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <button type="button" onclick="togglePassword('cp-current', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">New Password</label>
+                    <div class="relative">
+                        <input type="password" id="cp-new" x-model="newPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs text-dark-900 font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <button type="button" onclick="togglePassword('cp-new', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Confirm New Password</label>
+                    <div class="relative">
+                        <input type="password" id="cp-confirm" x-model="confirmPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs text-dark-900 font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <button type="button" onclick="togglePassword('cp-confirm', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                    <button type="button" @click="showChangePasswordModal = false" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-brand-500 text-white text-xs font-bold hover:bg-brand-600 transition shadow-md shadow-brand-500/20">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reason Selection Modal -->
+    <div x-show="showReasonModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" x-cloak style="display: none;">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-dark-900 border border-gray-100" @click.outside="showReasonModal = false">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+                <h3 class="text-base font-black flex items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> 
+                    <span>Specify Reason for <span x-text="reasonActionName.toUpperCase()" class="text-brand-500"></span></span>
+                </h3>
+                <button @click="showReasonModal = false" class="text-gray-400 hover:text-gray-700 font-bold text-sm">✕</button>
+            </div>
+            <form method="POST" :action="reasonFormUrl" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" x-model="reasonFormAction">
+                
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-gray-700">Select Reason:</label>
+                    <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                        <template x-for="preset in reasonPresets" :key="preset">
+                            <label class="flex items-center gap-2.5 p-2 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer text-xs font-medium">
+                                <input type="radio" name="reason_preset" x-model="selectedReason" :value="preset" class="text-brand-500 focus:ring-brand-500">
+                                <span x-text="preset"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <div x-show="selectedReason === 'Other reason'">
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Custom Reason</label>
+                    <input type="text" x-model="customReason" placeholder="Type custom reason..." class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <input type="hidden" name="reason" x-model="finalReason">
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                    <button type="button" @click="showReasonModal = false" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-brand-500 text-white text-xs font-bold hover:bg-brand-600 transition shadow-md shadow-brand-500/20">Confirm Action</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 </div>
+
 {% endblock %}

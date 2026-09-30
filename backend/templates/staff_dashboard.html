@@ -14,6 +14,10 @@
          showEditModal: false, 
          showRiderModal: false,
          showCategoryModal: false,
+         showChangePasswordModal: false,
+         currentPassword: '',
+         newPassword: '',
+         confirmPassword: '',
          filterCategory: 'all',
          editItem: { id: '', name: '', price: '', stock: '', category_id: '', image_url: '', description: '' },
          openEdit(id, name, price, stock, catId, imgUrl, desc) {
@@ -88,6 +92,9 @@
             <a href="{% url 'canteen_menu:counter_pos' %}" target="_blank" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2">
                 <i class="fa-solid fa-barcode"></i> Counter POS ↗
             </a>
+            <button @click="showChangePasswordModal = true" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-key"></i> Change Password
+            </button>
             <a href="{% url 'accounts:staff_logout' %}" class="w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2 border border-red-500/30">
                 <i class="fa-solid fa-right-from-bracket"></i> Staff Logout
             </a>
@@ -106,6 +113,9 @@
             <div class="flex items-center gap-2">
                 <a href="{% url 'kitchen_display:kitchen_board' %}" target="_blank" class="bg-white/10 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold">Kitchen ↗</a>
                 <a href="{% url 'canteen_menu:counter_pos' %}" target="_blank" class="bg-white/10 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold">POS ↗</a>
+                <button @click="showChangePasswordModal = true" class="bg-white/10 hover:bg-white/20 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1">
+                    <i class="fa-solid fa-key"></i> Password
+                </button>
             </div>
         </div>
 
@@ -381,20 +391,31 @@
                                         {{ u.account_status|default:"Active" }}
                                     </span>
                                 </td>
-                                <td class="py-3.5 px-3 text-right space-x-1">
-                                    <form method="POST" action="{% url 'canteen_menu:update_user_status' u.id %}" class="inline">
-                                        {% csrf_token %}
-                                        {% if u.is_active and u.account_status != 'restricted' %}
-                                        <input type="hidden" name="action" value="restrict">
-                                        <button type="submit" class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">Restrict</button>
-                                        <input type="hidden" name="action" value="ban">
-                                        <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">Ban</button>
-                                        {% else %}
-                                        <input type="hidden" name="action" value="activate">
-                                        <button type="submit" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1.5 rounded-xl transition">Activate</button>
-                                        {% endif %}
-                                    </form>
-                                </td>
+                                 <td class="py-3.5 px-3 text-right space-x-1">
+                                     {% if u.account_status != 'restricted' and u.account_status != 'banned' and u.is_active %}
+                                     <form method="POST" action="{% url 'canteen_menu:update_user_status' u.id %}" class="inline">
+                                         {% csrf_token %}
+                                         <input type="hidden" name="action" value="restrict">
+                                         <button type="submit" class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">Restrict</button>
+                                     </form>
+                                     {% endif %}
+
+                                     {% if u.account_status != 'banned' and u.is_active %}
+                                     <form method="POST" action="{% url 'canteen_menu:update_user_status' u.id %}" class="inline">
+                                         {% csrf_token %}
+                                         <input type="hidden" name="action" value="ban">
+                                         <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">Ban</button>
+                                     </form>
+                                     {% endif %}
+
+                                     {% if not u.is_active or u.account_status == 'restricted' or u.account_status == 'banned' %}
+                                     <form method="POST" action="{% url 'canteen_menu:update_user_status' u.id %}" class="inline">
+                                         {% csrf_token %}
+                                         <input type="hidden" name="action" value="activate">
+                                         <button type="submit" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1.5 rounded-xl transition">Activate</button>
+                                     </form>
+                                     {% endif %}
+                                 </td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -1145,6 +1166,60 @@
                     Done
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div x-show="showChangePasswordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" x-cloak>
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-dark-900 border border-gray-100" @click.outside="showChangePasswordModal = false">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+                <h3 class="text-base font-black flex items-center gap-2"><i class="fa-solid fa-key text-brand-500"></i> Change Password</h3>
+                <button @click="showChangePasswordModal = false" class="text-gray-400 hover:text-gray-700 font-bold text-sm">✕</button>
+            </div>
+            <form @submit.prevent="
+                fetch('{% url "accounts:change_password" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    })
+                })
+                .then(async res => {
+                    const data = await res.json().catch(() => ({ success: false, error: 'Invalid server response' }));
+                    if (res.ok && data.success) {
+                        alert('Password successfully updated!');
+                        showChangePasswordModal = false;
+                        currentPassword = '';
+                        newPassword = '';
+                        confirmPassword = '';
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to update password'));
+                    }
+                })
+                .catch(err => alert('Error connecting to server: ' + err.message))
+            " class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Current Password</label>
+                    <input type="password" x-model="currentPassword" required placeholder="••••••••" class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">New Password</label>
+                    <input type="password" x-model="newPassword" required placeholder="••••••••" class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Confirm New Password</label>
+                    <input type="password" x-model="confirmPassword" required placeholder="••••••••" class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                    <button type="button" @click="showChangePasswordModal = false" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-brand-500 text-white text-xs font-bold hover:bg-brand-600 transition shadow-md shadow-brand-500/20">Update Password</button>
+                </div>
+            </form>
         </div>
     </div>
 

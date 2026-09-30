@@ -225,6 +225,11 @@ def faculty_auth_view(request):
                         if not user_obj.is_email_verified:
                             error = "Please verify your email first before signing in."
                             mode = 'login'
+                        elif not user_obj.is_active or user_obj.account_status in ('banned', 'restricted', 'held', 'penalized'):
+                            status_lbl = user_obj.account_status.upper() if user_obj.account_status else 'BANNED/RESTRICTED'
+                            reason_txt = f"\nReason: {user_obj.status_reason}" if user_obj.status_reason else ""
+                            error = f"⚠️ Account Access Denied!\nYour account has been {status_lbl}.{reason_txt}\nPlease contact canteen administration."
+                            mode = 'login'
                         else:
                             user = authenticate(request, username=user_obj.username, password=password)
                             if user is not None:
@@ -326,13 +331,23 @@ def staff_login_view(request):
         if _login_locked(request, 'staff'):
             error = "Too many failed attempts. Please try again in a few minutes."
         else:
-            user = authenticate(request, username=username, password=password)
-            if user is not None and (user.is_staff or getattr(user, 'role', '') in ['STAFF', 'ADMIN']):
-                logout(request)
-                login(request, user)
-                request.session.cycle_key()
-                _login_clear(request, 'staff')
-                return redirect('canteen_menu:staff_dashboard')
+            user_obj = User.objects.filter(username=username).first()
+            if user_obj and (user_obj.is_staff or getattr(user_obj, 'role', '') in ['STAFF', 'ADMIN']):
+                if not user_obj.is_active or user_obj.account_status in ('banned', 'restricted', 'held', 'penalized'):
+                    status_lbl = user_obj.account_status.upper() if user_obj.account_status else 'BANNED/INACTIVE'
+                    reason_txt = f"\nReason: {user_obj.status_reason}" if user_obj.status_reason else ""
+                    error = f"⚠️ Account Access Denied!\nYour account has been {status_lbl}.{reason_txt}\nPlease contact canteen administration."
+                else:
+                    user = authenticate(request, username=username, password=password)
+                    if user is not None:
+                        logout(request)
+                        login(request, user)
+                        request.session.cycle_key()
+                        _login_clear(request, 'staff')
+                        return redirect('canteen_menu:staff_dashboard')
+                    else:
+                        _login_attempt_failed(request, 'staff')
+                        error = "Invalid canteen staff credentials."
             else:
                 _login_attempt_failed(request, 'staff')
                 error = "Invalid canteen staff credentials."
@@ -350,13 +365,23 @@ def delivery_login_view(request):
         if _login_locked(request, 'rider'):
             error = "Too many failed attempts. Please try again in a few minutes."
         else:
-            user = authenticate(request, username=username, password=password)
-            if user is not None and (getattr(user, 'role', '') in ['DELIVERY', 'RIDER'] or user.is_staff):
-                logout(request)
-                login(request, user)
-                request.session.cycle_key()
-                _login_clear(request, 'rider')
-                return redirect('deliveries:dashboard')
+            user_obj = User.objects.filter(username=username).first()
+            if user_obj and (getattr(user_obj, 'role', '') in ['DELIVERY', 'RIDER'] or user_obj.is_staff):
+                if not user_obj.is_active or user_obj.account_status in ('banned', 'restricted', 'held', 'penalized'):
+                    status_lbl = user_obj.account_status.upper() if user_obj.account_status else 'BANNED/INACTIVE'
+                    reason_txt = f"\nReason: {user_obj.status_reason}" if user_obj.status_reason else ""
+                    error = f"⚠️ Account Access Denied!\nYour account has been {status_lbl}.{reason_txt}\nPlease contact canteen administration."
+                else:
+                    user = authenticate(request, username=username, password=password)
+                    if user is not None:
+                        logout(request)
+                        login(request, user)
+                        request.session.cycle_key()
+                        _login_clear(request, 'rider')
+                        return redirect('deliveries:dashboard')
+                    else:
+                        _login_attempt_failed(request, 'rider')
+                        error = "Invalid delivery personnel credentials."
             else:
                 _login_attempt_failed(request, 'rider')
                 error = "Invalid delivery personnel credentials."
@@ -619,3 +644,47 @@ def verify_and_reset_password(request):
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
     return JsonResponse({'success': False}, status=405)
+
+
+@ensure_csrf_cookie
+@csrf_protect
+def change_password_view(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+    
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            current_password = data.get('current_password', '')
+            new_password = data.get('new_password', '')
+            confirm_password = data.get('confirm_password', '')
+
+            if not new_password or not confirm_password:
+                return JsonResponse({'success': False, 'error': 'New password and confirmation are required.'}, status=400)
+            
+            if new_password != confirm_password:
+                return JsonResponse({'success': False, 'error': 'New passwords do not match.'}, status=400)
+
+            user = request.user
+            if user.has_usable_password() and current_password:
+                if not user.check_password(current_password):
+                    return JsonResponse({'success': False, 'error': 'Incorrect current password.'}, status=400)
+            elif user.has_usable_password() and not current_password:
+                return JsonResponse({'success': False, 'error': 'Current password is required.'}, status=400)
+
+            try:
+                validate_password(new_password, user=user)
+            except ValidationError as e:
+                return JsonResponse({'success': False, 'error': ' '.join(e.messages)}, status=400)
+
+            user.set_password(new_password)
+            user.save()
+
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(request, user)
+
+            return JsonResponse({'success': True, 'message': 'Password successfully updated.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+

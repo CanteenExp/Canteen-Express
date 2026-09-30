@@ -888,17 +888,22 @@ def update_delivery_staff_status_view(request, pk):
         User = get_user_model()
         rider = get_object_or_404(User, pk=pk, role='DELIVERY')
         action = request.POST.get('action')
+        reason = request.POST.get('reason', '').strip()
         before_status = rider.account_status
         if action == 'hold':
             rider.account_status = 'held'
             rider.is_active = False
+            rider.status_reason = reason or "Put on hold by canteen staff"
             messages.success(request, f"Rider {rider.username} account held.")
         elif action == 'penalize':
             rider.account_status = 'penalized'
+            rider.status_reason = reason or "Penalized by canteen staff"
             messages.success(request, f"Rider {rider.username} penalized.")
         elif action == 'toggle_active':
             rider.is_active = not rider.is_active
             rider.account_status = 'active' if rider.is_active else 'inactive'
+            if rider.is_active:
+                rider.status_reason = ''
             messages.success(request, f"Rider {rider.username} status toggled.")
         rider.save()
         if action in ('hold', 'penalize', 'toggle_active'):
@@ -916,6 +921,7 @@ def update_delivery_staff_status_view(request, pk):
                 metadata={
                     'user_id': rider.pk,
                     'action': action,
+                    'reason': reason,
                     'from_status': before_status,
                     'to_status': rider.account_status,
                 },
@@ -929,17 +935,21 @@ def update_user_status_view(request, pk):
         User = get_user_model()
         user = get_object_or_404(User, pk=pk)
         action = request.POST.get('action')
+        reason = request.POST.get('reason', '').strip()
         before_status = user.account_status
         if action == 'ban':
             user.is_active = False
             user.account_status = 'banned'
+            user.status_reason = reason or "Banned by canteen administration"
             messages.success(request, f"User {user.username} banned.")
         elif action == 'restrict':
             user.account_status = 'restricted'
+            user.status_reason = reason or "Restricted by canteen administration"
             messages.success(request, f"User {user.username} restricted.")
         elif action == 'activate':
             user.is_active = True
             user.account_status = 'active'
+            user.status_reason = ''
             messages.success(request, f"User {user.username} activated.")
         user.save()
         if action in ('ban', 'restrict', 'activate'):
@@ -953,6 +963,7 @@ def update_user_status_view(request, pk):
                 metadata={
                     'user_id': user.pk,
                     'action': action,
+                    'reason': reason,
                     'target_role': getattr(user, 'role', None),
                     'from_status': before_status,
                     'to_status': user.account_status,

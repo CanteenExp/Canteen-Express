@@ -39,6 +39,7 @@ class CustomUser(AbstractUser):
         ],
         default='active'
     )
+    status_reason = models.CharField(max_length=255, blank=True, null=True)
 
     @property
     def is_really_online(self):
