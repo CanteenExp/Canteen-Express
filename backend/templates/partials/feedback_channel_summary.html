@@ -1,0 +1,90 @@
+{% comment %}
+One channel's rating summary: average score, star row, headline counts and the
+5->1 distribution. Include with: stats=fb_kiosk_stats (or fb_delivery_stats).
+Accent colours are branched rather than interpolated so Tailwind's Play CDN
+always sees the literal class names in the document.
+{% endcomment %}
+<div class="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+
+    <!-- channel header -->
+    <div class="px-6 py-5 flex items-center gap-3 border-b border-gray-100 {% if stats.accent == 'orange' %}bg-gradient-to-r from-orange-50 to-white{% else %}bg-gradient-to-r from-sky-50 to-white{% endif %}">
+        <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-lg shrink-0 {% if stats.accent == 'orange' %}bg-orange-100 text-orange-600{% else %}bg-sky-100 text-sky-600{% endif %}">
+            <i class="fa-solid {{ stats.icon }}"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+            <h3 class="text-sm font-black text-dark-900 truncate">{{ stats.label }}</h3>
+            <p class="text-[11px] text-gray-500 font-semibold">
+                {{ stats.count }} review{{ stats.count|pluralize }} collected
+            </p>
+        </div>
+        <div class="text-right shrink-0">
+            {% if stats.count %}
+                <div class="text-3xl font-black leading-none {% if stats.accent == 'orange' %}text-orange-500{% else %}text-sky-500{% endif %}">{{ stats.avg }}</div>
+                <div class="text-[9px] font-black text-gray-400 uppercase tracking-wider mt-0.5">out of 5</div>
+            {% else %}
+                <div class="text-2xl font-black text-gray-300 leading-none">&mdash;</div>
+                <div class="text-[9px] font-black text-gray-400 uppercase tracking-wider mt-0.5">no data</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="p-6 space-y-5 flex-1">
+
+        <!-- average stars -->
+        <div class="flex items-center gap-2">
+            <div class="flex items-center gap-0.5">
+                {% for filled in stats.stars_filled %}
+                    <i class="fa-solid fa-star text-sm {% if filled %}text-amber-400{% else %}text-gray-200{% endif %}"></i>
+                {% endfor %}
+            </div>
+            <span class="text-[11px] font-bold text-gray-500">average rating</span>
+        </div>
+
+        {% if stats.count %}
+            <!-- headline counts -->
+            <div class="grid grid-cols-3 gap-2">
+                <div class="rounded-2xl border border-gray-100 bg-gray-50 px-3 py-2.5 text-center">
+                    <i class="fa-solid fa-comment-dots text-gray-400 text-[10px]"></i>
+                    <p class="text-lg font-black text-dark-900 leading-tight">{{ stats.count }}</p>
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-wider">Total</p>
+                </div>
+                <div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-center">
+                    <i class="fa-solid fa-thumbs-up text-emerald-500 text-[10px]"></i>
+                    <p class="text-lg font-black text-emerald-700 leading-tight">{{ stats.praised }}</p>
+                    <p class="text-[9px] font-black text-emerald-600 uppercase tracking-wider">4-5 star</p>
+                </div>
+                <div class="rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2.5 text-center">
+                    <i class="fa-solid fa-triangle-exclamation text-rose-500 text-[10px]"></i>
+                    <p class="text-lg font-black text-rose-700 leading-tight">{{ stats.detractors }}</p>
+                    <p class="text-[9px] font-black text-rose-600 uppercase tracking-wider">Needs care</p>
+                </div>
+            </div>
+
+            <!-- 5 -> 1 distribution -->
+            <div class="space-y-1.5">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Rating breakdown</p>
+                {% for b in stats.breakdown %}
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-black text-gray-500 w-3 text-right">{{ b.star }}</span>
+                        <i class="fa-solid fa-star text-[9px] text-amber-400"></i>
+                        <div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                            <div class="h-full rounded-full transition-all {% if stats.accent == 'orange' %}bg-orange-400{% else %}bg-sky-400{% endif %}" style="width: {{ b.pct }}%"></div>
+                        </div>
+                        <span class="text-[10px] font-bold text-gray-400 w-6">{{ b.count }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <!-- no data yet -->
+            <div class="text-center py-4 space-y-2">
+                <div class="w-12 h-12 mx-auto rounded-2xl bg-gray-50 text-gray-300 flex items-center justify-center text-lg {% if stats.accent == 'orange' %}border border-orange-100{% else %}border border-sky-100{% endif %}">
+                    <i class="fa-solid {{ stats.icon }}"></i>
+                </div>
+                <p class="text-xs font-black text-gray-400">No {{ stats.label|lower }} ratings yet</p>
+                <p class="text-[11px] text-gray-400 leading-relaxed max-w-[15rem] mx-auto">
+                    Reviews appear here once customers finish an order through this channel.
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</div>

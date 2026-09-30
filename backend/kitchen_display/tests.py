@@ -49,6 +49,30 @@ class KitchenBoardCancellationTests(TestCase):
         response = self.client.get(reverse('kitchen_display:dashboard'))
         self.assertNotContains(response, 'KB1002')
 
+    def test_staff_dashboard_segregates_feedback_channels(self):
+        from customer_portal.models import OrderFeedback
+        from deliveries.models import DeliveryRequest
+
+        kiosk = Order.objects.create(order_number='#CE-9101', total_amount=90.00, status='completed')
+        OrderFeedback.objects.create(order=kiosk, rating=5, comment='Quick pickup, hot food.')
+        delivery = Order.objects.create(order_number='#CE-9102', total_amount=90.00, delivery_fee=15.00, status='completed')
+        DeliveryRequest.objects.create(order=delivery, delivery_location='Lab 2', status='DELIVERED')
+        OrderFeedback.objects.create(order=delivery, rating=2, comment='Rider was late.')
+
+        response = self.client.get(reverse('kitchen_display:dashboard'))
+        self.assertEqual(response.status_code, 200)
+
+        ctx = response.context
+        self.assertEqual([fb.channel for fb in ctx['fb_kiosk']], ['kiosk'])
+        self.assertEqual([fb.channel for fb in ctx['fb_delivery']], ['delivery'])
+        self.assertEqual(ctx['fb_kiosk_stats']['avg'], 5.0)
+        self.assertEqual(ctx['fb_delivery_stats']['avg'], 2.0)
+
+        self.assertContains(response, 'Kiosk Reviews')
+        self.assertContains(response, 'Delivery Reviews')
+        self.assertContains(response, 'Quick pickup, hot food.')
+        self.assertContains(response, 'Rider was late.')
+
     def test_cancelled_order_cannot_move_to_ready(self):
         response = self.client.post(
             reverse('kitchen_display:update_status', args=[self.cancelled.id]),

@@ -1,0 +1,27 @@
+{% comment %}
+One review, compact: avatar, name, stars + score, comment. Everything else
+(order details, rider, drop-off) lives in the channel summary above, so the
+list stays readable instead of becoming a wall of cards.
+Include with: fb=<decorated OrderFeedback row> from customer_portal.feedback_context.
+{% endcomment %}
+<article class="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3 flex items-start gap-3 hover:shadow-md transition-shadow">
+    <div class="w-8 h-8 rounded-xl flex items-center justify-center font-black text-[11px] shrink-0 {% if fb.channel == 'kiosk' %}bg-orange-100 text-orange-600{% else %}bg-sky-100 text-sky-600{% endif %}">
+        {{ fb.initials }}
+    </div>
+    <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-black text-dark-900 truncate">{{ fb.display_name }}</span>
+            <div class="flex items-center gap-1 shrink-0">
+                <span class="flex items-center gap-0.5">
+                    {% for filled in fb.stars %}
+                        <i class="fa-solid fa-star text-[10px] {% if filled %}text-amber-400{% else %}text-gray-200{% endif %}"></i>
+                    {% endfor %}
+                </span>
+                <span class="text-[11px] font-black text-gray-500">{{ fb.rating }}.0</span>
+            </div>
+        </div>
+        <p class="text-[11px] text-gray-600 mt-1 leading-relaxed{% if not fb.has_comment %} italic text-gray-400{% endif %}">
+            {{ fb.comment|default:"No comment - star rating only." }}
+        </p>
+    </div>
+</article>

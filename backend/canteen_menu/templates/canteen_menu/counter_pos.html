@@ -279,6 +279,45 @@
 
         function onScanError(errorMessage) {}
 
+        const POS_API_URL = "{% url 'canteen_menu:process_barcode_api' %}";
+
+        // role_required() only answers with JSON when the request advertises a
+        // JSON response. Without these headers an expired staff session is
+        // answered with a 302 to the login page, fetch follows it, and
+        // response.json() dies on the HTML -- which used to surface as a bogus
+        // "Server connection error while scanning barcode."
+        async function posApi(payload) {
+            let response;
+            try {
+                response = await fetch(POS_API_URL, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify(payload)
+                });
+            } catch (err) {
+                console.error("POS request failed:", err);
+                throw new Error("Cannot reach the server. Check the connection and try again.");
+            }
+
+            if (response.status === 401 || response.status === 403) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || "Not authorized. Please log in as staff again.");
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                // A redirect landed here: the staff session is gone.
+                throw new Error("Your session expired. Please log in again, then rescan the slip.");
+            }
+
+            return response.json();
+        }
+
         function handleManualSearch(e) {
             e.preventDefault();
             const val = document.getElementById('manual-input').value.trim();
@@ -290,17 +329,7 @@
         async function fetchOrderDetails(rawOrderNum) {
             if (!rawOrderNum) return;
             try {
-                const response = await fetch("{% url 'canteen_menu:process_barcode_api' %}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'fetch',
-                        order_id: rawOrderNum
-                    })
-                });
-                const data = await response.json();
+                const data = await posApi({ action: 'fetch', order_id: rawOrderNum });
                 if (data.status === 'success' && data.order) {
                     const order = data.order;
                     currentOrder = order;
@@ -326,7 +355,7 @@
                 }
             } catch (err) {
                 console.error("Error fetching order details:", err);
-                alert("Server connection error while scanning barcode.");
+                alert(err.message || "Server connection error while scanning barcode.");
             }
         }
 
@@ -340,17 +369,7 @@
         async function confirmPaymentAndSendToKitchen() {
             if (!currentOrder) return;
             try {
-                const response = await fetch("{% url 'canteen_menu:process_barcode_api' %}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'confirm_payment',
-                        order_id: currentOrder.orderId
-                    })
-                });
-                const data = await response.json();
+                const data = await posApi({ action: 'confirm_payment', order_id: currentOrder.orderId });
                 if (data.status === 'success') {
                     openReceiptModal(currentOrder);
                     cancelScan();
@@ -359,7 +378,7 @@
                 }
             } catch (err) {
                 console.error("Error confirming payment:", err);
-                alert("Server error when confirming payment.");
+                alert(err.message || "Server error when confirming payment.");
             }
         }
 

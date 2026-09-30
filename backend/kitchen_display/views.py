@@ -149,8 +149,8 @@ def staff_dashboard(request):
 
     staff_name = request.user.first_name if request.user.is_authenticated and request.user.first_name else (request.user.username if request.user.is_authenticated else 'Staff')
 
-    from customer_portal.models import OrderFeedback
-    feedbacks = OrderFeedback.objects.all().order_by('-created_at')
+    from customer_portal.feedback_context import build_feedback_context
+    feedback_ctx = build_feedback_context()
 
     context = {
         'total_orders_today': total_orders_today,
@@ -172,7 +172,13 @@ def staff_dashboard(request):
         'sales_today': sales_today,
         'sales_week': sales_week,
         'sales_month': sales_month,
-        'feedbacks': feedbacks,
+        'feedbacks': feedback_ctx['feedbacks'],
+        'fb_kiosk': feedback_ctx['fb_kiosk'],
+        'fb_delivery': feedback_ctx['fb_delivery'],
+        'fb_kiosk_stats': feedback_ctx['fb_kiosk_stats'],
+        'fb_delivery_stats': feedback_ctx['fb_delivery_stats'],
+        'fb_total': feedback_ctx['fb_total'],
+        'fb_overall': feedback_ctx['fb_overall'],
         'overall_stats': overall_stats,
         'kiosk_stats': kiosk_stats,
         'faculty_stats': faculty_stats,
