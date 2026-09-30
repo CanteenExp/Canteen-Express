@@ -600,7 +600,17 @@
 
                 <!-- ADD-ONS / CUSTOMIZERS -->
                 <div class="space-y-4 pt-3 border-t border-white/10">
-                    <div class="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
+                    <!-- Size / Volume Selector for Nature's Spring & Bottled Water -->
+                    <div class="space-y-1.5" id="modal-size-container" style="display: none;">
+                        <label class="text-[11px] font-bold text-brand-slate uppercase tracking-wider block flex items-center gap-1.5">
+                            <i class="fa-solid fa-bottle-water text-brand-orange"></i> Select Size / Volume
+                        </label>
+                        <select id="modal-size-select" onchange="updateModalTotal()" class="w-full bg-brand-dark border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10" id="modal-rice-container">
                         <div>
                             <span class="text-xs font-bold text-white block">Steamed Rice Portions</span>
                             <span class="text-[10px] text-brand-orange font-bold">₱15.00 per serving</span>
@@ -1774,6 +1784,29 @@
         renderMenu();
     }
 
+    function parseSizePrices(desc, basePrice) {
+        let p350 = basePrice;
+        let p500 = basePrice + 5.00;
+        let p1L = basePrice + 20.00;
+
+        if (!desc) return { p350, p500, p1L };
+
+        const regex350 = /350\s*ml\s*[:=]\s*(?:₱)?([0-9]+(?:\.[0-9]+)?)/i;
+        const regex500 = /500\s*ml\s*[:=]\s*(?:₱)?([0-9]+(?:\.[0-9]+)?)/i;
+        const regex1l = /(?:1\s*l|1000\s*ml)\s*[:=]\s*(?:₱)?([0-9]+(?:\.[0-9]+)?)/i;
+
+        const m350 = desc.match(regex350);
+        if (m350) p350 = parseFloat(m350[1]);
+
+        const m500 = desc.match(regex500);
+        if (m500) p500 = parseFloat(m500[1]);
+
+        const m1l = desc.match(regex1l);
+        if (m1l) p1L = parseFloat(m1l[1]);
+
+        return { p350, p500, p1L };
+    }
+
     // Item Details Modal
     function openItemModal(itemId) {
         const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
@@ -1814,6 +1847,24 @@
             }).join('');
         }
 
+        // Size / Volume selector for Nature's Spring & Bottled Water
+        const sizeContainer = document.getElementById('modal-size-container');
+        const sizeSelect = document.getElementById('modal-size-select');
+        if (sizeContainer && sizeSelect) {
+            if (nameL.includes("nature's spring") || nameL.includes("natures spring") || (catL.includes('beverage') && (nameL.includes('water') || nameL.includes('nature')))) {
+                sizeContainer.style.display = 'block';
+                const prices = parseSizePrices(item.desc || item.description, item.price);
+                sizeSelect.innerHTML = `
+                    <option value="350ml" data-price="${prices.p350}">350ml - ₱${prices.p350.toFixed(2)}</option>
+                    <option value="500ml" data-price="${prices.p500}">500ml - ₱${prices.p500.toFixed(2)}</option>
+                    <option value="1L" data-price="${prices.p1L}">1 Liter (1L) - ₱${prices.p1L.toFixed(2)}</option>
+                `;
+            } else {
+                sizeContainer.style.display = 'none';
+                sizeSelect.innerHTML = '';
+            }
+        }
+
         document.getElementById('modal-rice-count').innerText = modalRiceQty;
 
         const bevContainer = document.getElementById('modal-beverage-container');
@@ -1851,7 +1902,19 @@
 
     function updateModalTotal() {
         if (!selectedItemForModal) return;
-        let total = selectedItemForModal.price + (modalRiceQty * 15);
+        let total = selectedItemForModal.price;
+
+        const sizeSelect = document.getElementById('modal-size-select');
+        const sizeContainer = document.getElementById('modal-size-container');
+        if (sizeContainer && sizeContainer.style.display !== 'none' && sizeSelect) {
+            const selectedSizeOpt = sizeSelect.options[sizeSelect.selectedIndex];
+            if (selectedSizeOpt && selectedSizeOpt.getAttribute('data-price')) {
+                total = parseFloat(selectedSizeOpt.getAttribute('data-price'));
+            }
+        }
+
+        total += (modalRiceQty * 15);
+
         const bevSelect = document.getElementById('modal-beverage-select');
         if (bevSelect && bevSelect.value) {
             const selectedOpt = bevSelect.options[bevSelect.selectedIndex];
@@ -1867,8 +1930,23 @@
             showActiveOrderAlert(activeOrder);
             return;
         }
-        let basePrice = selectedItemForModal.price + (modalRiceQty * 15);
+        let basePrice = selectedItemForModal.price;
         let displayName = selectedItemForModal.name;
+        let cartKeyBase = String(selectedItemForModal.id);
+
+        const sizeSelect = document.getElementById('modal-size-select');
+        const sizeContainer = document.getElementById('modal-size-container');
+        if (sizeContainer && sizeContainer.style.display !== 'none' && sizeSelect && sizeSelect.value) {
+            const selectedSizeOpt = sizeSelect.options[sizeSelect.selectedIndex];
+            if (selectedSizeOpt) {
+                const sizeLabel = sizeSelect.value;
+                basePrice = parseFloat(selectedSizeOpt.getAttribute('data-price') || selectedItemForModal.price);
+                displayName = `${selectedItemForModal.name} (${sizeLabel})`;
+                cartKeyBase = `${selectedItemForModal.id}_${sizeLabel}`;
+            }
+        }
+
+        basePrice += (modalRiceQty * 15);
         let additions = [];
         if (modalRiceQty > 0) additions.push(`+${modalRiceQty} Rice`);
 
@@ -1883,7 +1961,7 @@
             displayName += ` (${additions.join(', ')})`;
         }
 
-        const cartKey = `${selectedItemForModal.id}_${modalRiceQty}_${bevSelect ? bevSelect.value : ''}`;
+        const cartKey = `${cartKeyBase}_${modalRiceQty}_${bevSelect ? bevSelect.value : ''}`;
         const wasEmpty = Object.keys(cart).length === 0;
         if (cart[cartKey]) {
             cart[cartKey].qty += 1;
