@@ -86,8 +86,11 @@
             border: 1.5px solid rgba(96, 165, 250, 0.55);
             border-radius: 50%;
         }
-        /* Faint GPS trail so the customer can see where the rider has been. */
-        #trail-line { stroke-linecap: round; stroke-linejoin: round; }
+        /* Faint GPS trail so the customer can see where the rider has been.
+           Leaflet's `className` option adds a CLASS, not an id, so this selector
+           must be `.trail-line`; as `#trail-line` it never matched anything and
+           the round caps/joins were silently doing nothing. */
+        .trail-line { stroke-linecap: round; stroke-linejoin: round; }
 
         /* Recenter is a Leaflet bar button like the zoom controls, so the two
            read as one aligned control in the bottom-right corner.

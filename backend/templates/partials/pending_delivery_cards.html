@@ -58,6 +58,9 @@
                 <span class="block text-base font-black text-white">₱{{ d.order.total_payment }}</span>
             </div>
             <div class="flex items-center gap-2">
+                <button @click="openRoute('{% url 'deliveries:route_preview' d.id %}')" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-300 border border-rider-border px-3 py-2.5 rounded-xl text-xs font-bold transition active:scale-95" title="Preview the road and how long it takes">
+                    <i class="fa-solid fa-route"></i>
+                </button>
                 <button @click="openDetail({{ d.id }})" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-300 border border-rider-border px-3 py-2.5 rounded-xl text-xs font-bold transition active:scale-95" title="View details">
                     <i class="fa-solid fa-receipt"></i>
                 </button>

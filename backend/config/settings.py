@@ -57,6 +57,17 @@ ROUTING_CACHE_SECONDS = int(os.getenv('ROUTING_CACHE_SECONDS', '600'))
 # accuracy circle so customers see how precise the fix really is.
 GPS_MAX_ACCURACY_M = float(os.getenv('GPS_MAX_ACCURACY_M', '40'))
 
+# The canteen pickup point. A rider previewing a job has no recorded position
+# yet, so the canteen is the only sensible origin for the "how long is this
+# road" route the rider sees before accepting.
+#
+# Deliberately NOT reused as the origin for delivery progress maths: on the
+# tracking page the trip total is derived from the rider's first recorded fix
+# instead, because a real drop-off can sit on this same point and would collapse
+# route_total_km to zero. This constant is for pre-accept previews only.
+CANTEEN_LAT = float(os.getenv('CANTEEN_LAT', '9.77778'))
+CANTEEN_LNG = float(os.getenv('CANTEEN_LNG', '118.73333'))
+
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com', '.loca.lt', '.devtunnels.ms', '.railway.app']
 AUTH_USER_MODEL = 'accounts.CustomUser'
 

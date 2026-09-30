@@ -18,6 +18,8 @@
     <link rel="stylesheet" href="{% static 'css/rider.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Leaflet powers the route-preview popup on each pending job card. -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -484,6 +486,43 @@
                         :class="confirmData.type === 'release' ? 'bg-gradient-to-r from-red-500 to-red-600' : (confirmData.type === 'reject' ? 'bg-gradient-to-r from-zinc-600 to-zinc-700' : 'bg-gradient-to-r from-orange-500 to-orange-600')">
                     <span x-text="confirmData.type === 'release' ? 'Release' : (confirmData.type === 'reject' ? 'Reject' : 'Confirm')"></span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ ROUTE PREVIEW MODAL (canteen -> drop-off) ============ -->
+    <div id="route-modal" class="fixed inset-0 z-[70] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-strong rounded-3xl w-full max-w-lg overflow-hidden shadow-glass flex flex-col max-h-[88vh]">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-white/5">
+                <div class="min-w-0">
+                    <h3 class="text-sm font-black text-white truncate"><i class="fa-solid fa-route text-orange-400 mr-1.5"></i> Route to drop-off</h3>
+                    <p id="route-where" class="text-[11px] text-zinc-400 truncate"></p>
+                </div>
+                <button onclick="closeRoute()" class="text-zinc-400 hover:text-white text-lg px-2 shrink-0" aria-label="Close route preview">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div id="route-map" class="w-full h-64 bg-zinc-900 shrink-0"></div>
+
+            <div class="px-5 py-4 space-y-3">
+                <p id="route-status" class="text-[11px] text-zinc-400 font-bold">Loading route...</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-black/30 border border-white/5 rounded-2xl px-3 py-2.5 text-center">
+                        <p class="flex items-baseline justify-center gap-1 leading-none">
+                            <span id="route-dist-val" class="text-xl font-black text-orange-400 tabular-nums">--</span>
+                            <span class="text-[10px] font-bold text-zinc-500">km</span>
+                        </p>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Distance</p>
+                    </div>
+                    <div class="bg-black/30 border border-white/5 rounded-2xl px-3 py-2.5 text-center">
+                        <p class="flex items-baseline justify-center gap-1 leading-none">
+                            <span id="route-time-val" class="text-xl font-black text-emerald-400 tabular-nums">--</span>
+                            <span class="text-[10px] font-bold text-zinc-500">min</span>
+                        </p>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Est. time</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1152,6 +1191,111 @@
             form.submit();
         }, 'image/jpeg', 0.92);
     }
+
+    /* ===== Route preview: canteen -> drop-off, before accepting a job =====
+       The rider taps the route button on a pending card and sees the actual
+       campus road as a single orange line, with the distance and how long the
+       road takes. Mirrors the customer tracking map: same orange (#FF6117),
+       same white casing, same dashed straight-line fallback when routing is
+       unavailable. */
+    let routeMap = null;
+    let routeLine = null;
+    let routeCasing = null;
+
+    function getCsrf() {
+        const m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    function closeRoute() {
+        document.getElementById('route-modal').classList.add('hidden');
+        if (routeMap) { routeMap.remove(); routeMap = null; }
+        routeLine = null;
+        routeCasing = null;
+    }
+
+    function openRoute(previewUrl) {
+        const modal = document.getElementById('route-modal');
+        const mapEl = document.getElementById('route-map');
+        const status = document.getElementById('route-status');
+        const distEl = document.getElementById('route-dist-val');
+        const timeEl = document.getElementById('route-time-val');
+        const whereEl = document.getElementById('route-where');
+
+        modal.classList.remove('hidden');
+        status.textContent = 'Loading route...';
+        distEl.textContent = '--';
+        timeEl.textContent = '--';
+        whereEl.textContent = '';
+
+        fetch(previewUrl, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrf(), 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    status.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400"></i> '
+                        + (data.error || 'Route unavailable.');
+                    return;
+                }
+                whereEl.textContent = data.delivery_location || '';
+                distEl.textContent = Number(data.distance_km).toFixed(2);
+                timeEl.textContent = data.duration_min != null ? data.duration_min : '--';
+                if (data.duration_min == null) {
+                    status.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400"></i> '
+                        + 'Travel time unavailable (offline estimate)';
+                } else {
+                    status.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> '
+                        + 'Road route via ' + (data.routing_provider || 'road');
+                }
+
+                if (routeMap) { routeMap.remove(); routeMap = null; }
+                routeMap = L.map(mapEl, { zoomControl: true }).setView(
+                    [data.origin_lat, data.origin_lng], 16);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    minZoom: 13,
+                    // OSM serves a/b/c only; a 'd' fails DNS and leaves grey
+                    // holes where tiles should be.
+                    subdomains: 'abc',
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+                }).addTo(routeMap);
+
+                const pts = data.path.map(p => [p[0], p[1]]);
+                const style = data.routed
+                    ? { color: '#FF6117', weight: 5, opacity: 0.95 }
+                    : { color: '#FF6117', weight: 3, opacity: 0.8, dashArray: '7 6' };
+                routeCasing = L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.35 }).addTo(routeMap);
+                routeLine = L.polyline(pts, style).addTo(routeMap);
+
+                L.circleMarker([data.origin_lat, data.origin_lng], {
+                    radius: 7, color: '#fff', weight: 2, fillColor: '#FF6117', fillOpacity: 1,
+                }).addTo(routeMap).bindTooltip('Canteen pickup');
+                L.circleMarker([data.dest_lat, data.dest_lng], {
+                    radius: 7, color: '#fff', weight: 2, fillColor: '#22c55e', fillOpacity: 1,
+                }).addTo(routeMap).bindTooltip(data.delivery_location || 'Drop-off');
+
+                routeMap.fitBounds(routeLine.getBounds().pad(0.25));
+            })
+            .catch(() => {
+                status.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400"></i> '
+                    + 'Could not load the route. Check your connection.';
+            });
+    }
+    </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Dark theme on the route-preview tiles only; the orange line, casing
+        // and markers stay true-colour, matching the customer tracking map.
+        (function () {
+            const css = document.createElement('style');
+            css.textContent = '#route-map .leaflet-tile-pane .leaflet-layer,'
+                + '#route-map .leaflet-tile-pane .leaflet-tile {'
+                + 'filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(88%); }';
+            document.head.appendChild(css);
+        })();
     </script>
 </body>
 </html>

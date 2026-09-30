@@ -858,6 +858,99 @@ class RiderRoutePayloadTestCase(TestCase):
         self.assertIn(".ce-recenter a {", html)
 
 
+class RiderRoutePreviewTestCase(TestCase):
+    """A rider can see the road and its travel time BEFORE accepting a job.
+
+    The origin is the canteen, because a pending job has no rider position yet.
+    """
+
+    def setUp(self):
+        from accounts.models import CustomUser
+        from django.core.cache import cache
+        cache.clear()
+        self.rider = CustomUser.objects.create_user(
+            username='preview_rider', password='testpass', role='DELIVERY')
+        self.order = Order.objects.create(
+            order_number='#CE-7700', total_amount=100.00, status='pending')
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, delivery_location='Engineering Bldg',
+            status=DeliveryRequest.RequestStatus.SEARCHING,
+            dest_lat=9.77725, dest_lng=118.73480)
+
+    def _post(self):
+        return self.client.post(reverse(
+            'deliveries:route_preview', args=[self.delivery.id]))
+
+    def test_requires_a_rider_session(self):
+        self.assertEqual(self._post().status_code, 302)
+
+    def test_returns_orange_map_route_from_the_canteen(self):
+        import deliveries.views as dv
+        from unittest import mock
+
+        def fake(origin_lat, origin_lng, dest_lat, dest_lng):
+            return {
+                'path': [[origin_lat, origin_lng], [dest_lat, dest_lng]],
+                'distance_km': 0.4, 'duration_min': 7.0, 'provider': 'stub',
+            }
+
+        self.client.force_login(self.rider)
+        with mock.patch('deliveries.views.get_road_route', side_effect=fake):
+            data = self._post().json()
+
+        self.assertTrue(data['success'])
+        self.assertTrue(data['routed'])
+        self.assertEqual(data['routing_provider'], 'stub')
+        self.assertEqual(data['duration_min'], 7)
+        self.assertAlmostEqual(data['distance_km'], 0.4, places=2)
+        # Origin is the canteen, not the rider's (nonexistent) position.
+        self.assertAlmostEqual(data['origin_lat'], settings.CANTEEN_LAT, places=4)
+        self.assertAlmostEqual(data['origin_lng'], settings.CANTEEN_LNG, places=4)
+        self.assertGreaterEqual(len(data['path']), 2)
+
+    def test_routing_outage_still_returns_a_usable_preview(self):
+        """A provider outage must not leave the rider staring at a blank popup."""
+        import deliveries.views as dv
+        from unittest import mock
+        self.client.force_login(self.rider)
+        with mock.patch('deliveries.views.get_road_route', return_value=None):
+            data = self._post().json()
+        self.assertTrue(data['success'])
+        self.assertFalse(data['routed'])
+        self.assertIsNone(data['routing_provider'])
+        self.assertIsNone(data['duration_min'])
+        # A straight line is still drawn rather than nothing at all.
+        self.assertEqual(len(data['path']), 2)
+        self.assertGreater(data['distance_km'], 0)
+
+    def test_delivery_without_destination_is_rejected(self):
+        self.client.force_login(self.rider)
+        self.delivery.dest_lat = None
+        self.delivery.dest_lng = None
+        self.delivery.save()
+        res = self._post()
+        self.assertEqual(res.status_code, 422)
+        self.assertFalse(res.json()['success'])
+
+    def test_rider_dashboard_wires_up_the_route_button(self):
+        self.client.force_login(self.rider)
+        # The dashboard redirects once to a session-token URL, hence follow=True.
+        res = self.client.get(reverse('deliveries:dashboard'), follow=True)
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        self.assertIn('openRoute(', html)
+        self.assertIn('id="route-modal"', html)
+        # The card passes the resolved preview URL to openRoute(), so the route
+        # endpoint is reachable without a page reload.
+        self.assertIn(
+            reverse('deliveries:route_preview', args=[self.delivery.id]), html)
+        # Same orange route treatment as the customer tracking map.
+        self.assertIn('#FF6117', html)
+        # And no dead tile subdomain, which would leave grey holes.
+        self.assertIn("subdomains: 'abc'", html)
+        self.assertNotIn("subdomains: 'abcd'", html)
+
+
 class TileProviderPolicyTestCase(SimpleTestCase):
     """Guard the basemap tile host and the subdomain list.
 

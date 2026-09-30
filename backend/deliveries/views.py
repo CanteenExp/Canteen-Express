@@ -120,6 +120,65 @@ def pending_cards(request):
 
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
+@require_POST
+def route_preview(request, delivery_id):
+    """Road route from the canteen to a job's drop-off, for the rider to accept.
+
+    Lets a rider see the actual road and how long it takes before committing to
+    a delivery, rather than only after picking the order up. The origin is the
+    canteen because a pending job has no rider position yet.
+
+    Degrades the same way tracking does: if no routing provider answers, the
+    payload reports `routed: False` with a straight-line distance, and the map
+    draws a dashed line rather than showing nothing.
+    """
+    from django.conf import settings as dj_settings
+
+    delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    if delivery.dest_lat is None or delivery.dest_lng is None:
+        return JsonResponse({
+            'success': False,
+            'error': 'This delivery has no destination coordinates.',
+        }, status=422)
+
+    origin_lat = float(getattr(dj_settings, 'CANTEEN_LAT', 9.77778))
+    origin_lng = float(getattr(dj_settings, 'CANTEEN_LNG', 118.73333))
+
+    route = get_road_route(origin_lat, origin_lng,
+                            delivery.dest_lat, delivery.dest_lng)
+    if route:
+        path = route['path']
+        distance_km = route['distance_km']
+        duration_min = route['duration_min']
+        provider = route['provider']
+    else:
+        # Routing outage: hand back a usable straight line instead of failing,
+        # so the rider still sees roughly where they are going.
+        path = [[origin_lat, origin_lng], [delivery.dest_lat, delivery.dest_lng]]
+        distance_km = haversine_km(origin_lat, origin_lng,
+                                   delivery.dest_lat, delivery.dest_lng)
+        duration_min = None
+        provider = None
+
+    return JsonResponse({
+        'success': True,
+        'routed': provider is not None,
+        'routing_provider': provider,
+        'path': [[round(lat, 5), round(lng, 5)] for lat, lng in path],
+        'origin_lat': origin_lat,
+        'origin_lng': origin_lng,
+        'dest_lat': delivery.dest_lat,
+        'dest_lng': delivery.dest_lng,
+        'delivery_location': delivery.delivery_location,
+        'distance_km': round(distance_km, 2),
+        # Walking pace on campus footpaths, which is what the rider actually
+        # covers. OSRM/Valhalla return a driving or pedestrian estimate; this
+        # fallback only applies when no provider answered at all.
+        'duration_min': round(duration_min) if duration_min is not None else None,
+    })
+
+
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
 def delivery_history(request):
     history = DeliveryRequest.objects.filter(
         rider=request.user
