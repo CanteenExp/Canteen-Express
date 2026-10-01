@@ -85,20 +85,41 @@ def _ip_otp_rate_allowed(request, prefix, limit=5, window=600, cooldown=60):
 
 
 # ===== Password-login brute-force throttle (per IP per portal) =====
-# 5 wrong passwords inside 15 minutes locks that IP out of the portal for
-# 15 minutes. Counters live in the cache (shared), not the session, so the
-# throttle can't be reset by clearing cookies.
-def _login_locked(request, key):
+# 5 wrong passwords inside the window locks that IP out of the portal for
+# LOGIN_LOCK_SECONDS. The window is short on purpose: this runs on campus
+# Wi-Fi where every student shares one NAT address, so a long lockout punishes
+# the whole canteen for one person's typos. Counters live in the cache
+# (shared), not the session, so the throttle can't be reset by clearing
+# cookies -- but a 60s lock still blunts online guessing while letting a real
+# user recover almost immediately.
+LOGIN_FAIL_LIMIT = int(os.getenv('LOGIN_FAIL_LIMIT', '5'))
+LOGIN_LOCK_SECONDS = int(os.getenv('LOGIN_LOCK_SECONDS', '60'))
+
+def _login_lock_remaining(request, key):
+    """Seconds left on the lockout, or 0 when the portal is open.
+
+    The cache value is the wall-clock unlock time (not True) so the login form
+    can show a live countdown instead of an open-ended 'few minutes'."""
     ip = _client_ip(request)
-    return cache.get(f'login_lock_{key}_{ip}') is not None
+    until = cache.get(f'login_lock_{key}_{ip}')
+    if until is None:
+        return 0
+    if until is True:  # defensive: a lock written by an older build
+        return LOGIN_LOCK_SECONDS
+    return max(0, int(round(until - time.time())))
+
+
+def _login_locked(request, key):
+    return _login_lock_remaining(request, key) > 0
 
 
 def _login_attempt_failed(request, key):
     ip = _client_ip(request)
     counter = cache.get(f'login_fail_{key}_{ip}', 0) + 1
-    cache.set(f'login_fail_{key}_{ip}', counter, timeout=900)
-    if counter >= 5:
-        cache.set(f'login_lock_{key}_{ip}', True, timeout=900)
+    cache.set(f'login_fail_{key}_{ip}', counter, timeout=LOGIN_LOCK_SECONDS)
+    if counter >= LOGIN_FAIL_LIMIT:
+        cache.set(f'login_lock_{key}_{ip}', time.time() + LOGIN_LOCK_SECONDS,
+                  timeout=LOGIN_LOCK_SECONDS)
 
 
 def _login_clear(request, key):
@@ -157,7 +178,8 @@ def faculty_location_view(request):
 def faculty_auth_view(request):
     error = None
     mode = request.GET.get('mode', 'login')
-    
+    lock_secs = 0
+
     if request.method == 'POST':
         action = request.POST.get('action')
         
@@ -217,8 +239,9 @@ def faculty_auth_view(request):
             password = request.POST.get('password')
             remember_me = request.POST.get('remember_me')
 
-            if _login_locked(request, 'faculty'):
-                error = "Too many failed attempts. Please try again in a few minutes."
+            lock_secs = _login_lock_remaining(request, 'faculty')
+            if lock_secs:
+                error = f"Too many failed attempts. Try again in {lock_secs}s."
                 mode = 'login'
             else:
                 try:
@@ -256,7 +279,9 @@ def faculty_auth_view(request):
                     error = f"Login error: {str(e)}"
                     mode = 'login'
 
-    return render(request, 'accounts/faculty_auth.html', {'error': error, 'mode': mode})
+    return render(request, 'accounts/faculty_auth.html', {
+        'error': error, 'mode': mode, 'lock_secs': lock_secs,
+    })
 
 # STEP 3: Faculty Dashboard
 def faculty_dashboard_view(request, token=None):
@@ -330,8 +355,9 @@ def staff_login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
-        if _login_locked(request, 'staff'):
-            error = "Too many failed attempts. Please try again in a few minutes."
+        lock_secs = _login_lock_remaining(request, 'staff')
+        if lock_secs:
+            error = f"Too many failed attempts. Try again in {lock_secs}s."
         else:
             user_obj = User.objects.filter(username=username).first()
             if user_obj and (user_obj.is_staff or getattr(user_obj, 'role', '') in ['STAFF', 'ADMIN']):
@@ -353,7 +379,7 @@ def staff_login_view(request):
             else:
                 _login_attempt_failed(request, 'staff')
                 error = "Invalid canteen staff credentials."
-    return render(request, 'accounts/staff_login.html', {'error': error})
+    return render(request, 'accounts/staff_login.html', {'error': error, 'lock_secs': lock_secs})
 
 
 # Separate Delivery Personnel Login View
@@ -364,8 +390,9 @@ def delivery_login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
-        if _login_locked(request, 'rider'):
-            error = "Too many failed attempts. Please try again in a few minutes."
+        lock_secs = _login_lock_remaining(request, 'rider')
+        if lock_secs:
+            error = f"Too many failed attempts. Try again in {lock_secs}s."
         else:
             user_obj = User.objects.filter(username=username).first()
             if user_obj and (getattr(user_obj, 'role', '') in ['DELIVERY', 'RIDER'] or user_obj.is_staff):
@@ -387,7 +414,7 @@ def delivery_login_view(request):
             else:
                 _login_attempt_failed(request, 'rider')
                 error = "Invalid delivery personnel credentials."
-    return render(request, 'accounts/delivery_login.html', {'error': error})
+    return render(request, 'accounts/delivery_login.html', {'error': error, 'lock_secs': lock_secs})
 
 
 # Role-specific Logout Views
