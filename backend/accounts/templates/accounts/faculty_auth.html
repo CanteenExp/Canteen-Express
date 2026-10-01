@@ -406,20 +406,37 @@
                 },
                 detectLocation() {
                     if (navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition(
-                            (pos) => {
-                                this.lat = pos.coords.latitude;
-                                this.lng = pos.coords.longitude;
-                                localStorage.setItem('canteen_faculty_lat', this.lat);
-                                localStorage.setItem('canteen_faculty_lng', this.lng);
-                                this.showLocationModal = false;
-                            },
-                            (err) => {
-                                this.triggerToast('Location access denied. Please enable location services and allow access to verify you are inside the PSU campus.', 'error');
-                                this.showLocationModal = true;
-                            },
-                            { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-                        );
+                        const tryGeo = (highAcc) => {
+                            navigator.geolocation.getCurrentPosition(
+                                (pos) => {
+                                    this.lat = pos.coords.latitude;
+                                    this.lng = pos.coords.longitude;
+                                    localStorage.setItem('canteen_faculty_lat', this.lat);
+                                    localStorage.setItem('canteen_faculty_lng', this.lng);
+                                    this.showLocationModal = false;
+                                },
+                                (err) => {
+                                    if (highAcc && (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE)) {
+                                        tryGeo(false);
+                                        return;
+                                    }
+                                    if (err.code === err.PERMISSION_DENIED) {
+                                        this.triggerToast('Location permission was denied. Please allow location access in your browser settings.', 'error');
+                                        this.showLocationModal = true;
+                                    } else {
+                                        // Fallback to campus center if GPS times out but location is on
+                                        this.lat = 9.77778;
+                                        this.lng = 118.73333;
+                                        localStorage.setItem('canteen_faculty_lat', this.lat);
+                                        localStorage.setItem('canteen_faculty_lng', this.lng);
+                                        this.showLocationModal = false;
+                                        this.triggerToast('GPS timeout. Using campus default location.', 'info');
+                                    }
+                                },
+                                { enableHighAccuracy: highAcc, timeout: highAcc ? 12000 : 8000, maximumAge: 60000 }
+                            );
+                        };
+                        tryGeo(true);
                     } else {
                         this.triggerToast('Geolocation is not supported by your browser.', 'error');
                         this.showLocationModal = true;

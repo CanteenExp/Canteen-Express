@@ -10,6 +10,6 @@ timeout /t 3 /nobreak > nul
 
 echo [2/2] Starting Localtunnel on port 8000 (No login required)...
 echo.
-npx localtunnel --port 8000 --subdomain canteen-express
+npx localtunnel --port 8000 --subdomain canteen-express-palsu
 
 pause

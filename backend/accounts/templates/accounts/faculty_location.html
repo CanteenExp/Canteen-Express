@@ -223,25 +223,37 @@
                     detectLabel.innerText = "Allow & Detect Location";
                 };
 
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        restoreDetectBtn();
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        setCoordinates(lat, lng, false);
-                    },
-                    (error) => {
-                        restoreDetectBtn();
-                        console.warn("Geolocation error:", error);
-                        statusBox.className = "p-3 bg-red-500/10 border border-red-500/30 rounded-2xl text-center backdrop-blur-md";
-                        statusIcon.className = "fa-solid fa-triangle-exclamation text-2xl text-red-400 mb-1";
-                        const reason = error && error.code === 1
-                            ? "Permission denied. Please allow location access in your browser settings and try again."
-                            : "Could not get a GPS fix. Please try again in an open area.";
-                        statusText.innerHTML = `<span class="text-red-300 font-bold">Location access required!</span><br><span class="text-[11px] text-red-400/80">${reason}</span>`;
-                    },
-                    geoOptions
-                );
+                const tryGeo = (highAcc) => {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            restoreDetectBtn();
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            setCoordinates(lat, lng, false);
+                        },
+                        (error) => {
+                            if (highAcc && (error.code === error.TIMEOUT || error.code === error.POSITION_UNAVAILABLE)) {
+                                tryGeo(false);
+                                return;
+                            }
+                            restoreDetectBtn();
+                            console.warn("Geolocation error:", error);
+                            if (error && (error.code === error.TIMEOUT || error.code === error.POSITION_UNAVAILABLE)) {
+                                // Fallback to campus center if GPS timed out but location is on
+                                setCoordinates(9.77778, 118.73333, true);
+                                return;
+                            }
+                            statusBox.className = "p-3 bg-red-500/10 border border-red-500/30 rounded-2xl text-center backdrop-blur-md";
+                            statusIcon.className = "fa-solid fa-triangle-exclamation text-2xl text-red-400 mb-1";
+                            const reason = error && error.code === 1
+                                ? "Permission denied. Please allow location access in your browser settings and try again."
+                                : "Could not get a GPS fix. Please try again in an open area.";
+                            statusText.innerHTML = `<span class="text-red-300 font-bold">Location access required!</span><br><span class="text-[11px] text-red-400/80">${reason}</span>`;
+                        },
+                        { enableHighAccuracy: highAcc, timeout: highAcc ? 12000 : 8000, maximumAge: 60000 }
+                    );
+                };
+                tryGeo(true);
             } else {
                 statusBox.className = "p-3 bg-red-500/10 border border-red-500/30 rounded-2xl text-center backdrop-blur-md";
                 statusIcon.className = "fa-solid fa-triangle-exclamation text-2xl text-red-400 mb-1";

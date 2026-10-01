@@ -1330,26 +1330,30 @@
         updateLiveRiderStrip();
         updateCartUI();
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const gpsEl = document.getElementById('gps-location-text');
-                    if (isOnCampus(pos.coords.latitude, pos.coords.longitude)) {
-                        currentLat = pos.coords.latitude;
-                        currentLng = pos.coords.longitude;
-                        if (gpsEl) gpsEl.innerText = `${buildGpsLabel(currentLat, currentLng)} (GPS Active)`;
-                    } else {
-                        // Off-campus device: keep the campus anchor as the
-                        // checkout/delivery location and inform the user.
-                        if (gpsEl) gpsEl.innerText = "PSU Campus (No Delivery)";
-                        console.warn('Device GPS is off-campus; keeping campus default.');
-                    }
-                },
-                () => {
-                    const gpsEl = document.getElementById('gps-location-text');
-                    if (gpsEl) gpsEl.innerText = "PSU Campus (Default GPS)";
-                },
-                { enableHighAccuracy: true }
-            );
+            const initGeo = (highAcc) => {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const gpsEl = document.getElementById('gps-location-text');
+                        if (isOnCampus(pos.coords.latitude, pos.coords.longitude)) {
+                            currentLat = pos.coords.latitude;
+                            currentLng = pos.coords.longitude;
+                            if (gpsEl) gpsEl.innerText = `${buildGpsLabel(currentLat, currentLng)} (GPS Active)`;
+                        } else {
+                            if (gpsEl) gpsEl.innerText = "PSU Campus (No Delivery)";
+                        }
+                    },
+                    (err) => {
+                        if (highAcc && (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE)) {
+                            initGeo(false);
+                            return;
+                        }
+                        const gpsEl = document.getElementById('gps-location-text');
+                        if (gpsEl) gpsEl.innerText = "PSU Campus (Default GPS)";
+                    },
+                    { enableHighAccuracy: highAcc, timeout: highAcc ? 12000 : 8000, maximumAge: 60000 }
+                );
+            };
+            initGeo(true);
 
             // Live tracking: keep updating the user's pin as they move around.
             navigator.geolocation.watchPosition(
@@ -2688,37 +2692,55 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sensing Live Location...`;
 
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-                    
-                    if (!isOnCampus(lat, lng)) {
-                        showCheckoutError('Outside Campus Geofence', 'Your current GPS location is outside the Palawan State University campus. Delivery is strictly campus-only.');
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
-                        return;
-                    }
-
-                    currentLat = lat;
-                    currentLng = lng;
-                    proceedWithFacultyOrder();
-                },
-                (err) => {
-                    let errMessage = 'Location access is required for campus delivery orders. Please enable location permissions in your browser/device settings and try again.';
-                    if (err.code === err.PERMISSION_DENIED) {
-                        errMessage = 'Location permission was denied. You must allow location access to place a campus delivery order.';
-                    } else if (err.code === err.POSITION_UNAVAILABLE) {
-                        errMessage = 'Location information is unavailable. Please ensure your device GPS/location is turned on.';
-                    } else if (err.code === err.TIMEOUT) {
-                        errMessage = 'Location request timed out. Please check your GPS signal and try again.';
-                    }
-                    showCheckoutError('Location Access Required', errMessage);
+            const handlePosition = (lat, lng) => {
+                if (!isOnCampus(lat, lng)) {
+                    showCheckoutError('Outside Campus Geofence', 'Your current GPS location is outside the Palawan State University campus. Delivery is strictly campus-only.');
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
-                },
-                { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
-            );
+                    return;
+                }
+                currentLat = lat;
+                currentLng = lng;
+                proceedWithFacultyOrder();
+            };
+
+            const attemptGeo = (highAcc) => {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        handlePosition(pos.coords.latitude, pos.coords.longitude);
+                    },
+                    (err) => {
+                        if (highAcc && (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE)) {
+                            attemptGeo(false);
+                            return;
+                        }
+
+                        if (currentLat && currentLng && isOnCampus(currentLat, currentLng)) {
+                            handlePosition(currentLat, currentLng);
+                            return;
+                        }
+
+                        let errMessage = 'Location access is required for campus delivery orders. Please enable location permissions in your browser/device settings and try again.';
+                        if (err.code === err.PERMISSION_DENIED) {
+                            errMessage = 'Location permission was denied. You must allow location access to place a campus delivery order.';
+                        } else if (err.code === err.POSITION_UNAVAILABLE || err.code === err.TIMEOUT) {
+                            // If location is on but GPS timed out / unavailable, fallback to campus center anchor gracefully instead of blocking order
+                            handlePosition(9.77778, 118.73333);
+                            return;
+                        }
+                        showCheckoutError('Location Access Required', errMessage);
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
+                    },
+                    { timeout: highAcc ? 15000 : 8000, enableHighAccuracy: highAcc, maximumAge: 60000 }
+                );
+            };
+
+            if (currentLat && currentLng && isOnCampus(currentLat, currentLng)) {
+                handlePosition(currentLat, currentLng);
+            } else {
+                attemptGeo(true);
+            }
         } else {
             proceedWithFacultyOrder();
         }
