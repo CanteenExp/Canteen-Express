@@ -90,7 +90,15 @@ def _ip_otp_rate_allowed(request, prefix, limit=5, window=600, cooldown=60):
 # throttle can't be reset by clearing cookies.
 def _login_locked(request, key):
     ip = _client_ip(request)
-    return cache.get(f'login_lock_{key}_{ip}') is not None
+    lock_until = cache.get(f'login_lock_until_{key}_{ip}')
+    if lock_until:
+        remaining = int(lock_until - time.time())
+        if remaining > 0:
+            return remaining
+        else:
+            cache.delete(f'login_lock_until_{key}_{ip}')
+            cache.delete(f'login_fail_{key}_{ip}')
+    return 0
 
 
 def _login_attempt_failed(request, key):
@@ -98,13 +106,13 @@ def _login_attempt_failed(request, key):
     counter = cache.get(f'login_fail_{key}_{ip}', 0) + 1
     cache.set(f'login_fail_{key}_{ip}', counter, timeout=900)
     if counter >= 5:
-        cache.set(f'login_lock_{key}_{ip}', True, timeout=900)
+        cache.set(f'login_lock_until_{key}_{ip}', time.time() + 60, timeout=900)
 
 
 def _login_clear(request, key):
     ip = _client_ip(request)
     cache.delete(f'login_fail_{key}_{ip}')
-    cache.delete(f'login_lock_{key}_{ip}')
+    cache.delete(f'login_lock_until_{key}_{ip}')
 
 def landing_view(request):
     # Already logged in? Skip the role-picker and go straight to the role dashboard
@@ -169,8 +177,12 @@ def faculty_auth_view(request):
             password = request.POST.get('password')
             confirm_password = request.POST.get('confirm_password')
             
+            local_part = email.split('@')[0] if '@' in email else ''
             if not (_is_valid_email(email) and email.endswith('@psu.palawan.edu.ph')):
                 error = "Please enter a valid @psu.palawan.edu.ph email address."
+                mode = 'signup'
+            elif not any(c.isalpha() for c in local_part):
+                error = "Email username before @psu.palawan.edu.ph must contain letters (cannot be numbers only)."
                 mode = 'signup'
             elif password != confirm_password:
                 error = "Passwords do not match."
@@ -286,7 +298,9 @@ def faculty_dashboard_view(request, token=None):
     categories = Category.objects.all()
     
     email = request.session.get('faculty_email', '') or getattr(request.user, 'email', '')
-    if request.user.is_authenticated and request.user.username:
+    if request.user.is_authenticated and (request.user.get_full_name() or request.user.first_name):
+        faculty_display_name = request.user.get_full_name() or request.user.first_name
+    elif request.user.is_authenticated and request.user.username:
         faculty_display_name = request.user.username
     elif email:
         faculty_display_name = email.split('@')[0]
@@ -318,6 +332,7 @@ def faculty_dashboard_view(request, token=None):
         'faculty_display_name': faculty_display_name,
         'ongoing_deliveries_json': json.dumps(ongoing_data),
         'user_points': float(request.user.loyalty_points) if request.user.is_authenticated else 0.0,
+        'enforce_geofence': getattr(settings, 'ENFORCE_GEOFENCE', True),
     }
     return render(request, 'accounts/dashboard.html', context)
 
@@ -361,12 +376,13 @@ def staff_login_view(request):
 @csrf_protect
 def delivery_login_view(request):
     error = None
+    lock_secs = _login_locked(request, 'rider')
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        if _login_locked(request, 'rider'):
-            error = "Too many failed attempts. Please try again in a few minutes."
+        if lock_secs > 0:
+            error = f"Too many failed attempts. Please try again in {lock_secs} seconds."
         else:
+            username = request.POST.get('username')
+            password = request.POST.get('password')
             user_obj = User.objects.filter(username=username).first()
             if user_obj and (getattr(user_obj, 'role', '') in ['DELIVERY', 'RIDER'] or user_obj.is_staff):
                 if not user_obj.is_active or user_obj.account_status in ('banned', 'restricted', 'held', 'penalized'):
@@ -383,11 +399,13 @@ def delivery_login_view(request):
                         return redirect('deliveries:dashboard')
                     else:
                         _login_attempt_failed(request, 'rider')
-                        error = "Invalid delivery personnel credentials."
+                        lock_secs = _login_locked(request, 'rider')
+                        error = f"Invalid delivery personnel credentials. {f'Locked for {lock_secs}s.' if lock_secs > 0 else ''}"
             else:
                 _login_attempt_failed(request, 'rider')
-                error = "Invalid delivery personnel credentials."
-    return render(request, 'accounts/delivery_login.html', {'error': error})
+                lock_secs = _login_locked(request, 'rider')
+                error = f"Invalid delivery personnel credentials. {f'Locked for {lock_secs}s.' if lock_secs > 0 else ''}"
+    return render(request, 'accounts/delivery_login.html', {'error': error, 'lock_seconds': lock_secs})
 
 
 # Role-specific Logout Views
@@ -411,10 +429,13 @@ def send_signup_otp(request):
         try:
             data = json.loads(request.body)
             email = data.get('email', '').strip().lower()
+            local_part = email.split('@')[0] if '@' in email else ''
             otp_code = f"{random.randint(100000, 999999)}"
             
             if not (_is_valid_email(email) and email.endswith('@psu.palawan.edu.ph')):
                 return JsonResponse({'success': False, 'error': 'Please enter a valid @psu.palawan.edu.ph email address.'}, status=400)
+            if not any(c.isalpha() for c in local_part):
+                return JsonResponse({'success': False, 'error': 'Email username before @psu.palawan.edu.ph must contain letters (cannot be numbers only).'}, status=400)
 
             rate_result = _otp_rate_allowed(request.session, 'signup')
             ip_rate_result = _ip_otp_rate_allowed(request, 'signup')

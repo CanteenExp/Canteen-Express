@@ -452,7 +452,7 @@ def staff_dashboard(request, token=None):
     preparing_count = Order.objects.filter(status='preparing').count()
     ready_count = Order.objects.filter(status='ready').count()
     
-    recent_orders = Order.objects.exclude(status='completed').exclude(status='unpaid').order_by('-created_at')[:5]
+    recent_orders = Order.objects.exclude(status__in=['completed', 'unpaid', 'cancelled']).order_by('-created_at')[:5]
     menu_items = MenuItem.objects.all().select_related('category').order_by('category__name', 'name')
     categories = Category.objects.all().order_by('name')
     users_list = User.objects.exclude(role__in=['DELIVERY', 'RIDER']).order_by('-date_joined')[:30] if hasattr(User, 'date_joined') else User.objects.exclude(role__in=['DELIVERY', 'RIDER'])[:30]
@@ -512,6 +512,18 @@ def staff_dashboard(request, token=None):
         )
 
     rider_rankings = get_rankings(None)
+
+    from customer_portal.models import OrderItem
+    from django.db.models import F
+    top_selling_items = list(
+        OrderItem.objects.filter(order__status__in=['ready', 'completed'])
+        .values('item_name')
+        .annotate(
+            total_qty=Sum('quantity'),
+            total_revenue=Sum(F('quantity') * F('price'))
+        )
+        .order_by('-total_revenue')[:10]
+    )
 
     daily_sales = list(
         valid_orders
@@ -661,6 +673,7 @@ def staff_dashboard(request, token=None):
         'faculty_stats': faculty_stats,
         'delivery_stats': delivery_stats,
         'rider_rankings': rider_rankings,
+        'top_selling_items': top_selling_items,
     }
     return render(request, 'canteen_menu/staff_dashboard.html', context)
 

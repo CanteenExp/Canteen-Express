@@ -1,8 +1,24 @@
-from django.test import TestCase
+from django.test import TestCase, Client
+from django.urls import reverse
 from django.core.management import call_command
 from accounts.models import CustomUser
 from customer_portal.models import Order
 from activity_log.models import ActivityLog
+
+class DeliveryLoginTestCase(TestCase):
+    def test_delivery_login_renders_csrf(self):
+        client = Client()
+        response = client.get(reverse('accounts:delivery_login'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'csrfmiddlewaretoken')
+        self.assertNotContains(response, '{% csrf_token %}')
+
+    def test_staff_login_renders_csrf(self):
+        client = Client()
+        response = client.get(reverse('accounts:staff_login'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'csrfmiddlewaretoken')
+        self.assertNotContains(response, '{% csrf_token %}')
 
 class ResetFacultyDataCommandTestCase(TestCase):
     def test_reset_faculty_data(self):

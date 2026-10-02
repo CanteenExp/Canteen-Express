@@ -116,17 +116,17 @@
                            :class="isAvailable ? 'text-green-400' : 'text-zinc-500'">
                             <span x-text="isAvailable ? 'Online & Ready' : 'Offline'"></span>
                             <span class="text-zinc-600">•</span>
-                            <span class="text-zinc-400 truncate">{{ request.user.get_full_name|default:request.user.username }}</span>
+                            <span class="text-zinc-400 truncate">{{ request.user.get_full_name|default:request.user.first_name|default:request.user.username }}</span>
                         </p>
                     </div>
                 </div>
 
                 <div class="flex items-center gap-2 shrink-0">
-                    <button @click="showChangePasswordModal = true" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2">
-                        <i class="fa-solid fa-key"></i> Password
+                    <button @click="showChangePasswordModal = true" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 w-10 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center" title="Change Password">
+                        <i class="fa-solid fa-key"></i>
                     </button>
-                    <a href="{% url 'accounts:delivery_logout' %}" class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 backdrop-blur-md px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2">
-                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    <a href="{% url 'accounts:delivery_logout' %}" class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 backdrop-blur-md w-10 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center" title="Logout">
+                        <i class="fa-solid fa-right-from-bracket"></i>
                     </a>
                 </div>
             </div>
@@ -1273,7 +1273,7 @@
                 const pts = data.path.map(p => [p[0], p[1]]);
                 const style = data.routed
                     ? { color: '#FF6117', weight: 5, opacity: 0.95 }
-                    : { color: '#FF6117', weight: 3, opacity: 0.8, dashArray: '7 6' };
+                    : { color: '#FF6117', weight: 5, opacity: 0.95 };
                 routeCasing = L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.35 }).addTo(routeMap);
                 routeLine = L.polyline(pts, style).addTo(routeMap);
 

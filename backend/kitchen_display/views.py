@@ -465,7 +465,7 @@ def admin_governance(request):
         return redirect('kitchen_display:admin_pin_verify')
 
     pending_users = User.objects.filter(is_active=False) if hasattr(User, 'is_active') else []
-    all_orders = Order.objects.all().order_by('-created_at')[:20]
+    all_orders = Order.objects.all().select_related('customer', 'delivery_request').prefetch_related('feedbacks', 'items').order_by('-created_at')[:20]
 
     context = {
         'pending_users': pending_users,

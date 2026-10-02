@@ -140,6 +140,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.csrf',
                 'core_app.context_processors.map_key',
                 'core_app.context_processors.operating_hours_status',
             ],

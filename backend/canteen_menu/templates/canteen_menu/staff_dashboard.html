@@ -1344,6 +1344,7 @@
                                 <th class="py-3 px-3">Order Number</th>
                                 <th class="py-3 px-3">Location</th>
                                 <th class="py-3 px-3">Assigned Rider</th>
+                                <th class="py-3 px-3">Proof Photo</th>
                                 <th class="py-3 px-3 text-right">Status</th>
 
                             </tr>
@@ -1368,29 +1369,39 @@
                                     {{ d.delivery_location }}
                                 </td>
 
-                                <td class="py-3.5 px-3 text-gray-800">
-                                    {% if d.rider %}{{ d.rider.get_full_name|default:d.rider.username }}{% elif d.assigned_to %}{{ d.assigned_to.get_full_name|default:d.assigned_to.username }}{% else %}Unassigned{% endif %}
-                                </td>
+                                 <td class="py-3.5 px-3 text-gray-800">
+                                     {% if d.rider %}{{ d.rider.get_full_name|default:d.rider.username }}{% elif d.assigned_to %}{{ d.assigned_to.get_full_name|default:d.assigned_to.username }}{% else %}Unassigned{% endif %}
+                                 </td>
 
-                                <td class="py-3.5 px-3 text-right">
+                                 <td class="py-3.5 px-3">
+                                     {% if d.proof_photo %}
+                                         <a href="{{ d.proof_photo.url }}" target="_blank" rel="noopener" class="inline-block" title="View Proof of Delivery">
+                                             <img src="{{ d.proof_photo.url }}" alt="Proof" class="w-9 h-9 object-cover rounded-lg border border-gray-200 hover:scale-110 transition shadow-sm">
+                                         </a>
+                                     {% else %}
+                                         <span class="text-gray-400 text-[10px] italic">Pending</span>
+                                     {% endif %}
+                                 </td>
 
-                                    <span class="bg-brand-50 text-brand-700 font-bold px-2.5 py-1 rounded-full text-[10px] uppercase">
-                                        {{ d.status }}
-                                    </span>
+                                 <td class="py-3.5 px-3 text-right">
 
-                                </td>
+                                     <span class="bg-brand-50 text-brand-700 font-bold px-2.5 py-1 rounded-full text-[10px] uppercase">
+                                         {{ d.status }}
+                                     </span>
 
-                            </tr>
+                                 </td>
 
-                            {% empty %}
+                             </tr>
 
-                            <tr>
+                             {% empty %}
 
-                                <td colspan="5" class="py-8 text-center text-gray-400">
-                                    No active delivery requests at the moment.
-                                </td>
+                             <tr>
 
-                            </tr>
+                                 <td colspan="6" class="py-8 text-center text-gray-400">
+                                     No active delivery requests at the moment.
+                                 </td>
+
+                             </tr>
 
                             {% endfor %}
 
@@ -1674,45 +1685,42 @@
                 </div>
             </div>
 
-            <!-- Category Revenue Pie Chart & Breakdown -->
+            <!-- Top Selling Menu Items Sales Report -->
             <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
                 <div class="flex justify-between items-center">
-                    <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Revenue Distribution by Category (Pie Chart)</h3>
-                    <span class="text-xs font-bold text-gray-400">Percentage Share</span>
+                    <div>
+                        <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Top Selling Menu Items Sales Report</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Itemized sales performance and total revenue generated across completed and ready orders.</p>
+                    </div>
+                    <span class="text-xs font-bold text-brand-orange bg-brand-50 px-3 py-1.5 rounded-xl">Item Sales Summary</span>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                    <div class="md:col-span-1 h-60 relative flex justify-center">
-                        <canvas id="pieChart"></canvas>
-                    </div>
-                    <div class="md:col-span-2 overflow-x-auto">
-                        <table class="w-full text-left text-xs">
-                            <thead>
-                                <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
-                                    <th class="py-3 px-4">Category</th>
-                                    <th class="py-3 px-4 text-right">Revenue Share</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100 font-medium text-gray-700" id="categoryShareBody">
-                                <!-- Populated by JS -->
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
+                                <th class="py-3 px-4">Menu Item Name</th>
+                                <th class="py-3 px-4 text-center">Total Quantity Sold</th>
+                                <th class="py-3 px-4 text-right">Total Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
+                            {% for item in top_selling_items %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-3.5 px-4 font-bold text-dark-900">{{ item.item_name }}</td>
+                                <td class="py-3.5 px-4 text-center font-bold text-gray-600">{{ item.total_qty }} units</td>
+                                <td class="py-3.5 px-4 text-right font-black text-emerald-600">₱{{ item.total_revenue|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="py-6 text-center text-gray-400">No sales report data available yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <!-- Audit Reports Section -->
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                        <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">System Activity Log</h3>
-                        <p class="text-xs text-gray-400">Every order, menu, user, and delivery change, newest first.</p>
-                    </div>
-                    <a href="#logs" @click.p.prevent="activeTab = 'logs'; loadActivityLog()"
-                       class="inline-flex items-center gap-2 px-3.5 py-2 bg-dark-900 text-white text-xs font-bold rounded-xl hover:bg-brand-500 transition">
-                        <i class="fa-solid fa-clock-rotate-left"></i> Open Activity Log
-                    </a>
-                </div>
-            </div>
+
         </div>
 
         <div x-show="activeTab === 'logs'" class="space-y-6" style="display: none;" @click="markActivityRead()">

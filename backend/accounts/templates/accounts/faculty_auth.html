@@ -301,12 +301,17 @@
                          this.forgotSubmitting = false;
                      });
                  },
-                 getOtp() {
-                     if (this.otpCountdown > 0 || this.otpSending) return;
-                     if (!this.signupEmail || !/^[^@\s]+@psu\.palawan\.edu\.ph$/.test(this.signupEmail)) {
-                         this.triggerToast('Please enter your @psu.palawan.edu.ph email address first.', 'error');
-                         return;
-                     }
+                  getOtp() {
+                      if (this.otpCountdown > 0 || this.otpSending) return;
+                      if (!this.signupEmail || !/^[^@\s]+@psu\.palawan\.edu\.ph$/.test(this.signupEmail)) {
+                          this.triggerToast('Please enter your @psu.palawan.edu.ph email address first.', 'error');
+                          return;
+                      }
+                      const localPart = this.signupEmail.split('@')[0];
+                      if (!/[a-zA-Z]/.test(localPart)) {
+                          this.triggerToast('Email username before @psu.palawan.edu.ph must contain letters (cannot be numbers only).', 'error');
+                          return;
+                      }
                      this.otpSending = true;
                      fetch('{% url "accounts:send_signup_otp" %}', {
                          method: 'POST',

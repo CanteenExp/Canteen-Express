@@ -514,6 +514,7 @@
                                 <th class="py-3 px-3">Order Number</th>
                                 <th class="py-3 px-3">Location</th>
                                 <th class="py-3 px-3">Assigned Rider</th>
+                                <th class="py-3 px-3">Proof Photo</th>
                                 <th class="py-3 px-3 text-right">Status</th>
                             </tr>
                         </thead>
@@ -524,6 +525,15 @@
                                 <td class="py-3.5 px-3 font-bold text-gray-800">{{ d.order.order_number }}</td>
                                 <td class="py-3.5 px-3 text-gray-600">{{ d.delivery_location }}</td>
                                 <td class="py-3.5 px-3 text-gray-800">{% if d.rider %}{{ d.rider.get_full_name|default:d.rider.username }}{% elif d.assigned_to %}{{ d.assigned_to.get_full_name|default:d.assigned_to.username }}{% else %}Unassigned{% endif %}</td>
+                                <td class="py-3.5 px-3">
+                                    {% if d.proof_photo %}
+                                        <a href="{{ d.proof_photo.url }}" target="_blank" rel="noopener" class="inline-block" title="View Proof of Delivery">
+                                            <img src="{{ d.proof_photo.url }}" alt="Proof" class="w-9 h-9 object-cover rounded-lg border border-gray-200 hover:scale-110 transition shadow-sm">
+                                        </a>
+                                    {% else %}
+                                        <span class="text-gray-400 text-[10px] italic">Pending</span>
+                                    {% endif %}
+                                </td>
                                 <td class="py-3.5 px-3 text-right">
                                     <span class="bg-brand-50 text-brand-700 font-bold px-2.5 py-1 rounded-full text-[10px] uppercase">
                                         {{ d.status }}
@@ -532,7 +542,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5" class="py-8 text-center text-gray-400">No active delivery requests at the moment.</td>
+                                <td colspan="6" class="py-8 text-center text-gray-400">No active delivery requests at the moment.</td>
                             </tr>
                             {% endfor %}
                         </tbody>

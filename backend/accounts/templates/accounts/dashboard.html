@@ -340,11 +340,12 @@
 
             <!-- Info Bar (GPS Location & Pts / Logout) -->
             <div class="flex items-center justify-between bg-brand-card/90 border border-white/10 px-4 py-2 rounded-xl text-xs">
-                <div class="flex items-center gap-2">
+                <div onclick="openMapModal()" class="flex items-center gap-2 cursor-pointer hover:bg-white/10 px-2 py-1 rounded-lg transition active:scale-95" title="Click to view real-time location on map">
                     <span class="w-6 h-6 rounded-lg bg-brand-orange text-white flex items-center justify-center text-[10px]">
                         <i class="fa-solid fa-location-dot"></i>
                     </span>
                     <span id="gps-location-text" class="font-bold text-white">Acquiring GPS...</span>
+                    <i class="fa-solid fa-chevron-right text-[10px] text-white/50 ml-1"></i>
                 </div>
                 <div class="flex items-center gap-3">
                     <!-- Rewards / Points Badge -->
@@ -357,8 +358,8 @@
 
         <div class="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-brand-orange text-white flex items-center justify-center font-black text-lg">
-                    <i class="fa-solid fa-graduation-cap"></i>
+                <div class="w-10 h-10 rounded-xl bg-brand-orange/20 border border-brand-orange/30 p-1 flex items-center justify-center overflow-hidden shadow">
+                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="w-full h-full object-contain">
                 </div>
                 <div>
                     <h1 class="text-xs sm:text-base font-black text-white leading-tight">Hello, {{ faculty_display_name }}!</h1>
@@ -867,7 +868,7 @@
         <div class="glass-panel rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
             <div class="p-4 border-b border-white/10 flex justify-between items-center glass-panel-head">
                 <h3 class="font-black text-white text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-bell text-brand-orange"></i> Ongoing Orders & Live Tracking
+                    <i class="fa-solid fa-bell text-brand-orange"></i> Recent Orders History & Live Tracking
                 </h3>
                 <button onclick="closeOngoingOrdersModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
@@ -876,6 +877,60 @@
             </div>
             <div class="p-4 glass-panel-foot border-t border-white/10 text-center text-xs text-brand-slate">
                 <span>Palawan State University Canteen Express Delivery System</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= FACULTY E-RECEIPT MODAL ================= -->
+    <div id="faculty-ereceipt-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center glass-panel-head">
+                <h3 class="font-black text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-receipt text-brand-orange"></i> Faculty Order E-Receipt
+                </h3>
+                <button onclick="closeFacultyEReceiptModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="faculty-ereceipt-content" class="p-6 overflow-y-auto space-y-4 flex-1 glass-scroll text-xs text-white">
+                <div id="printable-faculty-ereceipt" class="bg-white text-zinc-900 p-5 rounded-2xl space-y-3 shadow-xl font-mono">
+                    <div class="text-center space-y-1 border-b border-dashed border-zinc-300 pb-3">
+                        <h4 class="font-black text-sm tracking-widest text-zinc-900">CANTEEN EXPRESS</h4>
+                        <p class="text-[10px] text-zinc-500">Palawan State University - Main Campus</p>
+                        <p class="text-[10px] text-zinc-500" id="fac-receipt-date">--</p>
+                    </div>
+                    <div class="space-y-1 border-b border-dashed border-zinc-300 pb-3 text-[11px]">
+                        <div class="flex justify-between"><span>Order No:</span><strong id="fac-rec-order-no">#CE-0000</strong></div>
+                        <div class="flex justify-between"><span>Customer:</span><strong id="fac-rec-customer">--</strong></div>
+                        <div class="flex justify-between"><span>Location:</span><strong id="fac-rec-location" class="text-right truncate max-w-[180px]">--</strong></div>
+                        <div class="flex justify-between"><span>Rider:</span><strong id="fac-rec-rider">--</strong></div>
+                        <div class="flex justify-between"><span>Status:</span><strong class="text-emerald-600">DELIVERED</strong></div>
+                        <div class="flex justify-between"><span>Delivered At:</span><strong id="fac-rec-time">--</strong></div>
+                    </div>
+                    <div class="space-y-1 border-b border-dashed border-zinc-300 pb-3">
+                        <p class="font-bold text-[10px] uppercase text-zinc-400">Items Ordered</p>
+                        <div id="fac-rec-items-list" class="space-y-1">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    <div class="space-y-1 text-[11px] pt-1">
+                        <div class="flex justify-between"><span>Subtotal:</span><span id="fac-rec-subtotal">₱0.00</span></div>
+                        <div class="flex justify-between"><span>Delivery Fee:</span><span id="fac-rec-fee">₱0.00</span></div>
+                        <div class="flex justify-between font-black text-sm pt-1 border-t border-zinc-300 text-orange-600">
+                            <span>Total Paid:</span><span id="fac-rec-total">₱0.00</span>
+                        </div>
+                    </div>
+                    <div class="pt-3 text-center space-y-1 border-t border-dashed border-zinc-300">
+                        <svg id="faculty-ereceipt-barcode" class="w-full h-12 mx-auto"></svg>
+                        <p class="text-[9px] text-zinc-400">Verified Campus E-Receipt</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 glass-panel-foot border-t border-white/10 flex justify-between items-center text-xs">
+                <button onclick="window.print()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-print"></i> Print Receipt
+                </button>
+                <button onclick="closeFacultyEReceiptModal()" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition shadow">
+                    Close
+                </button>
             </div>
         </div>
     </div>
@@ -1260,6 +1315,7 @@
     const CAMPUS_CENTER_LAT = 9.77778;
     const CAMPUS_CENTER_LNG = 118.73333;
     const CAMPUS_RADIUS_KM = 0.8;
+    const ENFORCE_GEOFENCE = {{ enforce_geofence|yesno:"true,false" }};
 
     // Required basemap credit. Standard OSM raster tiles, free and keyless.
     // Verified to return real tiles at z19 for this campus, so building
@@ -1315,6 +1371,7 @@
     }
 
     function isOnCampus(lat, lng) {
+        if (!ENFORCE_GEOFENCE) return true;
         const R = 6371.0;
         const dLat = (lat - CAMPUS_CENTER_LAT) * Math.PI / 180;
         const dLng = (lng - CAMPUS_CENTER_LNG) * Math.PI / 180;
@@ -1334,12 +1391,12 @@
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
                         const gpsEl = document.getElementById('gps-location-text');
-                        if (isOnCampus(pos.coords.latitude, pos.coords.longitude)) {
-                            currentLat = pos.coords.latitude;
-                            currentLng = pos.coords.longitude;
+                        currentLat = pos.coords.latitude;
+                        currentLng = pos.coords.longitude;
+                        if (isOnCampus(currentLat, currentLng)) {
                             if (gpsEl) gpsEl.innerText = `${buildGpsLabel(currentLat, currentLng)} (GPS Active)`;
                         } else {
-                            if (gpsEl) gpsEl.innerText = "PSU Campus (No Delivery)";
+                            if (gpsEl) gpsEl.innerText = "Outside PalSU (No Delivery)";
                         }
                     },
                     (err) => {
@@ -1348,9 +1405,9 @@
                             return;
                         }
                         const gpsEl = document.getElementById('gps-location-text');
-                        if (gpsEl) gpsEl.innerText = "PSU Campus (Default GPS)";
+                        if (gpsEl) gpsEl.innerText = "Outside PalSU (GPS Default)";
                     },
-                    { enableHighAccuracy: highAcc, timeout: highAcc ? 12000 : 8000, maximumAge: 60000 }
+                    { enableHighAccuracy: highAcc, timeout: highAcc ? 12000 : 8000, maximumAge: 0 }
                 );
             };
             initGeo(true);
@@ -1359,9 +1416,9 @@
             navigator.geolocation.watchPosition(
                 (pos) => {
                     const gpsEl = document.getElementById('gps-location-text');
-                    if (isOnCampus(pos.coords.latitude, pos.coords.longitude)) {
-                        currentLat = pos.coords.latitude;
-                        currentLng = pos.coords.longitude;
+                    currentLat = pos.coords.latitude;
+                    currentLng = pos.coords.longitude;
+                    if (isOnCampus(currentLat, currentLng)) {
                         if (gpsEl) gpsEl.innerText = `${buildGpsLabel(currentLat, currentLng)} (GPS Active)`;
                         // Live-update the checkout map pin while it's open.
                         if (checkoutMap && !document.getElementById('checkout-modal').classList.contains('hidden')) {
@@ -1379,12 +1436,19 @@
                             if (mapBuilding) mapBuilding.innerText = buildGpsLabel(currentLat, currentLng);
                         }
                     } else {
-                        if (gpsEl) gpsEl.innerText = "PSU Campus (No Delivery)";
-                        console.warn('Device GPS moved off-campus; keeping campus default.');
+                        if (gpsEl) gpsEl.innerText = "Outside PalSU (No Delivery)";
+                        if (leafletMap && leafletMarker && !document.getElementById('map-modal').classList.contains('hidden')) {
+                            leafletMarker.setLatLng([currentLat, currentLng]);
+                            leafletMap.setView([currentLat, currentLng], 16);
+                            document.getElementById('map-lat').innerText = currentLat.toFixed(4);
+                            document.getElementById('map-lng').innerText = currentLng.toFixed(4);
+                            const mapBuilding = document.getElementById('map-building');
+                            if (mapBuilding) mapBuilding.innerText = `Outside PalSU (${currentLat.toFixed(4)}, ${currentLng.toFixed(4)})`;
+                        }
                     }
                 },
                 () => {},
-                { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
             );
         }
     });
@@ -1534,11 +1598,19 @@
                         <span>Rider: <strong class="text-white">${d.rider_name}</strong></span>
                         <span class="text-brand-orange font-bold">₱${(d.total_payment || d.total_amount || 0).toFixed(2)}</span>
                     </div>
-                    <div class="pt-2 border-t border-white/5 flex justify-end">
-                        ${hasAssignedRider(d) ? `
-                        <button onclick="openRiderChat(${d.id}, '${d.order_number}', '${d.rider_name}')" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md">
-                            <i class="fa-solid fa-comments"></i> In-App Chat with Rider
-                        </button>` : ''}
+                    <div class="pt-2 border-t border-white/5 flex justify-between items-center">
+                        <div>
+                            ${d.raw_status === 'DELIVERED' ? `
+                            <button onclick="openFacultyEReceiptById(${d.id})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md cursor-pointer">
+                                <i class="fa-solid fa-receipt"></i> E-Receipt
+                            </button>` : ''}
+                        </div>
+                        <div>
+                            ${hasAssignedRider(d) ? `
+                            <button onclick="openRiderChat(${d.id}, '${d.order_number}', '${d.rider_name}')" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md cursor-pointer">
+                                <i class="fa-solid fa-comments"></i> Chat
+                            </button>` : ''}
+                        </div>
                     </div>
                 `;
                 container.appendChild(card);
@@ -1548,6 +1620,57 @@
 
     function closeOngoingOrdersModal() {
         document.getElementById('ongoing-orders-modal').classList.add('hidden');
+    }
+
+    function openFacultyEReceiptById(deliveryId) {
+        const d = ongoingDeliveriesData.find(item => item.id === deliveryId);
+        if (!d) return;
+        openFacultyEReceiptModal(d);
+    }
+
+    function openFacultyEReceiptModal(d) {
+        document.getElementById('fac-rec-order-no').innerText = d.order_number || '--';
+        document.getElementById('fac-rec-customer').innerText = d.customer_name || '--';
+        document.getElementById('fac-rec-location').innerText = d.location || '--';
+        document.getElementById('fac-rec-rider').innerText = d.rider_name || '--';
+        document.getElementById('fac-rec-time').innerText = d.delivered_at || d.created_at || '--';
+        document.getElementById('fac-receipt-date').innerText = new Date().toLocaleString();
+
+        const itemsList = document.getElementById('fac-rec-items-list');
+        itemsList.innerHTML = '';
+        if (d.items && d.items.length > 0) {
+            d.items.forEach(i => {
+                const row = document.createElement('div');
+                row.className = "flex justify-between text-[11px]";
+                row.innerHTML = `<span>${i.qty}x ${escapeHTML(i.name)}</span><span>₱${(i.price * i.qty).toFixed(2)}</span>`;
+                itemsList.appendChild(row);
+            });
+        } else {
+            itemsList.innerHTML = '<p class="text-[10px] text-zinc-400 italic">Order items details</p>';
+        }
+
+        document.getElementById('fac-rec-subtotal').innerText = '₱' + Number(d.total_amount || 0).toFixed(2);
+        document.getElementById('fac-rec-fee').innerText = '₱' + Number(d.delivery_fee || 0).toFixed(2);
+        document.getElementById('fac-rec-total').innerText = '₱' + Number(d.total_payment || d.total_amount || 0).toFixed(2);
+
+        document.getElementById('ongoing-orders-modal').classList.add('hidden');
+        document.getElementById('faculty-ereceipt-modal').classList.remove('hidden');
+
+        try {
+            JsBarcode("#faculty-ereceipt-barcode", (d.order_number || "CE-0000").toString(), {
+                format: "CODE128",
+                lineColor: "#111",
+                width: 2,
+                height: 40,
+                displayValue: true
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function closeFacultyEReceiptModal() {
+        document.getElementById('faculty-ereceipt-modal').classList.add('hidden');
     }
 
     function openRiderChat(deliveryId, orderNum, riderName) {
@@ -2371,7 +2494,7 @@
                     : [[d.rider_lat, d.rider_lng], [d.dest_lat, d.dest_lng]];
                 const style = routed
                     ? { color: '#FF6117', weight: 5, opacity: 0.95 }
-                    : { color: '#FF6117', weight: 3, opacity: 0.8, dashArray: '7 6' };
+                    : { color: '#FF6117', weight: 5, opacity: 0.95 };
                 if (!viewOrderRouteLine) {
                     viewOrderRouteCasing = L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.35 }).addTo(viewOrderMap);
                     viewOrderRouteLine = L.polyline(pts, style).addTo(viewOrderMap);
@@ -2533,28 +2656,29 @@
             if (!checkoutMap) {
                 const latDelta = CAMPUS_RADIUS_KM / 110.574;
                 const lngDelta = CAMPUS_RADIUS_KM / (111.320 * Math.cos(CAMPUS_CENTER_LAT * Math.PI / 180));
-                const campusBounds = L.latLngBounds(
+                const campusBounds = ENFORCE_GEOFENCE ? L.latLngBounds(
                     [CAMPUS_CENTER_LAT - latDelta, CAMPUS_CENTER_LNG - lngDelta],
                     [CAMPUS_CENTER_LAT + latDelta, CAMPUS_CENTER_LNG + lngDelta]
-                );
+                ) : null;
 
                 checkoutMap = L.map('checkout-mini-map', {
                     zoomControl: true,
-                    minZoom: 15,
+                    minZoom: ENFORCE_GEOFENCE ? 15 : 3,
                     maxZoom: 19,
-                    maxBounds: campusBounds,
-                    maxBoundsViscosity: 1.0
+                    ...(campusBounds ? { maxBounds: campusBounds, maxBoundsViscosity: 1.0 } : {})
                 }).setView([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], 17);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19, subdomains: 'abc', attribution: OSM_ATTRIBUTION
         }).addTo(checkoutMap);
 
-                // Draw the campus delivery zone outline
-                L.circle([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], {
-                    radius: CAMPUS_RADIUS_KM * 1000,
-                    color: '#f97316', weight: 1.5, dashArray: '4 6', fillColor: '#f97316', fillOpacity: 0.05
-                }).addTo(checkoutMap);
+                // Draw the campus delivery zone outline if geofence enforcement is active
+                if (ENFORCE_GEOFENCE) {
+                    L.circle([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], {
+                        radius: CAMPUS_RADIUS_KM * 1000,
+                        color: '#f97316', weight: 1.5, dashArray: '4 6', fillColor: '#f97316', fillOpacity: 0.05
+                    }).addTo(checkoutMap);
+                }
 
                 const pinIcon = L.divIcon({
                     className: '',
@@ -2607,7 +2731,7 @@
     function syncCheckoutStatus() {
         const statusEl = document.getElementById('checkout-map-status');
         if (statusEl) {
-            statusEl.innerText = `Pin set: ${currentLat.toFixed(5)}, ${currentLng.toFixed(5)} — PSU Campus`;
+            statusEl.innerText = `Pin set: ${currentLat.toFixed(5)}, ${currentLng.toFixed(5)} — PalSU Campus`;
             statusEl.classList.remove('text-red-400');
             statusEl.classList.add('text-brand-slate');
             statusEl.closest('p')?.classList.remove('text-red-400');
@@ -2693,7 +2817,7 @@
             submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sensing Live Location...`;
 
             const handlePosition = (lat, lng) => {
-                if (!isOnCampus(lat, lng)) {
+                if (ENFORCE_GEOFENCE && !isOnCampus(lat, lng)) {
                     showCheckoutError('Outside Campus Geofence', 'Your current GPS location is outside the Palawan State University campus. Delivery is strictly campus-only.');
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
@@ -2715,32 +2839,21 @@
                             return;
                         }
 
-                        if (currentLat && currentLng && isOnCampus(currentLat, currentLng)) {
-                            handlePosition(currentLat, currentLng);
-                            return;
-                        }
-
-                        let errMessage = 'Location access is required for campus delivery orders. Please enable location permissions in your browser/device settings and try again.';
+                        let errMessage = 'Live GPS location is required for campus delivery orders. Please ensure location services are enabled on your device and try again.';
                         if (err.code === err.PERMISSION_DENIED) {
                             errMessage = 'Location permission was denied. You must allow location access to place a campus delivery order.';
                         } else if (err.code === err.POSITION_UNAVAILABLE || err.code === err.TIMEOUT) {
-                            // If location is on but GPS timed out / unavailable, fallback to campus center anchor gracefully instead of blocking order
-                            handlePosition(9.77778, 118.73333);
-                            return;
+                            errMessage = 'Unable to detect your real-time GPS location. Please make sure your device location is turned on and you are within PalSU campus.';
                         }
-                        showCheckoutError('Location Access Required', errMessage);
+                        showCheckoutError('Location Verification Failed', errMessage);
                         submitBtn.disabled = false;
                         submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
                     },
-                    { timeout: highAcc ? 15000 : 8000, enableHighAccuracy: highAcc, maximumAge: 60000 }
+                    { timeout: highAcc ? 12000 : 6000, enableHighAccuracy: highAcc, maximumAge: 0 }
                 );
             };
 
-            if (currentLat && currentLng && isOnCampus(currentLat, currentLng)) {
-                handlePosition(currentLat, currentLng);
-            } else {
-                attemptGeo(true);
-            }
+            attemptGeo(true);
         } else {
             proceedWithFacultyOrder();
         }

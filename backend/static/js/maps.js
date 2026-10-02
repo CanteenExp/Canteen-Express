@@ -269,7 +269,7 @@
                     color: style.color || '#FF6117',
                     weight: style.weight || 3,
                     opacity: style.opacity != null ? style.opacity : 0.8,
-                    dashArray: style.dashArray || '7 6'
+                    dashArray: style.dashArray || null
                 }).addTo(map);
                 layers.push(line);
                 return { setLatLngs: function (np) { line.setLatLngs(np); } };

@@ -137,6 +137,8 @@
                         <th class="py-3 px-4">Order ID</th>
                         <th class="py-3 px-4">Customer</th>
                         <th class="py-3 px-4">Status Log</th>
+                        <th class="py-3 px-4">Rating & Feedback</th>
+                        <th class="py-3 px-4">Proof Photo</th>
                         <th class="py-3 px-4">Timestamp</th>
                     </tr>
                 </thead>
@@ -146,11 +148,32 @@
                         <td class="py-3.5 px-4 font-black text-dark-900">#{{ order.id }}</td>
                         <td class="py-3.5 px-4 text-gray-800">{% if order.customer %}{{ order.customer.username }}{% else %}Walk-in Guest{% endif %}</td>
                         <td class="py-3.5 px-4 text-xs font-bold text-blue-600">{{ order.status }}</td>
+                        <td class="py-3.5 px-4 text-xs">
+                            {% with fb=order.feedbacks.first %}
+                                {% if fb %}
+                                    <div class="flex items-center gap-1 text-amber-500 font-bold">
+                                        <span>★ {{ fb.rating }}/5</span>
+                                    </div>
+                                    {% if fb.comment %}<p class="text-[11px] text-gray-500 italic mt-0.5">"{{ fb.comment }}"</p>{% endif %}
+                                {% else %}
+                                    <span class="text-gray-400">No rating</span>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="py-3.5 px-4 text-xs">
+                            {% if order.delivery_request and order.delivery_request.proof_photo %}
+                                <a href="{{ order.delivery_request.proof_photo.url }}" target="_blank" rel="noopener" class="inline-block">
+                                    <img src="{{ order.delivery_request.proof_photo.url }}" alt="Proof" class="w-10 h-10 object-cover rounded-lg border border-gray-200 hover:scale-110 transition">
+                                </a>
+                            {% else %}
+                                <span class="text-gray-400">None</span>
+                            {% endif %}
+                        </td>
                         <td class="py-3.5 px-4 text-gray-400 text-xs">{{ order.created_at }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="py-6 text-center text-gray-400 text-sm">
+                        <td colspan="6" class="py-6 text-center text-gray-400 text-sm">
                             No recent transaction audit logs found.
                         </td>
                     </tr>
