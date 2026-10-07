@@ -893,36 +893,36 @@
                 <button onclick="closeFacultyEReceiptModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <div id="faculty-ereceipt-content" class="p-6 overflow-y-auto space-y-4 flex-1 glass-scroll text-xs text-white">
-                <div id="printable-faculty-ereceipt" class="bg-white text-zinc-900 p-5 rounded-2xl space-y-3 shadow-xl font-mono">
-                    <div class="text-center space-y-1 border-b border-dashed border-zinc-300 pb-3">
-                        <h4 class="font-black text-sm tracking-widest text-zinc-900">CANTEEN EXPRESS</h4>
-                        <p class="text-[10px] text-zinc-500">Palawan State University - Main Campus</p>
-                        <p class="text-[10px] text-zinc-500" id="fac-receipt-date">--</p>
+                <div id="printable-faculty-ereceipt" class="bg-white text-black p-5 rounded-2xl space-y-3 shadow-xl font-mono">
+                    <div class="text-center space-y-1 border-b border-dashed border-zinc-400 pb-3">
+                        <h4 class="font-black text-sm tracking-widest text-black">CANTEEN EXPRESS</h4>
+                        <p class="text-[10px] text-zinc-700">Palawan State University - Main Campus</p>
+                        <p class="text-[10px] text-zinc-700" id="fac-receipt-date">--</p>
                     </div>
-                    <div class="space-y-1 border-b border-dashed border-zinc-300 pb-3 text-[11px]">
-                        <div class="flex justify-between"><span>Order No:</span><strong id="fac-rec-order-no">#CE-0000</strong></div>
-                        <div class="flex justify-between"><span>Customer:</span><strong id="fac-rec-customer">--</strong></div>
-                        <div class="flex justify-between"><span>Location:</span><strong id="fac-rec-location" class="text-right truncate max-w-[180px]">--</strong></div>
-                        <div class="flex justify-between"><span>Rider:</span><strong id="fac-rec-rider">--</strong></div>
-                        <div class="flex justify-between"><span>Status:</span><strong class="text-emerald-600">DELIVERED</strong></div>
-                        <div class="flex justify-between"><span>Delivered At:</span><strong id="fac-rec-time">--</strong></div>
+                    <div class="space-y-1 border-b border-dashed border-zinc-400 pb-3 text-[11px] text-black">
+                        <div class="flex justify-between"><span class="text-black">Order No:</span><strong id="fac-rec-order-no" class="text-black">#CE-0000</strong></div>
+                        <div class="flex justify-between"><span class="text-black">Customer:</span><strong id="fac-rec-customer" class="text-black">--</strong></div>
+                        <div class="flex justify-between"><span class="text-black">Location:</span><strong id="fac-rec-location" class="text-black text-right truncate max-w-[180px]">--</strong></div>
+                        <div class="flex justify-between"><span class="text-black">Rider:</span><strong id="fac-rec-rider" class="text-black">--</strong></div>
+                        <div class="flex justify-between"><span class="text-black">Status:</span><strong class="text-emerald-600">DELIVERED</strong></div>
+                        <div class="flex justify-between"><span class="text-black">Delivered At:</span><strong id="fac-rec-time" class="text-black">--</strong></div>
                     </div>
-                    <div class="space-y-1 border-b border-dashed border-zinc-300 pb-3">
-                        <p class="font-bold text-[10px] uppercase text-zinc-400">Items Ordered</p>
-                        <div id="fac-rec-items-list" class="space-y-1">
+                    <div class="space-y-1 border-b border-dashed border-zinc-400 pb-3">
+                        <p class="font-bold text-[10px] uppercase text-zinc-700">Items Ordered</p>
+                        <div id="fac-rec-items-list" class="space-y-1 text-black">
                             <!-- Populated dynamically -->
                         </div>
                     </div>
-                    <div class="space-y-1 text-[11px] pt-1">
-                        <div class="flex justify-between"><span>Subtotal:</span><span id="fac-rec-subtotal">₱0.00</span></div>
-                        <div class="flex justify-between"><span>Delivery Fee:</span><span id="fac-rec-fee">₱0.00</span></div>
-                        <div class="flex justify-between font-black text-sm pt-1 border-t border-zinc-300 text-orange-600">
-                            <span>Total Paid:</span><span id="fac-rec-total">₱0.00</span>
+                    <div class="space-y-1 text-[11px] pt-1 text-black">
+                        <div class="flex justify-between"><span class="text-black">Subtotal:</span><span id="fac-rec-subtotal" class="text-black">₱0.00</span></div>
+                        <div class="flex justify-between"><span class="text-black">Delivery Fee:</span><span id="fac-rec-fee" class="text-black">₱0.00</span></div>
+                        <div class="flex justify-between font-black text-sm pt-1 border-t border-zinc-400 text-orange-600">
+                            <span>Total Paid:</span><span id="fac-rec-total" class="text-orange-600">₱0.00</span>
                         </div>
                     </div>
-                    <div class="pt-3 text-center space-y-1 border-t border-dashed border-zinc-300">
+                    <div class="pt-3 text-center space-y-1 border-t border-dashed border-zinc-400">
                         <svg id="faculty-ereceipt-barcode" class="w-full h-12 mx-auto"></svg>
-                        <p class="text-[9px] text-zinc-400">Verified Campus E-Receipt</p>
+                        <p class="text-[9px] text-zinc-700">Verified Campus E-Receipt</p>
                     </div>
                 </div>
             </div>
@@ -1062,6 +1062,11 @@
                         <div class="flex items-center justify-between gap-2 pt-1.5 mt-1.5 border-t border-white/10">
                             <span class="text-brand-slate font-black uppercase tracking-wider">Amount paid</span>
                             <span id="ereceipt-total" class="font-black text-orange-400 text-sm">--</span>
+                        </div>
+                        <div class="pt-2">
+                            <button onclick="openFacultyEReceiptById(viewOrderDeliveryId)" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow">
+                                <i class="fa-solid fa-receipt"></i> View Official E-Receipt
+                            </button>
                         </div>
                     </div>
                 </div>
