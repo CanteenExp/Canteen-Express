@@ -699,17 +699,19 @@
                     </div>
 
                     <div class="space-y-1.5">
-                        <div class="flex items-center justify-between">
-                            <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate flex items-center gap-1.5"><i class="fa-solid fa-location-crosshairs text-brand-orange"></i> Pin on Campus Map</label>
-                            <button type="button" onclick="recenterCheckoutMap()" class="flex items-center gap-1 text-[10px] font-bold text-brand-slate hover:text-brand-orange transition bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1">
-                                <i class="fa-solid fa-crosshairs"></i> Recenter
-                            </button>
+                        <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate flex items-center gap-1.5"><i class="fa-solid fa-map-location-dot text-brand-orange"></i> Campus Location Map</label>
+                        <div onclick="openMapModal()" class="w-full p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between cursor-pointer transition group">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-brand-orange/20 text-brand-orange flex items-center justify-center text-base group-hover:scale-105 transition">
+                                    <i class="fa-solid fa-map"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-white text-xs">View Campus Delivery Map</p>
+                                    <p class="text-[10px] text-brand-slate" id="checkout-map-status">PalSU Campus · Tap to open interactive map</p>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-brand-slate group-hover:text-white transition"></i>
                         </div>
-                        <div id="checkout-mini-map" class="w-full h-52 rounded-2xl border border-white/10 overflow-hidden bg-zinc-800 z-[5]"></div>
-                        <p class="text-[10px] font-bold text-brand-slate flex items-center gap-1.5">
-                            <i class="fa-solid fa-circle-dot text-emerald-400"></i>
-                            <span id="checkout-map-status">Tap the map to set your exact delivery pin (campus only)</span>
-                        </p>
                     </div>
                 </div>
 
@@ -2648,76 +2650,10 @@
             showActiveOrderAlert(activeOrder);
             return;
         }
+        closeCartDrawer();
         setFulfillment('delivery');
         updateCheckoutSummary();
         document.getElementById('checkout-modal').classList.remove('hidden');
-
-        setTimeout(() => {
-            if (!checkoutMap) {
-                const latDelta = CAMPUS_RADIUS_KM / 110.574;
-                const lngDelta = CAMPUS_RADIUS_KM / (111.320 * Math.cos(CAMPUS_CENTER_LAT * Math.PI / 180));
-                const campusBounds = ENFORCE_GEOFENCE ? L.latLngBounds(
-                    [CAMPUS_CENTER_LAT - latDelta, CAMPUS_CENTER_LNG - lngDelta],
-                    [CAMPUS_CENTER_LAT + latDelta, CAMPUS_CENTER_LNG + lngDelta]
-                ) : null;
-
-                checkoutMap = L.map('checkout-mini-map', {
-                    zoomControl: true,
-                    minZoom: ENFORCE_GEOFENCE ? 15 : 3,
-                    maxZoom: 19,
-                    ...(campusBounds ? { maxBounds: campusBounds, maxBoundsViscosity: 1.0 } : {})
-                }).setView([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], 17);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19, subdomains: 'abc', attribution: OSM_ATTRIBUTION
-        }).addTo(checkoutMap);
-
-                // Draw the campus delivery zone outline if geofence enforcement is active
-                if (ENFORCE_GEOFENCE) {
-                    L.circle([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], {
-                        radius: CAMPUS_RADIUS_KM * 1000,
-                        color: '#f97316', weight: 1.5, dashArray: '4 6', fillColor: '#f97316', fillOpacity: 0.05
-                    }).addTo(checkoutMap);
-                }
-
-                const pinIcon = L.divIcon({
-                    className: '',
-                    html: '<div class="w-8 h-8 rounded-full bg-brand-orange border-2 border-white flex items-center justify-center shadow-xl" style="box-shadow:0 6px 20px rgba(255,97,23,.6)"><i class="fa-solid fa-location-dot text-white text-sm"></i></div>',
-                    iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -28]
-                });
-
-                currentLat = isOnCampus(currentLat, currentLng) ? currentLat : CAMPUS_CENTER_LAT;
-                currentLng = isOnCampus(currentLat, currentLng) ? currentLng : CAMPUS_CENTER_LNG;
-                checkoutMarker = L.marker([currentLat, currentLng], { icon: pinIcon, draggable: true }).addTo(checkoutMap);
-                syncCheckoutStatus();
-
-                checkoutMap.on('click', (e) => {
-                    if (isOnCampus(e.latlng.lat, e.latlng.lng)) {
-                        setCheckoutPin(e.latlng.lat, e.latlng.lng);
-                    } else {
-                        const statusEl = document.getElementById('checkout-map-status');
-                        if (statusEl) { statusEl.innerText = 'Outside delivery zone — keep pin inside campus'; statusEl.classList.add('text-red-400'); statusEl.classList.remove('text-brand-slate'); statusEl.closest('p')?.classList.add('text-red-400'); }
-                        setTimeout(recenterHidden, 1800);
-                    }
-                });
-
-                checkoutMarker.on('dragend', (e) => {
-                    const pos = e.target.getLatLng();
-                    if (isOnCampus(pos.lat, pos.lng)) {
-                        setCheckoutPin(pos.lat, pos.lng);
-                    } else {
-                        checkoutMarker.setLatLng([currentLat, currentLng]);
-                        const statusEl = document.getElementById('checkout-map-status');
-                        if (statusEl) { statusEl.innerText = 'Outside campus — pin snapped back'; statusEl.classList.add('text-red-400'); }
-                        setTimeout(recenterHidden, 1600);
-                    }
-                });
-            } else {
-                checkoutMap.setView([currentLat, currentLng], 17);
-                checkoutMarker.setLatLng([currentLat, currentLng]);
-                checkoutMap.invalidateSize();
-            }
-        }, 150);
     }
 
     function setCheckoutPin(lat, lng) {
