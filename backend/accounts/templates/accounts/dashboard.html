@@ -273,7 +273,7 @@
         @keyframes confirmCheck { 0% { transform: scale(0); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
     </style>
 </head>
-<body class="bg-brand-dark text-brand-light h-screen flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative" x-data="facultyPortal()">
+<body class="bg-brand-dark text-brand-light h-screen h-[100dvh] flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative" x-data="facultyPortal()">
 
     <!-- ================= HEADER ================= -->
     <header class="bg-brand-dark border-b border-white/10 shrink-0 space-y-2 pb-2">
@@ -500,7 +500,7 @@
 
 
     <!-- ================= FOOTER BAR ================= -->
-    <footer class="shrink-0 bg-brand-card border-t border-white/10 p-3 sm:p-4 shadow-2xl z-20">
+    <footer class="shrink-0 bg-brand-card border-t border-white/10 p-3 sm:p-4 pb-[max(env(safe-area-inset-bottom),12px)] shadow-2xl z-20">
         <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
             <div class="text-left">
