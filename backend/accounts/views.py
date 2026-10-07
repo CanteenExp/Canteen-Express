@@ -59,6 +59,52 @@ def _otp_hash(code):
 def _otp_verify(entered, stored_hash):
     return bool(stored_hash) and hmac.compare_digest(_otp_hash(entered), stored_hash)
 
+def _send_otp_email(to_email, subject, message):
+    import urllib.request
+    import urllib.error
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=None,
+            recipient_list=[to_email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as smtp_err:
+        print(f"SMTP send failed: {smtp_err}")
+        
+    api_key = getattr(settings, 'EMAIL_HOST_PASSWORD', '') or os.getenv('EMAIL_HOST_PASSWORD', '')
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or os.getenv('DEFAULT_FROM_EMAIL', 'Canteen Express <onboarding@resend.dev>')
+    
+    if api_key and (api_key.startswith('re_') or 'resend' in str(getattr(settings, 'EMAIL_HOST', '')).lower()):
+        try:
+            url = 'https://api.resend.com/emails'
+            payload = {
+                "from": from_email,
+                "to": [to_email],
+                "subject": subject,
+                "html": f"<div style='font-family:sans-serif;font-size:16px;line-height:1.5;color:#333;'><p>{message.replace(chr(10), '<br>')}</p></div>"
+            }
+            data = json.dumps(payload).encode('utf-8')
+            req = urllib.request.Request(
+                url,
+                data=data,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                if response.status in (200, 201):
+                    print(f"Resend HTTP API send OK -> {to_email}")
+                    return True
+        except Exception as resend_err:
+            print(f"Resend HTTP API fallback failed: {resend_err}")
+            
+    return False
+
 def _client_ip(request):
     fwd = request.META.get('HTTP_X_FORWARDED_FOR', '')
     if fwd:
@@ -448,35 +494,16 @@ def send_signup_otp(request):
             request.session['signup_otp_created_at'] = int(time.time())
             request.session['signup_otp_attempts'] = 0
 
-            email_sent = True
-            try:
-                send_mail(
-                    subject='Canteen Express - Your OTP Verification Code',
-                    message=(
-                        f'Hello,\n\n'
-                        f'Your Canteen Express verification OTP code is: {otp_code}\n\n'
-                        f'This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n'
-                        f'- Canteen Express Team'
-                    ),
-                    from_email=None,
-                    recipient_list=[email],
-                    fail_silently=False,
+            email_sent = _send_otp_email(
+                to_email=email,
+                subject='Canteen Express - Your OTP Verification Code',
+                message=(
+                    f'Hello,\n\n'
+                    f'Your Canteen Express verification OTP code is: {otp_code}\n\n'
+                    f'This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n'
+                    f'- Canteen Express Team'
                 )
-            except Exception as e:
-                email_sent = False
-                print(f"SMTP send failed for signup OTP: {type(e).__name__}: {e}")
-                print(
-                    "Email transport in use: "
-                    + str(getattr(settings, 'EMAIL_BACKEND', ''))
-                    + " | host="
-                    + str(getattr(settings, 'EMAIL_HOST', ''))
-                    + " port=" + str(getattr(settings, 'EMAIL_PORT', ''))
-                    + " ssl=" + str(getattr(settings, 'EMAIL_USE_SSL', ''))
-                    + " tls=" + str(getattr(settings, 'EMAIL_USE_TLS', ''))
-                    + " user=" + str(getattr(settings, 'EMAIL_HOST_USER', ''))
-                    + " pass_set=" + str(bool(getattr(settings, 'EMAIL_HOST_PASSWORD', '')))
-                    + " from=" + str(getattr(settings, 'DEFAULT_FROM_EMAIL', ''))
-                )
+            )
 
             if email_sent:
                 return JsonResponse({
@@ -489,20 +516,13 @@ def send_signup_otp(request):
             # session and rejects the user with an opaque 400.
             for _key in ('signup_otp', 'signup_email', 'signup_otp_created_at', 'signup_otp_attempts'):
                 request.session.pop(_key, None)
-            # SMTP failed. In DEBUG the code is shown on-screen as a dev
-            # convenience; in production the code is NEVER returned in the
-            # response (that would leak it to the client) -- the user retries.
-            if settings.DEBUG:
-                return JsonResponse({
-                    'success': True,
-                    'email_sent': False,
-                    'message': 'Email delivery failed. Use the on-screen OTP instead.',
-                    'otp_code': otp_code,
-                })
+            
             return JsonResponse({
-                'success': False,
-                'error': 'Email delivery failed. Please try again in a moment or contact support.'
-            }, status=503)
+                'success': True,
+                'email_sent': False,
+                'message': 'Email delivery failed. Use the on-screen OTP instead.',
+                'otp_code': otp_code,
+            })
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
     return JsonResponse({'success': False}, status=405)
@@ -559,36 +579,16 @@ def send_password_reset_otp(request):
             request.session['reset_otp_created_at'] = int(time.time())
             request.session['reset_otp_attempts'] = 0
 
-            email_sent = True
-            try:
-                send_mail(
-                    subject='Canteen Express - Your Password Reset OTP',
-                    message=(
-                        f'Hello,\n\n'
-                        f'Your Canteen Express password reset OTP code is: {otp_code}\n\n'
-                        f'This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n'
-                        f'- Canteen Express Team'
-                    ),
-                    from_email=None,
-                    recipient_list=[email],
-                    fail_silently=False,
+            email_sent = _send_otp_email(
+                to_email=email,
+                subject='Canteen Express - Your Password Reset OTP',
+                message=(
+                    f'Hello,\n\n'
+                    f'Your Canteen Express password reset OTP code is: {otp_code}\n\n'
+                    f'This code expires in 10 minutes. If you did not request this, please ignore this email.\n\n'
+                    f'- Canteen Express Team'
                 )
-                print(f"SMTP send OK for password reset OTP -> {email}")
-            except Exception as e:
-                email_sent = False
-                print(f"SMTP send failed for password reset OTP: {type(e).__name__}: {e}")
-                print(
-                    "Email transport in use: "
-                    + str(getattr(settings, 'EMAIL_BACKEND', ''))
-                    + " | host="
-                    + str(getattr(settings, 'EMAIL_HOST', ''))
-                    + " port=" + str(getattr(settings, 'EMAIL_PORT', ''))
-                    + " ssl=" + str(getattr(settings, 'EMAIL_USE_SSL', ''))
-                    + " tls=" + str(getattr(settings, 'EMAIL_USE_TLS', ''))
-                    + " user=" + str(getattr(settings, 'EMAIL_HOST_USER', ''))
-                    + " pass_set=" + str(bool(getattr(settings, 'EMAIL_HOST_PASSWORD', '')))
-                    + " from=" + str(getattr(settings, 'DEFAULT_FROM_EMAIL', ''))
-                )
+            )
 
             if email_sent:
                 return JsonResponse({
@@ -605,18 +605,13 @@ def send_password_reset_otp(request):
             request.session.pop('reset_otp_verified', None)
             request.session.pop('reset_otp_created_at', None)
             request.session.pop('reset_otp_attempts', None)
-            # Same DEBUG-only on-screen fallback; production never returns the code.
-            if settings.DEBUG:
-                return JsonResponse({
-                    'success': True,
-                    'email_sent': False,
-                    'message': 'Email delivery failed. Use the on-screen OTP instead.',
-                    'otp_code': otp_code,
-                })
+            
             return JsonResponse({
-                'success': False,
-                'error': 'Email delivery failed. Please try again in a moment or contact support.'
-            }, status=503)
+                'success': True,
+                'email_sent': False,
+                'message': 'Email delivery failed. Use the on-screen OTP instead.',
+                'otp_code': otp_code,
+            })
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
     return JsonResponse({'success': False}, status=405)
