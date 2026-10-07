@@ -2859,13 +2859,21 @@
                 closeCheckoutModal();
                 updateCartUI();
                 submitBtn.disabled = false;
-                if (isDelivery) {
-                    submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
-                    openOrderPlacedModal(data, deliveryLoc, pointsEarned);
-                } else {
-                    submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
-                    openPickupPlacedModal(data, pointsEarned);
-                }
+                submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
+                
+                const receiptData = {
+                    id: data.order_id || 1,
+                    order_number: data.order_number,
+                    customer_name: "{{ request.user.get_full_name|default:request.user.username }}",
+                    location: isDelivery ? deliveryLoc : 'Canteen Express Counter (Pickup)',
+                    rider_name: isDelivery ? 'Searching for Rider...' : 'N/A (Counter Pickup)',
+                    created_at: 'Just now',
+                    items: cartArray,
+                    total_amount: subtotal,
+                    delivery_fee: isDelivery ? fee : 0,
+                    total_payment: finalPayable
+                };
+                openFacultyEReceiptModal(receiptData);
             } else {
                 showCheckoutError('Checkout Error', data.message || 'Unknown error. Please try again.');
                 submitBtn.disabled = false;
