@@ -100,6 +100,9 @@ def _send_otp_email(to_email, subject, message):
                 if response.status in (200, 201):
                     print(f"Resend HTTP API send OK -> {to_email}")
                     return True
+        except urllib.error.HTTPError as he:
+            err_body = he.read().decode('utf-8') if he.fp else ''
+            print(f"Resend HTTP API HTTPError {he.code}: {err_body}")
         except Exception as resend_err:
             print(f"Resend HTTP API fallback failed: {resend_err}")
             
