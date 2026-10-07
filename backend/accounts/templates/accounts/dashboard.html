@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     
     <style>
@@ -927,10 +928,10 @@
                 </div>
             </div>
             <div class="p-4 glass-panel-foot border-t border-white/10 flex justify-between items-center text-xs">
-                <button onclick="window.print()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
-                    <i class="fa-solid fa-print"></i> Print Receipt
+                <button onclick="downloadFacultyEReceipt()" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-download"></i> Download Receipt
                 </button>
-                <button onclick="closeFacultyEReceiptModal()" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition shadow">
+                <button onclick="closeFacultyEReceiptModal()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-bold px-4 py-2 rounded-xl transition shadow">
                     Close
                 </button>
             </div>
@@ -1678,6 +1679,31 @@
 
     function closeFacultyEReceiptModal() {
         document.getElementById('faculty-ereceipt-modal').classList.add('hidden');
+    }
+
+    async function downloadFacultyEReceipt() {
+        const receiptCard = document.getElementById('printable-faculty-ereceipt');
+        if (!receiptCard) return;
+
+        if (document.fonts) {
+            await document.fonts.ready;
+        }
+
+        html2canvas(receiptCard, {
+            scale: 3,
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            logging: false
+        }).then(canvas => {
+            const link = document.createElement('a');
+            const orderNum = document.getElementById('fac-rec-order-no').innerText || 'Receipt';
+            link.download = `CanteenExpress-EReceipt-${orderNum}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }).catch(err => {
+            console.error('Download receipt error:', err);
+            showToast('Failed to download receipt image.');
+        });
     }
 
     function openRiderChat(deliveryId, orderNum, riderName) {
