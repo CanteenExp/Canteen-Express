@@ -2428,12 +2428,11 @@
     // _feedback_gate() in customer_portal/views.py so the button and the server
     // never disagree about whether a rating can be submitted.
     function isRateable(d) {
-        return !!d && d.raw_status === 'DELIVERED' && !!d.proof_photo;
+        return !!d && (d.raw_status === 'DELIVERED' || d.raw_status === 'COMPLETED');
     }
     function rateBlockedReason(d) {
         if (!d) return 'No order selected.';
-        if (d.raw_status !== 'DELIVERED') return 'Rating opens once the rider marks this delivery as delivered.';
-        if (!d.proof_photo) return 'Rating opens once the rider attaches the proof-of-delivery photo.';
+        if (d.raw_status !== 'DELIVERED' && d.raw_status !== 'COMPLETED') return 'Rating opens once the order is completed.';
         return '';
     }
 

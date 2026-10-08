@@ -1655,6 +1655,13 @@ async function renderOrderHistory() {
     if (!container) return;
     const list = getOrderHistory();
 
+    // Sort so unpaid/pre-orders come first
+    list.sort((a, b) => {
+        if (a.status === 'unpaid' && b.status !== 'unpaid') return -1;
+        if (a.status !== 'unpaid' && b.status === 'unpaid') return 1;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+
     if (list.length === 0) {
         container.innerHTML = `
             <div class="text-center py-10 space-y-3">
@@ -1668,7 +1675,7 @@ async function renderOrderHistory() {
     }
 
     const cards = await Promise.all(list.map(async (rec) => {
-        let status = 'unpaid';
+        let status = rec.status || 'unpaid';
         let expiresAt = rec.expires_at;
         try {
             const res = await fetch(`/kiosk/api/order-status/${encodeURIComponent(rec.order_number)}/`);
@@ -1689,15 +1696,13 @@ async function renderOrderHistory() {
                     </div>`;
         }).join('');
         const more = (rec.items || []).length > 3 ? `<p class="text-[10px] text-brand-slate">+ ${rec.items.length - 3} more item(s)</p>` : '';
-        // Kiosk slips are payable ONLY at the counter; give the clock so the
-        // customer can see the deadline and the cancelled state reads clearly.
         let expiryHint = '';
         if (status === 'unpaid' && expiresAt) {
             const d = new Date(expiresAt);
             if (!isNaN(d.getTime())) {
                 const at = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                 expiryHint = `<div class="mt-1.5 flex items-center gap-1.5 text-[10px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1">
-                    <i class="fa-regular fa-clock"></i> Pay at counter before ${at}
+                    <i class="fa-regular fa-clock"></i> Pay at counter before ${at} (Click to view slip)
                 </div>`;
             }
         } else if (status === 'cancelled') {
@@ -1705,17 +1710,15 @@ async function renderOrderHistory() {
                 <i class="fa-solid fa-hourglass-end"></i> Slip cancelled — expired or voided
             </div>`;
         }
-        // Rating is only accepted once the order is fully completed (see
-        // submit_feedback_api), so only then do we offer the Rate & Review button.
         const rateable = status === 'completed';
         const rateBtn = rateable
-            ? `<button onclick="openHistoryRating('${rec.order_number}', this)" class="mt-2 w-full bg-brand-orange hover:bg-orange-600 text-white text-[10px] font-extrabold py-2 rounded-xl uppercase tracking-wider transition flex items-center justify-center gap-1.5">
+            ? `<button onclick="event.stopPropagation(); openHistoryRating('${rec.order_number}', this)" class="mt-2 w-full bg-brand-orange hover:bg-orange-600 text-white text-[10px] font-extrabold py-2 rounded-xl uppercase tracking-wider transition flex items-center justify-center gap-1.5">
                     <i class="fa-solid fa-star"></i> Rate & Review
                </button>`
             : '';
 
         return `
-            <div class="hist-card bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-2">
+            <div onclick="viewOrderSlipFromHistory('${rec.order_number}')" class="hist-card bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-3.5 space-y-2 cursor-pointer transition">
                 <div class="flex items-center justify-between gap-2">
                     <span class="text-xs font-black text-white">${rec.order_number}</span>
                     ${historyStatusChip(status)}
@@ -1738,6 +1741,29 @@ async function renderOrderHistory() {
     }));
 
     container.innerHTML = cards.join('');
+}
+
+async function viewOrderSlipFromHistory(orderNumber) {
+    try {
+        const res = await fetch(`/kiosk/api/order-status/${encodeURIComponent(orderNumber)}/`);
+        const data = await res.json();
+        if (data.exists) {
+            currentPendingOrder = {
+                order_number: orderNumber,
+                total_amount: data.total_amount || 0,
+                dining_option: data.dining_option || 'DINE-IN',
+                created_at: data.created_at,
+                expires_at: data.expires_at,
+                status: data.status,
+                items: data.items || []
+            };
+            openQueueSlipModal();
+        } else {
+            showToast('Order slip not found.', 'error');
+        }
+    } catch (e) {
+        showToast('Could not load order slip.', 'error');
+    }
 }
 
 const historyRatings = {};
