@@ -68,7 +68,7 @@ GPS_MAX_ACCURACY_M = float(os.getenv('GPS_MAX_ACCURACY_M', '40'))
 CANTEEN_LAT = float(os.getenv('CANTEEN_LAT', '9.77778'))
 CANTEEN_LNG = float(os.getenv('CANTEEN_LNG', '118.73333'))
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com', '.loca.lt', '.devtunnels.ms', '.railway.app']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com', '.loca.lt', '.devtunnels.ms', '.railway.app', '.up.railway.app', '.canteenexpress.site', 'canteenexpress.site']
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
 # Staff "Admin / System" governance PIN. MUST be overridden via env in production
@@ -336,6 +336,9 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.devtunnels.ms',
     'https://*.onrender.com',
     'https://*.railway.app',
+    'https://*.up.railway.app',
+    'https://*.canteenexpress.site',
+    'https://canteenexpress.site',
     'https://*.localhost',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
