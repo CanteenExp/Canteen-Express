@@ -1,1 +1,1 @@
-web: python manage.py migrate --noinput && python -m gunicorn --timeout 60 config.wsgi:application
+web: python manage.py migrate --noinput && python -m gunicorn --workers 3 --threads 4 --timeout 60 config.wsgi:application
