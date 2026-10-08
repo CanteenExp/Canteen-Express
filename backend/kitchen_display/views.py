@@ -2,6 +2,7 @@ import json
 import time
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, StreamingHttpResponse
+from django.core.cache import cache
 from django.db import transaction
 from django.views.decorators.http import require_POST
 from django.utils import timezone
@@ -41,96 +42,104 @@ def staff_dashboard(request):
     except Exception:
         delivery_requests = []
 
-    # Sales Reports & Analytics
-    valid_orders = Order.objects.filter(status__in=['ready', 'completed'])
-    overall_orders = valid_orders
-    kiosk_orders = valid_orders.filter(customer__isnull=True)
-    faculty_orders = valid_orders.filter(customer__role='FACULTY')
-    from deliveries.models import DeliveryRequest
-    delivery_order_ids = DeliveryRequest.objects.values_list('order_id', flat=True)
-    delivery_orders = valid_orders.filter(id__in=delivery_order_ids)
+    # Sales Reports & Analytics (Cached for 30s to ensure instant staff dashboard loading)
+    cache_key = f'staff_dashboard_analytics_{today.isoformat()}'
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        overall_stats, kiosk_stats, faculty_stats, delivery_stats, rider_rankings, daily_sales, weekly_sales, monthly_sales, daily_chart_data, weekly_chart_data, monthly_chart_data, sales_today, sales_week, sales_month = cached_data
+    else:
+        valid_orders = Order.objects.filter(status__in=['ready', 'completed'])
+        overall_orders = valid_orders
+        kiosk_orders = valid_orders.filter(customer__isnull=True)
+        faculty_orders = valid_orders.filter(customer__role='FACULTY')
+        from deliveries.models import DeliveryRequest
+        delivery_order_ids = DeliveryRequest.objects.values_list('order_id', flat=True)
+        delivery_orders = valid_orders.filter(id__in=delivery_order_ids)
 
-    def compute_stats(qs):
-        s_today = qs.filter(created_at__date=today).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        s_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        s_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        c_today = qs.filter(created_at__date=today).count()
-        c_week = qs.filter(created_at__date__gte=week_start).count()
-        c_month = qs.filter(created_at__date__gte=month_start).count()
-        return {'today': s_today, 'week': s_week, 'month': s_month, 'count_today': c_today, 'count_week': c_week, 'count_month': c_month}
+        def compute_stats(qs):
+            s_today = qs.filter(created_at__date=today).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            s_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            s_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            c_today = qs.filter(created_at__date=today).count()
+            c_week = qs.filter(created_at__date__gte=week_start).count()
+            c_month = qs.filter(created_at__date__gte=month_start).count()
+            return {'today': s_today, 'week': s_week, 'month': s_month, 'count_today': c_today, 'count_week': c_week, 'count_month': c_month}
 
-    def compute_delivery_stats(qs):
-        base = compute_stats(qs)
-        d_fees_today = qs.filter(created_at__date=today).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
-        d_fees_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
-        d_fees_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
-        base['delivery_fees'] = {'today': d_fees_today, 'week': d_fees_week, 'month': d_fees_month}
-        return base
+        def compute_delivery_stats(qs):
+            base = compute_stats(qs)
+            d_fees_today = qs.filter(created_at__date=today).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
+            d_fees_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
+            d_fees_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
+            base['delivery_fees'] = {'today': d_fees_today, 'week': d_fees_week, 'month': d_fees_month}
+            return base
 
-    overall_stats = compute_stats(overall_orders)
-    kiosk_stats = compute_stats(kiosk_orders)
-    faculty_stats = compute_stats(faculty_orders)
-    delivery_stats = compute_delivery_stats(delivery_orders)
+        overall_stats = compute_stats(overall_orders)
+        kiosk_stats = compute_stats(kiosk_orders)
+        faculty_stats = compute_stats(faculty_orders)
+        delivery_stats = compute_delivery_stats(delivery_orders)
 
-    def get_rankings(date_filter=None):
-        f = Q(assigned_deliveries__status='DELIVERED')
-        if date_filter == 'daily':
-            f &= Q(assigned_deliveries__order__created_at__date=today)
-        elif date_filter == 'weekly':
-            f &= Q(assigned_deliveries__order__created_at__date__gte=week_start)
-        elif date_filter == 'monthly':
-            f &= Q(assigned_deliveries__order__created_at__date__gte=month_start)
-        return list(
-            User.objects.filter(role__in=['RIDER', 'DELIVERY'])
-            .annotate(
-                total_delivered=Count('assigned_deliveries', filter=f),
-                total_earnings=Sum('assigned_deliveries__order__delivery_fee', filter=f)
+        def get_rankings(date_filter=None):
+            f = Q(assigned_deliveries__status='DELIVERED')
+            if date_filter == 'daily':
+                f &= Q(assigned_deliveries__order__created_at__date=today)
+            elif date_filter == 'weekly':
+                f &= Q(assigned_deliveries__order__created_at__date__gte=week_start)
+            elif date_filter == 'monthly':
+                f &= Q(assigned_deliveries__order__created_at__date__gte=month_start)
+            return list(
+                User.objects.filter(role__in=['RIDER', 'DELIVERY'])
+                .annotate(
+                    total_delivered=Count('assigned_deliveries', filter=f),
+                    total_earnings=Sum('assigned_deliveries__order__delivery_fee', filter=f)
+                )
+                .order_by('-total_delivered')
             )
-            .order_by('-total_delivered')
+
+        rider_rankings = get_rankings(None)
+
+        daily_sales = list(
+            valid_orders
+            .annotate(period=TruncDate('created_at'))
+            .values('period')
+            .annotate(total=Sum('total_amount'), count=Count('id'))
+            .order_by('-period')[:7]
+        )
+        
+        weekly_sales = list(
+            valid_orders
+            .annotate(period=TruncWeek('created_at'))
+            .values('period')
+            .annotate(total=Sum('total_amount'), count=Count('id'))
+            .order_by('-period')[:4]
+        )
+        
+        monthly_sales = list(
+            valid_orders
+            .annotate(period=TruncMonth('created_at'))
+            .values('period')
+            .annotate(total=Sum('total_amount'), count=Count('id'))
+            .order_by('-period')[:6]
         )
 
-    rider_rankings = get_rankings(None)
+        daily_chart_data = {
+            'labels': [row['period'].strftime('%b %d') if row['period'] else '' for row in reversed(daily_sales)],
+            'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(daily_sales)],
+        }
+        weekly_chart_data = {
+            'labels': [f"Week of {row['period'].strftime('%b %d')}" if row['period'] else '' for row in reversed(weekly_sales)],
+            'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(weekly_sales)],
+        }
+        monthly_chart_data = {
+            'labels': [row['period'].strftime('%b %Y') if row['period'] else '' for row in reversed(monthly_sales)],
+            'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(monthly_sales)],
+        }
 
-    daily_sales = list(
-        valid_orders
-        .annotate(period=TruncDate('created_at'))
-        .values('period')
-        .annotate(total=Sum('total_amount'), count=Count('id'))
-        .order_by('-period')[:7]
-    )
-    
-    weekly_sales = list(
-        valid_orders
-        .annotate(period=TruncWeek('created_at'))
-        .values('period')
-        .annotate(total=Sum('total_amount'), count=Count('id'))
-        .order_by('-period')[:4]
-    )
-    
-    monthly_sales = list(
-        valid_orders
-        .annotate(period=TruncMonth('created_at'))
-        .values('period')
-        .annotate(total=Sum('total_amount'), count=Count('id'))
-        .order_by('-period')[:6]
-    )
+        sales_today = overall_stats['today']
+        sales_week = overall_stats['week']
+        sales_month = overall_stats['month']
 
-    daily_chart_data = {
-        'labels': [row['period'].strftime('%b %d') if row['period'] else '' for row in reversed(daily_sales)],
-        'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(daily_sales)],
-    }
-    weekly_chart_data = {
-        'labels': [f"Week of {row['period'].strftime('%b %d')}" if row['period'] else '' for row in reversed(weekly_sales)],
-        'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(weekly_sales)],
-    }
-    monthly_chart_data = {
-        'labels': [row['period'].strftime('%b %Y') if row['period'] else '' for row in reversed(monthly_sales)],
-        'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(monthly_sales)],
-    }
-
-    sales_today = overall_stats['today']
-    sales_week = overall_stats['week']
-    sales_month = overall_stats['month']
+        cached_data = (overall_stats, kiosk_stats, faculty_stats, delivery_stats, rider_rankings, daily_sales, weekly_sales, monthly_sales, daily_chart_data, weekly_chart_data, monthly_chart_data, sales_today, sales_week, sales_month)
+        cache.set(cache_key, cached_data, timeout=30)
 
     if request.method == 'POST' and 'add_menu_item' in request.POST:
         name = request.POST.get('name')
@@ -349,6 +358,10 @@ def update_order_status(request, order_id):
             order.status = new_status
             order.save()
 
+            # Invalidate staff dashboard analytics cache
+            today_str = timezone.now().date().isoformat()
+            cache.delete(f'staff_dashboard_analytics_{today_str}')
+
             if new_status == 'completed' and old_status != 'completed':
                 # Credit loyalty earned once, only at true completion.
                 from customer_portal.views import credit_points_for_order
@@ -424,7 +437,6 @@ def toggle_item_availability(request, item_id):
     item = get_object_or_404(MenuItem, id=item_id)
     item.is_available = not item.is_available
     item.save()
-    from django.core.cache import cache
     cache.delete('formatted_menu_active_kiosk')
     return redirect('kitchen_display:manage_menu')
 
