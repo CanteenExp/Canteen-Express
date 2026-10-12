@@ -83,20 +83,21 @@ def get_kiosk_menu_api(request):
 @require_POST
 def process_checkout(request):
     try:
-        # Two independent gates: the staff switch (core_app.system_status) and
-        # the configured operating hours. Either one can refuse the order.
+        # One gate now: core_app.system_status already folds the timetable
+        # (Mon-Fri, 8:00 AM - 5:00 PM) together with any staff override, so a
+        # single check covers both "closed for lunch" and "closed for the day".
         from core_app.system_status import get_status, is_accepting_orders
         if not is_accepting_orders():
             status = get_status()
-            if not status['is_open']:
-                reason = status['message'] or 'The canteen is closed right now. Please come back later.'
-            else:
-                reason = ('Canteen is currently closed. Operating hours are '
-                          'Monday to Friday, 8:00 AM to 5:00 PM.')
+            reason = status['message'] or (
+                'The canteen is not accepting orders right now. '
+                'Please try again later.'
+            )
             return JsonResponse({
                 'success': False,
                 'message': reason,
-                'system_closed': not status['is_open'],
+                'system_closed': True,
+                'mode': status['mode'],
             }, status=422)
 
         data = json.loads(request.body)

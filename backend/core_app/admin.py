@@ -7,7 +7,7 @@ from .models import SystemStatus
 class SystemStatusAdmin(admin.ModelAdmin):
     """Singleton, so the changelist is pointless: go straight to the row."""
 
-    list_display = ('is_open', 'message', 'closed_at', 'reopened_at', 'updated_by', 'updated_at')
+    list_display = ('mode', 'message', 'closed_at', 'reopened_at', 'updated_by', 'updated_at')
     readonly_fields = ('updated_at',)
 
     def has_add_permission(self, request):

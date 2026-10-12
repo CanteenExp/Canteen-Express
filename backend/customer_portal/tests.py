@@ -407,11 +407,16 @@ class KioskStatusPollEndpointTests(TestCase):
 class OperatingHoursTestCase(TestCase):
     @patch('core_app.utils.is_operating_hours', return_value=False)
     def test_checkout_blocked_outside_operating_hours(self, mock_hours):
+        # The timetable is folded into the status, so the gate middleware now
+        # refuses the request before the view is even reached (423, the same
+        # code a staff closure uses). Either way the customer is blocked and
+        # told why -- the view-level gate is covered in core_app.tests.
         url = reverse('customer_portal:process_checkout')
         resp = self.client.post(
             url,
             data=json.dumps({'cart': [{'id': 1, 'qty': 1}], 'is_delivery': False}),
             content_type='application/json'
         )
-        self.assertEqual(resp.status_code, 422)
+        self.assertEqual(resp.status_code, 423)
         self.assertFalse(resp.json()['success'])
+        self.assertTrue(resp.json()['system_closed'])

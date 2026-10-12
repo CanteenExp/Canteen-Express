@@ -100,8 +100,14 @@
             </svg>
         </div>
 
-        <h1>Canteen is Currently Closed</h1>
-        <p class="lede">We are not accepting new orders at the moment. Please check back shortly.</p>
+        <h1>{% if schedule_closed %}Outside Our Operating Hours{% else %}Canteen is Currently Closed{% endif %}</h1>
+        <p class="lede">
+            {% if schedule_closed %}
+            Online ordering follows our regular hours.{% if next_opening %} Ordering opens again {{ next_opening }}.{% endif %}
+            {% else %}
+            We are not accepting new orders at the moment. Please check back shortly.
+            {% endif %}
+        </p>
 
         {% if closed_message %}
         <p class="reason">{{ closed_message }}</p>

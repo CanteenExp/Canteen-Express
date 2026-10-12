@@ -558,14 +558,30 @@
             </div>
 
 
-            <!-- CANTEEN OPEN / CLOSE SWITCH -->
+            <!-- CANTEEN OPEN / CLOSE CONTROL -->
+            {# The canteen runs itself 8:00 AM-5:00 PM. This override is how staff #}
+            {# extend the day, or close it early with a reason customers will read. #}
             <div x-data="{
+                    mode: '{{ SYSTEM_MODE|escapejs }}',
                     isOpen: {{ SYSTEM_IS_OPEN|yesno:'true,false' }},
+                    reasonLabel: '{{ SYSTEM_REASON_LABEL|escapejs }}',
+                    reasonCode: '',
                     reason: '',
                     busy: false,
                     notice: '',
                     error: '',
-                    async submit(openNow) {
+                    hours: '{{ SYSTEM_OPERATING_HOURS|escapejs }}',
+                    nextOpening: '{{ SYSTEM_NEXT_OPENING|escapejs }}',
+                    canClose() {
+                        return !!this.reasonCode && (this.reasonCode !== 'OTHER' || this.reason.trim().length > 0);
+                    },
+                    statusLine() {
+                        if (this.mode === 'FORCE_OPEN') return 'Manually opened — the automatic schedule is relaxed until you set it back.';
+                        if (this.mode === 'FORCE_CLOSED') return 'Manually closed — customers read the reason you picked.';
+                        if (this.isOpen) return 'On the automatic schedule (' + this.hours + ').';
+                        return 'Outside the automatic schedule (' + this.hours + '). Ordering opens again ' + this.nextOpening + '.';
+                    },
+                    async apply(mode) {
                         this.busy = true; this.notice = ''; this.error = '';
                         try {
                             const res = await fetch('{% url "core_app:system_toggle_api" %}', {
@@ -575,18 +591,24 @@
                                     'X-CSRFToken': '{{ csrf_token }}',
                                     'X-Requested-With': 'XMLHttpRequest'
                                 },
-                                body: JSON.stringify({ is_open: openNow, message: this.reason })
+                                body: JSON.stringify({ mode: mode, reason_code: this.reasonCode, message: this.reason })
                             });
                             const data = await res.json();
                             if (!data.success) { this.error = data.message || 'Could not update the canteen status.'; return; }
+                            this.mode = data.mode;
                             this.isOpen = data.is_open;
+                            this.reasonLabel = data.reason_label || '';
                             this.notice = data.notice;
-                            if (data.is_open) { this.reason = ''; }
+                            if (data.mode === 'FORCE_CLOSED') { this.reasonCode = ''; this.reason = ''; }
                         } catch (e) {
                             this.error = 'Network error. Please try again.';
                         } finally {
                             this.busy = false;
                         }
+                    },
+                    close() {
+                        if (!this.canClose()) { this.error = 'Pick a reason for closing before you close the canteen.'; return; }
+                        this.apply('FORCE_CLOSED');
                     }
                  }"
                  class="rounded-3xl border p-6 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4"
@@ -598,26 +620,38 @@
                     <div>
                         <p class="text-[10px] font-extrabold uppercase tracking-wider" :class="isOpen ? 'text-emerald-600' : 'text-red-600'">Canteen Status</p>
                         <h3 class="text-lg font-black text-dark-900" x-text="isOpen ? 'Open — accepting orders' : 'Closed — orders blocked'"></h3>
-                        <p class="text-xs text-gray-600 mt-0.5" x-show="isOpen">Customers can place kiosk and delivery orders right now.</p>
-                        <p class="text-xs text-gray-600 mt-0.5" x-show="!isOpen" x-cloak>Customers see a “Currently Closed” notice and checkout is refused.</p>
+                        <p class="text-xs text-gray-600 mt-0.5" x-text="statusLine()"></p>
+                        <p x-show="!isOpen && reasonLabel" x-cloak class="text-xs font-bold text-red-700 mt-1" x-text="'Reason: ' + reasonLabel"></p>
                         <p x-show="notice" x-cloak class="text-xs font-bold mt-1" :class="isOpen ? 'text-emerald-700' : 'text-red-700'" x-text="notice"></p>
                         <p x-show="error" x-cloak class="text-xs font-bold text-red-700 mt-1" x-text="error"></p>
                     </div>
                 </div>
 
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-                    <div x-show="isOpen" x-cloak class="w-full sm:w-56">
-                        <input x-model="reason" maxlength="200" type="text" placeholder="Reason shown to customers (optional)"
-                               class="w-full px-3 py-2.5 rounded-xl border border-red-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-red-300">
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <button type="button" @click="apply('AUTO')" :disabled="busy || mode === 'AUTO'"
+                            class="px-4 py-2.5 rounded-xl text-xs font-bold border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 transition flex items-center gap-2">
+                        <i class="fa-solid fa-clock"></i> Automatic
+                    </button>
+                    <button type="button" @click="apply('FORCE_OPEN')" :disabled="busy || mode === 'FORCE_OPEN'"
+                            class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-600/30 transition flex items-center gap-2">
+                        <i class="fa-solid fa-store"></i> <span x-text="busy ? 'Working…' : 'Open now'"></span>
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <select x-model="reasonCode" aria-label="Reason for closing"
+                                class="px-3 py-2.5 rounded-xl border border-red-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-red-300">
+                            <option value="">Closing reason…</option>
+                            {% for reason in CLOSURE_REASONS %}
+                            <option value="{{ reason.code }}">{{ reason.label }}</option>
+                            {% endfor %}
+                        </select>
+                        <input x-show="reasonCode === 'OTHER'" x-cloak x-model="reason" maxlength="200" type="text"
+                               placeholder="Type the reason customers will see"
+                               class="px-3 py-2.5 rounded-xl border border-red-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-red-300">
+                        <button type="button" @click="close()" :disabled="busy"
+                                class="bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-red-600/30 transition flex items-center gap-2">
+                            <i class="fa-solid fa-store-slash"></i> Close
+                        </button>
                     </div>
-                    <button x-show="isOpen" @click="submit(false)" :disabled="busy"
-                            class="bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-store-slash"></i> <span x-text="busy ? 'Closing…' : 'Close Canteen'"></span>
-                    </button>
-                    <button x-show="!isOpen" x-cloak @click="submit(true)" :disabled="busy"
-                            class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-store"></i> <span x-text="busy ? 'Opening…' : 'Reopen Canteen'"></span>
-                    </button>
                 </div>
             </div>
 

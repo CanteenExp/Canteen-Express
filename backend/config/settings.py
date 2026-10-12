@@ -274,6 +274,27 @@ USE_I18N = True
 USE_TZ = True
 
 
+# --- Canteen operating hours ------------------------------------------------
+# The canteen opens and closes itself on a timetable: Monday to Friday, 8:00 AM
+# to 5:00 PM, in TIME_ZONE above. This is the default behaviour, and it is what
+# makes the manual open/close switch an *override* rather than the only control:
+# staff can force it open to extend the day, or close it early with a reason.
+#
+# Set ENFORCE_OPERATING_HOURS=False to disable the schedule entirely and go back
+# to a canteen that is "open" whenever the manual switch says so. The test suite
+# always runs with it off: each test drives the clock itself by passing `now` to
+# core_app.utils.is_operating_hours, so the wall clock can never flake a run.
+ENFORCE_OPERATING_HOURS = (
+    os.getenv('ENFORCE_OPERATING_HOURS', 'True').lower() == 'true'
+)
+OPERATING_HOURS_START = int(os.getenv('OPERATING_HOURS_START', '8'))
+OPERATING_HOURS_END = int(os.getenv('OPERATING_HOURS_END', '17'))
+OPERATING_HOURS_DAYS = [0, 1, 2, 3, 4]  # Monday..Friday
+
+if 'test' in sys.argv or _RUNNING_TESTS:
+    ENFORCE_OPERATING_HOURS = False
+
+
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
