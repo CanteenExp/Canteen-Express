@@ -1,0 +1,6 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "deploy": {
+    "startCommand": "python manage.py collectstatic --noinput && python manage.py migrate --noinput && python -m gunicorn --workers 3 --threads 4 --timeout 120 config.wsgi:application"
+  }
+}
