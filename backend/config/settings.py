@@ -380,4 +380,32 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_REFERRER_POLICY = 'same-origin'
 
+# Surface server errors in the host's log stream. Django's default logging
+# sends 500 tracebacks to mail_admins (a no-op here -- ADMINS is empty) and
+# gates its console handler behind DEBUG, so with DEBUG=False a 500 would be
+# completely silent. This always writes to stdout/stderr, which is what Railway
+# and Render capture, so a production error is never invisible again.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {'handlers': ['console'], 'level': 'INFO'},
+    'loggers': {
+        'django.request': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
+        'django.security': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
+        'django': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+    },
+}
+
 ENFORCE_GEOFENCE = os.getenv('ENFORCE_GEOFENCE', 'True').lower() == 'true'
