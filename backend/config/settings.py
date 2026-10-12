@@ -282,9 +282,18 @@ STORAGES = {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
     },
     'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
     },
 }
+
+# Serve static files straight from the project's static directories (Django's
+# static finders), which are baked into the image, instead of depending on a
+# deploy-time `collectstatic` having populated STATIC_ROOT. The manifest
+# storage used previously raises "Missing staticfiles manifest entry" for
+# every {% static %} tag when the manifest is absent, turning a skipped or
+# blocked collectstatic into a hard 500. WhiteNoise indexes these directories
+# at startup and still serves anything collected into STATIC_ROOT when present.
+WHITENOISE_USE_FINDERS = True
 
 # Cross-worker cache so menu edits invalidate everywhere (Redis when configured,
 # shared file-based cache otherwise so cache.delete() actually propagates).
