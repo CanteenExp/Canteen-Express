@@ -68,13 +68,24 @@ GPS_MAX_ACCURACY_M = float(os.getenv('GPS_MAX_ACCURACY_M', '40'))
 CANTEEN_LAT = float(os.getenv('CANTEEN_LAT', '9.77778'))
 CANTEEN_LNG = float(os.getenv('CANTEEN_LNG', '118.73333'))
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.onrender.com', '.loca.lt', '.devtunnels.ms', '.railway.app', '.up.railway.app', '.canteenexpress.site', 'canteenexpress.site']
+# Hosts Django will serve. A leading dot is a wildcard for that domain and all
+# of its subdomains (e.g. '.example.com' also matches 'www.example.com').
+ALLOWED_HOSTS = [
+    '127.0.0.1', 'localhost',
+    '.onrender.com', '.loca.lt', '.devtunnels.ms',
+    '.railway.app', '.up.railway.app',
+    '.canteenexpress.site', 'canteenexpress.site',
+    '.canteen-express.app', 'canteen-express.app',
+]
+# Add more hosts without a code change by setting EXTRA_HOSTS on the host
+# (comma-separated), e.g. EXTRA_HOSTS="example.com,.example.com".
+ALLOWED_HOSTS += [h.strip() for h in os.getenv('EXTRA_HOSTS', '').split(',') if h.strip()]
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
 # Staff "Admin / System" governance PIN. MUST be overridden via env in production
 # (the default '1234' is a dev fallback only and is intentionally removed from
 # the shipped render.yaml config).
-ADMIN_PIN = os.getenv('ADMIN_PIN', '1234')
+ADMIN_PIN = os.getenv('ADMIN_PIN', 'CE-1234')
 
 # Supabase Storage credentials for menu image uploads. The anon key is public
 # by nature (client-side bucket access) but is centralized here so it can be
@@ -340,10 +351,15 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.up.railway.app',
     'https://*.canteenexpress.site',
     'https://canteenexpress.site',
+    'https://*.canteen-express.app',
+    'https://canteen-express.app',
     'https://*.localhost',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
 ]
+# Extra origins for cross-origin POSTs (CSRF), same env-driven approach as
+# ALLOWED_HOSTS: EXTRA_ORIGINS="https://example.com,https://www.example.com".
+CSRF_TRUSTED_ORIGINS += [o.strip() for o in os.getenv('EXTRA_ORIGINS', '').split(',') if o.strip()]
 
 # Behind Railway/Render/Cloudflare the app is always served over HTTPS, but
 # Django only sees the raw proxy connection. Tell it to trust the proxy's
