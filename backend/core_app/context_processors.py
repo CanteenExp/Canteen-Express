@@ -1,5 +1,8 @@
 from django.conf import settings
 from django.utils import timezone
+from django.utils.functional import SimpleLazyObject
+
+from core_app.system_status import get_status, is_accepting_orders
 from core_app.utils import is_operating_hours
 
 
@@ -24,4 +27,21 @@ def operating_hours_status(request):
         'IS_OPERATING_HOURS': is_operating_hours(),
         'CURRENT_DAY_NAME': now.strftime('%A'),
         'CURRENT_TIME_FORMATTED': now.strftime('%B %d, %Y - %I:%M %p'),
+    }
+
+
+def system_status(request):
+    """Inject the manual open/close switch into every template context.
+
+    Templates use SYSTEM_IS_OPEN to render the "closed" banner and to disable
+    ordering buttons. The values are deliberately LAZY: a page that never
+    renders the banner (the vast majority) never pays for a cache read, let
+    alone a query -- which matters because this runs on every render.
+    """
+    lazy_status = SimpleLazyObject(get_status)
+    return {
+        'SYSTEM_IS_OPEN': SimpleLazyObject(lambda: lazy_status['is_open']),
+        'SYSTEM_CLOSED_MESSAGE': SimpleLazyObject(lambda: lazy_status['message']),
+        'SYSTEM_CLOSED_AT': SimpleLazyObject(lambda: lazy_status['closed_at']),
+        'ACCEPTING_ORDERS': SimpleLazyObject(is_accepting_orders),
     }

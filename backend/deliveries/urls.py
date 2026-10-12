@@ -23,6 +23,7 @@ urlpatterns = [
     path('api/staff-dispatch-stream/', views.staff_dispatch_stream, name='staff_dispatch_stream'),
     path('api/order-detail/<int:delivery_id>/', views.get_order_detail, name='order_detail'),
     path('api/route-preview/<int:delivery_id>/', views.route_preview, name='route_preview'),
+    path('api/live-route/<int:delivery_id>/', views.api_live_route, name='api_live_route'),
     path('api/location/<int:delivery_id>/update/', views.update_location, name='update_location'),
     path('api/location/<int:delivery_id>/', views.get_tracking, name='get_tracking'),
     path('api/location/<int:delivery_id>/stream/', views.tracking_stream, name='tracking_stream'),

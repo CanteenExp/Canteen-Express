@@ -203,9 +203,9 @@ def kitchen_display(request):
     # A cancelled order is NOT active work: once cancel is pressed the card must
     # vanish from every column immediately, or staff keep tapping a dead order
     # and hit "Cannot move order from 'cancelled'..." errors.
-    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).order_by('created_at')
-    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).order_by('created_at')
-    ready_orders = Order.objects.filter(status='ready').order_by('created_at')
+    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).select_related('customer').prefetch_related('items').order_by('created_at')
+    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).select_related('customer').prefetch_related('items').order_by('created_at')
+    ready_orders = Order.objects.filter(status='ready').select_related('customer').prefetch_related('items').order_by('created_at')
 
     for o in list(kiosk_orders) + list(delivery_orders) + list(ready_orders):
         o.is_delivery = DeliveryRequest.objects.filter(order=o).exists()
@@ -235,9 +235,9 @@ def kitchen_orders_json_api(request):
             'total_payment': str(o.total_payment),
         }
 
-    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).order_by('created_at')
-    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).order_by('created_at')
-    ready_orders = Order.objects.filter(status='ready').order_by('created_at')
+    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).select_related('customer').prefetch_related('items').order_by('created_at')
+    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).select_related('customer').prefetch_related('items').order_by('created_at')
+    ready_orders = Order.objects.filter(status='ready').select_related('customer').prefetch_related('items').order_by('created_at')
 
     boards = {
         'kiosk': [order_map(o, False) for o in kiosk_orders],
@@ -276,9 +276,9 @@ def kitchen_live_stream(request):
         }
 
     def boards():
-        kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).order_by('created_at')
-        delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).order_by('created_at')
-        ready_orders = Order.objects.filter(status='ready').order_by('created_at')
+        kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).select_related('customer').prefetch_related('items').order_by('created_at')
+        delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).select_related('customer').prefetch_related('items').order_by('created_at')
+        ready_orders = Order.objects.filter(status='ready').select_related('customer').prefetch_related('items').order_by('created_at')
         return {
             'kiosk': [order_map(o, False) for o in kiosk_orders],
             'delivery': [order_map(o, True) for o in delivery_orders],
@@ -477,7 +477,7 @@ def admin_governance(request):
         return redirect('kitchen_display:admin_pin_verify')
 
     pending_users = User.objects.filter(is_active=False) if hasattr(User, 'is_active') else []
-    all_orders = Order.objects.all().select_related('customer', 'delivery_request').prefetch_related('feedbacks', 'items').order_by('-created_at')[:20]
+    all_orders = Order.objects.all().select_related('customer', 'delivery_info').prefetch_related('feedbacks', 'items').order_by('-created_at')[:20]
 
     context = {
         'pending_users': pending_users,

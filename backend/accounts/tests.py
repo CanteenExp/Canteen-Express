@@ -77,3 +77,35 @@ class ResetFacultyDataCommandTestCase(TestCase):
 
         # Activity log should be empty
         self.assertEqual(ActivityLog.objects.count(), 0)
+
+
+class FacultyDashboardDialogTestCase(TestCase):
+    """The cancel / convert dialogs must actually render on the dashboard.
+
+    Template-land only: this guards the reason dropdown, the shared confirmation
+    step and the success dialog against a future refactor quietly dropping them.
+    """
+
+    def setUp(self):
+        self.faculty = CustomUser.objects.create_user(
+            username='dlg_faculty', email='dlg@psu.palawan.edu.ph',
+            password='password123', role='FACULTY')
+
+    def test_cancel_and_convert_dialogs_render(self):
+        self.client.force_login(self.faculty)
+        # The dashboard redirects once to a session-token URL, hence follow=True.
+        res = self.client.get(reverse('accounts:dashboard'), follow=True)
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        for marker in (
+            'id="cancel-reason-select"',
+            'id="cancel-reason-other"',
+            'toggleFacultyOtherReason()',
+            'id="faculty-confirm-modal"',
+            'id="faculty-success-modal"',
+            'showFacultySuccess(',
+            'submitFacultyCancelOrder()',
+            'convertFacultyDeliveryToPickup()',
+            'Back to Menu',
+        ):
+            self.assertIn(marker, html)

@@ -132,6 +132,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Manual open/close gate. Must sit after AuthenticationMiddleware (it reads
+    # request.user) and after WhiteNoise (static is served before it runs).
+    'core_app.middleware.SystemGateMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -155,6 +158,7 @@ TEMPLATES = [
                 'django.template.context_processors.csrf',
                 'core_app.context_processors.map_key',
                 'core_app.context_processors.operating_hours_status',
+                'core_app.context_processors.system_status',
             ],
         },
     },

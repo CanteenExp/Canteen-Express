@@ -8,7 +8,7 @@ services:
       pip install -r backend/requirements.txt
       python backend/manage.py collectstatic --noinput
       python backend/manage.py migrate
-    startCommand: gunicorn --chdir backend config.wsgi:application
+    startCommand: gunicorn --chdir backend config.wsgi:application --workers 2 --threads 4 --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0

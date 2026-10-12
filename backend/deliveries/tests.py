@@ -932,23 +932,220 @@ class RiderRoutePreviewTestCase(TestCase):
         self.assertEqual(res.status_code, 422)
         self.assertFalse(res.json()['success'])
 
-    def test_rider_dashboard_wires_up_the_route_button(self):
+    def test_rider_dashboard_shows_a_live_route_map_on_active_cards(self):
+        """The rider's active delivery card carries its own live orange route.
+
+        The route button was removed at the user's request; the road line is now
+        drawn straight onto the card and driven by the live-route endpoint, so
+        the rider sees an accurate, real-time route without tapping anything.
+        """
         self.client.force_login(self.rider)
+        self.delivery.status = DeliveryRequest.RequestStatus.ACCEPTED
+        self.delivery.rider = self.rider
+        self.delivery.save(update_fields=['status', 'rider'])
+
         # The dashboard redirects once to a session-token URL, hence follow=True.
         res = self.client.get(reverse('deliveries:dashboard'), follow=True)
         self.assertEqual(res.status_code, 200)
         html = res.content.decode()
-        self.assertIn('openRoute(', html)
-        self.assertIn('id="route-modal"', html)
-        # The card passes the resolved preview URL to openRoute(), so the route
-        # endpoint is reachable without a page reload.
+        # The active card hosts a live map instead of a route button.
+        self.assertIn('live-route-map', html)
+        self.assertIn('data-route-id="%d"' % self.delivery.id, html)
+        self.assertNotIn('openRoute(', html)
+        self.assertNotIn('id="route-modal"', html)
+        # The live-route endpoint is resolved onto the card, so the line is
+        # reachable without a page reload.
         self.assertIn(
-            reverse('deliveries:route_preview', args=[self.delivery.id]), html)
+            reverse('deliveries:api_live_route', args=[self.delivery.id]), html)
         # Same orange route treatment as the customer tracking map.
         self.assertIn('#FF6117', html)
         # And no dead tile subdomain, which would leave grey holes.
         self.assertIn("subdomains: 'abc'", html)
         self.assertNotIn("subdomains: 'abcd'", html)
+
+
+class ConvertToPickupTestCase(TestCase):
+    """Converting a delivery to counter pick-up must stick, every single time.
+
+    Regression guard: the old implementation parked the request at TIMEOUT, and
+    ``expire_stale_requests`` revives TIMEOUT rows back into the rider pool the
+    moment the food is ready -- so a converted order silently turned back into a
+    delivery. Conversion now parks at REJECTED, which is never revived.
+    """
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.customer = CustomUser.objects.create_user(
+            username='convert_faculty', password='testpass', role='FACULTY')
+        self.other = CustomUser.objects.create_user(
+            username='convert_other', password='testpass', role='FACULTY')
+        self.order = Order.objects.create(
+            order_number='#CE-8800', total_amount=100.00, delivery_fee=20.00,
+            status='pending', customer=self.customer)
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, delivery_location='Library',
+            status=DeliveryRequest.RequestStatus.SEARCHING,
+            dest_lat=9.77730, dest_lng=118.73460)
+
+    def _post(self):
+        return self.client.post(
+            reverse('deliveries:api_convert_to_pickup', args=[self.delivery.id]))
+
+    def test_conversion_strips_the_fee_and_makes_a_slip(self):
+        from queuing.models import DigitalQueueSlip
+        self.client.force_login(self.customer)
+        res = self._post()
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['queue_number'], self.order.order_number)
+
+        self.delivery.refresh_from_db()
+        self.order.refresh_from_db()
+        self.assertEqual(self.delivery.status,
+                         DeliveryRequest.RequestStatus.REJECTED)
+        self.assertEqual(self.order.delivery_fee, 0)
+        slip = DigitalQueueSlip.objects.get(order=self.order)
+        self.assertEqual(slip.queue_number, self.order.order_number)
+
+    def test_conversion_is_idempotent(self):
+        from queuing.models import DigitalQueueSlip
+        self.client.force_login(self.customer)
+        first = self._post().json()
+        second = self._post().json()
+        self.assertTrue(first['success'])
+        self.assertTrue(second['success'])
+        self.assertEqual(
+            DigitalQueueSlip.objects.filter(order=self.order).count(), 1)
+
+    def test_converted_order_is_never_revived_by_expiry(self):
+        from deliveries.views import expire_stale_requests
+        self.client.force_login(self.customer)
+        self.assertTrue(self._post().json()['success'])
+        # The kitchen gets the food ready after the conversion...
+        self.order.status = 'ready'
+        self.order.save(update_fields=['status'])
+        expire_stale_requests()
+        self.delivery.refresh_from_db()
+        # ...and the order must stay a pick-up, not flip back to SEARCHING.
+        self.assertEqual(self.delivery.status,
+                         DeliveryRequest.RequestStatus.REJECTED)
+
+    def test_a_rider_accepted_delivery_cannot_be_converted(self):
+        self.client.force_login(self.customer)
+        self.delivery.status = DeliveryRequest.RequestStatus.ACCEPTED
+        self.delivery.save(update_fields=['status'])
+        res = self._post()
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(res.json()['success'])
+
+    def test_cancelled_order_cannot_be_converted(self):
+        self.client.force_login(self.customer)
+        self.order.status = 'cancelled'
+        self.order.save(update_fields=['status'])
+        self.assertEqual(self._post().status_code, 400)
+
+    def test_only_the_owner_or_staff_may_convert(self):
+        self.client.force_login(self.other)
+        self.assertEqual(self._post().status_code, 403)
+
+
+class LiveRouteEndpointTestCase(TestCase):
+    """The rider's live orange route: origin = freshest fix, dest = drop-off."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.rider = CustomUser.objects.create_user(
+            username='live_route_rider', password='testpass', role='DELIVERY')
+        self.order = Order.objects.create(
+            order_number='#CE-8801', total_amount=80.00, status='pending')
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, delivery_location='Science Bldg',
+            status=DeliveryRequest.RequestStatus.ACCEPTED, rider=self.rider,
+            dest_lat=9.77725, dest_lng=118.73480)
+
+    def _get(self, **params):
+        return self.client.get(
+            reverse('deliveries:api_live_route', args=[self.delivery.id]), params)
+
+    def test_route_starts_at_the_live_rider_fix(self):
+        from unittest import mock
+
+        def fake(origin_lat, origin_lng, dest_lat, dest_lng):
+            return {'path': [[origin_lat, origin_lng], [dest_lat, dest_lng]],
+                    'distance_km': 0.3, 'duration_min': 5.0, 'provider': 'stub'}
+
+        self.client.force_login(self.rider)
+        with mock.patch('deliveries.views.get_road_route', side_effect=fake):
+            data = self._get(lat=9.77700, lng=118.73300).json()
+        self.assertTrue(data['success'])
+        self.assertTrue(data['routed'])
+        self.assertAlmostEqual(data['origin_lat'], 9.77700, places=5)
+        self.assertAlmostEqual(data['origin_lng'], 118.73300, places=5)
+        self.assertAlmostEqual(data['dest_lat'], 9.77725, places=5)
+        self.assertGreaterEqual(len(data['path']), 2)
+
+    def test_falls_back_to_stored_position_without_a_query_fix(self):
+        from unittest import mock
+        self.delivery.rider_lat = 9.77710
+        self.delivery.rider_lng = 118.73310
+        self.delivery.save(update_fields=['rider_lat', 'rider_lng'])
+        self.client.force_login(self.rider)
+        with mock.patch('deliveries.views.get_road_route', return_value=None):
+            data = self._get().json()
+        self.assertTrue(data['success'])
+        self.assertFalse(data['routed'])
+        self.assertAlmostEqual(data['origin_lat'], 9.77710, places=5)
+        # A straight line is still drawn rather than nothing at all.
+        self.assertEqual(len(data['path']), 2)
+
+    def test_missing_destination_is_rejected(self):
+        self.client.force_login(self.rider)
+        self.delivery.dest_lat = None
+        self.delivery.dest_lng = None
+        self.delivery.save(update_fields=['dest_lat', 'dest_lng'])
+        res = self._get(lat=9.777, lng=118.733)
+        self.assertEqual(res.status_code, 422)
+
+    def test_requires_a_privileged_session(self):
+        self.assertEqual(self._get().status_code, 302)
+
+
+class TrackingPageDialogsTestCase(TestCase):
+    """The customer tracking page ships the reason dropdown, confirmation and a
+    dedicated success dialog instead of a bare ``alert()``."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.rider = CustomUser.objects.create_user(
+            username='track_dialog_rider', password='testpass', role='DELIVERY')
+        self.order = Order.objects.create(
+            order_number='#CE-8802', total_amount=60.00, status='pending')
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, delivery_location='Gym',
+            status=DeliveryRequest.RequestStatus.SEARCHING,
+            dest_lat=9.77740, dest_lng=118.73420)
+
+    def test_dialogs_render(self):
+        self.client.force_login(self.rider)
+        res = self.client.get(
+            reverse('deliveries:track_order', args=[self.delivery.id]))
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        for marker in (
+            'id="cancel-reason-select"',
+            'id="cancel-reason-other"',
+            'toggleTrackingOtherReason()',
+            'id="tracking-confirm-modal"',
+            'id="tracking-success-modal"',
+            'showTrackingSuccess(',
+            'submitCancelOrder()',
+            'convertToPickup()',
+        ):
+            self.assertIn(marker, html)
 
 
 class TileProviderPolicyTestCase(SimpleTestCase):

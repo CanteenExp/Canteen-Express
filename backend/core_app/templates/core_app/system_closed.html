@@ -1,0 +1,160 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Canteen is Currently Closed — Canteen Express</title>
+    <link rel="icon" href="{% static 'customer_portal/images/canteen-express-logo.png' %}" type="image/png" />
+    <meta name="theme-color" content="#0b0b0d">
+    {# Self-contained styling on purpose: this page must render instantly even #}
+    {# when the CDN or the cached Tailwind build is unavailable.               #}
+    <style>
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: radial-gradient(120% 90% at 50% 0%, #1c1c22 0%, #0b0b0d 55%, #060607 100%);
+            color: #f4f4f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            min-height: 100%;
+            -webkit-font-smoothing: antialiased;
+        }
+        .card {
+            width: 100%;
+            max-width: 460px;
+            background: rgba(255, 255, 255, 0.045);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 28px;
+            padding: 40px 32px;
+            text-align: center;
+            box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(10px);
+        }
+        .logo { height: 60px; width: auto; object-fit: contain; margin-bottom: 22px; }
+        .icon-wrap {
+            width: 76px; height: 76px; margin: 0 auto 20px;
+            border-radius: 24px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(249, 115, 22, 0.12);
+            border: 1px solid rgba(249, 115, 22, 0.35);
+            color: #f97316;
+        }
+        h1 { font-size: 24px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.02em; }
+        .lede { font-size: 14px; line-height: 1.6; color: #a1a1aa; margin: 0; }
+        .reason {
+            margin: 20px 0 0;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(249, 115, 22, 0.08);
+            border: 1px solid rgba(249, 115, 22, 0.25);
+            color: #fdba74;
+            font-size: 13.5px;
+            font-weight: 600;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+        .hours {
+            margin: 24px 0 0;
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            text-align: left;
+        }
+        .hours h2 {
+            font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+            color: #71717a; margin: 0 0 8px; font-weight: 800;
+        }
+        .hours p { margin: 0; font-size: 13.5px; color: #e4e4e7; font-weight: 700; }
+        .hours span { display: block; margin-top: 4px; font-size: 12px; color: #a1a1aa; font-weight: 500; }
+        .actions { margin-top: 26px; display: flex; flex-direction: column; gap: 10px; }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 13px 18px; border-radius: 15px;
+            font-size: 13.5px; font-weight: 800; text-decoration: none;
+            cursor: pointer; border: 1px solid transparent;
+            transition: filter .15s ease, background .15s ease;
+        }
+        .btn-primary { background: #f97316; color: #fff; box-shadow: 0 12px 28px rgba(249, 115, 22, 0.28); }
+        .btn-primary:hover { filter: brightness(1.08); }
+        .btn-ghost { background: rgba(255, 255, 255, 0.06); color: #e4e4e7; border-color: rgba(255, 255, 255, 0.12); }
+        .btn-ghost:hover { background: rgba(255, 255, 255, 0.11); }
+        .brand { margin-top: 26px; font-size: 11px; color: #52525b; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        @media (max-width: 420px) { .card { padding: 32px 20px; border-radius: 24px; } }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <img class="logo" src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Canteen Express">
+        <div class="icon-wrap" aria-hidden="true">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9.5 4.5 4h15L21 9.5"/>
+                <path d="M4 9.5V20h16V9.5"/>
+                <path d="M9 20v-6h6v6"/>
+                <line x1="3" y1="3" x2="21" y2="21"/>
+            </svg>
+        </div>
+
+        <h1>Canteen is Currently Closed</h1>
+        <p class="lede">We are not accepting new orders at the moment. Please check back shortly.</p>
+
+        {% if closed_message %}
+        <p class="reason">{{ closed_message }}</p>
+        {% endif %}
+
+        <div class="hours">
+            <h2>Regular Operating Hours</h2>
+            <p>Monday – Friday</p>
+            <span>8:00 AM – 5:00 PM</span>
+        </div>
+
+        <div class="actions">
+            <button type="button" class="btn btn-primary" id="refresh-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+                Check Again
+            </button>
+            <a class="btn btn-ghost" href="{% url 'accounts:landing' %}">Staff / Admin Login</a>
+        </div>
+
+        <p class="brand">Canteen Express</p>
+    </main>
+
+    <script>
+        // Sitting on this page should not require a manual refresh: poll the
+        // (cache-only) status feed and walk the customer back in the moment
+        // staff reopen the canteen.
+        (function () {
+            var btn = document.getElementById('refresh-btn');
+            var POLL_MS = 15000;
+
+            function check(reloadWhenOpen) {
+                fetch('{% url "core_app:system_status_api" %}', { headers: { 'Accept': 'application/json' } })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (data) {
+                        if (data && data.is_open && reloadWhenOpen) {
+                            window.location.href = '{% url "customer_portal:kiosk_menu" %}';
+                        }
+                    })
+                    .catch(function () { /* offline: keep showing the notice */ });
+            }
+
+            if (btn) {
+                btn.addEventListener('click', function () {
+                    btn.disabled = true;
+                    check(true);
+                    setTimeout(function () { btn.disabled = false; }, 1200);
+                });
+            }
+            setInterval(function () { check(true); }, POLL_MS);
+        })();
+    </script>
+</body>
+</html>

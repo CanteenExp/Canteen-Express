@@ -773,48 +773,127 @@
             document.getElementById('rider-timeout-modal').classList.add('hidden');
         }
 
-        function convertToPickup() {
-            if (!confirm("Are you sure you want to convert this delivery order to Counter Pick-up?")) return;
-            fetch(`/deliveries/api/convert-to-pickup/${deliveryId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json'
-                }
-            }).then(res => res.json()).then(data => {
-                if (data.success) {
-                    const modalBox = document.querySelector('#rider-timeout-modal > div');
-                    modalBox.innerHTML = `
-                        <div class="text-center pb-3 border-b border-white/10">
-                            <span class="bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-amber-500/30">Converted to Walk-In</span>
-                            <h3 class="text-xl font-black text-white mt-2">Queue Slip Generated</h3>
-                        </div>
-                        <div class="space-y-1.5 py-1">
-                            <p class="text-[10px] uppercase tracking-wider text-white/60 font-bold">Your Queue Number</p>
-                            <span class="text-4xl font-black text-orange-400 tracking-tight">{{ order.order_number }}</span>
-                            <p class="text-xs text-white/80 font-medium">Counter Pick-up Mode Activated</p>
-                        </div>
-                        <div class="bg-white p-3 rounded-2xl flex flex-col items-center justify-center">
-                            <svg id="timeout-slip-barcode" class="w-full h-14"></svg>
-                            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Scan at Counter to Process Payment</span>
-                        </div>
-                        <button onclick="window.location.href='{% url 'customer_portal:kiosk_menu' %}'" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition">
-                            Done / Go to Menu
-                        </button>
-                    `;
-                    if (typeof JsBarcode !== 'undefined') {
-                        JsBarcode("#timeout-slip-barcode", "{{ order.order_number }}", {
-                            format: "CODE128",
-                            lineColor: "#111827",
-                            width: 2,
-                            height: 45,
-                            displayValue: true,
-                            fontSize: 11,
-                            margin: 0
+        // ---------- Shared glass dialogs (confirm + success) ----------
+        let trackingConfirmAction = null;
+        function showTrackingConfirm(opts) {
+            opts = opts || {};
+            trackingConfirmAction = opts.onConfirm || null;
+            document.getElementById('tracking-confirm-title').innerText = opts.title || 'Please Confirm';
+            document.getElementById('tracking-confirm-message').innerText = opts.message || 'Are you sure you want to continue?';
+            document.getElementById('tracking-confirm-ok').innerHTML = `<i class="fa-solid fa-check"></i> ${opts.confirmLabel || 'Confirm'}`;
+            document.getElementById('tracking-confirm-modal').classList.remove('hidden');
+        }
+        function closeTrackingConfirm() {
+            trackingConfirmAction = null;
+            document.getElementById('tracking-confirm-modal').classList.add('hidden');
+        }
+        function runTrackingConfirm() {
+            const cb = trackingConfirmAction;
+            closeTrackingConfirm();
+            if (typeof cb === 'function') cb();
+        }
+
+        let trackingRedirectTimer = null;
+        function showTrackingSuccess(opts) {
+            opts = opts || {};
+            const modal = document.getElementById('tracking-success-modal');
+            const iconEl = document.getElementById('tracking-success-icon');
+            iconEl.className = opts.iconClass || 'w-14 h-14 bg-green-500/20 border border-green-500/40 text-green-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg';
+            iconEl.innerHTML = `<i class="${opts.icon || 'fa-solid fa-circle-check'}"></i>`;
+
+            const badgeEl = document.getElementById('tracking-success-badge');
+            badgeEl.innerText = opts.badge || 'Success';
+            badgeEl.className = opts.badgeClass || 'inline-block bg-green-500/20 text-green-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-green-500/30';
+
+            document.getElementById('tracking-success-title').innerText = opts.title || 'Done';
+            document.getElementById('tracking-success-message').innerText = opts.message || '';
+
+            const slip = document.getElementById('tracking-success-slip');
+            if (opts.queueNumber) {
+                slip.classList.remove('hidden');
+                document.getElementById('tracking-success-slip-no').innerText = opts.queueNumber;
+                document.getElementById('tracking-success-slip-caption').innerText = opts.queueCaption || 'Scan at Counter';
+                if (typeof JsBarcode !== 'undefined') {
+                    try {
+                        JsBarcode("#tracking-success-barcode", opts.queueNumber, {
+                            format: "CODE128", lineColor: "#111827", width: 2,
+                            height: 45, displayValue: true, fontSize: 11, margin: 0
                         });
-                    }
-                } else {
-                    alert(data.error || "Failed to convert.");
+                    } catch (e) { /* barcode is a nicety */ }
+                }
+            } else {
+                slip.classList.add('hidden');
+            }
+
+            const done = document.getElementById('tracking-success-done');
+            done.innerText = opts.buttonLabel || 'Back to Menu';
+            done.onclick = goToKioskMenu;
+            modal.classList.remove('hidden');
+
+            // After a cancellation we return to the menu automatically, but the
+            // button stays available so the customer can leave immediately.
+            if (opts.autoReturn) {
+                clearTimeout(trackingRedirectTimer);
+                trackingRedirectTimer = setTimeout(goToKioskMenu, 4000);
+            }
+        }
+        function goToKioskMenu() {
+            window.location.href = "{% url 'customer_portal:kiosk_menu' %}";
+        }
+        function closeTrackingSuccess() {
+            clearTimeout(trackingRedirectTimer);
+            document.getElementById('tracking-success-modal').classList.add('hidden');
+        }
+
+        function toggleTrackingOtherReason() {
+            const sel = document.getElementById('cancel-reason-select');
+            const other = document.getElementById('cancel-reason-other');
+            if (!sel || !other) return;
+            const isOther = sel.value === 'Other reason';
+            other.classList.toggle('hidden', !isOther);
+            if (isOther) { other.focus(); } else { other.value = ''; }
+        }
+        function getTrackingCancelReason() {
+            const sel = document.getElementById('cancel-reason-select');
+            let reason = sel ? sel.value : 'Waiting for too long';
+            if (reason === 'Other reason') {
+                const other = document.getElementById('cancel-reason-other');
+                const custom = other ? (other.value || '').trim() : '';
+                if (custom) reason = custom;
+            }
+            return reason;
+        }
+
+        function convertToPickup() {
+            showTrackingConfirm({
+                title: 'Convert to Pick-up?',
+                message: 'Your order will be prepared for counter pick-up instead of delivery, and the delivery fee is removed. This cannot be undone.',
+                confirmLabel: 'Convert',
+                onConfirm: () => {
+                    fetch(`/deliveries/api/convert-to-pickup/${deliveryId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'Content-Type': 'application/json'
+                        }
+                    }).then(res => res.json()).then(data => {
+                        if (data.success) {
+                            document.getElementById('rider-timeout-modal').classList.add('hidden');
+                            showTrackingSuccess({
+                                badge: 'Converted to Pick-up',
+                                badgeClass: 'inline-block bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-amber-500/30',
+                                icon: 'fa-solid fa-basket-shopping',
+                                iconClass: 'w-14 h-14 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg',
+                                title: 'Queue Slip Generated',
+                                message: 'Counter Pick-up mode activated. Show this slip at the counter to collect your order.',
+                                queueNumber: data.queue_number || "{{ order.order_number }}",
+                                queueCaption: 'Scan at Counter to Process Payment',
+                                buttonLabel: 'Go to Menu',
+                            });
+                        } else {
+                            alert(data.error || "Failed to convert.");
+                        }
+                    }).catch(() => alert("Could not reach the server. Please try again."));
                 }
             });
         }
@@ -824,21 +903,42 @@
             document.getElementById('cancel-reason-container').classList.remove('hidden');
         }
 
+        function backToTimeoutOptions() {
+            document.getElementById('cancel-reason-container').classList.add('hidden');
+            document.getElementById('timeout-buttons').classList.remove('hidden');
+        }
+
         function submitCancelOrder() {
-            const reason = document.getElementById('cancel-reason-select').value;
-            fetch(`/deliveries/api/cancel-with-reason/${deliveryId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ reason: reason })
-            }).then(res => res.json()).then(data => {
-                if (data.success) {
-                    alert("Order cancelled successfully.");
-                    window.location.href = "{% url 'customer_portal:kiosk_menu' %}";
-                } else {
-                    alert(data.error || "Failed to cancel.");
+            const reason = getTrackingCancelReason();
+            showTrackingConfirm({
+                title: 'Cancel this order?',
+                message: `This cancels your order, returns any redeemed points and restores the stock. Reason: "${reason}". This cannot be undone.`,
+                confirmLabel: 'Cancel Order',
+                onConfirm: () => {
+                    fetch(`/deliveries/api/cancel-with-reason/${deliveryId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ reason: reason })
+                    }).then(res => res.json()).then(data => {
+                        if (data.success) {
+                            document.getElementById('rider-timeout-modal').classList.add('hidden');
+                            showTrackingSuccess({
+                                badge: 'Order Cancelled',
+                                badgeClass: 'inline-block bg-red-500/20 text-red-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-red-500/30',
+                                icon: 'fa-solid fa-ban',
+                                iconClass: 'w-14 h-14 bg-red-500/20 border border-red-500/40 text-red-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg',
+                                title: 'Order Cancelled Successfully',
+                                message: `Reason: ${reason}. Any redeemed loyalty points were returned and the stock restored.`,
+                                buttonLabel: 'Back to Menu',
+                                autoReturn: true,
+                            });
+                        } else {
+                            alert(data.error || "Failed to cancel.");
+                        }
+                    }).catch(() => alert("Could not reach the server. Please try again."));
                 }
             });
         }
@@ -855,20 +955,38 @@
                 It's been 2 minutes and no rider has accepted your delivery request yet. What would you like to do?
             </p>
 
-            <div id="cancel-reason-container" class="hidden space-y-2 text-left pt-2">
-                <label class="block text-[10px] font-extrabold uppercase tracking-wider text-white/70">Select cancellation reason:</label>
-                <select id="cancel-reason-select" class="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-orange">
-                    <option value="Waiting for too long" class="bg-zinc-900">Waiting for too long</option>
-                    <option value="No riders available" class="bg-zinc-900">No riders available</option>
-                    <option value="Change of plans" class="bg-zinc-900">Change of plans</option>
-                    <option value="Other reason" class="bg-zinc-900">Other reason</option>
-                </select>
-                <button onclick="submitCancelOrder()" class="w-full mt-2 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
-                    Confirm Cancellation
-                </button>
-                <button onclick="document.getElementById('cancel-reason-container').classList.add('hidden'); document.getElementById('timeout-buttons').classList.remove('hidden');" class="w-full py-1.5 text-white/50 hover:text-white text-xs font-bold">
-                    Back
-                </button>
+            <div id="cancel-reason-container" class="hidden space-y-3 text-left pt-2">
+                <div>
+                    <label for="cancel-reason-select" class="block text-[10px] font-extrabold uppercase tracking-wider text-white/70 mb-1.5">Cancellation reason</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-list-ul absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 text-[11px] pointer-events-none"></i>
+                        <select id="cancel-reason-select" onchange="toggleTrackingOtherReason()"
+                                class="w-full appearance-none pl-9 pr-9 py-3 bg-white/5 border border-white/15 rounded-xl text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-brand-orange transition cursor-pointer">
+                            <option value="Waiting for too long" class="bg-zinc-900 text-white">Waiting for too long</option>
+                            <option value="No riders available" class="bg-zinc-900 text-white">No riders available</option>
+                            <option value="Change of plans" class="bg-zinc-900 text-white">Change of plans</option>
+                            <option value="Wrong order details" class="bg-zinc-900 text-white">Wrong order details</option>
+                            <option value="Other reason" class="bg-zinc-900 text-white">Other reason</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 text-[11px] pointer-events-none"></i>
+                    </div>
+                </div>
+                <input id="cancel-reason-other" type="text" maxlength="120" placeholder="Type your reason (optional)"
+                       class="hidden w-full px-3.5 py-3 bg-white/5 border border-white/15 rounded-xl text-xs text-white placeholder-white/35 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-brand-orange transition">
+                <p class="text-[10px] text-white/50 leading-relaxed font-medium flex items-start gap-1.5">
+                    <i class="fa-solid fa-circle-info mt-0.5 text-white/40"></i>
+                    <span>The delivery fee is removed, redeemed loyalty points are returned, and stock is restored.</span>
+                </p>
+                <div class="grid grid-cols-2 gap-2.5 pt-1">
+                    <button type="button" onclick="backToTimeoutOptions()"
+                            class="py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
+                        Back
+                    </button>
+                    <button type="button" onclick="submitCancelOrder()"
+                            class="py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer shadow-lg shadow-red-900/30 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-ban"></i> Confirm
+                    </button>
+                </div>
             </div>
 
             <div id="timeout-buttons" class="space-y-2 pt-2">
@@ -882,6 +1000,54 @@
                     Cancel Order
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Dialog -->
+    <div id="tracking-confirm-modal" class="fixed inset-0 z-[100001] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm rounded-3xl p-6 text-center space-y-4 text-white relative z-[100002]">
+            <div class="w-14 h-14 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 id="tracking-confirm-title" class="text-lg font-black font-poppins text-white">Please Confirm</h3>
+            <p id="tracking-confirm-message" class="text-xs text-zinc-200 leading-relaxed font-medium">Are you sure you want to continue?</p>
+            <div class="grid grid-cols-2 gap-2.5 pt-1">
+                <button type="button" onclick="closeTrackingConfirm()"
+                        class="py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
+                    Not Now
+                </button>
+                <button id="tracking-confirm-ok" type="button" onclick="runTrackingConfirm()"
+                        class="py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition cursor-pointer flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Dialog -->
+    <div id="tracking-success-modal" class="fixed inset-0 z-[100001] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm rounded-3xl p-6 text-center space-y-4 text-white relative z-[100002]">
+            <button onclick="closeTrackingSuccess()" class="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div id="tracking-success-icon" class="w-14 h-14 bg-green-500/20 border border-green-500/40 text-green-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <span id="tracking-success-badge" class="inline-block bg-green-500/20 text-green-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-green-500/30">Success</span>
+            <h3 id="tracking-success-title" class="text-lg font-black font-poppins text-white">Done</h3>
+            <p id="tracking-success-message" class="text-xs text-zinc-200 leading-relaxed font-medium"></p>
+            <div id="tracking-success-slip" class="hidden space-y-2">
+                <p class="text-[10px] uppercase tracking-wider text-white/60 font-bold">Your Queue Number</p>
+                <span id="tracking-success-slip-no" class="block text-4xl font-black text-orange-400 tracking-tight">--</span>
+                <div class="bg-white p-3 rounded-2xl flex flex-col items-center justify-center">
+                    <svg id="tracking-success-barcode" class="w-full h-14"></svg>
+                    <span id="tracking-success-slip-caption" class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Scan at Counter</span>
+                </div>
+            </div>
+            <button id="tracking-success-done" onclick="goToKioskMenu()"
+                    class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition cursor-pointer">
+                Back to Menu
+            </button>
         </div>
     </div>
 </body>

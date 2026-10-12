@@ -262,6 +262,20 @@
 </head>
 <body class="bg-brand-dark text-brand-light h-screen h-[100dvh] flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative">
 
+<!-- MANUAL CLOSURE OVERLAY: rendered server-side state, kept live by polling -->
+<div id="system-closed-overlay" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(6,6,7,0.94); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:24px;">
+    <div style="max-width:430px; width:100%; text-align:center; background:linear-gradient(160deg, rgba(32,32,41,0.95), rgba(18,18,24,0.92)); border:1px solid rgba(249,115,22,0.35); border-radius:26px; padding:36px 28px; box-shadow:0 28px 70px rgba(0,0,0,0.6);">
+        <div style="width:72px; height:72px; margin:0 auto 18px; border-radius:22px; display:flex; align-items:center; justify-content:center; background:rgba(249,115,22,0.14); border:1px solid rgba(249,115,22,0.4); font-size:30px; color:#f97316;">
+            <i class="fa-solid fa-store-slash"></i>
+        </div>
+        <h2 style="margin:0 0 8px; font-size:22px; font-weight:800; color:#ffffff;">Canteen is Currently Closed</h2>
+        <p style="margin:0; font-size:13.5px; line-height:1.6; color:#a1a1aa;">We are not accepting new orders right now. Please check back shortly.</p>
+        <p id="system-closed-reason" style="display:none; margin:18px 0 0; padding:12px 14px; border-radius:14px; background:rgba(249,115,22,0.10); border:1px solid rgba(249,115,22,0.28); color:#fdba74; font-size:13px; font-weight:600; line-height:1.5;"></p>
+        <button type="button" onclick="refreshSystemStatus()" style="margin-top:22px; width:100%; background:#f97316; color:#ffffff; border:0; border-radius:14px; padding:13px; font-size:13px; font-weight:800; cursor:pointer;">Check Again</button>
+        <button type="button" onclick="dismissClosedOverlay()" style="margin-top:10px; width:100%; background:rgba(255,255,255,0.06); color:#e4e4e7; border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:13px; font-size:13px; font-weight:700; cursor:pointer;">View My Existing Order</button>
+    </div>
+</div>
+
     <!-- ================= FLOATING TOAST NOTIFICATION (AUTO-DISMISSING) ================= -->
     <div id="pending-order-banner" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-black px-5 py-3 rounded-2xl shadow-2xl border border-amber-300 text-xs font-bold transition-all duration-300 transform -translate-y-4 opacity-0 max-w-xl w-[90%] sm:w-auto flex items-center justify-between gap-4">
         <div class="flex items-center gap-2.5">
@@ -2199,7 +2213,62 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMenu();
     checkPendingOrderOnLoad();
     setInterval(fetchLatestMenu, 3000);
-}); 
+});
+
+// ================= MANUAL CLOSURE (staff open/close switch) =================
+// The initial state is rendered by the server; polling keeps an already-open
+// screen honest, so a closure made from the staff dashboard shows up here
+// without anyone touching the kiosk.
+window.__systemClosed = !{{ SYSTEM_IS_OPEN|yesno:'true,false' }};
+
+function showClosedOverlay(message) {
+    const reason = document.getElementById('system-closed-reason');
+    if (reason) {
+        if (message) { reason.textContent = message; reason.style.display = 'block'; }
+        else { reason.style.display = 'none'; }
+    }
+    const overlay = document.getElementById('system-closed-overlay');
+    if (overlay) overlay.style.display = 'flex';
+    const payBtn = document.getElementById('drawer-pay-btn');
+    if (payBtn) { payBtn.disabled = true; payBtn.style.opacity = '0.5'; }
+}
+
+function hideClosedOverlay() {
+    const overlay = document.getElementById('system-closed-overlay');
+    if (overlay) overlay.style.display = 'none';
+    const payBtn = document.getElementById('drawer-pay-btn');
+    if (payBtn) { payBtn.disabled = false; payBtn.style.opacity = ''; }
+}
+
+// "View My Existing Order": a walk-in with an unpaid slip must still be able to
+// read it, so the notice is dismissible until the next poll re-checks.
+function dismissClosedOverlay() {
+    const overlay = document.getElementById('system-closed-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function refreshSystemStatus() {
+    fetch('{% url "core_app:system_status_api" %}', { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+            if (!data) return;
+            window.__systemClosed = !data.is_open;
+            if (data.is_open) { hideClosedOverlay(); }
+            else { showClosedOverlay(data.message); }
+        })
+        .catch(function () { /* offline: leave the current state alone */ });
+}
+
+// Belt and braces: the server refuses checkout anyway, but stop the tap before
+// it becomes a round trip and a confusing error.
+const _originalCheckoutOrder = checkoutOrder;
+checkoutOrder = async function () {
+    if (window.__systemClosed) { showClosedOverlay(); return; }
+    return _originalCheckoutOrder.apply(this, arguments);
+};
+
+if (window.__systemClosed) { showClosedOverlay('{{ SYSTEM_CLOSED_MESSAGE|escapejs }}'); }
+setInterval(refreshSystemStatus, 15000);
     </script>
 </body>
 </html>

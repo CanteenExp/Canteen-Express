@@ -29,6 +29,9 @@ urlpatterns = [
     # Accounts
     path('accounts/', include('accounts.urls')),
 
+    # Core: manual canteen open/close switch + public closed notice
+    path('core/', include('core_app.urls')),
+
     # Customer / Kiosk Portal
     path('kiosk/', include('customer_portal.urls')),
 

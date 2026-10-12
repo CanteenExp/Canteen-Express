@@ -276,6 +276,21 @@
                               x-text="liveStatus({{ d.id }})"></span>
                             </div>
 
+                            {% if d.dest_lat and d.dest_lng %}
+                            <div class="space-y-1.5">
+                                <p class="text-zinc-500 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                                    <i class="fa-solid fa-route text-orange-400"></i> Live Route to Customer
+                                    <span id="route-meta-{{ d.id }}" class="ml-auto text-[10px] font-black text-orange-400 normal-case tracking-normal tabular-nums">Locating…</span>
+                                </p>
+                                <div class="live-route-map w-full h-44 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900"
+                                     data-route-id="{{ d.id }}"
+                                     data-route-url="{% url 'deliveries:api_live_route' d.id %}"
+                                     data-dest-lat="{{ d.dest_lat }}"
+                                     data-dest-lng="{{ d.dest_lng }}"
+                                     data-dest-label="{{ d.delivery_location|escapejs }}"></div>
+                            </div>
+                            {% endif %}
+
                             <div class="text-xs space-y-1.5 text-zinc-300">
                                 <p class="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Items</p>
                                 {% for item in d.order.items.all %}
@@ -494,43 +509,6 @@
         </div>
     </div>
 
-    <!-- ============ ROUTE PREVIEW MODAL (canteen -> drop-off) ============ -->
-    <div id="route-modal" class="fixed inset-0 z-[70] glass-backdrop hidden flex items-center justify-center p-4">
-        <div class="glass-strong rounded-3xl w-full max-w-lg overflow-hidden shadow-glass flex flex-col max-h-[88vh]">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-white/5">
-                <div class="min-w-0">
-                    <h3 class="text-sm font-black text-white truncate"><i class="fa-solid fa-route text-orange-400 mr-1.5"></i> Route to drop-off</h3>
-                    <p id="route-where" class="text-[11px] text-zinc-400 truncate"></p>
-                </div>
-                <button onclick="closeRoute()" class="text-zinc-400 hover:text-white text-lg px-2 shrink-0" aria-label="Close route preview">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <div id="route-map" class="w-full h-64 bg-zinc-900 shrink-0"></div>
-
-            <div class="px-5 py-4 space-y-3">
-                <p id="route-status" class="text-[11px] text-zinc-400 font-bold">Loading route...</p>
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-black/30 border border-white/5 rounded-2xl px-3 py-2.5 text-center">
-                        <p class="flex items-baseline justify-center gap-1 leading-none">
-                            <span id="route-dist-val" class="text-xl font-black text-orange-400 tabular-nums">--</span>
-                            <span class="text-[10px] font-bold text-zinc-500">km</span>
-                        </p>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Distance</p>
-                    </div>
-                    <div class="bg-black/30 border border-white/5 rounded-2xl px-3 py-2.5 text-center">
-                        <p class="flex items-baseline justify-center gap-1 leading-none">
-                            <span id="route-time-val" class="text-xl font-black text-emerald-400 tabular-nums">--</span>
-                            <span class="text-[10px] font-bold text-zinc-500">min</span>
-                        </p>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Est. time</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- ============ PHOTO CAPTURE MODAL (live camera, no gallery) ============ -->
     <div id="photo-capture-modal" class="fixed inset-0 z-[70] glass-backdrop hidden flex items-center justify-center p-4">
         <div class="glass-strong rounded-3xl max-w-md w-full overflow-hidden shadow-glass flex flex-col max-h-[88vh]">
@@ -679,6 +657,9 @@
         }
 
         function pushRiderLocation(lat, lng, accuracy) {
+            // Drive the live route maps from the same freshest fix, then fan the
+            // position out to every active delivery the server tracks.
+            onRiderFix(lat, lng);
             document.querySelectorAll('[data-location-id]').forEach(el => {
                 const id = el.getAttribute('data-location-id');
                 fetch(`/deliveries/api/location/${id}/update/`, {
@@ -804,6 +785,13 @@
                 // Poll pool status for live refresh + unread badges (SSE fallback)
                 this.statusInterval = setInterval(() => this.pollStatus(), 7000);
                 this.pollStatus();
+                // The live route maps render inside the Active tab, which x-show
+                // keeps hidden until selected; build them now and re-measure the
+                // moment the tab becomes visible (Leaflet caches a hidden size).
+                setTimeout(() => { initLiveRouteMaps(); resizeLiveRouteMaps(); }, 120);
+                this.$watch('activeTab', (tab) => {
+                    if (tab === 'active') setTimeout(resizeLiveRouteMaps, 80);
+                });
                 // Real-time: single SSE stream carrying pool, statuses, unread
                 // chat, earnings, and chat-change signals all at once.
                 this.connectLiveStream();
@@ -1200,106 +1188,159 @@
         }, 'image/jpeg', 0.92);
     }
 
-    /* ===== Route preview: canteen -> drop-off, before accepting a job =====
-       The rider taps the route button on a pending card and sees the actual
-       campus road as a single orange line, with the distance and how long the
-       road takes. Mirrors the customer tracking map: same orange (#FF6117),
-       same white casing, same dashed straight-line fallback when routing is
-       unavailable. */
-    let routeMap = null;
-    let routeLine = null;
-    let routeCasing = null;
+    /* ===== Live orange route while delivering =====
+       Each in-transit card carries its own small map. The rider's freshest GPS
+       fix is the origin, the drop-off is the destination, and the line follows
+       the actual campus road (server-side OSRM/Valhalla) with the same orange
+       (#FF6117) plus white casing used on every other map in the app. The line
+       is re-fetched on a throttle and whenever the rider has moved a meaningful
+       distance, so it stays accurate and real-time without hammering the
+       routing provider. If routing is down the line falls back to a dashed
+       straight line rather than disappearing. */
+    const liveRouteMaps = {};
+    let riderLiveFix = null;               // { lat, lng } newest GPS fix
+    const LIVE_ROUTE_MIN_INTERVAL_MS = 8000;
+    const LIVE_ROUTE_MOVE_M = 25;          // early refetch after this much travel
 
-    function getCsrf() {
-        const m = document.cookie.match(/csrftoken=([^;]+)/);
-        return m ? decodeURIComponent(m[1]) : '';
+    function _routeDistanceM(a, b) {
+        if (!a || !b) return Infinity;
+        const R = 6371000, toRad = d => d * Math.PI / 180;
+        const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
+        const s = Math.sin(dLat / 2) ** 2
+            + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(s));
     }
 
-    function closeRoute() {
-        document.getElementById('route-modal').classList.add('hidden');
-        if (routeMap) { routeMap.remove(); routeMap = null; }
-        routeLine = null;
-        routeCasing = null;
+    function initLiveRouteMaps() {
+        if (typeof L === 'undefined') return;
+        document.querySelectorAll('.live-route-map[data-route-id]').forEach(el => {
+            const id = el.getAttribute('data-route-id');
+            if (liveRouteMaps[id]) return;
+            const dest = [parseFloat(el.getAttribute('data-dest-lat')),
+                          parseFloat(el.getAttribute('data-dest-lng'))];
+            if (isNaN(dest[0]) || isNaN(dest[1])) return;
+
+            const map = L.map(el, { zoomControl: false })
+                .setView(dest, 16);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19, minZoom: 13,
+                // OSM serves a/b/c only; a 'd' fails DNS and leaves grey holes.
+                subdomains: 'abc',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+            }).addTo(map);
+
+            L.marker(dest, {
+                icon: L.divIcon({
+                    className: '',
+                    html: '<i class="fa-solid fa-location-dot" style="color:#22c55e;font-size:22px;text-shadow:0 0 10px rgba(34,197,94,.85)"></i>',
+                    iconSize: [22, 22], iconAnchor: [11, 22],
+                }),
+            }).addTo(map).bindTooltip(el.getAttribute('data-dest-label') || 'Drop-off');
+
+            const casing = L.polyline([dest, dest], {
+                color: '#ffffff', weight: 9, opacity: 0.35, dashArray: '1 8',
+            }).addTo(map);
+            const line = L.polyline([dest, dest], {
+                color: '#FF6117', weight: 5, opacity: 0.95, dashArray: '1 8',
+            }).addTo(map);
+
+            const riderMarker = L.marker(dest, {
+                zIndexOffset: 1000,
+                icon: L.divIcon({
+                    className: '',
+                    html: '<div style="width:34px;height:34px;border-radius:9999px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#fb923c,#ea580c);color:#fff;font-size:15px;border:2px solid rgba(255,255,255,.55);box-shadow:0 4px 12px rgba(234,88,12,.55)"><i class="fa-solid fa-motorcycle"></i></div>',
+                    iconSize: [34, 34], iconAnchor: [17, 17],
+                }),
+            }).addTo(map);
+
+            liveRouteMaps[id] = {
+                map, line, casing, riderMarker, dest,
+                url: el.getAttribute('data-route-url') || `/deliveries/api/live-route/${id}/`,
+                lastFetch: 0, fetching: false, lastOrigin: null,
+            };
+            if (riderLiveFix) riderMarker.setLatLng([riderLiveFix.lat, riderLiveFix.lng]);
+            refreshLiveRoute(id, true);
+        });
     }
 
-    function openRoute(previewUrl) {
-        const modal = document.getElementById('route-modal');
-        const mapEl = document.getElementById('route-map');
-        const status = document.getElementById('route-status');
-        const distEl = document.getElementById('route-dist-val');
-        const timeEl = document.getElementById('route-time-val');
-        const whereEl = document.getElementById('route-where');
+    function resizeLiveRouteMaps() {
+        Object.values(liveRouteMaps).forEach(m => {
+            try { m.map.invalidateSize(); } catch (e) {}
+        });
+    }
 
-        modal.classList.remove('hidden');
-        status.textContent = 'Loading route...';
-        distEl.textContent = '--';
-        timeEl.textContent = '--';
-        whereEl.textContent = '';
-
-        fetch(previewUrl, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCsrf(), 'X-Requested-With': 'XMLHttpRequest' },
+    function refreshLiveRoute(id, force) {
+        const m = liveRouteMaps[id];
+        if (!m || m.fetching) return;
+        const now = Date.now();
+        if (!force && now - m.lastFetch < LIVE_ROUTE_MIN_INTERVAL_MS) return;
+        m.fetching = true;
+        m.lastFetch = now;
+        const q = riderLiveFix
+            ? `?lat=${riderLiveFix.lat}&lng=${riderLiveFix.lng}` : '';
+        fetch(m.url + q, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
         })
             .then(r => r.json())
             .then(data => {
-                if (!data.success) {
-                    status.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400"></i> '
-                        + (data.error || 'Route unavailable.');
-                    return;
-                }
-                whereEl.textContent = data.delivery_location || '';
-                distEl.textContent = Number(data.distance_km).toFixed(2);
-                timeEl.textContent = data.duration_min != null ? data.duration_min : '--';
-                if (data.duration_min == null) {
-                    status.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400"></i> '
-                        + 'Travel time unavailable (offline estimate)';
-                } else {
-                    status.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> '
-                        + 'Road route via ' + (data.routing_provider || 'road');
-                }
-
-                if (routeMap) { routeMap.remove(); routeMap = null; }
-                routeMap = L.map(mapEl, { zoomControl: true }).setView(
-                    [data.origin_lat, data.origin_lng], 16);
-
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    minZoom: 13,
-                    // OSM serves a/b/c only; a 'd' fails DNS and leaves grey
-                    // holes where tiles should be.
-                    subdomains: 'abc',
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
-                }).addTo(routeMap);
-
+                if (!data || !data.success
+                    || !Array.isArray(data.path) || data.path.length < 2) return;
                 const pts = data.path.map(p => [p[0], p[1]]);
-                const style = data.routed
-                    ? { color: '#FF6117', weight: 5, opacity: 0.95 }
-                    : { color: '#FF6117', weight: 5, opacity: 0.95 };
-                routeCasing = L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.35 }).addTo(routeMap);
-                routeLine = L.polyline(pts, style).addTo(routeMap);
-
-                L.circleMarker([data.origin_lat, data.origin_lng], {
-                    radius: 7, color: '#fff', weight: 2, fillColor: '#FF6117', fillOpacity: 1,
-                }).addTo(routeMap).bindTooltip('Canteen pickup');
-                L.circleMarker([data.dest_lat, data.dest_lng], {
-                    radius: 7, color: '#fff', weight: 2, fillColor: '#22c55e', fillOpacity: 1,
-                }).addTo(routeMap).bindTooltip(data.delivery_location || 'Drop-off');
-
-                routeMap.fitBounds(routeLine.getBounds().pad(0.25));
+                const dash = data.routed ? null : '1 8';
+                m.line.setLatLngs(pts);
+                m.casing.setLatLngs(pts);
+                m.line.setStyle({ dashArray: dash });
+                m.casing.setStyle({ dashArray: dash });
+                if (riderLiveFix) m.riderMarker.setLatLng([riderLiveFix.lat, riderLiveFix.lng]);
+                const bounds = L.latLngBounds(pts);
+                if (riderLiveFix) bounds.extend([riderLiveFix.lat, riderLiveFix.lng]);
+                m.map.fitBounds(bounds, { padding: [26, 26], maxZoom: 17 });
+                m.lastOrigin = riderLiveFix
+                    ? { lat: riderLiveFix.lat, lng: riderLiveFix.lng } : null;
+                const meta = document.getElementById('route-meta-' + id);
+                if (meta) {
+                    const km = Number(data.distance_km).toFixed(2);
+                    const mins = (data.duration_min != null) ? ` \u2022 ${data.duration_min} min` : '';
+                    meta.textContent = `${km} km${mins}`;
+                }
             })
-            .catch(() => {
-                status.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-400"></i> '
-                    + 'Could not load the route. Check your connection.';
-            });
+            .catch(() => {})
+            .finally(() => { m.fetching = false; });
+    }
+
+    // Called from pushRiderLocation on every GPS fix: move the markers, and
+    // refetch the road line once the rider has actually travelled far enough.
+    function onRiderFix(lat, lng) {
+        riderLiveFix = { lat, lng };
+        Object.keys(liveRouteMaps).forEach(id => {
+            const m = liveRouteMaps[id];
+            m.riderMarker.setLatLng([lat, lng]);
+            if (_routeDistanceM(m.lastOrigin, riderLiveFix) >= LIVE_ROUTE_MOVE_M) {
+                refreshLiveRoute(id, false);
+            }
+        });
+    }
+
+    // Keep distance / ETA fresh even while the rider is standing still.
+    setInterval(() => {
+        Object.keys(liveRouteMaps).forEach(id => refreshLiveRoute(id, false));
+    }, LIVE_ROUTE_MIN_INTERVAL_MS);
+
+    // Build the maps once the DOM is parsed. Leaflet is loaded in <head>, so it
+    // is always defined here; the tab handler also re-measures hidden maps.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLiveRouteMaps);
+    } else {
+        initLiveRouteMaps();
     }
     </script>
     <script>
-        // Dark theme on the route-preview tiles only; the orange line, casing
-        // and markers stay true-colour, matching the customer tracking map.
+        // Dark theme on the live-route tiles; the orange line, casing and
+        // markers stay true-colour, matching the customer tracking map.
         (function () {
             const css = document.createElement('style');
-            css.textContent = '#route-map .leaflet-tile-pane .leaflet-layer,'
-                + '#route-map .leaflet-tile-pane .leaflet-tile {'
+            css.textContent = '.live-route-map .leaflet-tile-pane .leaflet-layer,'
+                + '.live-route-map .leaflet-tile-pane .leaflet-tile {'
                 + 'filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(88%); }';
             document.head.appendChild(css);
         })();

@@ -383,12 +383,12 @@ function bindStatusBtn(button) {
             if (data.success) {
                 const card = document.getElementById(`order-card-${orderId}`);
                 if (card) {
-                    card.style.transition = 'all 0.2s ease';
+                    card.style.transition = 'all 0.1s ease';
                     card.style.opacity = '0';
                     card.style.transform = 'scale(0.95)';
-                    setTimeout(() => card.remove(), 200);
+                    setTimeout(() => card.remove(), 100);
                 }
-                setTimeout(() => { window.location.reload(); }, 250);
+                setTimeout(() => { pollOrders(); }, 120);
             } else {
                 this.disabled = false;
                 this.classList.remove('animate-pulse', 'opacity-75');

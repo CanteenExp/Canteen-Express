@@ -178,6 +178,73 @@ def route_preview(request, delivery_id):
     })
 
 
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
+def api_live_route(request, delivery_id):
+    """Road route from the rider's CURRENT position to a job's drop-off.
+
+    Powers the live orange route line on the rider's active-delivery card. The
+    rider's browser sends its freshest GPS fix as ``?lat=&lng=`` so the line
+    starts exactly where the rider is, instead of at the last position the
+    server stored. When no fresh fix is supplied we fall back to the stored
+    rider position, then to the canteen, so the map is never empty.
+
+    Degrades exactly like tracking: no provider -> ``routed: False`` plus a
+    straight-line path, never an error that blanks the map.
+    """
+    from django.conf import settings as dj_settings
+
+    delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    if not can_view_tracking(request, delivery):
+        return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+    if delivery.dest_lat is None or delivery.dest_lng is None:
+        return JsonResponse({
+            'success': False,
+            'error': 'This delivery has no destination coordinates.',
+        }, status=422)
+
+    def _coord(name):
+        try:
+            return float(request.GET.get(name))
+        except (TypeError, ValueError):
+            return None
+
+    origin_lat, origin_lng = _coord('lat'), _coord('lng')
+    if origin_lat is None or origin_lng is None:
+        if delivery.rider_lat is not None and delivery.rider_lng is not None:
+            origin_lat, origin_lng = delivery.rider_lat, delivery.rider_lng
+        else:
+            origin_lat = float(getattr(dj_settings, 'CANTEEN_LAT', 9.77778))
+            origin_lng = float(getattr(dj_settings, 'CANTEEN_LNG', 118.73333))
+
+    route = get_road_route(origin_lat, origin_lng,
+                           delivery.dest_lat, delivery.dest_lng)
+    if route:
+        path = route['path']
+        distance_km = route['distance_km']
+        duration_min = route['duration_min']
+        provider = route['provider']
+    else:
+        path = [[origin_lat, origin_lng], [delivery.dest_lat, delivery.dest_lng]]
+        distance_km = haversine_km(origin_lat, origin_lng,
+                                   delivery.dest_lat, delivery.dest_lng)
+        duration_min = None
+        provider = None
+
+    return JsonResponse({
+        'success': True,
+        'routed': provider is not None,
+        'routing_provider': provider,
+        'path': [[round(lat, 5), round(lng, 5)] for lat, lng in path],
+        'origin_lat': round(origin_lat, 6),
+        'origin_lng': round(origin_lng, 6),
+        'dest_lat': delivery.dest_lat,
+        'dest_lng': delivery.dest_lng,
+        'delivery_location': delivery.delivery_location,
+        'distance_km': round(distance_km, 2),
+        'duration_min': round(duration_min) if duration_min is not None else None,
+    })
+
+
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
 def delivery_history(request):
     history = DeliveryRequest.objects.filter(
@@ -1188,26 +1255,84 @@ def _can_manage_delivery(request, delivery):
 @require_POST
 @role_required(allowed_roles=['STUDENT', 'FACULTY', 'STAFF', 'ADMIN'])
 def api_convert_to_pickup(request, delivery_id):
+    """Convert a delivery order into a counter pick-up order.
+
+    Strips the rider fee and guarantees a queue slip so the customer collects
+    at the counter instead. Idempotent: calling it twice returns the same slip,
+    never a second conversion.
+
+    The request is parked at REJECTED -- NOT TIMEOUT. ``expire_stale_requests``
+    revives TIMEOUT rows whose food is preparing/ready back into the rider pool,
+    which is exactly why a converted order used to silently turn back into a
+    delivery. REJECTED is never revived, so a successful conversion stays one.
+    """
     from django.db import transaction
     from queuing.models import DigitalQueueSlip
     try:
         with transaction.atomic():
-            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+            delivery = DeliveryRequest.objects.select_for_update().select_related('order').get(id=delivery_id)
             if not _can_manage_delivery(request, delivery):
                 return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
-            if delivery.status == DeliveryRequest.RequestStatus.SEARCHING:
-                delivery.status = DeliveryRequest.RequestStatus.TIMEOUT
-                delivery.save(update_fields=['status'])
-                
-                order = delivery.order
-                order.delivery_fee = 0.00
+
+            order = delivery.order
+            if order is None:
+                return JsonResponse({'success': False, 'error': 'This request has no order to convert.'}, status=400)
+            if order.status in ('cancelled', 'completed'):
+                return JsonResponse({
+                    'success': False,
+                    'error': f'This order is already {order.get_status_display().lower()} and can no longer be converted.'
+                }, status=400)
+            if delivery.status == DeliveryRequest.RequestStatus.ACCEPTED:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'A rider has already accepted this delivery. Release it first, then convert.'
+                }, status=400)
+
+            already_converted = (
+                delivery.status == DeliveryRequest.RequestStatus.REJECTED
+                and DigitalQueueSlip.objects.filter(order=order).exists()
+            )
+
+            if delivery.status != DeliveryRequest.RequestStatus.REJECTED:
+                delivery.status = DeliveryRequest.RequestStatus.REJECTED
+                delivery.assigned_to = None
+                delivery.assigned_at = None
+                delivery.rider = None
+                delivery.save(update_fields=['status', 'assigned_to', 'assigned_at', 'rider'])
+
+            # Counter pick-up carries no rider fee.
+            if order.delivery_fee:
+                order.delivery_fee = 0
                 order.save(update_fields=['delivery_fee'])
-                
-                DigitalQueueSlip.objects.get_or_create(
-                    order=order,
-                    defaults={'queue_number': order.order_number}
-                )
-        return JsonResponse({'success': True, 'message': 'Successfully converted to pick-up!'})
+
+            slip, _ = DigitalQueueSlip.objects.get_or_create(
+                order=order,
+                defaults={'queue_number': order.order_number},
+            )
+
+        if not already_converted:
+            log_activity(
+                request,
+                action=f"Converted delivery {order.order_number} to counter pick-up (slip #{slip.queue_number})",
+                category=ActivityLog.Category.ORDER,
+                level=ActivityLog.Level.INFO,
+                target=order.order_number,
+                is_guest=order.customer_id is None,
+                metadata={
+                    'order_id': order.id,
+                    'delivery_id': delivery.id,
+                    'queue_number': slip.queue_number,
+                },
+            )
+
+        return JsonResponse({
+            'success': True,
+            'order_number': order.order_number,
+            'queue_number': slip.queue_number,
+            'message': 'Successfully converted to pick-up!',
+        })
+    except DeliveryRequest.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Delivery request not found.'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 

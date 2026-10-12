@@ -276,6 +276,12 @@
 </head>
 <body class="bg-brand-dark text-brand-light h-screen h-[100dvh] flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative" x-data="facultyPortal()">
 
+    <!-- MANUAL CLOSURE BANNER: shown when staff close the canteen -->
+    <div id="system-closed-banner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9998; background:rgba(127,29,29,0.96); color:#ffffff; padding:10px 16px; text-align:center; font-size:12.5px; font-weight:700; box-shadow:0 8px 24px rgba(0,0,0,0.35);">
+        <i class="fa-solid fa-store-slash"></i>
+        <span>Canteen is currently closed — ordering is temporarily unavailable.</span><span id="system-closed-banner-reason" style="display:none; color:#fecaca; font-weight:600;"></span>
+    </div>
+
     <!-- ================= HEADER ================= -->
     <header class="bg-brand-dark border-b border-white/10 shrink-0 space-y-2 pb-2">
         <div class="max-w-7xl mx-auto px-4 pt-2 space-y-1.5">
@@ -647,13 +653,13 @@
 
 
     <!-- ================= CHECKOUT MODAL ================= -->
-    <div id="checkout-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 overflow-y-auto">
-        <div class="glass-panel glass-panel-accent rounded-3xl max-w-md w-full flex flex-col overflow-hidden shadow-2xl max-h-[90vh] animate-fade-in">
+    <div id="checkout-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 pt-[max(env(safe-area-inset-top),24px)] pb-[max(env(safe-area-inset-bottom),24px)] overflow-y-auto">
+        <div class="glass-panel glass-panel-accent rounded-3xl max-w-md w-full flex flex-col overflow-hidden shadow-2xl max-h-[88vh] my-auto animate-fade-in">
 
             <!-- Header -->
             <div class="shrink-0 flex items-center justify-between px-5 py-4 border-b border-brand-orange/25 glass-panel-head">
                 <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-10 h-10 rounded-xl bg-brand-orange/15 border border-brand-orange/30 text-brand-orange flex items-center justify-center text-base shrink-0">
+                    <div class="w-10 h-10 rounded-xl bg-brand-orange/15 border border-brand-orange/30 text-brand-orange flex items-center justify-center text-base shrink-0 shadow-sm">
                         <i class="fa-solid fa-bag-shopping"></i>
                     </div>
                     <div class="min-w-0">
@@ -661,7 +667,7 @@
                         <p class="text-[10px] font-bold text-brand-slate truncate">Confirm details to place your order</p>
                     </div>
                 </div>
-                <button onclick="closeCheckoutModal()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center shrink-0 transition">
+                <button onclick="closeCheckoutModal()" class="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center shrink-0 transition cursor-pointer">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
@@ -670,24 +676,19 @@
             <div class="glass-scroll flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0 text-xs">
 
                 <!-- Delivery Method -->
-                <div class="space-y-1.5">
-                    <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate">Delivery Method</label>
-                    <div class="grid grid-cols-2 gap-2 p-1 bg-white/5 border border-white/10 rounded-2xl">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate block">Delivery Method</label>
+                    <div class="grid grid-cols-2 gap-2 p-1.5 bg-white/5 border border-white/10 rounded-2xl">
                         <button type="button" id="fulfillment-delivery" onclick="setFulfillment('delivery')"
-                            class="relative rounded-xl text-[11px] bg-emerald-600 text-white font-black flex items-center justify-center gap-1.5 transition shadow-lg shadow-emerald-600/30">
-                            <i class="fa-solid fa-motorcycle"></i> Delivery
-                            <span class="text-[8px] font-black bg-emerald-400 text-emerald-950 px-1.5 py-0.5 rounded-full">₱15+</span>
+                            class="relative rounded-xl py-3 px-3 text-[11px] font-black flex items-center justify-center gap-2 transition shadow-md cursor-pointer">
+                            <i class="fa-solid fa-motorcycle text-sm"></i> Delivery
+                            <span id="fulfillment-delivery-badge" class="text-[9px] font-black px-2 py-0.5 rounded-full">₱15+</span>
                         </button>
                         <button type="button" id="fulfillment-pickup" onclick="setFulfillment('pickup')"
-                            class="relative rounded-xl text-[11px] bg-white/5 text-brand-slate font-bold flex items-center justify-center gap-1.5 transition hover:text-white">
-                            <i class="fa-solid fa-store"></i> Pickup
-                            <span class="text-[8px] font-black bg-emerald-400 text-emerald-950 px-1.5 py-0.5 rounded-full">Free</span>
+                            class="relative rounded-xl py-3 px-3 text-[11px] font-bold flex items-center justify-center gap-2 transition cursor-pointer">
+                            <i class="fa-solid fa-store text-sm"></i> Pickup
+                            <span id="fulfillment-pickup-badge" class="text-[9px] font-black px-2 py-0.5 rounded-full">Free</span>
                         </button>
-                    </div>
-                    <div class="flex items-center gap-2 px-0.5">
-                        <span class="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400"><i class="fa-solid fa-circle text-[6px]"></i> Delivery</span>
-                        <span class="text-brand-slate">·</span>
-                        <span class="flex items-center gap-1.5 text-[10px] font-bold text-brand-orange"><i class="fa-solid fa-circle text-[6px]"></i> Pickup</span>
                     </div>
                 </div>
 
@@ -2660,6 +2661,8 @@
 
         const deliveryBtn = document.getElementById('fulfillment-delivery');
         const pickupBtn = document.getElementById('fulfillment-pickup');
+        const deliveryBadge = document.getElementById('fulfillment-delivery-badge');
+        const pickupBadge = document.getElementById('fulfillment-pickup-badge');
         const deliveryDetails = document.getElementById('delivery-details-section');
         const pickupDetails = document.getElementById('pickup-details-section');
         const feeLabel = document.getElementById('summary-fee-label');
@@ -2667,12 +2670,15 @@
         const submitText = document.getElementById('checkout-submit-text');
         const modalTitle = document.getElementById('checkout-modal-title');
 
-        const deliveryActiveCls = "rounded-xl text-[11px] bg-emerald-600 text-white border-emerald-500 font-black shadow-lg shadow-emerald-600/30";
-        const pickupActiveCls = "rounded-xl text-[11px] bg-brand-orange text-white border-brand-orange font-black shadow-lg shadow-brand-orange/30";
-        const idleCls = "rounded-xl text-[11px] bg-white/5 text-brand-slate border-transparent font-bold hover:text-white";
+        const deliveryActiveCls = "rounded-xl py-3 px-3 text-[11px] bg-emerald-600 text-white border-emerald-500 font-black shadow-lg shadow-emerald-600/30";
+        const pickupActiveCls = "rounded-xl py-3 px-3 text-[11px] bg-brand-orange text-white border-brand-orange font-black shadow-lg shadow-brand-orange/30";
+        const idleCls = "rounded-xl py-3 px-3 text-[11px] bg-white/5 text-brand-slate border-transparent font-bold hover:text-white";
 
-        deliveryBtn.className = `relative py-2.5 flex items-center justify-center gap-1.5 transition border ${isDelivery ? deliveryActiveCls : idleCls}`;
-        pickupBtn.className = `relative py-2.5 flex items-center justify-center gap-1.5 transition border ${isDelivery ? idleCls : pickupActiveCls}`;
+        deliveryBtn.className = `relative flex items-center justify-center gap-2 transition border cursor-pointer ${isDelivery ? deliveryActiveCls : idleCls}`;
+        pickupBtn.className = `relative flex items-center justify-center gap-2 transition border cursor-pointer ${isDelivery ? idleCls : pickupActiveCls}`;
+
+        deliveryBadge.className = `text-[9px] font-black px-2 py-0.5 rounded-full ${isDelivery ? 'bg-emerald-400 text-emerald-950' : 'bg-white/10 text-brand-slate'}`;
+        pickupBadge.className = `text-[9px] font-black px-2 py-0.5 rounded-full ${!isDelivery ? 'bg-amber-400 text-amber-950' : 'bg-white/10 text-brand-slate'}`;
 
         deliveryDetails.style.display = isDelivery ? '' : 'none';
         pickupDetails.style.display = isDelivery ? 'none' : '';
@@ -3171,6 +3177,8 @@
             message: 'Are you sure you want to convert this delivery order to Counter Pick-up? You will not be able to undo this.',
             confirmLabel: 'Convert',
             onConfirm: () => {
+                const confirmModal = document.getElementById('faculty-confirm-modal');
+                if (confirmModal) confirmModal.classList.add('hidden');
                 fetch(`/deliveries/api/convert-to-pickup/${facultyTimeoutDeliveryId}/`, {
                     method: 'POST',
                     headers: {
@@ -3179,45 +3187,42 @@
                     }
                 }).then(res => res.json()).then(data => {
                     if (data.success) {
-                        // Find order number from ongoingDeliveriesData if possible
                         const ongoing = (ongoingDeliveriesData || []).find(d => d.id === facultyTimeoutDeliveryId);
-                        const orderNum = ongoing ? ongoing.order_number : 'Order';
-                        const modalBox = document.querySelector('#rider-timeout-modal > div');
-                        modalBox.innerHTML = `
-                            <div class="text-center pb-3 border-b border-white/10">
-                                <span class="bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-amber-500/30">Converted to Walk-In</span>
-                                <h3 class="text-xl font-black text-white mt-2">Queue Slip Generated</h3>
-                            </div>
-                            <div class="space-y-1.5 py-1">
-                                <p class="text-[10px] uppercase tracking-wider text-white/60 font-bold">Your Queue Number</p>
-                                <span class="text-4xl font-black text-orange-400 tracking-tight">${orderNum}</span>
-                                <p class="text-xs text-white/80 font-medium">Counter Pick-up Mode Activated</p>
-                            </div>
-                            <div class="bg-white p-3 rounded-2xl flex flex-col items-center justify-center">
-                                <svg id="faculty-timeout-slip-barcode" class="w-full h-14"></svg>
-                                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Scan at Counter to Process Payment</span>
-                            </div>
-                            <button onclick="window.location.reload()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition">
-                                Done / Refresh Dashboard
-                            </button>
-                        `;
-                        if (typeof JsBarcode !== 'undefined') {
-                            JsBarcode("#faculty-timeout-slip-barcode", orderNum, {
-                                format: "CODE128",
-                                lineColor: "#111827",
-                                width: 2,
-                                height: 45,
-                                displayValue: true,
-                                fontSize: 11,
-                                margin: 0
-                            });
-                        }
+                        const orderNum = data.queue_number || data.order_number || (ongoing ? ongoing.order_number : 'Order');
+                        hideFacultyTimeoutModal();
+                        showFacultySuccess({
+                            badge: 'Converted to Pick-up',
+                            badgeClass: 'inline-block bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-amber-500/30',
+                            icon: 'fa-solid fa-basket-shopping',
+                            iconClass: 'w-14 h-14 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg',
+                            title: 'Queue Slip Generated',
+                            message: 'Counter Pick-up mode activated. Scan this slip at the counter to collect your order.',
+                            queueNumber: orderNum,
+                            queueCaption: 'Scan at Counter to Process Payment',
+                            buttonLabel: 'Back to Menu',
+                        });
                     } else {
                         showToast(data.error || "Failed to convert.", 'error');
+                        showFacultyCancelReasonsBackOrRestore();
                     }
+                }).catch(() => {
+                    showToast("Could not reach the server. Please try again.", 'error');
                 });
             }
         });
+    }
+
+    // Restore the timeout modal's action buttons after an in-place failure.
+    function showFacultyCancelReasonsBackOrRestore() {
+        const container = document.getElementById('cancel-reason-container');
+        const buttons = document.getElementById('timeout-buttons');
+        if (container) container.classList.add('hidden');
+        if (buttons) buttons.classList.remove('hidden');
+    }
+
+    function hideFacultyTimeoutModal() {
+        const modal = document.getElementById('rider-timeout-modal');
+        if (modal) modal.classList.add('hidden');
     }
 
     function showFacultyCancelReasons() {
@@ -3225,9 +3230,49 @@
         document.getElementById('cancel-reason-container').classList.remove('hidden');
     }
 
+    function toggleFacultyOtherReason() {
+        const sel = document.getElementById('cancel-reason-select');
+        const other = document.getElementById('cancel-reason-other');
+        if (!sel || !other) return;
+        const isOther = sel.value === 'Other reason';
+        other.classList.toggle('hidden', !isOther);
+        if (isOther) {
+            other.focus();
+        } else {
+            other.value = '';
+        }
+    }
+
+    function getFacultyCancelReason() {
+        const sel = document.getElementById('cancel-reason-select');
+        let reason = sel ? sel.value : 'Waiting for too long';
+        if (reason === 'Other reason') {
+            const other = document.getElementById('cancel-reason-other');
+            const custom = other ? (other.value || '').trim() : '';
+            if (custom) reason = custom;
+        }
+        return reason;
+    }
+
+    // Step 1: confirm the cancellation through the shared glass dialog.
     function submitFacultyCancelOrder() {
         if (!facultyTimeoutDeliveryId) return;
-        const reason = document.getElementById('cancel-reason-select').value;
+        const reason = getFacultyCancelReason();
+        showFacultyConfirm({
+            title: 'Cancel this order?',
+            subtitle: 'Delivery request',
+            message: `This will cancel the order, return any redeemed points and restore the stock. Reason: "${reason}". This cannot be undone.`,
+            confirmLabel: 'Cancel Order',
+            onConfirm: () => {
+                const confirmModal = document.getElementById('faculty-confirm-modal');
+                if (confirmModal) confirmModal.classList.add('hidden');
+                performFacultyCancel(reason);
+            }
+        });
+    }
+
+    // Step 2: perform the cancellation and celebrate the outcome.
+    function performFacultyCancel(reason) {
         fetch(`/deliveries/api/cancel-with-reason/${facultyTimeoutDeliveryId}/`, {
             method: 'POST',
             headers: {
@@ -3237,13 +3282,126 @@
             body: JSON.stringify({ reason: reason })
         }).then(res => res.json()).then(data => {
             if (data.success) {
-                showToast("Order cancelled successfully.", 'success');
-                window.location.reload();
+                hideFacultyTimeoutModal();
+                showFacultySuccess({
+                    badge: 'Order Cancelled',
+                    badgeClass: 'inline-block bg-red-500/20 text-red-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-red-500/30',
+                    icon: 'fa-solid fa-ban',
+                    iconClass: 'w-14 h-14 bg-red-500/20 border border-red-500/40 text-red-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg',
+                    title: 'Order Cancelled Successfully',
+                    message: `Reason: ${reason}. Any redeemed loyalty points were returned and the stock restored.`,
+                    buttonLabel: 'Back to Menu',
+                });
             } else {
                 showToast(data.error || "Failed to cancel.", 'error');
             }
+        }).catch(() => {
+            showToast("Could not reach the server. Please try again.", 'error');
         });
     }
+
+    // Reusable success dialog. Gives every cancel/convert a clear, on-brand
+    // confirmation instead of a fleeting toast, then returns to the menu.
+    function showFacultySuccess(opts) {
+        opts = opts || {};
+        const modal = document.getElementById('faculty-success-modal');
+        if (!modal) return;
+
+        const iconEl = document.getElementById('faculty-success-icon');
+        iconEl.className = opts.iconClass || 'w-14 h-14 bg-green-500/20 border border-green-500/40 text-green-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg';
+        iconEl.innerHTML = `<i class="${opts.icon || 'fa-solid fa-circle-check'}"></i>`;
+
+        const badgeEl = document.getElementById('faculty-success-badge');
+        badgeEl.innerText = opts.badge || 'Success';
+        badgeEl.className = opts.badgeClass || 'inline-block bg-green-500/20 text-green-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-green-500/30';
+
+        document.getElementById('faculty-success-title').innerText = opts.title || 'Done';
+        document.getElementById('faculty-success-message').innerText = opts.message || '';
+
+        const slipWrap = document.getElementById('faculty-success-slip');
+        if (opts.queueNumber) {
+            slipWrap.classList.remove('hidden');
+            document.getElementById('faculty-success-slip-no').innerText = opts.queueNumber;
+            document.getElementById('faculty-success-slip-caption').innerText = opts.queueCaption || 'Scan at Counter';
+            if (typeof JsBarcode !== 'undefined') {
+                try {
+                    JsBarcode("#faculty-success-barcode", opts.queueNumber, {
+                        format: "CODE128",
+                        lineColor: "#111827",
+                        width: 2,
+                        height: 45,
+                        displayValue: true,
+                        fontSize: 11,
+                        margin: 0
+                    });
+                } catch (e) { /* barcode is a nicety, never block the dialog */ }
+            }
+        } else {
+            slipWrap.classList.add('hidden');
+        }
+
+        const doneBtn = document.getElementById('faculty-success-done');
+        doneBtn.innerText = opts.buttonLabel || 'Back to Menu';
+        doneBtn.onclick = () => {
+            // The dashboard root is the menu; a reload lands the user back on it.
+            window.location.reload();
+        };
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeFacultySuccess() {
+        document.getElementById('faculty-success-modal').classList.add('hidden');
+    }
+
+    // ================= MANUAL CLOSURE (staff open/close switch) =================
+    // Server-rendered initial state, then polled so a closure made from the
+    // staff dashboard appears here without the customer reloading the page.
+    window.__systemClosed = !{{ SYSTEM_IS_OPEN|yesno:'true,false' }};
+    window.__systemClosedMessage = '{{ SYSTEM_CLOSED_MESSAGE|escapejs }}';
+
+    function renderSystemClosedBanner() {
+        const banner = document.getElementById('system-closed-banner');
+        if (!banner) return;
+        if (!window.__systemClosed) { banner.style.display = 'none'; return; }
+        const reason = document.getElementById('system-closed-banner-reason');
+        if (reason) {
+            if (window.__systemClosedMessage) {
+                reason.textContent = ' ' + window.__systemClosedMessage;
+                reason.style.display = 'inline';
+            } else {
+                reason.style.display = 'none';
+            }
+        }
+        banner.style.display = 'block';
+    }
+
+    function refreshSystemStatus() {
+        fetch('{% url "core_app:system_status_api" %}', { headers: { 'Accept': 'application/json' } })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                window.__systemClosed = !data.is_open;
+                window.__systemClosedMessage = data.message || '';
+                renderSystemClosedBanner();
+            })
+            .catch(() => { /* offline: leave the current state alone */ });
+    }
+
+    // The server refuses checkout anyway; stopping here just avoids a pointless
+    // round trip and the "processing order" spinner.
+    const _originalProceedWithFacultyOrder = proceedWithFacultyOrder;
+    proceedWithFacultyOrder = function () {
+        if (window.__systemClosed) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            renderSystemClosedBanner();
+            return;
+        }
+        return _originalProceedWithFacultyOrder.apply(this, arguments);
+    };
+
+    renderSystemClosedBanner();
+    setInterval(refreshSystemStatus, 15000);
     </script>
 
     <!-- Smart Rider Timeout Modal for Faculty/Staff Dashboard -->
@@ -3257,20 +3415,38 @@
                 It's been 2 minutes and no rider has accepted your delivery request yet. What would you like to do?
             </p>
 
-            <div id="cancel-reason-container" class="hidden space-y-2 text-left pt-2">
-                <label class="block text-[10px] font-extrabold uppercase tracking-wider text-white/70">Select cancellation reason:</label>
-                <select id="cancel-reason-select" class="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-orange">
-                    <option value="Waiting for too long" class="bg-zinc-900">Waiting for too long</option>
-                    <option value="No riders available" class="bg-zinc-900">No riders available</option>
-                    <option value="Change of plans" class="bg-zinc-900">Change of plans</option>
-                    <option value="Other reason" class="bg-zinc-900">Other reason</option>
-                </select>
-                <button onclick="submitFacultyCancelOrder()" class="w-full mt-2 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
-                    Confirm Cancellation
-                </button>
-                <button onclick="document.getElementById('cancel-reason-container').classList.add('hidden'); document.getElementById('timeout-buttons').classList.remove('hidden');" class="w-full py-1.5 text-white/50 hover:text-white text-xs font-bold">
-                    Back
-                </button>
+            <div id="cancel-reason-container" class="hidden space-y-3 text-left pt-2">
+                <div>
+                    <label for="cancel-reason-select" class="block text-[10px] font-extrabold uppercase tracking-wider text-white/70 mb-1.5">Cancellation reason</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-list-ul absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 text-[11px] pointer-events-none"></i>
+                        <select id="cancel-reason-select" onchange="toggleFacultyOtherReason()"
+                                class="w-full appearance-none pl-9 pr-9 py-3 bg-white/5 border border-white/15 rounded-xl text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-brand-orange transition cursor-pointer">
+                            <option value="Waiting for too long" class="bg-zinc-900 text-white">Waiting for too long</option>
+                            <option value="No riders available" class="bg-zinc-900 text-white">No riders available</option>
+                            <option value="Change of plans" class="bg-zinc-900 text-white">Change of plans</option>
+                            <option value="Wrong order details" class="bg-zinc-900 text-white">Wrong order details</option>
+                            <option value="Other reason" class="bg-zinc-900 text-white">Other reason</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 text-[11px] pointer-events-none"></i>
+                    </div>
+                </div>
+                <input id="cancel-reason-other" type="text" maxlength="120" placeholder="Type your reason (optional)"
+                       class="hidden w-full px-3.5 py-3 bg-white/5 border border-white/15 rounded-xl text-xs text-white placeholder-white/35 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-brand-orange transition">
+                <p class="text-[10px] text-white/50 leading-relaxed font-medium flex items-start gap-1.5">
+                    <i class="fa-solid fa-circle-info mt-0.5 text-white/40"></i>
+                    <span>The delivery fee is removed, redeemed loyalty points are returned, and stock is restored.</span>
+                </p>
+                <div class="grid grid-cols-2 gap-2.5 pt-1">
+                    <button type="button" onclick="showFacultyCancelReasonsBackOrRestore()"
+                            class="py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
+                        Back
+                    </button>
+                    <button type="button" onclick="submitFacultyCancelOrder()"
+                            class="py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer shadow-lg shadow-red-900/30 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-ban"></i> Confirm
+                    </button>
+                </div>
             </div>
 
             <div id="timeout-buttons" class="space-y-2 pt-2">
@@ -3313,6 +3489,34 @@
                     <i class="fa-solid fa-check"></i> Confirm
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- ================= SUCCESS DIALOG (cancel / convert outcome) ================= -->
+    <div id="faculty-success-modal" class="fixed inset-0 z-[100001] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 text-center space-y-4 text-white relative modal-pop">
+            <button onclick="closeFacultySuccess()" class="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div id="faculty-success-icon" class="w-14 h-14 bg-green-500/20 border border-green-500/40 text-green-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <span id="faculty-success-badge" class="inline-block bg-green-500/20 text-green-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-green-500/30">Success</span>
+            <h3 id="faculty-success-title" class="text-lg font-black font-poppins text-white">Done</h3>
+            <p id="faculty-success-message" class="text-xs text-zinc-200 leading-relaxed font-medium"></p>
+
+            <div id="faculty-success-slip" class="hidden space-y-2">
+                <p class="text-[10px] uppercase tracking-wider text-white/60 font-bold">Your Queue Number</p>
+                <span id="faculty-success-slip-no" class="block text-4xl font-black text-orange-400 tracking-tight">--</span>
+                <div class="bg-white p-3 rounded-2xl flex flex-col items-center justify-center">
+                    <svg id="faculty-success-barcode" class="w-full h-14"></svg>
+                    <span id="faculty-success-slip-caption" class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Scan at Counter</span>
+                </div>
+            </div>
+
+            <button id="faculty-success-done" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition cursor-pointer">
+                Back to Menu
+            </button>
         </div>
     </div>
 </body>
