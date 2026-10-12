@@ -23,9 +23,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
-    <!-- Leaflet CSS & JS for Real-time Maps API -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet CSS & JS for Real-time Maps API (served locally, no CDN dependency) -->
+    <link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}" />
+    <script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -1333,6 +1333,18 @@
     // basemaps return one identical placeholder for every location and style.
     const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
 
+    // Leaflet is served from /static/vendor/leaflet, but if the bundle ever
+    // fails to load we say so in the container instead of leaving a blank box
+    // (map failures used to be completely silent).
+    function mapLoadError(containerId) {
+        const el = document.getElementById(containerId);
+        if (el) {
+            el.innerHTML = '<div style="display:flex;height:100%;min-height:120px;align-items:center;'
+                + 'justify-content:center;text-align:center;padding:16px;color:#a1a1aa;font-size:12px;'
+                + 'font-weight:700;line-height:1.5;">Map could not load.<br>Check your connection and refresh the page.</div>';
+        }
+    }
+
     // Campus landmark directory used to display the nearest building instead of
     // raw coordinates. Coordinates are approximate (relative to the campus
     // center) and should be tuned to your real campus map if needed.
@@ -1830,6 +1842,7 @@
         document.getElementById('map-building').innerText = buildGpsLabel(currentLat, currentLng);
 
         setTimeout(() => {
+            if (typeof L === 'undefined') { mapLoadError('leaflet-map'); return; }
             if (!leafletMap) {
                 leafletMap = L.map('leaflet-map').setView([currentLat, currentLng], 16);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -2480,7 +2493,7 @@
             }
         }
 
-        if (typeof L === 'undefined') return;
+        if (typeof L === 'undefined') { mapLoadError('view-order-map'); return; }
         const hasPos = typeof d.rider_lat === 'number' && typeof d.rider_lng === 'number';
         const hasDest = typeof d.dest_lat === 'number' && typeof d.dest_lng === 'number';
 

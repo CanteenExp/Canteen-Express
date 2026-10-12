@@ -21,8 +21,8 @@
     {% if USE_GOOGLE_MAPS %}
     <script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&v=weekly&callback=ceGoogleMapsReady&loading=async"></script>
     {% else %}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}" />
+    <script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
     {% endif %}
     <script src="{% static 'js/maps.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
