@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
-from canteen_menu.models import MenuItem
+from canteen_menu.models import MenuItem, Category
 from .models import Order, OrderItem
 
 
@@ -58,8 +58,10 @@ def kiosk_welcome(request):
 # 2. CUSTOMER SIDE - Main Menu Page
 def kiosk_menu(request):
     formatted_menu = _get_formatted_menu()
+    categories = Category.objects.all()
     context = {
-        'menu_data_json': json.dumps(formatted_menu)
+        'menu_data_json': json.dumps(formatted_menu),
+        'categories': categories
     }
     return render(request, 'customer_portal/kiosk_menu.html', context)
 

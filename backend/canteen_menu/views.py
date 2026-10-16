@@ -64,57 +64,19 @@ from django.utils.text import slugify
 
 def _auto_sync_menu_image(item):
     """
-    Auto-syncs menu image from designated local folders matching item name (instant check without listing large dirs).
+    Lightning-fast instant image sync without scanning external absolute paths.
     """
     if item.image:
         try:
             if item.image.storage.exists(item.image.name):
-                return  # Manually uploaded image file exists and takes precedence
+                return
         except Exception:
             pass
 
-    slug_name = slugify(item.name)
-    clean_name = item.name.lower().replace(' ', '_').replace('-', '_')
-    no_space_name = item.name.lower().replace(' ', '')
-    raw_name = item.name.lower()
+    if item.image_url:
+        return
 
-    candidates = [slug_name, clean_name, no_space_name, raw_name, item.name]
-    extensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
-
-    media_menu_dir = os.path.join(settings.MEDIA_ROOT, 'menu_items')
-    os.makedirs(media_menu_dir, exist_ok=True)
-
-    source_dirs = [
-        media_menu_dir,
-        r"C:\Users\vince\Vince Projects\CAPSTONE PROJECT\UPDATED CANTEEN EXPRESS\Merge updated\backend\media\menu_items",
-        r"C:\Users\vince\Vince Projects\CAPSTONE PROJECT\UPDATED CANTEEN EXPRESS\Merge updated\Biscuits & Beverages",
-        r"C:\Users\vince\Vince Projects\CAPSTONE PROJECT\UPDATED CANTEEN EXPRESS\Merge updated\Meryenda",
-        r"C:\Users\vince\Vince Projects\CAPSTONE PROJECT\UPDATED CANTEEN EXPRESS\Merge updated\Ulams",
-        "C:/Users/vince/Vince Projects/CAPSTONE PROJECT/CANTEEN EXPRESS GITHUB MERGE/TESTING/backend/media/menu_items",
-        "C:/Users/vince/Vince Projects/CAPSTONE PROJECT/CANTEEN EXPRESS GITHUB MERGE/TESTING/Biscuits & Beverages",
-        "C:/Users/vince/Vince Projects/CAPSTONE PROJECT/CANTEEN EXPRESS GITHUB MERGE/TESTING/Meryenda",
-        "C:/Users/vince/Vince Projects/CAPSTONE PROJECT/CANTEEN EXPRESS GITHUB MERGE/TESTING/Ulams",
-    ]
-
-    for s_dir in source_dirs:
-        if os.path.exists(s_dir):
-            for cand in candidates:
-                for ext in extensions:
-                    filename = f"{cand}{ext}"
-                    src_path = os.path.join(s_dir, filename)
-                    if os.path.exists(src_path):
-                        target_path = os.path.join(media_menu_dir, filename)
-                        if not os.path.exists(target_path) and os.path.abspath(src_path) != os.path.abspath(target_path):
-                            try:
-                                shutil.copy2(src_path, target_path)
-                            except Exception:
-                                pass
-                        item.image = f'menu_items/{filename}'
-                        item.image_url = ''
-                        item.save()
-                        return
-
-    # Reliable Fallback Food Photo for Render / production
+    # Reliable Fallback Food Photo (Instant)
     name_lower = item.name.lower()
     cat_name = str(item.category).lower() if item.category else ''
     if 'coke' in name_lower or 'sprite' in name_lower or 'royal' in name_lower or 'pepsi' in name_lower or 'drink' in name_lower or 'beverage' in name_lower or 'coffee' in name_lower or 'energen' in name_lower:
@@ -128,7 +90,6 @@ def _auto_sync_menu_image(item):
     else:
         item.image_url = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80"
     item.image = None
-    item.save()
 
 
 def upload_to_supabase_storage(image_file):
@@ -150,7 +111,7 @@ def upload_to_supabase_storage(image_file):
         req.add_header('Content-Type', content_type)
         req.add_header('x-upsert', 'true')
         
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=5) as response:
             if response.status in [200, 201]:
                 return f"https://{project_ref}.supabase.co/storage/v1/object/public/{bucket_name}/{urllib.parse.quote(filename)}"
     except Exception as e:
@@ -177,10 +138,23 @@ def staff_menu_create(request):
             item = form.save(commit=False)
             if not item.description:
                 item.description = _generate_auto_desc(item.name)
-            _auto_sync_menu_image(item)
+            
+            if request.FILES.get('image'):
+                pub_url = upload_to_supabase_storage(request.FILES.get('image'))
+                if pub_url:
+                    item.image_url = pub_url
+                    item.image = None
+                else:
+                    item.image_url = ''
+            elif item.image_url:
+                item.image = None
+            
+            if not item.image and not item.image_url:
+                _auto_sync_menu_image(item)
+
             item.save()
             cache.delete('formatted_menu_active_kiosk')
-            messages.success(request, f"Menu item '{item.name}' added successfully with auto-synced image!")
+            messages.success(request, f"Menu item '{item.name}' added successfully with uploaded image!")
             return redirect('canteen_menu:staff_menu_list')
         else:
             messages.error(request, "Please correct the errors in the form.")
