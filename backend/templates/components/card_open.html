@@ -1,0 +1,29 @@
+{% comment %}
+Card — open/close pair, so any markup can live inside.
+
+Params (card_open):
+  title        optional heading; also renders the header bar
+  subtitle     optional muted line under the title
+  flush        True -> body has no padding, for cards holding a table or list
+  extra_class  extra classes for one-offs
+
+Params (card_end): none.
+
+Usage:
+  {% include "components/card_open.html" with title="Today's orders" subtitle="Monday, 12 October" %}
+      <p class="ds-body ds-muted">32 orders taken</p>
+  {% include "components/card_end.html" %}
+
+Cards that need a footer bar use the classes directly:
+  <div class="ds-card">
+      <div class="ds-card__body">…</div>
+      <div class="ds-card__footer">…</div>
+  </div>
+{% endcomment %}<div class="ds-card{% if extra_class %} {{ extra_class }}{% endif %}">
+    {% if title %}<div class="ds-card__header">
+        <div>
+            <h2 class="ds-card__title">{{ title }}</h2>
+            {% if subtitle %}<p class="ds-caption ds-muted">{{ subtitle }}</p>{% endif %}
+        </div>
+    </div>{% endif %}
+    <div class="ds-card__body{% if flush %} ds-card__body--flush{% endif %}">

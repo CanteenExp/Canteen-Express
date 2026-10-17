@@ -1,0 +1,13 @@
+{% comment %}
+Icon — one set (Lucide), one stroke weight, one size.
+
+Params:
+  name   required  Lucide icon name, e.g. "check", "alert-triangle", "utensils"
+  class  optional  extra classes, e.g. "ds-icon--sm" / "ds-icon--lg"
+  label  optional  accessible label. Omit for decorative icons, which are
+                   then hidden from screen readers.
+
+Usage:
+  {% include "components/icon.html" with name="check" %}
+  {% include "components/icon.html" with name="clock" label="Closing time" %}
+{% endcomment %}<i data-lucide="{{ name }}" class="ds-icon {{ class }}"{% if label %} role="img" aria-label="{{ label }}"{% else %} aria-hidden="true"{% endif %}></i>

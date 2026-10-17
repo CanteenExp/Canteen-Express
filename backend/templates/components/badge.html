@@ -1,0 +1,13 @@
+{% comment %}
+Badge — a short chip for status or a category. Colour is semantic; never use
+a badge for decoration.
+
+Params:
+  label    required  text, sentence case
+  variant  neutral (default) | success | pending | info | danger | accent
+  dot      True -> leading dot in the same colour
+
+Usage:
+  {% include "components/badge.html" with label="Ready" variant="success" %}
+  {% include "components/badge.html" with label="Delivery" variant="accent" dot=True %}
+{% endcomment %}<span class="ds-badge ds-badge--{{ variant|default:'neutral' }}">{% if dot %}<span class="ds-badge__dot" aria-hidden="true"></span>{% endif %}{{ label }}</span>

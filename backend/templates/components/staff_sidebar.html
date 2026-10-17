@@ -1,0 +1,107 @@
+{% comment %}
+Staff app shell sidebar — slim light sidebar on desktop, off-canvas drawer
+plus a top bar on mobile. Renders the top bar, the scrim, and the aside;
+include it once, directly inside the page's `.ds-shell` root.
+
+Expects an Alpine scope on that root with:
+  showSidebar              drawer open/close (all pages)
+  showChangePasswordModal  toggles the change-password modal (all pages)
+
+Tab pages (sidebar_alpine=True) additionally need:
+  activeTab                current tab name ('overview' | 'menu' | 'users' |
+                           'deliveries' | 'feedback' | 'reports' | 'logs')
+  setTab(name)             switches the tab and closes the drawer
+  activityUnread           unread activity-log count (badge, optional)
+
+Standalone pages: include with sidebar_alpine=False and, optionally,
+side_active ('dashboard' | 'counter') to mark one item active. Nav items
+then render as plain links to the matching dashboard tab.
+{% endcomment %}
+
+<!-- Mobile top bar -->
+<header class="ds-topbar">
+    <button type="button" class="ds-icon-btn" @click="showSidebar = true" aria-label="Open navigation" :aria-expanded="String(showSidebar)">
+        <i data-lucide="menu" class="ds-icon"></i>
+    </button>
+    <a href="{% url 'canteen_menu:staff_dashboard' %}" class="ds-topbar__brand">
+        <span class="ds-topbar__logo" aria-hidden="true"><i data-lucide="utensils" class="ds-icon"></i></span>
+        <span>Staff portal</span>
+    </a>
+</header>
+
+<!-- Scrim behind the mobile drawer -->
+<div class="ds-scrim" x-show="showSidebar" x-cloak @click="showSidebar = false" @keydown.escape.window="showSidebar = false" aria-hidden="true"></div>
+
+<!-- Sidebar / drawer -->
+<aside class="ds-sidebar" :class="{ 'is-open': showSidebar }" aria-label="Staff navigation">
+    <div class="ds-sidebar__brand">
+        <span class="ds-sidebar__logo" aria-hidden="true"><i data-lucide="utensils" class="ds-icon"></i></span>
+        <div class="ds-sidebar__brand-text">
+            <p class="ds-sidebar__title">Staff portal</p>
+            <p class="ds-sidebar__subtitle">Canteen Express</p>
+        </div>
+        <button type="button" class="ds-icon-btn ds-sidebar__close" @click="showSidebar = false" aria-label="Close navigation">
+            <i data-lucide="x" class="ds-icon"></i>
+        </button>
+    </div>
+
+    <nav class="ds-nav" aria-label="Sections">
+
+        <p class="ds-nav-group">Operations</p>
+        <a href="{% url 'canteen_menu:staff_dashboard' %}?tab=overview" class="ds-nav-item{% if not sidebar_alpine %}{% if side_active == 'dashboard' %} ds-nav-item--active{% endif %}{% endif %}"{% if sidebar_alpine %} @click.prevent="setTab('overview')" :class="activeTab === 'overview' ? 'ds-nav-item--active' : ''"{% endif %}>
+            <i data-lucide="layout-dashboard" class="ds-icon"></i>
+            <span class="ds-nav-item__label">Dashboard</span>
+        </a>
+        <a href="{% url 'canteen_menu:counter_hub' %}" class="ds-nav-item{% if not sidebar_alpine and side_active == 'counter' %} ds-nav-item--active{% endif %}">
+            <i data-lucide="scan-line" class="ds-icon"></i>
+            <span class="ds-nav-item__label">Counter</span>
+        </a>
+
+        <p class="ds-nav-group">Management</p>
+        <a href="{% url 'canteen_menu:staff_dashboard' %}?tab=menu" class="ds-nav-item{% if not sidebar_alpine and side_active == 'menu' %} ds-nav-item--active{% endif %}"{% if sidebar_alpine %} @click.prevent="setTab('menu')" :class="activeTab === 'menu' ? 'ds-nav-item--active' : ''"{% endif %}>
+            <i data-lucide="utensils" class="ds-icon"></i>
+            <span class="ds-nav-item__label">Menu</span>
+        </a>
+        <a href="{% url 'canteen_menu:staff_dashboard' %}?tab=users" class="ds-nav-item{% if not sidebar_alpine and side_active == 'users' %} ds-nav-item--active{% endif %}"{% if sidebar_alpine %} @click.prevent="setTab('users')" :class="activeTab === 'users' ? 'ds-nav-item--active' : ''"{% endif %}>
+            <i data-lucide="users" class="ds-icon"></i>
+            <span class="ds-nav-item__label">Users</span>
+        </a>
+        <a href="{% url 'canteen_menu:staff_dashboard' %}?tab=deliveries" class="ds-nav-item{% if not sidebar_alpine and side_active == 'deliveries' %} ds-nav-item--active{% endif %}"{% if sidebar_alpine %} @click.prevent="setTab('deliveries')" :class="activeTab === 'deliveries' ? 'ds-nav-item--active' : ''"{% endif %}>
+            <i data-lucide="bike" class="ds-icon"></i>
+            <span class="ds-nav-item__label">Delivery staff</span>
+        </a>
+
+        <p class="ds-nav-group">Insights</p>
+        <a href="{% url 'canteen_menu:staff_dashboard' %}?tab=feedback" class="ds-nav-item{% if not sidebar_alpine and side_active == 'feedback' %} ds-nav-item--active{% endif %}"{% if sidebar_alpine %} @click.prevent="setTab('feedback')" :class="activeTab === 'feedback' ? 'ds-nav-item--active' : ''"{% endif %}>
+            <i data-lucide="star" class="ds-icon"></i>
+            <span class="ds-nav-item__label">Feedback &amp; ratings</span>
+        </a>
+        <a href="{% url 'canteen_menu:staff_dashboard' %}?tab=reports" class="ds-nav-item{% if not sidebar_alpine and side_active == 'reports' %} ds-nav-item--active{% endif %}"{% if sidebar_alpine %} @click.prevent="setTab('reports')" :class="activeTab === 'reports' ? 'ds-nav-item--active' : ''"{% endif %}>
+            <i data-lucide="bar-chart-3" class="ds-icon"></i>
+            <span class="ds-nav-item__label">Reports &amp; sales</span>
+        </a>
+        <a href="{% url 'canteen_menu:staff_dashboard' %}?tab=logs" class="ds-nav-item{% if not sidebar_alpine and side_active == 'logs' %} ds-nav-item--active{% endif %}"{% if sidebar_alpine %} @click.prevent="setTab('logs')" :class="activeTab === 'logs' ? 'ds-nav-item--active' : ''"{% endif %}>
+            <i data-lucide="history" class="ds-icon"></i>
+            <span class="ds-nav-item__label">Activity log</span>
+            {% if sidebar_alpine %}
+            <span class="ds-nav-item__badge" x-show="activityUnread > 0" x-cloak x-text="activityUnread > 99 ? '99+' : activityUnread"></span>
+            {% endif %}
+        </a>
+
+    </nav>
+
+    <div class="ds-sidebar__account">
+        <div class="ds-sidebar__identity">
+            <p class="ds-sidebar__user">{% firstof staff_name request.user.get_full_name request.user.username "Staff" %}</p>
+            <p class="ds-sidebar__role">{{ request.user.role|default:"" }}</p>
+        </div>
+        <button type="button" class="ds-nav-item ds-nav-item--account" @click="showChangePasswordModal = true">
+            <i data-lucide="key-round" class="ds-icon"></i>
+            <span class="ds-nav-item__label">Change password</span>
+        </button>
+        <a href="{% url 'accounts:staff_logout' %}" class="ds-nav-item ds-nav-item--account">
+            <i data-lucide="log-out" class="ds-icon"></i>
+            <span class="ds-nav-item__label">Sign out</span>
+        </a>
+    </div>
+</aside>
