@@ -442,30 +442,12 @@
                 <span class="pod-label text-[10px] font-black leading-tight mt-1.5">All Items</span>
             </button>
 
-            <button onclick="selectCategory('biscuits', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
-                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-cookie"></i></span>
-                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">Biscuits</span>
+            {% for cat in categories %}
+            <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
+                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid {% if 'ulam' in cat.name|lower %}fa-drumstick-bite{% elif 'kakanin' in cat.name|lower %}fa-plate-wheat{% elif 'candy' in cat.name|lower %}fa-candy-cane{% elif 'add' in cat.name|lower or 'addon' in cat.name|lower or 'extra' in cat.name|lower %}fa-puzzle-piece{% elif 'rice' in cat.name|lower %}fa-bowl-rice{% elif 'biscuit' in cat.name|lower %}fa-cookie{% elif 'beverage' in cat.name|lower or 'drink' in cat.name|lower %}fa-bottle-water{% elif 'meryenda' in cat.name|lower %}fa-burger{% elif 'diet' in cat.name|lower %}fa-heart-pulse{% else %}fa-bowl-food{% endif %}"></i></span>
+                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">{{ cat.name }}</span>
             </button>
-
-            <button onclick="selectCategory('rice', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
-                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-bowl-rice"></i></span>
-                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">Rice Meals</span>
-            </button>
-
-            <button onclick="selectCategory('beverages', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
-                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-bottle-water"></i></span>
-                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">Beverages</span>
-            </button>
-
-            <button onclick="selectCategory('meryenda', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
-                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-burger"></i></span>
-                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">Meryenda</span>
-            </button>
-
-            <button onclick="selectCategory('candies', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
-                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-candy-cane"></i></span>
-                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">Candies</span>
-            </button>
+            {% endfor %}
 
         </aside>
 
