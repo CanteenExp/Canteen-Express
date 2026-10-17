@@ -681,7 +681,6 @@ def rider_live_stream(request):
         headers={
             'Cache-Control': 'no-cache',
             'X-Accel-Buffering': 'no',
-            'Connection': 'keep-alive',
         },
     )
 
@@ -753,7 +752,6 @@ def faculty_delivery_stream(request):
         headers={
             'Cache-Control': 'no-cache',
             'X-Accel-Buffering': 'no',
-            'Connection': 'keep-alive',
         },
     )
 
@@ -823,7 +821,6 @@ def staff_dispatch_stream(request):
         headers={
             'Cache-Control': 'no-cache',
             'X-Accel-Buffering': 'no',
-            'Connection': 'keep-alive',
         },
     )
 

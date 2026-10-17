@@ -184,7 +184,7 @@ def faculty_dashboard_view(request, token=None):
     from canteen_menu.models import MenuItem, Category
     import json
     menu_items = MenuItem.objects.filter(is_available=True)
-    categories = Category.objects.all()
+    categories = Category.objects.all().order_by('-name')
     
     email = request.session.get('faculty_email', '') or getattr(request.user, 'email', '')
     if request.user.is_authenticated and request.user.username:

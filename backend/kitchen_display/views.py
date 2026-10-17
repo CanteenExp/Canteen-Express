@@ -294,7 +294,6 @@ def kitchen_live_stream(request):
         headers={
             'Cache-Control': 'no-cache',
             'X-Accel-Buffering': 'no',
-            'Connection': 'keep-alive',
         },
     )
 

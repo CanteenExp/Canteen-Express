@@ -58,7 +58,7 @@ def kiosk_welcome(request):
 # 2. CUSTOMER SIDE - Main Menu Page
 def kiosk_menu(request):
     formatted_menu = _get_formatted_menu()
-    categories = Category.objects.all()
+    categories = Category.objects.all().order_by('-name')
     context = {
         'menu_data_json': json.dumps(formatted_menu),
         'categories': categories
@@ -142,7 +142,9 @@ def process_checkout(request):
                 total_amount=subtotal,
                 delivery_fee=delivery_fee,
                 status=initial_status,
-                customer=request.user if request.user.is_authenticated else None
+                customer=request.user if request.user.is_authenticated else None,
+                points_earned=points_earned,
+                points_redeemed=points_redeemed
             )
 
             # Points are applied atomically with order creation so a failed
