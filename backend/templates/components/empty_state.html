@@ -1,0 +1,22 @@
+{% comment %}
+Empty state — shown instead of a list or table when there is nothing yet.
+Icon, one sentence, and at most one action.
+
+Params:
+  title         required, e.g. "No orders yet"
+  description   optional sentence saying what will appear here
+  icon          Lucide name; defaults to "inbox"
+  action_label  optional button text
+  action_href   optional target; without it the action renders as a <button>
+  action_variant primary | secondary (default)
+  action_icon   optional Lucide name for the action
+
+Usage:
+  {% include "components/empty_state.html" with title="No orders yet" description="Orders appear here as soon as the counter confirms payment." icon="receipt" %}
+  {% include "components/empty_state.html" with title="Nothing found" description="Try a different search." icon="search" action_label="Clear search" %}
+{% endcomment %}<div class="ds-empty">
+    <span class="ds-empty__icon">{% include "components/icon.html" with name=icon|default:'inbox' class="ds-icon--lg" %}</span>
+    <h2 class="ds-empty__title">{{ title }}</h2>
+    {% if description %}<p class="ds-empty__description ds-body">{{ description }}</p>{% endif %}
+    {% if action_label %}<div class="ds-empty__action">{% include "components/button.html" with label=action_label href=action_href variant=action_variant|default:'secondary' icon=action_icon %}</div>{% endif %}
+</div>

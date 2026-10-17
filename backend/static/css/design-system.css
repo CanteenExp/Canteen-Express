@@ -1,0 +1,1420 @@
+/* ==========================================================================
+   Canteen Express — design system
+   --------------------------------------------------------------------------
+   The single source of truth for colour, type, space, and the shared
+   components built from them. Loaded after Tailwind (so `ds-*` classes win
+   over utilities) and used by every screen that has been migrated.
+
+   Rules this file enforces:
+     - one neutral scale, ONE accent (orange), semantic colour for status only
+     - four text sizes, two weights (400 / 600)
+     - 4 / 8px spacing only, 12px cards, 8px controls
+     - borders instead of shadows; one soft shadow for overlays
+     - every interactive control is at least 44px tall
+
+   Naming: every class is prefixed `ds-` so it can never collide with the
+   legacy stylesheets (`.card`, `.btn`, ...) while both are loaded.
+   ========================================================================== */
+
+/* ==========================================================================
+   1. Tokens
+   ========================================================================== */
+
+:root {
+    /* Neutral scale -------------------------------------------------------- */
+    --ds-white: #ffffff;
+    --ds-gray-50: #f9fafb;
+    --ds-gray-100: #f3f4f6;
+    --ds-gray-200: #e5e7eb;
+    --ds-gray-300: #d1d5db;
+    --ds-gray-400: #9ca3af;
+    --ds-gray-500: #6b7280;
+    --ds-gray-600: #4b5563;
+    --ds-gray-700: #374151;
+    --ds-gray-800: #1f2937;
+    --ds-gray-900: #111827;
+
+    /* Surfaces and text ---------------------------------------------------- */
+    --ds-bg: var(--ds-gray-50);
+    --ds-surface: var(--ds-white);
+    --ds-surface-sunken: var(--ds-gray-50);
+    --ds-border: var(--ds-gray-200);
+    --ds-border-strong: var(--ds-gray-300);
+    --ds-text: var(--ds-gray-900);           /* 16.9:1 on white */
+    --ds-text-muted: var(--ds-gray-600);     /*  7.6:1 on white */
+    --ds-text-subtle: var(--ds-gray-500);    /*  4.8:1 on white */
+    --ds-text-inverse: var(--ds-white);
+
+    /* Brand accent — the only accent in the system ------------------------- */
+    --ds-accent: #f97316;                    /* identity, tints, marks     */
+    --ds-accent-strong: #c2410c;             /* fills + accent text: 5.2:1 */
+    --ds-accent-hover: #9a3412;              /*  7.0:1 with white text     */
+    --ds-accent-tint: #fff7ed;
+    --ds-accent-tint-strong: #ffedd5;
+
+    /* Semantic — status only, never decoration ----------------------------- */
+    --ds-success: #15803d;  --ds-success-bg: #f0fdf4;  --ds-success-border: #bbf7d0;
+    --ds-pending: #b45309;  --ds-pending-bg: #fffbeb;  --ds-pending-border: #fde68a;
+    --ds-info: #1d4ed8;     --ds-info-bg: #eff6ff;     --ds-info-border: #bfdbfe;
+    --ds-danger: #b91c1c;   --ds-danger-bg: #fef2f2;   --ds-danger-border: #fecaca;
+    --ds-danger-hover: #991b1b;
+    --ds-neutral: var(--ds-gray-700);
+    --ds-neutral-bg: var(--ds-gray-100);
+    --ds-neutral-border: var(--ds-gray-200);
+
+    /* Typography — one family, four sizes, two weights --------------------- */
+    --ds-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+        Roboto, Helvetica, Arial, sans-serif;
+    --ds-weight-regular: 400;
+    --ds-weight-semibold: 600;
+
+    --ds-font-title: 22px;    --ds-line-title: 30px;
+    --ds-font-section: 16px;  --ds-line-section: 24px;
+    --ds-font-body: 14px;     --ds-line-body: 22px;
+    --ds-font-caption: 12px;  --ds-line-caption: 18px;
+
+    /* Spacing — 4 / 8px only ---------------------------------------------- */
+    --ds-space-1: 4px;
+    --ds-space-2: 8px;
+    --ds-space-3: 12px;
+    --ds-space-4: 16px;
+    --ds-space-5: 20px;
+    --ds-space-6: 24px;
+    --ds-space-8: 32px;
+    --ds-space-10: 40px;
+    --ds-space-12: 48px;
+
+    /* Radius --------------------------------------------------------------- */
+    --ds-radius-card: 12px;
+    --ds-radius-control: 8px;
+    --ds-radius-pill: 999px;
+
+    /* Lines, shadows, focus ------------------------------------------------ */
+    --ds-shadow-overlay: 0 8px 24px rgba(17, 24, 39, 0.12), 0 2px 8px rgba(17, 24, 39, 0.06);
+    --ds-focus-color: var(--ds-accent-strong);
+    --ds-focus-width: 2px;
+    --ds-focus-offset: 2px;
+
+    /* Motion --------------------------------------------------------------- */
+    --ds-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --ds-duration: 120ms;
+    --ds-transition: var(--ds-duration) var(--ds-ease);
+
+    /* Controls ------------------------------------------------------------- */
+    --ds-touch-target: 44px;
+    --ds-control-height: 44px;
+    --ds-control-height-sm: 36px;
+
+    /* Icons — one set, one weight, one size -------------------------------- */
+    --ds-icon-size: 20px;
+    --ds-icon-stroke: 1.75;
+
+    /* Z layers ------------------------------------------------------------- */
+    --ds-z-menu: 900;
+    --ds-z-modal: 1000;
+    --ds-z-toast: 1100;
+
+    /* Layout --------------------------------------------------------------- */
+    --ds-content-max: 1200px;
+}
+
+/* ==========================================================================
+   2. Base
+   Mirrors the resets the pages already get from Tailwind preflight, so the
+   system also stands on its own (e.g. on the component gallery).
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--ds-bg);
+    color: var(--ds-text);
+    font-family: var(--ds-font);
+    font-size: var(--ds-font-body);
+    line-height: var(--ds-line-body);
+    font-weight: var(--ds-weight-regular);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    font-weight: var(--ds-weight-semibold);
+    letter-spacing: -0.01em;
+}
+
+p, figure, blockquote, dl, dd {
+    margin: 0;
+}
+
+button, input, select, textarea {
+    font: inherit;
+    color: inherit;
+}
+
+button {
+    background: none;
+    border: 0;
+    padding: 0;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+table {
+    border-collapse: collapse;
+    border-color: inherit;
+    text-indent: 0;
+}
+
+/* Modal and toast are Alpine-driven, so the system owns the pre-init hide. */
+[x-cloak] {
+    display: none !important;
+}
+
+/* Keyboard focus, everywhere, with enough contrast to be seen (WCAG 1.4.11).
+   Wrapped in :where() so it never outranks a component. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: var(--ds-focus-width) solid var(--ds-focus-color);
+    outline-offset: var(--ds-focus-offset);
+    border-radius: var(--ds-radius-control);
+}
+
+/* ==========================================================================
+   3. Type scale
+   ========================================================================== */
+
+.ds-title {
+    font-size: var(--ds-font-title);
+    line-height: var(--ds-line-title);
+    font-weight: var(--ds-weight-semibold);
+    letter-spacing: -0.01em;
+}
+
+.ds-section-title {
+    font-size: var(--ds-font-section);
+    line-height: var(--ds-line-section);
+    font-weight: var(--ds-weight-semibold);
+}
+
+.ds-body {
+    font-size: var(--ds-font-body);
+    line-height: var(--ds-line-body);
+    font-weight: var(--ds-weight-regular);
+}
+
+.ds-caption {
+    font-size: var(--ds-font-caption);
+    line-height: var(--ds-line-caption);
+    font-weight: var(--ds-weight-regular);
+}
+
+.ds-muted {
+    color: var(--ds-text-muted);
+}
+
+.ds-subtle {
+    color: var(--ds-text-subtle);
+}
+
+.ds-strong {
+    font-weight: var(--ds-weight-semibold);
+}
+
+.ds-numeric {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   4. Layout helpers
+   ========================================================================== */
+
+.ds-page {
+    width: 100%;
+    max-width: var(--ds-content-max);
+    margin: 0 auto;
+    padding: var(--ds-space-6) var(--ds-space-4) var(--ds-space-10);
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-6);
+}
+
+.ds-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-4);
+}
+
+.ds-stack--tight {
+    gap: var(--ds-space-2);
+}
+
+.ds-row {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-2);
+    flex-wrap: wrap;
+}
+
+.ds-row--between {
+    justify-content: space-between;
+}
+
+.ds-grid {
+    display: grid;
+    gap: var(--ds-space-4);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.ds-divider {
+    height: 1px;
+    background: var(--ds-border);
+    border: 0;
+    margin: 0;
+}
+
+.ds-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ==========================================================================
+   5. Icons
+   One set (Lucide), one stroke weight, one size. Lucide renders 24px/2px by
+   default; these two rules normalise every icon in the system.
+   ========================================================================== */
+
+/* Targets both the placeholder <i> and the <svg> Lucide swaps in for it, so
+   sizing holds whether or not the class survives the swap. */
+.ds-icon,
+[data-lucide] {
+    width: var(--ds-icon-size);
+    height: var(--ds-icon-size);
+    stroke-width: var(--ds-icon-stroke);
+    flex: none;
+}
+
+.ds-icon--sm {
+    width: 16px;
+    height: 16px;
+}
+
+.ds-icon--lg {
+    width: 24px;
+    height: 24px;
+}
+
+/* ==========================================================================
+   6. Button
+   Primary / secondary (outline) / tertiary (text) / destructive, plus icon
+   and small sizes. Hover, focus, disabled and loading states included.
+   ========================================================================== */
+
+.ds-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ds-space-2);
+    min-height: var(--ds-touch-target);
+    padding: 0 var(--ds-space-4);
+    border: 1px solid transparent;
+    border-radius: var(--ds-radius-control);
+    background: none;
+    color: var(--ds-text);
+    font-size: var(--ds-font-body);
+    font-weight: var(--ds-weight-semibold);
+    line-height: var(--ds-line-body);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--ds-transition), border-color var(--ds-transition),
+        color var(--ds-transition);
+}
+
+/* Primary — exactly one per screen. */
+.ds-btn--primary {
+    background: var(--ds-accent-strong);
+    border-color: var(--ds-accent-strong);
+    color: var(--ds-text-inverse);
+}
+
+.ds-btn--primary:hover {
+    background: var(--ds-accent-hover);
+    border-color: var(--ds-accent-hover);
+}
+
+.ds-btn--primary:active {
+    background: #7c2d12;
+    border-color: #7c2d12;
+}
+
+/* Secondary — outlined, the default for anything non-primary. */
+.ds-btn--secondary {
+    background: var(--ds-surface);
+    border-color: var(--ds-border-strong);
+    color: var(--ds-text);
+}
+
+.ds-btn--secondary:hover {
+    background: var(--ds-gray-50);
+    border-color: var(--ds-gray-400);
+}
+
+.ds-btn--secondary:active {
+    background: var(--ds-gray-100);
+}
+
+/* Tertiary — text only, for low-emphasis and inline actions. */
+.ds-btn--tertiary {
+    background: transparent;
+    color: var(--ds-text-muted);
+}
+
+.ds-btn--tertiary:hover {
+    background: var(--ds-gray-100);
+    color: var(--ds-text);
+}
+
+/* Destructive — irreversible actions only, and always confirmed. */
+.ds-btn--destructive {
+    background: var(--ds-danger);
+    border-color: var(--ds-danger);
+    color: var(--ds-text-inverse);
+}
+
+.ds-btn--destructive:hover {
+    background: var(--ds-danger-hover);
+    border-color: var(--ds-danger-hover);
+}
+
+/* Sizes. `--sm` is for dense table rows on desktop; never the only way to
+   reach an action on touch. */
+.ds-btn--sm {
+    min-height: var(--ds-control-height-sm);
+    padding: 0 var(--ds-space-3);
+}
+
+.ds-btn--icon {
+    width: var(--ds-touch-target);
+    min-height: var(--ds-touch-target);
+    padding: 0;
+}
+
+.ds-btn--icon.ds-btn--sm {
+    width: var(--ds-control-height-sm);
+    min-height: var(--ds-control-height-sm);
+}
+
+.ds-btn--block {
+    width: 100%;
+}
+
+/* States. */
+.ds-btn:disabled,
+.ds-btn[aria-disabled='true'],
+.ds-btn.is-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.ds-btn:disabled:hover,
+.ds-btn[aria-disabled='true']:hover {
+    /* Keep the resting colours on hover so a dead control looks dead. */
+    background: var(--ds-surface);
+    border-color: var(--ds-border-strong);
+    color: var(--ds-text);
+}
+
+.ds-btn--primary:disabled:hover {
+    background: var(--ds-accent-strong);
+    border-color: var(--ds-accent-strong);
+    color: var(--ds-text-inverse);
+}
+
+.ds-btn--destructive:disabled:hover {
+    background: var(--ds-danger);
+    border-color: var(--ds-danger);
+    color: var(--ds-text-inverse);
+}
+
+/* Loading — keep the label for layout stability, block repeat clicks. */
+.ds-btn[aria-busy='true'] {
+    pointer-events: none;
+    opacity: 0.75;
+}
+
+.ds-btn__spinner {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: var(--ds-radius-pill);
+    animation: ds-spin 600ms linear infinite;
+}
+
+@keyframes ds-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ==========================================================================
+   7. Card
+   ========================================================================== */
+
+.ds-card {
+    background: var(--ds-surface);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-card);
+    overflow: hidden;
+}
+
+.ds-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ds-space-3);
+    padding: var(--ds-space-4);
+    border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-card__title {
+    font-size: var(--ds-font-section);
+    line-height: var(--ds-line-section);
+    font-weight: var(--ds-weight-semibold);
+}
+
+.ds-card__body {
+    padding: var(--ds-space-4);
+}
+
+.ds-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--ds-space-2);
+    padding: var(--ds-space-3) var(--ds-space-4);
+    border-top: 1px solid var(--ds-border);
+    background: var(--ds-surface-sunken);
+}
+
+/* Flush body for cards that hold a table or a list. */
+.ds-card__body--flush {
+    padding: 0;
+}
+
+/* Cards that link somewhere get a border response, not a lift. */
+.ds-card--interactive {
+    transition: border-color var(--ds-transition), background-color var(--ds-transition);
+}
+
+.ds-card--interactive:hover {
+    border-color: var(--ds-border-strong);
+    background: var(--ds-gray-50);
+}
+
+/* ==========================================================================
+   8. Badge
+   ========================================================================== */
+
+.ds-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ds-space-1);
+    height: 24px;
+    padding: 0 var(--ds-space-2);
+    border: 1px solid var(--ds-neutral-border);
+    border-radius: var(--ds-radius-pill);
+    background: var(--ds-neutral-bg);
+    color: var(--ds-neutral);
+    font-size: var(--ds-font-caption);
+    line-height: var(--ds-line-caption);
+    font-weight: var(--ds-weight-semibold);
+    white-space: nowrap;
+}
+
+.ds-badge--success {
+    background: var(--ds-success-bg);
+    border-color: var(--ds-success-border);
+    color: var(--ds-success);
+}
+
+.ds-badge--pending {
+    background: var(--ds-pending-bg);
+    border-color: var(--ds-pending-border);
+    color: var(--ds-pending);
+}
+
+.ds-badge--info {
+    background: var(--ds-info-bg);
+    border-color: var(--ds-info-border);
+    color: var(--ds-info);
+}
+
+.ds-badge--danger {
+    background: var(--ds-danger-bg);
+    border-color: var(--ds-danger-border);
+    color: var(--ds-danger);
+}
+
+.ds-badge--accent {
+    background: var(--ds-accent-tint);
+    border-color: var(--ds-accent-tint-strong);
+    color: var(--ds-accent-strong);
+}
+
+.ds-badge__dot {
+    width: 6px;
+    height: 6px;
+    flex: none;
+    border-radius: var(--ds-radius-pill);
+    background: currentColor;
+}
+
+/* ==========================================================================
+   9. Status indicator
+   Open/ready, pending, in kitchen, late/closed, offline.
+   ========================================================================== */
+
+.ds-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ds-space-2);
+    font-size: var(--ds-font-body);
+    line-height: var(--ds-line-body);
+    font-weight: var(--ds-weight-semibold);
+    color: var(--ds-text);
+}
+
+.ds-status__dot {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: var(--ds-radius-pill);
+    background: var(--ds-gray-400);
+}
+
+.ds-status--success .ds-status__dot { background: var(--ds-success); }
+.ds-status--pending .ds-status__dot { background: var(--ds-pending); }
+.ds-status--info .ds-status__dot    { background: var(--ds-info); }
+.ds-status--danger .ds-status__dot  { background: var(--ds-danger); }
+
+.ds-status--success { color: var(--ds-success); }
+.ds-status--pending { color: var(--ds-pending); }
+.ds-status--info    { color: var(--ds-info); }
+.ds-status--danger  { color: var(--ds-danger); }
+
+/* A quiet halo for live values — the only movement in the system. */
+.ds-status--live .ds-status__dot {
+    position: relative;
+}
+
+.ds-status--live .ds-status__dot::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: var(--ds-radius-pill);
+    background: currentColor;
+    opacity: 0.25;
+    animation: ds-pulse 2s var(--ds-ease) infinite;
+}
+
+@keyframes ds-pulse {
+    0%, 100% { transform: scale(0.8); opacity: 0.25; }
+    50% { transform: scale(1.1); opacity: 0.1; }
+}
+
+.ds-status__meta {
+    font-weight: var(--ds-weight-regular);
+    color: var(--ds-text-subtle);
+}
+
+/* ==========================================================================
+   10. Table
+   ========================================================================== */
+
+.ds-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    background: var(--ds-surface);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-card);
+}
+
+.ds-table {
+    width: 100%;
+    min-width: 480px;
+    font-size: var(--ds-font-body);
+    line-height: var(--ds-line-body);
+    text-align: left;
+}
+
+.ds-table thead th {
+    padding: var(--ds-space-3) var(--ds-space-4);
+    border-bottom: 1px solid var(--ds-border);
+    background: var(--ds-surface-sunken);
+    color: var(--ds-text-subtle);
+    font-size: var(--ds-font-caption);
+    line-height: var(--ds-line-caption);
+    font-weight: var(--ds-weight-semibold);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.ds-table tbody td {
+    padding: var(--ds-space-3) var(--ds-space-4);
+    border-bottom: 1px solid var(--ds-border);
+    color: var(--ds-text);
+    vertical-align: middle;
+}
+
+.ds-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.ds-table--hover tbody tr:hover {
+    background: var(--ds-gray-50);
+}
+
+.ds-table__num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.ds-table__actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.ds-table__caption {
+    padding: var(--ds-space-3) var(--ds-space-4);
+    color: var(--ds-text-subtle);
+    font-size: var(--ds-font-caption);
+    line-height: var(--ds-line-caption);
+}
+
+.ds-table__sort {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ds-space-1);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.ds-table__sort:hover {
+    color: var(--ds-text);
+}
+
+/* ==========================================================================
+   11. Modal
+   The one place a shadow is allowed.
+   ========================================================================== */
+
+.ds-modal {
+    position: fixed;
+    inset: 0;
+    z-index: var(--ds-z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--ds-space-4);
+}
+
+.ds-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.45);
+    border: 0;
+    cursor: pointer;
+}
+
+.ds-modal__panel {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    max-height: calc(100vh - var(--ds-space-8));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--ds-surface);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-card);
+    box-shadow: var(--ds-shadow-overlay);
+}
+
+.ds-modal__panel--sm { max-width: 400px; }
+.ds-modal__panel--lg { max-width: 640px; }
+
+.ds-modal__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--ds-space-4);
+    padding: var(--ds-space-5) var(--ds-space-5) var(--ds-space-4);
+}
+
+.ds-modal__title {
+    font-size: var(--ds-font-section);
+    line-height: var(--ds-line-section);
+    font-weight: var(--ds-weight-semibold);
+}
+
+.ds-modal__description {
+    margin-top: var(--ds-space-1);
+    color: var(--ds-text-muted);
+    font-size: var(--ds-font-body);
+    line-height: var(--ds-line-body);
+}
+
+.ds-modal__body {
+    padding: 0 var(--ds-space-5) var(--ds-space-5);
+    overflow-y: auto;
+    color: var(--ds-text-muted);
+}
+
+.ds-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--ds-space-2);
+    padding: var(--ds-space-4) var(--ds-space-5);
+    border-top: 1px solid var(--ds-border);
+    background: var(--ds-surface-sunken);
+}
+
+.ds-modal__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--ds-touch-target);
+    height: var(--ds-touch-target);
+    margin: calc(var(--ds-space-2) * -1) calc(var(--ds-space-2) * -1) 0 0;
+    border-radius: var(--ds-radius-control);
+    color: var(--ds-text-subtle);
+    cursor: pointer;
+    transition: background-color var(--ds-transition), color var(--ds-transition);
+}
+
+.ds-modal__close:hover {
+    background: var(--ds-gray-100);
+    color: var(--ds-text);
+}
+
+/* ==========================================================================
+   12. Field (label + input / select / textarea + hint + error)
+   ========================================================================== */
+
+.ds-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-1);
+}
+
+.ds-field__label {
+    color: var(--ds-text-muted);
+    font-size: var(--ds-font-caption);
+    line-height: var(--ds-line-caption);
+    font-weight: var(--ds-weight-semibold);
+}
+
+.ds-field__required {
+    color: var(--ds-danger);
+}
+
+.ds-field__hint,
+.ds-field__error {
+    font-size: var(--ds-font-caption);
+    line-height: var(--ds-line-caption);
+}
+
+.ds-field__hint {
+    color: var(--ds-text-subtle);
+}
+
+.ds-field__error {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-1);
+    color: var(--ds-danger);
+    font-weight: var(--ds-weight-semibold);
+}
+
+.ds-input,
+.ds-select,
+.ds-textarea {
+    width: 100%;
+    min-height: var(--ds-control-height);
+    padding: 0 var(--ds-space-3);
+    border: 1px solid var(--ds-border-strong);
+    border-radius: var(--ds-radius-control);
+    background: var(--ds-surface);
+    color: var(--ds-text);
+    font-size: var(--ds-font-body);
+    line-height: var(--ds-line-body);
+    transition: border-color var(--ds-transition), background-color var(--ds-transition);
+}
+
+.ds-textarea {
+    min-height: 96px;
+    padding: var(--ds-space-3);
+    resize: vertical;
+}
+
+.ds-input::placeholder,
+.ds-textarea::placeholder {
+    color: var(--ds-text-subtle);
+}
+
+.ds-input:hover:not(:disabled),
+.ds-select:hover:not(:disabled),
+.ds-textarea:hover:not(:disabled) {
+    border-color: var(--ds-gray-400);
+}
+
+.ds-input:focus,
+.ds-select:focus,
+.ds-textarea:focus {
+    border-color: var(--ds-accent-strong);
+}
+
+.ds-input:disabled,
+.ds-select:disabled,
+.ds-textarea:disabled {
+    background: var(--ds-gray-100);
+    color: var(--ds-text-subtle);
+    cursor: not-allowed;
+}
+
+.ds-input.is-invalid,
+.ds-select.is-invalid,
+.ds-textarea.is-invalid {
+    border-color: var(--ds-danger);
+}
+
+.ds-input.is-invalid:focus,
+.ds-select.is-invalid:focus,
+.ds-textarea.is-invalid:focus {
+    outline-color: var(--ds-danger);
+}
+
+/* Wrappers for controls that carry an icon. */
+.ds-input-wrap,
+.ds-select-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+/* Leading icon only pads the input it sits next to, so a plain input stays
+   edge-to-edge. */
+.ds-field__icon + .ds-input { padding-left: var(--ds-space-10); }
+.ds-select { appearance: none; padding-right: var(--ds-space-10); }
+
+.ds-field__icon {
+    position: absolute;
+    left: var(--ds-space-3);
+    display: flex;
+    color: var(--ds-text-subtle);
+    pointer-events: none;
+}
+
+.ds-field__icon--trailing {
+    left: auto;
+    right: var(--ds-space-3);
+}
+
+/* ==========================================================================
+   13. Toast
+   ========================================================================== */
+
+.ds-toast-stack {
+    position: fixed;
+    top: var(--ds-space-4);
+    right: var(--ds-space-4);
+    z-index: var(--ds-z-toast);
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-2);
+    width: min(360px, calc(100vw - var(--ds-space-8)));
+}
+
+.ds-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--ds-space-3);
+    padding: var(--ds-space-3) var(--ds-space-4);
+    background: var(--ds-surface);
+    border: 1px solid var(--ds-border);
+    border-left: 3px solid var(--ds-gray-400);
+    border-radius: var(--ds-radius-card);
+    box-shadow: var(--ds-shadow-overlay);
+}
+
+.ds-toast__icon {
+    margin-top: 1px;
+    color: var(--ds-text-subtle);
+}
+
+.ds-toast__content {
+    flex: 1;
+    min-width: 0;
+}
+
+.ds-toast__title {
+    font-size: var(--ds-font-body);
+    line-height: var(--ds-line-body);
+    font-weight: var(--ds-weight-semibold);
+}
+
+.ds-toast__message {
+    color: var(--ds-text-muted);
+    font-size: var(--ds-font-caption);
+    line-height: var(--ds-line-caption);
+}
+
+.ds-toast__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin: calc(var(--ds-space-1) * -1) calc(var(--ds-space-1) * -1) 0 0;
+    flex: none;
+    border-radius: var(--ds-radius-control);
+    color: var(--ds-text-subtle);
+    cursor: pointer;
+}
+
+.ds-toast__close:hover {
+    background: var(--ds-gray-100);
+    color: var(--ds-text);
+}
+
+.ds-toast--success { border-left-color: var(--ds-success); }
+.ds-toast--success .ds-toast__icon { color: var(--ds-success); }
+
+.ds-toast--pending { border-left-color: var(--ds-pending); }
+.ds-toast--pending .ds-toast__icon { color: var(--ds-pending); }
+
+.ds-toast--info { border-left-color: var(--ds-info); }
+.ds-toast--info .ds-toast__icon { color: var(--ds-info); }
+
+.ds-toast--danger { border-left-color: var(--ds-danger); }
+.ds-toast--danger .ds-toast__icon { color: var(--ds-danger); }
+
+/* ==========================================================================
+   14. Page header
+   ========================================================================== */
+
+.ds-page-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-3);
+}
+
+.ds-page-header__description {
+    margin-top: var(--ds-space-1);
+    color: var(--ds-text-muted);
+}
+
+.ds-page-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-2);
+    flex-wrap: wrap;
+}
+
+@media (min-width: 768px) {
+    .ds-page-header {
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--ds-space-4);
+    }
+
+    .ds-page-header__actions {
+        flex: none;
+    }
+}
+
+/* ==========================================================================
+   15. Empty state
+   ========================================================================== */
+
+.ds-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--ds-space-2);
+    padding: var(--ds-space-10) var(--ds-space-6);
+}
+
+.ds-empty__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--ds-space-12);
+    height: var(--ds-space-12);
+    margin-bottom: var(--ds-space-2);
+    border-radius: var(--ds-radius-pill);
+    background: var(--ds-gray-100);
+    color: var(--ds-text-subtle);
+}
+
+.ds-empty__title {
+    font-size: var(--ds-font-section);
+    line-height: var(--ds-line-section);
+    font-weight: var(--ds-weight-semibold);
+}
+
+.ds-empty__description {
+    max-width: 42ch;
+    color: var(--ds-text-muted);
+}
+
+.ds-empty__action {
+    margin-top: var(--ds-space-3);
+}
+
+/* ==========================================================================
+   16. Skeleton (loading placeholders)
+   ========================================================================== */
+
+.ds-skeleton {
+    display: block;
+    height: 12px;
+    border-radius: var(--ds-radius-control);
+    background: var(--ds-gray-200);
+    animation: ds-shimmer 1.4s var(--ds-ease) infinite;
+}
+
+.ds-skeleton--text { width: 12ch; }
+.ds-skeleton--title { height: 16px; width: 20ch; }
+.ds-skeleton--full { width: 100%; }
+
+@keyframes ds-shimmer {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ==========================================================================
+   17. Reduced motion
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ==========================================================================
+   18. App shell — slim sidebar + top bar + mobile drawer
+   The staff portal frame: a light sidebar with a thin border (no dark block),
+   grouped navigation, a quiet account menu, and an off-canvas drawer on
+   mobile. Sidebar markup lives in templates/components/staff_sidebar.html.
+   ========================================================================== */
+
+.ds-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: var(--ds-bg);
+}
+
+@media (min-width: 768px) {
+    .ds-shell {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+}
+
+/* Mobile top bar — the only persistent bar; hidden on desktop where the
+   sidebar is always visible. */
+.ds-topbar {
+    position: sticky;
+    top: 0;
+    z-index: var(--ds-z-menu);
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-2);
+    min-height: 56px;
+    padding: 0 var(--ds-space-3);
+    background: var(--ds-surface);
+    border-bottom: 1px solid var(--ds-border);
+}
+
+@media (min-width: 768px) {
+    .ds-topbar {
+        display: none;
+    }
+}
+
+.ds-topbar__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-2);
+    min-height: var(--ds-touch-target);
+    color: var(--ds-text);
+    font-size: var(--ds-font-body);
+    line-height: var(--ds-line-body);
+    font-weight: var(--ds-weight-semibold);
+    text-decoration: none;
+}
+
+.ds-topbar__logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--ds-radius-control);
+    background: var(--ds-accent-tint);
+    color: var(--ds-accent-strong);
+}
+
+.ds-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--ds-touch-target);
+    height: var(--ds-touch-target);
+    border-radius: var(--ds-radius-control);
+    background: transparent;
+    border: 0;
+    color: var(--ds-text-muted);
+    cursor: pointer;
+    transition: background-color var(--ds-transition), color var(--ds-transition);
+}
+
+.ds-icon-btn:hover {
+    background: var(--ds-gray-100);
+    color: var(--ds-text);
+}
+
+/* Sidebar — off-canvas drawer on mobile, a slim sticky rail on desktop. */
+.ds-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--ds-z-menu);
+    display: flex;
+    flex-direction: column;
+    width: min(288px, 85vw);
+    background: var(--ds-surface);
+    border-right: 1px solid var(--ds-border);
+    transform: translateX(-100%);
+    transition: transform var(--ds-transition);
+}
+
+.ds-sidebar.is-open {
+    transform: translateX(0);
+    box-shadow: var(--ds-shadow-overlay);
+}
+
+@media (min-width: 768px) {
+    .ds-sidebar {
+        position: sticky;
+        top: 0;
+        width: 256px;
+        height: 100vh;
+        height: 100dvh;
+        transform: none;
+        box-shadow: none;
+    }
+}
+
+.ds-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--ds-z-menu) - 1);
+    background: rgba(17, 24, 39, 0.45);
+}
+
+@media (min-width: 768px) {
+    .ds-scrim {
+        display: none;
+    }
+}
+
+.ds-sidebar__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-3);
+    padding: var(--ds-space-4) var(--ds-space-4) var(--ds-space-2);
+}
+
+.ds-sidebar__brand-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.ds-sidebar__logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: var(--ds-radius-control);
+    background: var(--ds-accent-tint);
+    color: var(--ds-accent-strong);
+}
+
+.ds-sidebar__title {
+    font-size: var(--ds-font-body);
+    line-height: var(--ds-line-body);
+    font-weight: var(--ds-weight-semibold);
+}
+
+.ds-sidebar__subtitle {
+    font-size: var(--ds-font-caption);
+    line-height: var(--ds-line-caption);
+    color: var(--ds-text-subtle);
+}
+
+.ds-sidebar__close {
+    margin: calc(var(--ds-space-2) * -1);
+}
+
+@media (min-width: 768px) {
+    .ds-sidebar__close {
+        display: none;
+    }
+}
+
+/* Navigation — grouped, sentence-case, active tint only. */
+.ds-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-1);
+    padding: var(--ds-space-2) var(--ds-space-3) var(--ds-space-4);
+    overflow-y: auto;
+}
+
+.ds-nav-group {
+    margin: var(--ds-space-3) var(--ds-space-2) var(--ds-space-1);
+    font-size: var(--ds-font-caption);
+    line-height: var(--ds-line-caption);
+    font-weight: var(--ds-weight-semibold);
+    color: var(--ds-text-subtle);
+}
+
+.ds-nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-3);
+    min-height: var(--ds-touch-target);
+    padding: 0 var(--ds-space-3);
+    border-radius: var(--ds-radius-control);
+    color: var(--ds-text-muted);
+    font-size: var(--ds-font-body);
+    line-height: var(--ds-line-body);
+    font-weight: var(--ds-weight-regular);
+    text-align: left;
+    text-decoration: none;
+    transition: background-color var(--ds-transition), color var(--ds-transition);
+}
+
+.ds-nav-item:hover {
+    background: var(--ds-gray-100);
+    color: var(--ds-text);
+}
+
+.ds-nav-item--active,
+.ds-nav-item--active:hover {
+    background: var(--ds-accent-tint);
+    color: var(--ds-accent-strong);
+    font-weight: var(--ds-weight-semibold);
+}
+
+.ds-nav-item .ds-icon {
+    flex: none;
+}
+
+.ds-nav-item__label {
+    flex: 1;
+    min-width: 0;
+}
+
+.ds-nav-item__badge {
+    flex: none;
+    min-width: 20px;
+    padding: 0 var(--ds-space-1);
+    border-radius: var(--ds-radius-pill);
+    background: var(--ds-accent);
+    color: var(--ds-white);
+    font-size: 11px;
+    line-height: 18px;
+    font-weight: var(--ds-weight-semibold);
+    text-align: center;
+}
+
+/* Account menu — quiet, at the bottom of the sidebar. */
+.ds-sidebar__account {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ds-space-1);
+    padding: var(--ds-space-2) var(--ds-space-3) var(--ds-space-4);
+    border-top: 1px solid var(--ds-border);
+}
+
+.ds-sidebar__identity {
+    padding: var(--ds-space-1) var(--ds-space-2) var(--ds-space-2);
+}
+
+.ds-sidebar__user {
+    font-size: var(--ds-font-body);
+    line-height: var(--ds-line-body);
+    font-weight: var(--ds-weight-semibold);
+    color: var(--ds-text);
+}
+
+.ds-sidebar__role {
+    font-size: var(--ds-font-caption);
+    line-height: var(--ds-line-caption);
+    color: var(--ds-text-subtle);
+}
+
+.ds-nav-item--account {
+    font-size: var(--ds-font-caption);
+    line-height: var(--ds-line-caption);
+}
+
+/* Content column. */
+.ds-shell__main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.ds-main {
+    flex: 1;
+    background: var(--ds-bg);
+}

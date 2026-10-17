@@ -1,0 +1,41 @@
+{% comment %}
+Modal — open/close pair. The only component allowed a shadow.
+
+Params (modal_open):
+  title         required heading
+  description   optional supporting line under the heading
+  size          sm | lg (default 480px)
+  id            optional element id
+  show          Alpine expression that decides visibility, e.g. "open".
+                Defaults to always visible.
+  close_action  Alpine expression run by the backdrop and the close button,
+                e.g. "open = false"
+
+Params (modal_end): none.
+
+The panel is aria-modal and the backdrop closes on click, so Escape/close
+handling stays with the Alpine state the caller owns.
+
+Usage:
+  <div x-data="{ open: false }">
+      {% include "components/modal_open.html" with show="open" title="Cancel order" description="This frees the queue slot." close_action="open = false" %}
+          <p class="ds-body ds-muted">Add the modal's content here.</p>
+      {% include "components/modal_end.html" %}
+  </div>
+
+For a footer bar, close the body first and add the footer yourself:
+      …content…
+      </div>                                  ← ends ds-modal__body
+      <div class="ds-modal__footer">…</div>
+  {% include "components/modal_end.html" %}
+{% endcomment %}<div class="ds-modal" x-show="{{ show|default:'true' }}" x-transition.opacity.duration.150ms x-cloak role="dialog" aria-modal="true"{% if id %} id="{{ id }}"{% endif %}{% if title %} aria-label="{{ title }}"{% endif %}>
+    <div class="ds-modal__backdrop" aria-hidden="true"{% if close_action %} @click="{{ close_action }}"{% endif %}></div>
+    <div class="ds-modal__panel{% if size %} ds-modal__panel--{{ size }}{% endif %}">
+        <div class="ds-modal__header">
+            <div>
+                <h2 class="ds-modal__title">{{ title }}</h2>
+                {% if description %}<p class="ds-modal__description">{{ description }}</p>{% endif %}
+            </div>
+            {% if close_action %}<button type="button" class="ds-modal__close" @click="{{ close_action }}" aria-label="Close">{% include "components/icon.html" with name="x" %}</button>{% endif %}
+        </div>
+        <div class="ds-modal__body">
