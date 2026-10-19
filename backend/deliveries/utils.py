@@ -58,6 +58,15 @@ def delivery_fee_for_order(total_amount):
 delivery_earning_for_order = delivery_fee_for_order
 
 
+def prefetch_delivery_relations(qs):
+    """Apply select_related/prefetch_related so serialize_delivery (which walks
+    order, customer, rider, driver and order items) runs in O(1) queries instead
+    of N+1. Call this on any DeliveryRequest queryset before serializing."""
+    return qs.select_related(
+        'order', 'order__customer', 'rider', 'assigned_to'
+    ).prefetch_related('order__items')
+
+
 def serialize_delivery(d):
     """Shared serializer for a DeliveryRequest shown to the faculty customer side.
 
@@ -83,6 +92,9 @@ def serialize_delivery(d):
         'dest_lat': d.dest_lat,
         'dest_lng': d.dest_lng,
         'location_updated_at': d.location_updated_at.strftime('%H:%M %p') if d.location_updated_at else None,
+        # When the rider handed the order over. Together with proof_photo this is
+        # what makes the e-receipt final, and what unlocks the rating.
+        'delivered_at': d.delivered_at.strftime('%b %d, %Y - %I:%M %p') if d.delivered_at else None,
         'items': [{'name': i.item_name, 'qty': i.quantity, 'price': float(i.price)} for i in d.order.items.all()],
         'proof_photo': d.proof_photo.url if d.proof_photo else None
     }
@@ -123,6 +135,60 @@ def distance_from_points(points):
     for i in range(1, len(points)):
         total += haversine_km(points[i - 1][0], points[i - 1][1], points[i][0], points[i][1])
     return total
+
+
+# A fix closer than this to the previously kept point is treated as GPS jitter
+# rather than real movement. 6 m is comfortably below the ~10-25 m noise floor of
+# a phone GPS at a standstill, so a parked rider collapses to a dot while genuine
+# movement is preserved.
+TRAIL_MIN_GAP_KM = 0.006
+# Upper bound on how many points the trail sent to the browser may contain. The
+# payload is re-sent on every SSE tick and every poll, so an unbounded trail
+# would grow without limit on a long delivery.
+TRAIL_MAX_POINTS = 180
+
+
+def thin_trail(points, min_gap_km=TRAIL_MIN_GAP_KM, max_points=TRAIL_MAX_POINTS):
+    """Reduce a raw GPS breadcrumb into a clean, bounded polyline.
+
+    ``RiderLocationPoint`` rows are written every few seconds, so a single
+    delivery accumulates hundreds of fixes that jitter 10-25 m even when the
+    rider is stationary. Sending them all draws a fuzzy, misleading squiggle and
+    bloats a payload that is re-transmitted continuously.
+
+    Guarantees, in order:
+      * fixes within ``min_gap_km`` of the last kept point are dropped as noise,
+      * the first and last fixes always survive, so the trail still spans the
+        whole pickup -> now journey,
+      * the result never exceeds ``max_points``, downsampled evenly but never
+        losing the endpoints.
+
+    Returns a list of ``(lat, lng)`` floats in the original order.
+    """
+    pts = [(float(lat), float(lng)) for lat, lng in points]
+    if len(pts) <= 2:
+        return pts
+
+    kept = [pts[0]]
+    for point in pts[1:-1]:
+        prev = kept[-1]
+        if haversine_km(prev[0], prev[1], point[0], point[1]) >= min_gap_km:
+            kept.append(point)
+    # The rider's most recent fix is the whole point of a live trail.
+    if kept[-1] != pts[-1]:
+        kept.append(pts[-1])
+
+    if len(kept) > max_points:
+        step = (len(kept) - 1) / float(max_points - 1)
+        sampled = []
+        for i in range(max_points):
+            point = kept[min(int(round(i * step)), len(kept) - 1)]
+            if not sampled or sampled[-1] != point:
+                sampled.append(point)
+        sampled[-1] = pts[-1]
+        kept = sampled
+
+    return kept
 
 
 def compute_speed_kmh(lat1, lng1, t1, lat2, lng2, t2):

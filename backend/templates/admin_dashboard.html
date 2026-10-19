@@ -26,6 +26,103 @@
         <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-red-500/10 rounded-full blur-2xl"></div>
     </div>
 
+    <!-- CANTEEN OPEN / CLOSE CONTROL -->
+    {# The canteen runs itself 8:00 AM-5:00 PM. This override is how staff #}
+    {# extend the day, or close it early with a reason customers will read. #}
+    <div x-data="{
+            mode: '{{ SYSTEM_MODE|escapejs }}',
+            isOpen: {{ SYSTEM_IS_OPEN|yesno:'true,false' }},
+            reasonLabel: '{{ SYSTEM_REASON_LABEL|escapejs }}',
+            reasonCode: '',
+            reason: '',
+            busy: false,
+            notice: '',
+            error: '',
+            hours: '{{ SYSTEM_OPERATING_HOURS|escapejs }}',
+            nextOpening: '{{ SYSTEM_NEXT_OPENING|escapejs }}',
+            canClose() {
+                return !!this.reasonCode && (this.reasonCode !== 'OTHER' || this.reason.trim().length > 0);
+            },
+            statusLine() {
+                if (this.mode === 'FORCE_OPEN') return 'Manually opened — the automatic schedule is relaxed until you set it back.';
+                if (this.mode === 'FORCE_CLOSED') return 'Manually closed — customers read the reason you picked.';
+                if (this.isOpen) return 'On the automatic schedule (' + this.hours + ').';
+                return 'Outside the automatic schedule (' + this.hours + '). Ordering opens again ' + this.nextOpening + '.';
+            },
+            async apply(mode) {
+                this.busy = true; this.notice = ''; this.error = '';
+                try {
+                    const res = await fetch('{% url "core_app:system_toggle_api" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({ mode: mode, reason_code: this.reasonCode, message: this.reason })
+                    });
+                    const data = await res.json();
+                    if (!data.success) { this.error = data.message || 'Could not update the canteen status.'; return; }
+                    this.mode = data.mode;
+                    this.isOpen = data.is_open;
+                    this.reasonLabel = data.reason_label || '';
+                    this.notice = data.notice;
+                    if (data.mode === 'FORCE_CLOSED') { this.reasonCode = ''; this.reason = ''; }
+                } catch (e) {
+                    this.error = 'Network error. Please try again.';
+                } finally {
+                    this.busy = false;
+                }
+            },
+            close() {
+                if (!this.canClose()) { this.error = 'Pick a reason for closing before you close the canteen.'; return; }
+                this.apply('FORCE_CLOSED');
+            }
+         }"
+         class="rounded-3xl border p-6 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+         :class="isOpen ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'">
+        <div class="flex items-start gap-4">
+            <span class="p-3 rounded-2xl text-lg shrink-0" :class="isOpen ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'">
+                <i class="fa-solid" :class="isOpen ? 'fa-store' : 'fa-store-slash'"></i>
+            </span>
+            <div>
+                <p class="text-[10px] font-extrabold uppercase tracking-wider" :class="isOpen ? 'text-emerald-600' : 'text-red-600'">Canteen Status</p>
+                <h3 class="text-lg font-black text-dark-900" x-text="isOpen ? 'Open — accepting orders' : 'Closed — orders blocked'"></h3>
+                <p class="text-xs text-gray-600 mt-0.5" x-text="statusLine()"></p>
+                <p x-show="!isOpen && reasonLabel" x-cloak class="text-xs font-bold text-red-700 mt-1" x-text="'Reason: ' + reasonLabel"></p>
+                <p x-show="notice" x-cloak class="text-xs font-bold mt-1" :class="isOpen ? 'text-emerald-700' : 'text-red-700'" x-text="notice"></p>
+                <p x-show="error" x-cloak class="text-xs font-bold text-red-700 mt-1" x-text="error"></p>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button type="button" @click="apply('AUTO')" :disabled="busy || mode === 'AUTO'"
+                    class="px-4 py-2.5 rounded-xl text-xs font-bold border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 transition flex items-center gap-2">
+                <i class="fa-solid fa-clock"></i> Automatic
+            </button>
+            <button type="button" @click="apply('FORCE_OPEN')" :disabled="busy || mode === 'FORCE_OPEN'"
+                    class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-600/30 transition flex items-center gap-2">
+                <i class="fa-solid fa-store"></i> <span x-text="busy ? 'Working…' : 'Open now'"></span>
+            </button>
+            <div class="flex items-center gap-2">
+                <select x-model="reasonCode" aria-label="Reason for closing"
+                        class="px-3 py-2.5 rounded-xl border border-red-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-red-300">
+                    <option value="">Closing reason…</option>
+                    {% for reason in CLOSURE_REASONS %}
+                    <option value="{{ reason.code }}">{{ reason.label }}</option>
+                    {% endfor %}
+                </select>
+                <input x-show="reasonCode === 'OTHER'" x-cloak x-model="reason" maxlength="200" type="text"
+                       placeholder="Type the reason customers will see"
+                       class="px-3 py-2.5 rounded-xl border border-red-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-red-300">
+                <button type="button" @click="close()" :disabled="busy"
+                        class="bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-red-600/30 transition flex items-center gap-2">
+                    <i class="fa-solid fa-store-slash"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Admin Tabs / Grid Sections -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -137,6 +234,8 @@
                         <th class="py-3 px-4">Order ID</th>
                         <th class="py-3 px-4">Customer</th>
                         <th class="py-3 px-4">Status Log</th>
+                        <th class="py-3 px-4">Rating & Feedback</th>
+                        <th class="py-3 px-4">Proof Photo</th>
                         <th class="py-3 px-4">Timestamp</th>
                     </tr>
                 </thead>
@@ -146,11 +245,32 @@
                         <td class="py-3.5 px-4 font-black text-dark-900">#{{ order.id }}</td>
                         <td class="py-3.5 px-4 text-gray-800">{% if order.customer %}{{ order.customer.username }}{% else %}Walk-in Guest{% endif %}</td>
                         <td class="py-3.5 px-4 text-xs font-bold text-blue-600">{{ order.status }}</td>
+                        <td class="py-3.5 px-4 text-xs">
+                            {% with fb=order.feedbacks.first %}
+                                {% if fb %}
+                                    <div class="flex items-center gap-1 text-amber-500 font-bold">
+                                        <span>★ {{ fb.rating }}/5</span>
+                                    </div>
+                                    {% if fb.comment %}<p class="text-[11px] text-gray-500 italic mt-0.5">"{{ fb.comment }}"</p>{% endif %}
+                                {% else %}
+                                    <span class="text-gray-400">No rating</span>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="py-3.5 px-4 text-xs">
+                            {% if order.delivery_request and order.delivery_request.proof_photo %}
+                                <a href="{{ order.delivery_request.proof_photo.url }}" target="_blank" rel="noopener" class="inline-block">
+                                    <img src="{{ order.delivery_request.proof_photo.url }}" alt="Proof" class="w-10 h-10 object-cover rounded-lg border border-gray-200 hover:scale-110 transition">
+                                </a>
+                            {% else %}
+                                <span class="text-gray-400">None</span>
+                            {% endif %}
+                        </td>
                         <td class="py-3.5 px-4 text-gray-400 text-xs">{{ order.created_at }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="py-6 text-center text-gray-400 text-sm">
+                        <td colspan="6" class="py-6 text-center text-gray-400 text-sm">
                             No recent transaction audit logs found.
                         </td>
                     </tr>

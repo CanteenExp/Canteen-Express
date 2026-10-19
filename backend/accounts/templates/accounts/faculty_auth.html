@@ -121,13 +121,61 @@
                 toastMessage: '',
                 toastType: 'success',
                 showToast: false,
+                toastTimer: null,
                 triggerToast(msg, type = 'success') {
                     this.toastMessage = msg;
                     this.toastType = type;
                     this.showToast = true;
-                    setTimeout(() => {
+                    clearTimeout(this.toastTimer);
+                    this.toastTimer = setTimeout(() => {
                         this.showToast = false;
                     }, 6000);
+                },
+                _resetSubmitFlags() {
+                    this.loginSubmitting = false;
+                    this.otpSending = false;
+                    this.otpVerifying = false;
+                    this.forgotSendingOtp = false;
+                    this.forgotSubmitting = false;
+                },
+                init() {
+                    // A back/forward navigation restores the DOM from cache, so
+                    // any in-flight flag must be cleared or the form stays
+                    // disabled forever after the overlay is dismissed.
+                    window.addEventListener('pageshow', () => {
+                        this._resetSubmitFlags();
+                    });
+                },
+                handleLoginSubmit(form) {
+                    if (this.loginSubmitting) return false;
+                    if (!form.checkValidity()) {
+                        this.triggerToast('Please fill in your email and password to continue.', 'error');
+                        form.reportValidity();
+                        return false;
+                    }
+                    this.loginSubmitting = true;
+                    showLogoLoading();
+                    return true;
+                },
+                handleSignupSubmit(form) {
+                    if (this.loginSubmitting) return false;
+                    if (!form.checkValidity()) {
+                        this.triggerToast('Please complete every required field before registering.', 'error');
+                        form.reportValidity();
+                        return false;
+                    }
+                    if (this.password !== this.confirmPassword) {
+                        this.triggerToast('Passwords do not match.', 'error');
+                        return false;
+                    }
+                    if (!this.otpVerified) {
+                        this.triggerToast('Please verify your email with the OTP code first.', 'error');
+                        this.showOtpModal = true;
+                        return false;
+                    }
+                    this.loginSubmitting = true;
+                    showLogoLoading();
+                    return true;
                 },
                 get passwordStrength() {
                     if (!this.password) return '';
@@ -149,8 +197,8 @@
                 },
                 getForgotOtp() {
                     if (this.forgotOtpCountdown > 0 || this.forgotSendingOtp) return;
-                    if (!this.forgotEmail || !this.forgotEmail.endsWith('@psu.palawan.edu.ph')) {
-                        this.triggerToast('Please enter a valid institutional email ending in @psu.palawan.edu.ph first.', 'error');
+                    if (!this.forgotEmail || !/^[^@\s]+@psu\.palawan\.edu\.ph$/.test(this.forgotEmail)) {
+                        this.triggerToast('Please enter your @psu.palawan.edu.ph email address first.', 'error');
                         return;
                     }
                     this.forgotSendingOtp = true;
@@ -162,7 +210,15 @@
                         },
                         body: JSON.stringify({ email: this.forgotEmail })
                     })
-                    .then(res => res.json())
+                    .then(async (res) => {
+                        const text = await res.text();
+                        let data = {};
+                        try { data = JSON.parse(text); } catch (e) { data = {}; }
+                        if (!res.ok && !data.error) {
+                            data.error = 'Server error (HTTP ' + res.status + '). Please reload and try again.';
+                        }
+                        return data;
+                    })
                     .then(data => {
                         if (data.success) {
                             this.forgotOtpCountdown = 60;
@@ -182,110 +238,157 @@
                         }
                     })
                     .catch(err => {
-                        this.triggerToast('Network error initializing password reset.', 'error');
+                        this.triggerToast((err && err.message) || 'Network error initializing password reset.', 'error');
                     })
                     .finally(() => {
                         this.forgotSendingOtp = false;
                     });
                 },
-                submitPasswordReset() {
-                    if (!this.forgotEmail || !this.forgotOtp || !this.forgotNewPassword) {
-                        this.triggerToast('Please complete all fields and enter OTP.', 'error');
-                        return;
-                    }
-                    fetch('{% url "accounts:reset_password_confirm" %}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        },
-                        body: JSON.stringify({
-                            email: this.forgotEmail,
-                            otp: this.forgotOtp,
-                            new_password: this.forgotNewPassword
-                        })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            this.triggerToast('Password reset successful! Please sign in with your new password.', 'success');
-                            this.showForgotModal = false;
-                            this.mode = 'login';
-                            this.forgotEmail = '';
-                            this.forgotNewPassword = '';
-                            this.forgotConfirmPassword = '';
-                            this.forgotOtp = '';
-                            this.forgotOtpSent = false;
-                            this.forgotFallbackOtp = '';
-                        } else {
-                            this.triggerToast(data.error || 'Failed to reset password.', 'error');
-                        }
-                    })
-                    .catch(err => {
-                        this.triggerToast('Error submitting password reset.', 'error');
-                    });
-                },
-                getOtp() {
-                    if (this.otpCountdown > 0) return;
-                    const localPart = this.signupEmail ? this.signupEmail.split('@')[0] : '';
-                    if (!this.signupEmail || !this.signupEmail.endsWith('@psu.palawan.edu.ph') || /^\d+$/.test(localPart) || !/[a-zA-Z]/.test(localPart)) {
-                        this.triggerToast('Institutional email must end with @psu.palawan.edu.ph and cannot consist solely of numbers (must contain letters).', 'error');
-                        return;
-                    }
-                    fetch('{% url "accounts:send_signup_otp" %}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        },
-                        body: JSON.stringify({ email: this.signupEmail })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            this.otpCountdown = 60;
-                            if (this.otpTimer) clearInterval(this.otpTimer);
-                            this.otpTimer = setInterval(() => {
-                                if (this.otpCountdown > 0) {
-                                    this.otpCountdown--;
-                                } else {
-                                    clearInterval(this.otpTimer);
-                                }
-                            }, 1000);
+                 submitPasswordReset() {
+                     if (this.forgotSubmitting) return;
+                     if (!this.forgotEmail || !this.forgotOtp || !this.forgotNewPassword) {
+                         this.triggerToast('Please complete all fields and enter OTP.', 'error');
+                         return;
+                     }
+                     this.forgotSubmitting = true;
+                     fetch('{% url "accounts:reset_password_confirm" %}', {
+                         method: 'POST',
+                         headers: {
+                             'Content-Type': 'application/json',
+                             'X-CSRFToken': '{{ csrf_token }}'
+                         },
+                         body: JSON.stringify({
+                             email: this.forgotEmail,
+                             otp: this.forgotOtp,
+                             new_password: this.forgotNewPassword
+                         })
+                     })
+                     .then(async (res) => {
+                         const text = await res.text();
+                         let data = {};
+                         try { data = JSON.parse(text); } catch (e) { data = {}; }
+                         if (!res.ok && !data.error) {
+                             data.error = 'Server error (HTTP ' + res.status + '). Please reload and try again.';
+                         }
+                         return data;
+                     })
+                     .then(data => {
+                         if (data.success) {
+                             this.triggerToast('Password reset successful! Please sign in with your new password.', 'success');
+                             this.showForgotModal = false;
+                             this.mode = 'login';
+                             this.forgotEmail = '';
+                             this.forgotNewPassword = '';
+                             this.forgotConfirmPassword = '';
+                             this.forgotOtp = '';
+                             this.forgotOtpSent = false;
+                             this.forgotFallbackOtp = '';
+                         } else {
+                             this.triggerToast(data.error || 'Failed to reset password.', 'error');
+                         }
+                     })
+                     .catch(err => {
+                         this.triggerToast((err && err.message) || 'Error submitting password reset.', 'error');
+                     })
+                     .finally(() => {
+                         this.forgotSubmitting = false;
+                     });
+                 },
+                  getOtp() {
+                      if (this.otpCountdown > 0 || this.otpSending) return;
+                      if (!this.signupEmail || !/^[^@\s]+@psu\.palawan\.edu\.ph$/.test(this.signupEmail)) {
+                          this.triggerToast('Please enter your @psu.palawan.edu.ph email address first.', 'error');
+                          return;
+                      }
+                      const localPart = this.signupEmail.split('@')[0];
+                      if (!/[a-zA-Z]/.test(localPart)) {
+                          this.triggerToast('Email username before @psu.palawan.edu.ph must contain letters (cannot be numbers only).', 'error');
+                          return;
+                      }
+                     this.otpSending = true;
+                     fetch('{% url "accounts:send_signup_otp" %}', {
+                         method: 'POST',
+                         headers: {
+                             'Content-Type': 'application/json',
+                             'X-CSRFToken': '{{ csrf_token }}'
+                         },
+                         body: JSON.stringify({ email: this.signupEmail })
+                     })
+                     .then(async (res) => {
+                         const text = await res.text();
+                         let data = {};
+                         try { data = JSON.parse(text); } catch (e) { data = {}; }
+                         if (!res.ok && !data.error) {
+                             data.error = 'Server error (HTTP ' + res.status + '). Please reload and try again.';
+                         }
+                         return data;
+                     })
+                     .then(data => {
+                         if (data.success) {
+                             this.otpCountdown = 60;
+                             if (this.otpTimer) clearInterval(this.otpTimer);
+                             this.otpTimer = setInterval(() => {
+                                 if (this.otpCountdown > 0) {
+                                     this.otpCountdown--;
+                                 } else {
+                                     clearInterval(this.otpTimer);
+                                 }
+                             }, 1000);
 
-                            this.triggerToast('OTP code sent successfully to ' + this.signupEmail + '!', 'success');
-                            this.showOtpModal = true;
-                        } else {
-                            this.triggerToast(data.error || 'Failed to initialize OTP.', 'error');
-                        }
-                    })
-                    .catch(err => {
-                        this.triggerToast('Network error initializing OTP.', 'error');
-                    });
-                },
-                verifyOtp() {
-                    fetch('{% url "accounts:verify_signup_otp" %}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        },
-                        body: JSON.stringify({ otp: this.enteredOtp })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            this.otpVerified = true;
-                            this.showOtpModal = false;
-                            this.triggerToast('OTP Verified Successfully!', 'success');
-                        } else {
-                            this.triggerToast(data.error || 'Invalid OTP code.', 'error');
-                        }
-                    })
-                    .catch(err => {
-                        this.triggerToast('Error verifying OTP.', 'error');
-                    });
-                },
+                             if (data.email_sent) {
+                                 this.triggerToast('OTP code sent successfully to ' + this.signupEmail + '!', 'success');
+                             } else {
+                                 this.fallbackOtp = data.otp_code;
+                                 this.triggerToast('Email delivery failed - your code is: ' + data.otp_code, 'info');
+                             }
+                             this.showOtpModal = true;
+                         } else {
+                             this.triggerToast(data.error || 'Failed to initialize OTP.', 'error');
+                         }
+                     })
+                     .catch(err => {
+                         this.triggerToast((err && err.message) || 'Network error initializing OTP.', 'error');
+                     })
+                     .finally(() => {
+                         this.otpSending = false;
+                     });
+                 },
+                 verifyOtp() {
+                     if (this.otpVerifying) return;
+                     this.otpVerifying = true;
+                     fetch('{% url "accounts:verify_signup_otp" %}', {
+                         method: 'POST',
+                         headers: {
+                             'Content-Type': 'application/json',
+                             'X-CSRFToken': '{{ csrf_token }}'
+                         },
+                         body: JSON.stringify({ otp: this.enteredOtp })
+                     })
+                     .then(async (res) => {
+                         const text = await res.text();
+                         let data = {};
+                         try { data = JSON.parse(text); } catch (e) { data = {}; }
+                         if (!res.ok && !data.error) {
+                             data.error = 'Server error (HTTP ' + res.status + '). Please reload and try again.';
+                         }
+                         return data;
+                     })
+                     .then(data => {
+                         if (data.success) {
+                             this.otpVerified = true;
+                             this.showOtpModal = false;
+                             this.triggerToast('OTP Verified Successfully!', 'success');
+                         } else {
+                             this.triggerToast(data.error || 'Invalid OTP code.', 'error');
+                         }
+                     })
+                     .catch(err => {
+                         this.triggerToast((err && err.message) || 'Error verifying OTP.', 'error');
+                     })
+                     .finally(() => {
+                         this.otpVerifying = false;
+                     });
+                 },
                 lat: 9.77778,
                 lng: 118.73333,
                 initLocation() {
@@ -301,22 +404,39 @@
                 },
                 detectLocation() {
                     if (navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition(
-                            (pos) => {
-                                this.lat = pos.coords.latitude;
-                                this.lng = pos.coords.longitude;
-                                localStorage.setItem('canteen_faculty_lat', this.lat);
-                                localStorage.setItem('canteen_faculty_lng', this.lng);
-                                this.showLocationModal = false;
-                            },
-                            (err) => {
-                                alert("GPS location access is required. Please turn on your location services and allow location access to verify you are inside the PSU campus.");
-                                this.showLocationModal = true;
-                            },
-                            { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-                        );
+                        const tryGeo = (highAcc) => {
+                            navigator.geolocation.getCurrentPosition(
+                                (pos) => {
+                                    this.lat = pos.coords.latitude;
+                                    this.lng = pos.coords.longitude;
+                                    localStorage.setItem('canteen_faculty_lat', this.lat);
+                                    localStorage.setItem('canteen_faculty_lng', this.lng);
+                                    this.showLocationModal = false;
+                                },
+                                (err) => {
+                                    if (highAcc && (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE)) {
+                                        tryGeo(false);
+                                        return;
+                                    }
+                                    if (err.code === err.PERMISSION_DENIED) {
+                                        this.triggerToast('Location permission was denied. Please allow location access in your browser settings.', 'error');
+                                        this.showLocationModal = true;
+                                    } else {
+                                        // Fallback to campus center if GPS times out but location is on
+                                        this.lat = 9.77778;
+                                        this.lng = 118.73333;
+                                        localStorage.setItem('canteen_faculty_lat', this.lat);
+                                        localStorage.setItem('canteen_faculty_lng', this.lng);
+                                        this.showLocationModal = false;
+                                        this.triggerToast('GPS timeout. Using campus default location.', 'info');
+                                    }
+                                },
+                                { enableHighAccuracy: highAcc, timeout: highAcc ? 12000 : 8000, maximumAge: 60000 }
+                            );
+                        };
+                        tryGeo(true);
                     } else {
-                        alert("Geolocation is not supported by your browser.");
+                        this.triggerToast('Geolocation is not supported by your browser.', 'error');
                         this.showLocationModal = true;
                     }
                 }
@@ -376,7 +496,7 @@
                     <i class="fa-solid fa-graduation-cap"></i>
                 </div>
                 <h2 class="text-2xl font-black text-white font-poppins" x-text="mode === 'login' ? 'Faculty/Staff Sign In' : 'Faculty/Staff Sign Up'"></h2>
-                <p class="text-xs text-white/70 leading-relaxed max-w-xs mx-auto">Use your official institutional email ending in @psu.palawan.edu.ph.</p>
+                <p class="text-xs text-white/70 leading-relaxed max-w-xs mx-auto">Use your institutional email ending in @psu.palawan.edu.ph.</p>
             </div>
 
             {% if error %}
@@ -397,7 +517,7 @@
             </div>
 
             <!-- LOGIN FORM -->
-            <form method="POST" onsubmit="showLogoLoading()" class="space-y-3.5" x-show="mode === 'login'">
+            <form method="POST" onsubmit="return handleLoginSubmit(this)" class="space-y-3.5" x-show="mode === 'login'">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="login">
                 <input type="hidden" name="latitude" x-model="lat">
@@ -414,7 +534,7 @@
                     <div class="relative">
                         <input :type="showLoginPass ? 'text' : 'password'" name="password" required placeholder="••••••••"
                             class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30 backdrop-blur-md">
-                        <button type="button" @click="showLoginPass = !showLoginPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white cursor-pointer text-sm mix-blend-difference hover:opacity-80">
+                        <button type="button" @click="showLoginPass = !showLoginPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-orange-400 hover:text-orange-300 cursor-pointer text-sm hover:scale-110 active:scale-90 transition">
                             <i :class="showLoginPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
                     </div>
@@ -431,14 +551,24 @@
                     </button>
                 </div>
 
-                <button type="submit" class="w-full py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl shadow-xl shadow-brand-orange/35 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20 font-poppins">
-                    <span>Sign In to Dashboard</span>
-                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                <button type="submit" class="w-full py-2.5 bg-brand-orange hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-2xl shadow-xl shadow-brand-orange/35 transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer relative z-20 font-poppins">
+                    <template x-if="loginSubmitting">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                            <span>Signing In...</span>
+                        </span>
+                    </template>
+                    <template x-if="!loginSubmitting">
+                        <span class="flex items-center gap-2">
+                            <span>Sign In to Dashboard</span>
+                            <i class="fa-solid fa-arrow-right text-xs"></i>
+                        </span>
+                    </template>
                 </button>
             </form>
 
             <!-- SIGNUP FORM -->
-            <form method="POST" onsubmit="showLogoLoading()" class="space-y-2.5" x-show="mode === 'signup'" style="display: none;">
+            <form method="POST" onsubmit="return handleSignupSubmit(this)" class="space-y-2.5" x-show="mode === 'signup'" style="display: none;">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="signup">
                 <input type="hidden" name="latitude" x-model="lat">
@@ -456,9 +586,11 @@
                     <div class="relative flex items-center">
                         <input type="email" name="email" x-model="signupEmail" required placeholder="@psu.palawan.edu.ph"
                             class="w-full px-3.5 py-2.5 pr-28 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30 backdrop-blur-md">
-                        <button type="button" @click="getOtp()" :disabled="otpCountdown > 0"
-                            class="absolute right-2 px-3 py-1.5 bg-brand-orange hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl text-[10px] uppercase tracking-wider transition cursor-pointer">
-                            <span x-text="otpVerified ? 'Verified ✓' : (otpCountdown > 0 ? 'Resend (' + otpCountdown + 's)' : 'Get OTP')"></span>
+                        <button type="button" @click="getOtp()" :disabled="otpCountdown > 0 || otpSending"
+                            class="absolute right-2 px-3 py-1.5 bg-brand-orange hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl text-[10px] uppercase tracking-wider transition cursor-pointer inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-spinner fa-spin text-[9px]" x-show="otpSending"></i>
+                            <span x-show="!otpSending" x-text="otpVerified ? 'Verified ✓' : (otpCountdown > 0 ? 'Resend (' + otpCountdown + 's)' : 'Get OTP')"></span>
+                            <span x-show="otpSending">Sending...</span>
                         </button>
                     </div>
                     <span class="text-[10px] text-emerald-400 font-bold mt-1 block" x-show="otpVerified">✓ OTP Verified Successfully</span>
@@ -469,7 +601,7 @@
                     <div class="relative">
                         <input :type="showSignupPass ? 'text' : 'password'" name="password" x-model="password" required placeholder="••••••••"
                             class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30 backdrop-blur-md">
-                        <button type="button" @click="showSignupPass = !showSignupPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white cursor-pointer text-sm mix-blend-difference hover:opacity-80">
+                        <button type="button" @click="showSignupPass = !showSignupPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-orange-400 hover:text-orange-300 cursor-pointer text-sm hover:scale-110 active:scale-90 transition">
                             <i :class="showSignupPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
                     </div>
@@ -499,13 +631,14 @@
                 <div class="space-y-1 pt-1">
                     <div class="flex items-start gap-2">
                         <input type="checkbox" id="terms_check" x-model="agreedTerms" :disabled="!termsOpened" required
+                               @click="if (!termsOpened) { $event.preventDefault(); showTermsModal = true; termsOpened = true; }"
                                class="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/5 text-brand-orange focus:ring-brand-orange cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                        <label for="terms_check" class="text-xs text-white/80 font-medium select-none leading-snug">
+                        <label for="terms_check" @click.prevent="showTermsModal = true; termsOpened = true;" class="text-xs text-white/80 font-medium select-none leading-snug cursor-pointer">
                             I have read and agree to the 
-                            <button type="button" @click="showTermsModal = true; termsOpened = true;" class="text-brand-orange font-bold underline hover:text-orange-400 cursor-pointer">
+                            <span class="text-brand-orange font-bold underline hover:text-orange-400">
                                 Terms and Conditions
-                            </button>
-                            <span class="block text-[10px] text-center text-brand-orange font-bold" x-show="!termsOpened">*(Please open & read Terms and Conditions first)*</span>
+                            </span>
+                            <span class="block text-[10px] text-center text-brand-orange font-bold" x-show="!termsOpened">*(Click to open & read Terms and Conditions)*</span>
                         </label>
                     </div>
                 </div>
@@ -564,7 +697,7 @@
                 <p><strong>6. User Conduct:</strong> Any misuse of the platform, fraudulent ordering, or harassment of delivery riders and canteen staff will result in account restriction or ban.</p>
             </div>
             <div class="pt-2 border-t border-white/10 flex justify-end">
-                <button type="button" @click="showTermsModal = false; termsOpened = true;" class="px-4 py-2 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins">
+                <button type="button" @click="showTermsModal = false; termsOpened = true; agreedTerms = true;" class="px-4 py-2 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins">
                     I Understand & Agree
                 </button>
             </div>
@@ -594,7 +727,7 @@
                     <div class="relative">
                         <input :type="showForgotNewPass ? 'text' : 'password'" x-model="forgotNewPassword" placeholder="••••••••"
                                class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30">
-                        <button type="button" @click="showForgotNewPass = !showForgotNewPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white cursor-pointer text-sm mix-blend-difference hover:opacity-80">
+                        <button type="button" @click="showForgotNewPass = !showForgotNewPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-orange-400 hover:text-orange-300 cursor-pointer text-sm hover:scale-110 active:scale-90 transition">
                             <i :class="showForgotNewPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
                     </div>
@@ -615,7 +748,7 @@
                     <div class="relative">
                         <input :type="showForgotConfirmPass ? 'text' : 'password'" x-model="forgotConfirmPassword" placeholder="••••••••"
                                class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30">
-                        <button type="button" @click="showForgotConfirmPass = !showForgotConfirmPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-white cursor-pointer text-sm mix-blend-difference hover:opacity-80">
+                        <button type="button" @click="showForgotConfirmPass = !showForgotConfirmPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-orange-400 hover:text-orange-300 cursor-pointer text-sm hover:scale-110 active:scale-90 transition">
                             <i :class="showForgotConfirmPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
                     </div>
@@ -630,14 +763,18 @@
             </div>
 
             <div class="space-y-2 pt-2">
-                <button type="button" @click="getForgotOtp()" x-show="!forgotOtpSent" :disabled="forgotOtpCountdown > 0"
-                        class="w-full py-3 bg-brand-orange hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins">
-                    <span x-text="forgotOtpCountdown > 0 ? 'Resend OTP in ' + forgotOtpCountdown + 's' : 'Get OTP Verification'"></span>
+                <button type="button" @click="getForgotOtp()" x-show="!forgotOtpSent" :disabled="forgotOtpCountdown > 0 || forgotSendingOtp"
+                        class="w-full py-3 bg-brand-orange hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins inline-flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-spinner fa-spin" x-show="forgotSendingOtp"></i>
+                    <span x-show="!forgotSendingOtp" x-text="forgotOtpCountdown > 0 ? 'Resend OTP in ' + forgotOtpCountdown + 's' : 'Get OTP Verification'"></span>
+                    <span x-show="forgotSendingOtp">Sending OTP...</span>
                 </button>
 
-                <button type="button" @click="submitPasswordReset()" x-show="forgotOtpSent"
-                        class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins">
-                    Submit Changes & Reset
+                <button type="button" @click="submitPasswordReset()" x-show="forgotOtpSent" :disabled="forgotSubmitting"
+                        class="w-full py-3 bg-brand-orange hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins inline-flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-spinner fa-spin" x-show="forgotSubmitting"></i>
+                    <span x-show="!forgotSubmitting">Submit Changes & Reset</span>
+                    <span x-show="forgotSubmitting">Resetting Password...</span>
                 </button>
 
                 <button type="button" @click="showForgotModal = false"
@@ -663,10 +800,12 @@
                     class="w-full px-4 py-3 text-center text-lg tracking-widest font-black bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-white placeholder-white/30">
             </div>
             <div class="space-y-2 pt-2">
-                <button type="button" @click="verifyOtp()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins">
-                    Verify OTP Code
+                <button type="button" @click="verifyOtp()" :disabled="otpVerifying" class="w-full py-3 bg-brand-orange hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins inline-flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-spinner fa-spin" x-show="otpVerifying"></i>
+                    <span x-show="!otpVerifying">Verify OTP Code</span>
+                    <span x-show="otpVerifying">Verifying...</span>
                 </button>
-                <button type="button" @click="getOtp()" :disabled="otpCountdown > 0" class="w-full py-2 bg-white/10 hover:bg-white/25 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer border border-white/10 font-poppins">
+                <button type="button" @click="getOtp()" :disabled="otpCountdown > 0 || otpSending" class="w-full py-2 bg-white/10 hover:bg-white/25 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer border border-white/10 font-poppins">
                     <span x-text="otpCountdown > 0 ? 'Resend OTP in ' + otpCountdown + 's' : 'Resend OTP'"></span>
                 </button>
                 <button type="button" @click="showOtpModal = false" class="w-full py-2 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer border border-white/10 font-poppins">

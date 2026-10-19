@@ -2,6 +2,7 @@
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.http import JsonResponse
+from django.urls import reverse
 
 def role_required(allowed_roles=[]):
     """
@@ -16,22 +17,28 @@ def role_required(allowed_roles=[]):
                 if is_ajax_or_api:
                     return JsonResponse({'success': False, 'message': 'Authentication required'}, status=401)
                 messages.warning(request, "Please log in first to access this page.")
-                if 'DELIVERY' in allowed_roles:
-                    return redirect('accounts:delivery_login')
+                if 'DELIVERY' in allowed_roles and any(a in ('DELIVERY', 'RIDER') for a in allowed_roles):
+                    target = 'accounts:delivery_login'
                 elif 'STAFF' in allowed_roles or 'ADMIN' in allowed_roles:
-                    return redirect('accounts:staff_login')
+                    target = 'accounts:staff_login'
                 else:
-                    return redirect('accounts:faculty_auth')
-            
+                    target = 'accounts:faculty_auth'
+                # The target is a URL NAME, so it must be resolved before
+                # redirecting. Passing 'accounts:xxx' straight to redirect()
+                # is read as a URL with the "accounts" scheme and raised
+                # DisallowedRedirect (HTTP 400) instead of sending the visitor
+                # to the login page.
+                return redirect(f'{reverse(target)}?next={request.path}')
+
             user_role = getattr(request.user, 'role', 'FACULTY' if is_faculty_session else '')
             if request.user.is_superuser or request.user.is_staff or user_role in allowed_roles or is_faculty_session:
                 return view_func(request, *args, **kwargs)
-            
+
             if is_ajax_or_api:
                 return JsonResponse({'success': False, 'message': 'Access Denied'}, status=403)
 
             messages.error(request, "Access Denied: You are not authorized to access this page!")
-            return redirect('accounts:access_denied')
-                
+            return redirect(reverse('accounts:access_denied'))
+
         return _wrapped_view
     return decorator

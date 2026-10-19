@@ -4,15 +4,42 @@ from django.utils import timezone
 from django.http import JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_POST
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
+from django.db.models import Count, Sum
 import json
 import time
 from datetime import timedelta
 from accounts.decorators import role_required
+from activity_log.models import ActivityLog
+from activity_log.services import log_activity
 from .models import DeliveryRequest, DeliveryMessage, RiderLocationPoint
-from .utils import haversine_km, distance_from_points, compute_speed_kmh, compute_bearing, is_within_campus
+from .utils import (
+    haversine_km, distance_from_points, compute_speed_kmh, compute_bearing,
+    is_within_campus, thin_trail,
+)
+from .routing import get_road_route
 
 # How long a delivery waits as a proposal with NO online rider before timing out.
 UNASSIGNED_TIMEOUT_MINUTES = 5
+
+# Seconds between keep-alive comments on the customer tracking SSE stream.
+_TRACK_STREAM_HEARTBEAT = 15
+# How often the stream wakes up to check whether the rider moved.
+_TRACK_STREAM_TICK = 1
+
+
+def tracking_version_key(delivery_id):
+    """Cache key holding a timestamp bumped whenever a delivery's live state changes."""
+    return f'tracking:ver:{delivery_id}'
+
+
+def bump_tracking_version(delivery):
+    """Signal any open tracking stream that this delivery changed.
+
+    The stream diffs this single cheap key instead of rebuilding the whole
+    tracking payload (several queries plus a routing lookup) on every tick.
+    """
+    cache.set(tracking_version_key(delivery.id), time.time(), 300)
 
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
@@ -52,13 +79,11 @@ def delivery_dashboard(request, token=None):
         rider=request.user, status=DeliveryRequest.RequestStatus.DELIVERED
     ).order_by('-delivered_at')[:15]
 
-    completed_count = DeliveryRequest.objects.filter(
-        rider=request.user, status=DeliveryRequest.RequestStatus.DELIVERED
-    ).count()
     completed_qs = DeliveryRequest.objects.filter(
         rider=request.user, status=DeliveryRequest.RequestStatus.DELIVERED
     )
-    total_earnings = sum(float(d.order.delivery_fee) for d in completed_qs)
+    completed_count = completed_qs.count()
+    total_earnings = completed_qs.aggregate(total=Sum('order__delivery_fee'))['total'] or 0
     active_deliveries_count = DeliveryRequest.objects.filter(
         rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED
     ).count()
@@ -95,6 +120,132 @@ def pending_cards(request):
 
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
+@require_POST
+def route_preview(request, delivery_id):
+    """Road route from the canteen to a job's drop-off, for the rider to accept.
+
+    Lets a rider see the actual road and how long it takes before committing to
+    a delivery, rather than only after picking the order up. The origin is the
+    canteen because a pending job has no rider position yet.
+
+    Degrades the same way tracking does: if no routing provider answers, the
+    payload reports `routed: False` with a straight-line distance, and the map
+    draws a dashed line rather than showing nothing.
+    """
+    from django.conf import settings as dj_settings
+
+    delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    if delivery.dest_lat is None or delivery.dest_lng is None:
+        return JsonResponse({
+            'success': False,
+            'error': 'This delivery has no destination coordinates.',
+        }, status=422)
+
+    origin_lat = float(getattr(dj_settings, 'CANTEEN_LAT', 9.77778))
+    origin_lng = float(getattr(dj_settings, 'CANTEEN_LNG', 118.73333))
+
+    route = get_road_route(origin_lat, origin_lng,
+                            delivery.dest_lat, delivery.dest_lng)
+    if route:
+        path = route['path']
+        distance_km = route['distance_km']
+        duration_min = route['duration_min']
+        provider = route['provider']
+    else:
+        # Routing outage: hand back a usable straight line instead of failing,
+        # so the rider still sees roughly where they are going.
+        path = [[origin_lat, origin_lng], [delivery.dest_lat, delivery.dest_lng]]
+        distance_km = haversine_km(origin_lat, origin_lng,
+                                   delivery.dest_lat, delivery.dest_lng)
+        duration_min = None
+        provider = None
+
+    return JsonResponse({
+        'success': True,
+        'routed': provider is not None,
+        'routing_provider': provider,
+        'path': [[round(lat, 5), round(lng, 5)] for lat, lng in path],
+        'origin_lat': origin_lat,
+        'origin_lng': origin_lng,
+        'dest_lat': delivery.dest_lat,
+        'dest_lng': delivery.dest_lng,
+        'delivery_location': delivery.delivery_location,
+        'distance_km': round(distance_km, 2),
+        # Walking pace on campus footpaths, which is what the rider actually
+        # covers. OSRM/Valhalla return a driving or pedestrian estimate; this
+        # fallback only applies when no provider answered at all.
+        'duration_min': round(duration_min) if duration_min is not None else None,
+    })
+
+
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
+def api_live_route(request, delivery_id):
+    """Road route from the rider's CURRENT position to a job's drop-off.
+
+    Powers the live orange route line on the rider's active-delivery card. The
+    rider's browser sends its freshest GPS fix as ``?lat=&lng=`` so the line
+    starts exactly where the rider is, instead of at the last position the
+    server stored. When no fresh fix is supplied we fall back to the stored
+    rider position, then to the canteen, so the map is never empty.
+
+    Degrades exactly like tracking: no provider -> ``routed: False`` plus a
+    straight-line path, never an error that blanks the map.
+    """
+    from django.conf import settings as dj_settings
+
+    delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    if not can_view_tracking(request, delivery):
+        return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+    if delivery.dest_lat is None or delivery.dest_lng is None:
+        return JsonResponse({
+            'success': False,
+            'error': 'This delivery has no destination coordinates.',
+        }, status=422)
+
+    def _coord(name):
+        try:
+            return float(request.GET.get(name))
+        except (TypeError, ValueError):
+            return None
+
+    origin_lat, origin_lng = _coord('lat'), _coord('lng')
+    if origin_lat is None or origin_lng is None:
+        if delivery.rider_lat is not None and delivery.rider_lng is not None:
+            origin_lat, origin_lng = delivery.rider_lat, delivery.rider_lng
+        else:
+            origin_lat = float(getattr(dj_settings, 'CANTEEN_LAT', 9.77778))
+            origin_lng = float(getattr(dj_settings, 'CANTEEN_LNG', 118.73333))
+
+    route = get_road_route(origin_lat, origin_lng,
+                           delivery.dest_lat, delivery.dest_lng)
+    if route:
+        path = route['path']
+        distance_km = route['distance_km']
+        duration_min = route['duration_min']
+        provider = route['provider']
+    else:
+        path = [[origin_lat, origin_lng], [delivery.dest_lat, delivery.dest_lng]]
+        distance_km = haversine_km(origin_lat, origin_lng,
+                                   delivery.dest_lat, delivery.dest_lng)
+        duration_min = None
+        provider = None
+
+    return JsonResponse({
+        'success': True,
+        'routed': provider is not None,
+        'routing_provider': provider,
+        'path': [[round(lat, 5), round(lng, 5)] for lat, lng in path],
+        'origin_lat': round(origin_lat, 6),
+        'origin_lng': round(origin_lng, 6),
+        'dest_lat': delivery.dest_lat,
+        'dest_lng': delivery.dest_lng,
+        'delivery_location': delivery.delivery_location,
+        'distance_km': round(distance_km, 2),
+        'duration_min': round(duration_min) if duration_min is not None else None,
+    })
+
+
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
 def delivery_history(request):
     history = DeliveryRequest.objects.filter(
         rider=request.user
@@ -103,10 +254,9 @@ def delivery_history(request):
     completed_count = history.filter(
         status=DeliveryRequest.RequestStatus.DELIVERED
     ).count()
-    total_earnings = sum(
-        float(d.order.delivery_fee)
-        for d in history.filter(status=DeliveryRequest.RequestStatus.DELIVERED)
-    )
+    total_earnings = history.filter(
+        status=DeliveryRequest.RequestStatus.DELIVERED
+    ).aggregate(total=Sum('order__delivery_fee'))['total'] or 0
 
     context = {
         'history': history,
@@ -150,7 +300,11 @@ def accept_delivery(request, delivery_id):
     # Atomic compare-and-set: lock the delivery row so two riders can never both
     # accept the same request (prevents the accept/double-assignment race).
     with transaction.atomic():
-        delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+        try:
+            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+        except DeliveryRequest.DoesNotExist:
+            messages.error(request, 'Delivery request not found.')
+            return redirect('deliveries:dashboard')
 
         active_count = DeliveryRequest.objects.filter(
             rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED
@@ -165,12 +319,27 @@ def accept_delivery(request, delivery_id):
             delivery.assigned_to = None
             delivery.accepted_at = timezone.now()
             delivery.save()
+            bump_tracking_version(delivery)
 
             order = delivery.order
             if order.status != 'ready':
                 order.status = 'pending'
                 order.save()
             messages.success(request, f'Delivery {delivery.order.order_number} accepted!')
+            log_activity(
+                request,
+                action=f"Rider {request.user.get_username()} accepted delivery {order.order_number}",
+                category=ActivityLog.Category.DELIVERY,
+                level=ActivityLog.Level.INFO,
+                target=order.order_number,
+                is_guest=order.customer_id is None,
+                metadata={
+                    'order_id': order.id,
+                    'delivery_id': delivery.id,
+                    'rider_id': request.user.pk,
+                    'rider': request.user.get_username(),
+                },
+            )
 
     return redirect('deliveries:dashboard')
 
@@ -183,7 +352,11 @@ def reject_delivery(request, delivery_id):
     # drops any stale "offered" rider so the order stays visible to everyone
     # in the shared pool. Staff can always dismiss a proposal.
     with transaction.atomic():
-        delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+        try:
+            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+        except DeliveryRequest.DoesNotExist:
+            messages.error(request, 'Delivery request not found.')
+            return redirect('deliveries:dashboard')
         if delivery.status == DeliveryRequest.RequestStatus.SEARCHING:
             delivery.assigned_to = None
             delivery.assigned_at = None
@@ -194,34 +367,65 @@ def reject_delivery(request, delivery_id):
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
 def complete_delivery(request, delivery_id):
-    delivery = get_object_or_404(DeliveryRequest, id=delivery_id, rider=request.user)
+    from django.db import transaction
+    from customer_portal.views import credit_points_for_order
 
-    # Accept an optional proof-of-delivery photo (multipart form upload).
-    proof_photo = request.FILES.get('proof_photo')
-    if proof_photo:
+    # Lock the delivery row so a double-tap can't complete (and double-credit
+    # points on) the same delivery twice.
+    with transaction.atomic():
         try:
-            _validate_image_upload(proof_photo)
-            delivery.proof_photo = proof_photo
-        except ValidationError as e:
-            messages.error(request, f'Photo not saved: {e.message}')
-            proof_photo = None
+            delivery = DeliveryRequest.objects.select_for_update().get(
+                id=delivery_id, rider=request.user)
+        except DeliveryRequest.DoesNotExist:
+            messages.error(request, 'Delivery not found or not assigned to you.')
+            return redirect('deliveries:dashboard')
 
-    if delivery.status == DeliveryRequest.RequestStatus.ACCEPTED:
-        delivery.status = DeliveryRequest.RequestStatus.DELIVERED
-        delivery.delivered_at = timezone.now()
-        delivery.save()
-
-        order = delivery.order
-        order.status = 'completed'
-        order.save()
-        earned = float(order.delivery_fee)
+        # Accept an optional proof-of-delivery photo (multipart form upload).
+        proof_photo = request.FILES.get('proof_photo')
         if proof_photo:
-            messages.success(request, f'Delivery {delivery.order.order_number} completed with photo proof! +₱{earned:.0f} earned.')
+            try:
+                _validate_image_upload(proof_photo)
+                delivery.proof_photo = proof_photo
+            except ValidationError as e:
+                messages.error(request, f'Photo not saved: {e.message}')
+                proof_photo = None
+
+        if delivery.status == DeliveryRequest.RequestStatus.ACCEPTED:
+            delivery.status = DeliveryRequest.RequestStatus.DELIVERED
+            delivery.delivered_at = timezone.now()
+            delivery.save()
+            bump_tracking_version(delivery)
+
+            order = delivery.order
+            order.status = 'completed'
+            order.save()
+            # Loyalty earned only now, when the order actually completes.
+            credit_points_for_order(order)
+            earned = float(order.delivery_fee)
+            if proof_photo:
+                messages.success(request, f'Delivery {delivery.order.order_number} completed with photo proof! +₱{earned:.0f} earned.')
+            else:
+                messages.success(request, f'Delivery {delivery.order.order_number} completed! +₱{earned:.0f} earned.')
+            log_activity(
+                request,
+                action=f"Delivered {order.order_number} (P{float(order.total_amount):.2f} + P{earned:.2f} fee)",
+                category=ActivityLog.Category.DELIVERY,
+                level=ActivityLog.Level.SUCCESS,
+                target=order.order_number,
+                is_guest=order.customer_id is None,
+                metadata={
+                    'order_id': order.id,
+                    'delivery_id': delivery.id,
+                    'rider': request.user.get_username(),
+                    'has_proof_photo': bool(proof_photo),
+                    'delivery_fee': earned,
+                    # Signals the faculty e-receipt/feedback prompt to open.
+                    'faculty_receipt_due': not order.customer_id is None,
+                },
+            )
         else:
-            messages.success(request, f'Delivery {delivery.order.order_number} completed! +₱{earned:.0f} earned.')
-    else:
-        # Still persist the photo if the status raced already to DELIVERED.
-        delivery.save(update_fields=['proof_photo'])
+            # Still persist the photo if the status raced already to DELIVERED.
+            delivery.save(update_fields=['proof_photo'])
 
     return redirect('deliveries:dashboard')
 
@@ -313,8 +517,20 @@ def expire_stale_requests():
             requested_at__lte=orphan_cutoff,
         ).update(status=DeliveryRequest.RequestStatus.TIMEOUT)
 
+    # 3) Housekeeping, once per day: purge GPS history older than a week so the
+    # rider-location table doesn't grow forever.
+    if not cache.get('gps_history_purged_today'):
+        cache.set('gps_history_purged_today', now.date().isoformat(), timeout=86400)
+        RiderLocationPoint.objects.filter(
+            timestamp__lt=now - timedelta(days=7)
+        ).delete()
 
-@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
+
+# 'STUDENT' must be listed here: every one of these views allows the order's
+# OWNER (is_customer / can_view_tracking), but without STUDENT in the decorator
+# a student customer is redirected to the access-denied page before that
+# ownership check ever runs. The per-order check below is the real gate.
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
 def get_delivery_messages(request, delivery_id):
     delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
     user = request.user
@@ -339,7 +555,11 @@ def get_delivery_messages(request, delivery_id):
     return JsonResponse({'success': True, 'messages': msg_list, 'unread_count': unread_ids})
 
 
-@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
+# 'STUDENT' must be listed here: every one of these views allows the order's
+# OWNER (is_customer / can_view_tracking), but without STUDENT in the decorator
+# a student customer is redirected to the access-denied page before that
+# ownership check ever runs. The per-order check below is the real gate.
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
 def send_delivery_message(request, delivery_id):
     if request.method == 'POST':
         try:
@@ -376,13 +596,14 @@ def pool_status(request):
         rider=request.user, status=DeliveryRequest.RequestStatus.ACCEPTED
     ).values_list('id', flat=True))
 
-    # Unread chat counts across the rider's accepted deliveries
-    unread = {}
-    for d in DeliveryRequest.objects.filter(rider=request.user).exclude(
-        status=DeliveryRequest.RequestStatus.REJECTED):
-        count = d.messages.filter(is_read=False).exclude(sender=request.user).count()
-        if count:
-            unread[d.id] = count
+    # Unread chat counts across the rider's accepted deliveries (one aggregate
+    # query instead of one COUNT per delivery).
+    unread_rows = (DeliveryMessage.objects
+                   .filter(delivery__rider=request.user, is_read=False)
+                   .exclude(sender=request.user)
+                   .values('delivery_id')
+                   .annotate(n=Count('id')))
+    unread = {row['delivery_id']: row['n'] for row in unread_rows}
 
     return JsonResponse({
         'success': True,
@@ -413,6 +634,10 @@ def get_order_detail(request, delivery_id):
     if customer:
         customer_name = customer.get_full_name() or customer.username
         customer_phone = customer.phone or None
+    if not customer_name and getattr(order, 'guest_name', None):
+        customer_name = order.guest_name
+    if not customer_phone and getattr(order, 'guest_phone', None):
+        customer_phone = order.guest_phone
 
     return JsonResponse({
         'success': True,
@@ -449,9 +674,29 @@ def update_location(request, delivery_id):
             lat = float(lat)
             lng = float(lng)
 
+            # How good this fix is, in metres. Devices that do not report it
+            # (or report a wildly wrong value) are treated as "good enough" so
+            # older riders are never locked out of tracking.
+            accuracy = data.get('accuracy')
+            accuracy = float(accuracy) if accuracy is not None else None
+            if accuracy is not None and not (0 < accuracy <= 5000):
+                accuracy = None
+
+            from django.conf import settings
+            max_accuracy = getattr(settings, 'GPS_MAX_ACCURACY_M', 40)
+            if accuracy is not None and accuracy > max_accuracy:
+                # Too fuzzy to trust: keep showing the last good position rather
+                # than teleporting the rider across campus.
+                return JsonResponse({
+                    'success': False,
+                    'message': 'GPS signal too weak',
+                    'accuracy_m': round(accuracy, 1),
+                    'max_accuracy_m': max_accuracy,
+                    'ignored': True,
+                }, status=422)
+
             # Campus-only scope: reject location pushes outside the campus geofence.
             # Toggle-able for testing/demo via ENFORCE_GEOFENCE=False.
-            from django.conf import settings
             enforce_geofence = getattr(settings, 'ENFORCE_GEOFENCE', True)
             if enforce_geofence and not is_within_campus(lat, lng):
                 return JsonResponse({
@@ -467,30 +712,65 @@ def update_location(request, delivery_id):
                 speed = compute_speed_kmh(
                     prev.lat, prev.lng, prev.timestamp, lat, lng, now)
 
-            RiderLocationPoint.objects.create(
-                delivery=delivery,
-                rider=request.user,
-                lat=lat,
-                lng=lng,
-                speed_kmh=speed,
-            )
+            # Throttle the HISTORY writes (watchPosition can fire many times a
+            # second): only record a new location point every 4s. The rider's
+            # LIVE coordinates are updated unconditionally below so tracking
+            # stays real-time without an unbounded table blow-up.
+            if prev is None or (now - prev.timestamp).total_seconds() >= 4:
+                RiderLocationPoint.objects.create(
+                    delivery=delivery,
+                    rider=request.user,
+                    lat=lat,
+                    lng=lng,
+                    speed_kmh=speed,
+                    accuracy=accuracy,
+                )
             delivery.rider_lat = lat
             delivery.rider_lng = lng
+            delivery.rider_acc = accuracy
             delivery.location_updated_at = now
-            delivery.save(update_fields=['rider_lat', 'rider_lng', 'location_updated_at'])
+            delivery.save(update_fields=['rider_lat', 'rider_lng', 'rider_acc', 'location_updated_at'])
+
+            # Bump a cheap version counter so the live-tracking SSE stream can
+            # notice a move without rebuilding the whole payload every tick.
+            bump_tracking_version(delivery)
             return JsonResponse({'success': True, 'speed_kmh': round(speed, 1)})
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=500)
     return JsonResponse({'success': False}, status=400)
 
 
-@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
-def get_tracking(request, delivery_id):
-    """Return the rider's latest position plus speed/distance/ETA for live tracking."""
-    delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+def can_view_tracking(request, delivery):
+    """Live GPS is private: only the order's OWNER or a staff/rider role."""
+    user = request.user
+    order = delivery.order
+    is_owner = (
+        user.is_authenticated
+        and order.customer_id is not None
+        and order.customer_id == user.id
+    )
+    is_privileged = user.is_authenticated and (
+        user.is_superuser or user.is_staff
+        or user.role in ('RIDER', 'DELIVERY', 'STAFF', 'ADMIN')
+    )
+    return is_owner or is_privileged
 
+
+def _tracking_payload(delivery):
+    """Build the live-tracking JSON for a delivery.
+
+    Shared by the polling endpoint and the SSE stream so both always send the
+    exact same shape.
+    """
+    order = delivery.order
     points = list(delivery.location_points.all())
-    total_distance_km = distance_from_points([(p.lat, p.lng) for p in points])
+    # History points are throttled (one per 4s) so include the live rider
+    # position as the final waypoint -- distance stays accurate between writes.
+    coords = [(p.lat, p.lng) for p in points]
+    if points and delivery.rider_lat is not None and delivery.rider_lng is not None:
+        if (delivery.rider_lat, delivery.rider_lng) != coords[-1]:
+            coords.append((delivery.rider_lat, delivery.rider_lng))
+    total_distance_km = distance_from_points(coords)
 
     latest_speed = points[-1].speed_kmh if points else 0.0
 
@@ -501,42 +781,177 @@ def get_tracking(request, delivery_id):
 
     remaining_km = None
     eta_minutes = None
+    road_route = None
     if delivery.dest_lat is not None and delivery.rider_lat is not None:
-        remaining_km = haversine_km(
-            delivery.rider_lat, delivery.rider_lng, delivery.dest_lat, delivery.dest_lng)
+        # A real road-following path (OSRM, then Valhalla for campus footpaths).
+        # Falls back to None -- and the map to a straight line -- whenever no
+        # provider answers, so a routing outage can never break tracking.
+        road_route = get_road_route(
+            delivery.rider_lat, delivery.rider_lng,
+            delivery.dest_lat, delivery.dest_lng,
+        )
+        remaining_km = (
+            road_route['distance_km'] if road_route
+            else haversine_km(delivery.rider_lat, delivery.rider_lng,
+                              delivery.dest_lat, delivery.dest_lng)
+        )
         if latest_speed > 0.5 and delivery.status != DeliveryRequest.RequestStatus.DELIVERED:
             eta_minutes = (remaining_km / latest_speed) * 60.0
         else:
             eta_minutes = None
 
-    return JsonResponse({
+    # Total length of the whole pickup->drop-off trip, used as the denominator for
+    # the progress bar: (total_route_km - remaining_km) / total_route_km.
+    # The trip's real origin is the rider's FIRST recorded fix -- the canteen
+    # pickup point. Deriving it from real data (rather than a hard-coded canteen
+    # coordinate, which can coincide with a customer's own drop-off and collapse
+    # the total to zero) keeps the denominator equal to the actual route length.
+    # That origin/destination pair never changes, so get_road_route's cache makes
+    # this one provider call for the whole delivery, not one per GPS fix.
+    total_route_km = None
+    total_is_approximate = False
+    if delivery.dest_lat is not None and delivery.dest_lng is not None and points:
+        origin = points[0]
+        if (origin.lat, origin.lng) != (delivery.dest_lat, delivery.dest_lng):
+            pickup_route = get_road_route(
+                origin.lat, origin.lng,
+                delivery.dest_lat, delivery.dest_lng,
+            )
+            total_route_km = (
+                pickup_route['distance_km'] if pickup_route
+                else haversine_km(origin.lat, origin.lng,
+                                  delivery.dest_lat, delivery.dest_lng)
+            )
+            total_is_approximate = pickup_route is None
+
+    return {
         'success': True,
         'status': delivery.status,
         'lat': delivery.rider_lat,
         'lng': delivery.rider_lng,
+        # Radius (metres) of the rider's GPS error circle -- the map draws it so
+        # the customer sees how precise the fix actually is.
+        'accuracy_m': round(delivery.rider_acc, 1) if delivery.rider_acc else None,
         'dest_lat': delivery.dest_lat,
         'dest_lng': delivery.dest_lng,
         'speed_kmh': round(latest_speed, 1),
         'heading': round(heading, 1) if heading is not None else None,
         'total_distance_km': round(total_distance_km, 2),
         'remaining_km': round(remaining_km, 2) if remaining_km is not None else None,
+        # True length of the whole canteen->drop-off trip. This is the denominator
+        # for the progress bar: (total_route_km - remaining_km) / total_route_km.
+        'route_total_km': round(total_route_km, 2) if total_route_km is not None else None,
         'eta_minutes': round(eta_minutes) if eta_minutes is not None else None,
+        # Road route for the map: [[lat, lng], ...] following the actual campus
+        # roads. Null when routing is unavailable, which tells the map to draw
+        # the old straight line instead.
+        'path': road_route['path'] if road_route else None,
+        'routing_provider': road_route['provider'] if road_route else None,
+        'route_duration_min': (
+            round(road_route['duration_min']) if road_route else None
+        ),
+        # The ground the rider has ALREADY covered, pickup -> current position.
+        # Sent from the server rather than accumulated in the browser so the
+        # travelled track survives a page reload and every viewer sees the same
+        # history. Thinned by thin_trail() to drop GPS jitter and stay bounded.
+        'trail': [[round(lat, 5), round(lng, 5)] for lat, lng in thin_trail(coords)],
+        # True when a displayed distance could only be measured as the crow flies
+        # because no routing provider answered. The card labels those figures
+        # "approx." so a routing outage is never mistaken for an exact road
+        # distance. Covers BOTH the remaining leg and the whole-trip total, since
+        # each independently falls back to haversine.
+        'distance_is_approximate': (
+            (remaining_km is not None and road_route is None)
+            or total_is_approximate
+        ),
         'updated_at': delivery.location_updated_at.strftime('%I:%M %p') if delivery.location_updated_at else None,
-        'order_number': delivery.order.order_number,
+        'order_number': order.order_number,
         'delivery_location': delivery.delivery_location,
-    })
+    }
 
 
-@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY'])
+# 'STUDENT' must be listed here: every one of these views allows the order's
+# OWNER (is_customer / can_view_tracking), but without STUDENT in the decorator
+# a student customer is redirected to the access-denied page before that
+# ownership check ever runs. The per-order check below is the real gate.
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
+def get_tracking(request, delivery_id):
+    """Return the rider's latest position plus speed/distance/ETA for live tracking."""
+    delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    # Privacy: only the order's OWNER or staff/rider roles may read live GPS.
+    if not can_view_tracking(request, delivery):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+    return JsonResponse(_tracking_payload(delivery))
+
+
+# 'STUDENT' must be listed here: every one of these views allows the order's
+# OWNER (is_customer / can_view_tracking), but without STUDENT in the decorator
+# a student customer is redirected to the access-denied page before that
+# ownership check ever runs. The per-order check below is the real gate.
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
+def tracking_stream(request, delivery_id):
+    """Server-Sent Events push channel for the customer tracking page.
+
+    The page used to poll every 4s, so a rider could appear up to 4 seconds
+    stale. This pushes each accepted GPS fix immediately. The 4s poll stays as
+    a client-side fallback for when EventSource cannot connect.
+    """
+    delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
+    if not can_view_tracking(request, delivery):
+        return JsonResponse({'success': False, 'message': 'Access denied'}, status=403)
+
+    def event_stream():
+        last_version = None
+        last_frame = None
+        sent_first = False
+        last_beat = time.time()
+        key = tracking_version_key(delivery_id)
+
+        while True:
+            try:
+                version = cache.get(key)
+                changed = (not sent_first) or (
+                    version is not None and version != last_version)
+                if changed:
+                    fresh = DeliveryRequest.objects.select_related('order').get(pk=delivery_id)
+                    frame = json.dumps(_tracking_payload(fresh))
+                    if frame != last_frame:
+                        yield f'data: {frame}\n\n'
+                        last_frame = frame
+                        last_beat = time.time()
+                    last_version = version
+                    sent_first = True
+                elif time.time() - last_beat > _TRACK_STREAM_HEARTBEAT:
+                    # Comment frame: keeps proxies from closing an idle stream.
+                    yield ': keep-alive\n\n'
+                    last_beat = time.time()
+            except GeneratorExit:
+                raise
+            except Exception:
+                # A transient DB/cache error must never kill the stream -- the
+                # client simply waits for the next tick.
+                pass
+            time.sleep(_TRACK_STREAM_TICK)
+
+    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
+
+
+# 'STUDENT' must be listed here: every one of these views allows the order's
+# OWNER (is_customer / can_view_tracking), but without STUDENT in the decorator
+# a student customer is redirected to the access-denied page before that
+# ownership check ever runs. The per-order check below is the real gate.
+@role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
 def track_order(request, delivery_id):
     """Customer-facing live tracking page (Leaflet map)."""
     delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
     order = delivery.order
-    is_customer = (
-        request.user.is_authenticated and order.customer is not None
-        and order.customer == request.user
-    ) or request.user.role in ['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'] or request.user.is_superuser
-    if not is_customer and not (request.user.is_authenticated and request.user.role == 'FACULTY'):
+    # Privacy: page access mirrors get_tracking -- the order's OWNER or
+    # staff/rider roles. A random FACULTY/STUDENT can no longer open any
+    # delivery's tracking page by guessing the id.
+    if not can_view_tracking(request, delivery):
         messages.error(request, "Access denied.")
         return redirect('accounts:landing')
 
@@ -554,10 +969,10 @@ def track_order(request, delivery_id):
 @role_required(allowed_roles=['STUDENT', 'FACULTY'])
 def faculty_delivery_status(request):
     """Polling endpoint for the faculty/student dashboard to live-sync delivery statuses."""
-    from .utils import serialize_delivery
+    from .utils import serialize_delivery, prefetch_delivery_relations
     if request.user.is_authenticated:
-        deliveries = DeliveryRequest.objects.filter(
-            order__customer=request.user).order_by('-requested_at')[:5]
+        deliveries = prefetch_delivery_relations(DeliveryRequest.objects.filter(
+            order__customer=request.user).order_by('-requested_at')[:5])
     else:
         deliveries = []
     data = [serialize_delivery(d) for d in deliveries]
@@ -570,8 +985,7 @@ def rider_earnings_summary(request):
     completed_qs = DeliveryRequest.objects.filter(
         rider=request.user, status=DeliveryRequest.RequestStatus.DELIVERED
     )
-    total_earnings = sum(
-        float(d.order.delivery_fee) for d in completed_qs)
+    total_earnings = completed_qs.aggregate(total=Sum('order__delivery_fee'))['total'] or 0
     return JsonResponse({
         'success': True,
         'total_earnings': total_earnings,
@@ -592,7 +1006,7 @@ def rider_live_stream(request):
       - current delivery earnings (based on delivered orders, per full ₱300)
     """
     import hashlib
-    from .utils import serialize_delivery
+    from .utils import serialize_delivery, prefetch_delivery_relations
 
     def event_stream():
         last_hash = None
@@ -625,23 +1039,24 @@ def rider_live_stream(request):
 
                 pending_ids = list(pending_pool_for_rider(request.user).values_list('id', flat=True))
 
-                my_deliveries = DeliveryRequest.objects.filter(
+                my_deliveries = prefetch_delivery_relations(DeliveryRequest.objects.filter(
                     rider=request.user).exclude(
-                        status=DeliveryRequest.RequestStatus.REJECTED)
+                        status=DeliveryRequest.RequestStatus.REJECTED)).prefetch_related(
+                            'messages')
                 active = [serialize_delivery(d) for d in my_deliveries.filter(
                     status=DeliveryRequest.RequestStatus.ACCEPTED)]
 
                 completed_qs = my_deliveries.filter(
                     status=DeliveryRequest.RequestStatus.DELIVERED)
-                total_earnings = sum(
-                    float(d.order.delivery_fee) for d in completed_qs)
+                total_earnings = completed_qs.aggregate(total=Sum('order__delivery_fee'))['total'] or 0
 
                 unread = {}
                 total_unread = 0
                 chat_digest = None
                 for d in my_deliveries:
-                    last = d.messages.order_by('-timestamp', '-id').first()
-                    if last is not None:
+                    msgs = list(d.messages.all())
+                    if msgs:
+                        last = max(msgs, key=lambda m: (m.timestamp, m.id))
                         current = f"{d.id}:{last.id}:{last.timestamp.timestamp()}"
                         chat_digest = (chat_digest + '|' + current) if chat_digest else current
                     count = last__count_for(d, request.user)
@@ -702,15 +1117,15 @@ def faculty_delivery_stream(request):
     there is something new, instead of polling every 1-2 seconds.
     """
     import hashlib
-    from .utils import serialize_delivery
+    from .utils import serialize_delivery, prefetch_delivery_relations
 
     def event_stream():
         last_hash = None
         last_chat_hash = None
         while True:
             try:
-                deliveries = DeliveryRequest.objects.filter(
-                    order__customer=request.user).order_by('-requested_at')[:5]
+                deliveries = prefetch_delivery_relations(DeliveryRequest.objects.filter(
+                    order__customer=request.user).order_by('-requested_at')[:5])
                 data = [serialize_delivery(d) for d in deliveries]
 
                 payload = {
@@ -724,10 +1139,12 @@ def faculty_delivery_stream(request):
                 chat_digest = None
                 chat_deliveries = DeliveryRequest.objects.filter(
                     order__customer=request.user).exclude(
-                        status=DeliveryRequest.RequestStatus.SEARCHING)
+                        status=DeliveryRequest.RequestStatus.SEARCHING).prefetch_related(
+                            'messages')
                 for d in chat_deliveries:
-                    last = d.messages.order_by('-timestamp', '-id').first()
-                    if last is not None:
+                    msgs = list(d.messages.all())
+                    if msgs:
+                        last = max(msgs, key=lambda m: (m.timestamp, m.id))
                         current = f"{d.id}:{last.id}:{last.timestamp.timestamp()}"
                         chat_digest = (chat_digest + '|' + current) if chat_digest else current
                 if chat_digest is not None and chat_digest != last_chat_hash:
@@ -825,46 +1242,147 @@ def staff_dispatch_stream(request):
     )
 
 
+def _can_manage_delivery(request, delivery):
+    """Owner or staff may convert/cancel a delivery. Anyone else is denied."""
+    if request.user.is_superuser or request.user.is_staff:
+        return True
+    if request.user.role in ('STAFF', 'ADMIN'):
+        return True
+    order = delivery.order
+    return order is not None and order.customer_id is not None and order.customer_id == request.user.id
+
+
 @require_POST
+@role_required(allowed_roles=['STUDENT', 'FACULTY', 'STAFF', 'ADMIN'])
 def api_convert_to_pickup(request, delivery_id):
+    """Convert a delivery order into a counter pick-up order.
+
+    Strips the rider fee and guarantees a queue slip so the customer collects
+    at the counter instead. Idempotent: calling it twice returns the same slip,
+    never a second conversion.
+
+    The request is parked at REJECTED -- NOT TIMEOUT. ``expire_stale_requests``
+    revives TIMEOUT rows whose food is preparing/ready back into the rider pool,
+    which is exactly why a converted order used to silently turn back into a
+    delivery. REJECTED is never revived, so a successful conversion stays one.
+    """
     from django.db import transaction
     from queuing.models import DigitalQueueSlip
     try:
         with transaction.atomic():
-            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
-            if delivery.status == DeliveryRequest.RequestStatus.SEARCHING:
-                delivery.status = DeliveryRequest.RequestStatus.TIMEOUT
-                delivery.save(update_fields=['status'])
-                
-                order = delivery.order
-                order.delivery_fee = 0.00
+            delivery = DeliveryRequest.objects.select_for_update().select_related('order').get(id=delivery_id)
+            if not _can_manage_delivery(request, delivery):
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+            order = delivery.order
+            if order is None:
+                return JsonResponse({'success': False, 'error': 'This request has no order to convert.'}, status=400)
+            if order.status in ('cancelled', 'completed'):
+                return JsonResponse({
+                    'success': False,
+                    'error': f'This order is already {order.get_status_display().lower()} and can no longer be converted.'
+                }, status=400)
+            if delivery.status == DeliveryRequest.RequestStatus.ACCEPTED:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'A rider has already accepted this delivery. Release it first, then convert.'
+                }, status=400)
+
+            already_converted = (
+                delivery.status == DeliveryRequest.RequestStatus.REJECTED
+                and DigitalQueueSlip.objects.filter(order=order).exists()
+            )
+
+            if delivery.status != DeliveryRequest.RequestStatus.REJECTED:
+                delivery.status = DeliveryRequest.RequestStatus.REJECTED
+                delivery.assigned_to = None
+                delivery.assigned_at = None
+                delivery.rider = None
+                delivery.save(update_fields=['status', 'assigned_to', 'assigned_at', 'rider'])
+
+            # Counter pick-up carries no rider fee.
+            if order.delivery_fee:
+                order.delivery_fee = 0
                 order.save(update_fields=['delivery_fee'])
-                
-                DigitalQueueSlip.objects.get_or_create(
-                    order=order,
-                    defaults={'queue_number': order.order_number}
-                )
-        return JsonResponse({'success': True, 'message': 'Successfully converted to pick-up!'})
+
+            slip, _ = DigitalQueueSlip.objects.get_or_create(
+                order=order,
+                defaults={'queue_number': order.order_number},
+            )
+
+        if not already_converted:
+            log_activity(
+                request,
+                action=f"Converted delivery {order.order_number} to counter pick-up (slip #{slip.queue_number})",
+                category=ActivityLog.Category.ORDER,
+                level=ActivityLog.Level.INFO,
+                target=order.order_number,
+                is_guest=order.customer_id is None,
+                metadata={
+                    'order_id': order.id,
+                    'delivery_id': delivery.id,
+                    'queue_number': slip.queue_number,
+                },
+            )
+
+        return JsonResponse({
+            'success': True,
+            'order_number': order.order_number,
+            'queue_number': slip.queue_number,
+            'message': 'Successfully converted to pick-up!',
+        })
+    except DeliveryRequest.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Delivery request not found.'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @require_POST
+@role_required(allowed_roles=['STUDENT', 'FACULTY', 'STAFF', 'ADMIN'])
 def api_cancel_order_with_reason(request, delivery_id):
     from django.db import transaction
+    from customer_portal.views import refund_points_for_cancel, restore_stock_for_order
     try:
         data = json.loads(request.body) if request.body else {}
         reason = data.get('reason', 'Waiting for too long')
-        
+
         with transaction.atomic():
             delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
+            if not _can_manage_delivery(request, delivery):
+                return JsonResponse({'success': False, 'error': 'Access denied'}, status=403)
+
+            order = delivery.order
+            was_cancelled = order.status == 'cancelled'
+
             delivery.status = DeliveryRequest.RequestStatus.REJECTED
             delivery.save(update_fields=['status'])
-            
-            order = delivery.order
+
             order.status = 'cancelled'
             order.save(update_fields=['status'])
-            
+
+            # First cancel only: give back any redeemed loyalty points and
+            # return the deducted stock to the menu. Never double-refunds.
+            if not was_cancelled:
+                refund_points_for_cancel(order)
+                restore_stock_for_order(order)
+
+        # Only the first cancellation is logged, matching the refund guard.
+        if not was_cancelled:
+            log_activity(
+                request,
+                action=f"Cancelled order {order.order_number} (P{float(order.total_amount):.2f}): {reason}",
+                category=ActivityLog.Category.ORDER,
+                level=ActivityLog.Level.DANGER,
+                target=order.order_number,
+                is_guest=order.customer_id is None,
+                metadata={
+                    'order_id': order.id,
+                    'delivery_id': delivery.id,
+                    'reason': reason,
+                    'total': float(order.total_amount),
+                },
+            )
+
         return JsonResponse({'success': True, 'message': 'Order cancelled successfully.'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)

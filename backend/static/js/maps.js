@@ -269,7 +269,7 @@
                     color: style.color || '#FF6117',
                     weight: style.weight || 3,
                     opacity: style.opacity != null ? style.opacity : 0.8,
-                    dashArray: style.dashArray || '7 6'
+                    dashArray: style.dashArray || null
                 }).addTo(map);
                 layers.push(line);
                 return { setLatLngs: function (np) { line.setLatLngs(np); } };
@@ -322,7 +322,9 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: opts.maxZoom || 19,
             minZoom: opts.minZoom || 13,
-            subdomains: 'abcd',
+            // OSM serves a/b/c only. Listing a 'd' makes every fourth tile
+            // request fail DNS, leaving grey holes all over the map.
+            subdomains: 'abc',
             attribution: ''
         }).addTo(map);
 

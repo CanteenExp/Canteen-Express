@@ -8,7 +8,7 @@ services:
       pip install -r backend/requirements.txt
       python backend/manage.py collectstatic --noinput
       python backend/manage.py migrate
-    startCommand: gunicorn --chdir backend config.wsgi:application
+    startCommand: gunicorn --chdir backend config.wsgi:application --workers 2 --threads 4 --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0
@@ -26,3 +26,31 @@ services:
         value: aws-0-ap-southeast-1.pooler.supabase.com
       - key: DB_PORT
         value: 6543
+      # Email / SMTP -- REQUIRED for faculty OTP (registration & password reset).
+      # NOTE: this blueprint declares plan: free, and Render's free web services
+      # block outbound SMTP ports 25/465/587. OTP email therefore CANNOT be
+      # delivered on this plan -- raise the plan to a paid instance, or add an
+      # HTTPS email API transport over port 443.
+      # EMAIL_HOST_PASSWORD must be set in the Render dashboard (sync: false)
+      # with a Gmail App Password, otherwise deployed OTP emails will fail and
+      # the on-screen fallback is DISABLED in production (no code leak).
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USE_TLS
+        value: "True"
+      - key: EMAIL_USE_SSL
+        value: "False"
+      - key: EMAIL_HOST_USER
+        value: canteenexpress26@gmail.com
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        value: Canteen Express <canteenexpress26@gmail.com>
+      - key: EMAIL_TIMEOUT
+        value: 10
+      # Admin/System governance PIN. Replace with your own value in the
+      # Render dashboard; the app defaults to a dev-only fallback otherwise.
+      - key: ADMIN_PIN
+        sync: false

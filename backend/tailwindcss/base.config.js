@@ -12,7 +12,6 @@ module.exports = {
     glob('templates/staff_menu_management.html'),
     glob('templates/accounts/login.html'),
     glob('templates/accounts/register.html'),
-    glob('templates/accounts/verify_otp.html'),
   ],
   theme: {
     extend: {

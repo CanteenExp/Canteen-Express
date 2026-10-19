@@ -23,10 +23,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
-    <!-- Leaflet CSS & JS for Real-time Maps API -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet CSS & JS for Real-time Maps API (served locally, no CDN dependency) -->
+    <link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}" />
+    <script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     
     <style>
@@ -42,11 +43,22 @@
         #checkout-mini-map .leaflet-tile-pane .leaflet-tile {
             filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(88%);
         }
-        /* Hide any map attribution text so no API/key notice ever shows */
+        /* Tile credit (required by the OpenStreetMap tile usage policy) styled
+           to stay legible on the dark, inverted basemap. */
         #leaflet-map .leaflet-control-attribution,
         #view-order-map .leaflet-control-attribution,
-        #checkout-mini-map .leaflet-control-attribution,
-        .leaflet-control-attribution { display: none !important; }
+        #checkout-mini-map .leaflet-control-attribution {
+            background: rgba(8,8,12,.7) !important;
+            color: #d4d4d8 !important;
+            font-size: 10px !important;
+            padding: 1px 6px !important;
+            border-radius: 6px 0 0 0;
+        }
+        #leaflet-map .leaflet-control-attribution a,
+        #view-order-map .leaflet-control-attribution a,
+        #checkout-mini-map .leaflet-control-attribution a {
+            color: #fb923c !important;
+        }
         /* Dark zoom control on the campus checkout map */
         #checkout-mini-map .leaflet-control-zoom {
             border: 1px solid rgba(255,255,255,.12) !important;
@@ -66,6 +78,26 @@
         /* Order-placed confirmation animations */
         .modal-pop { animation: modalPop 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes modalPop { from { opacity: 0; transform: scale(0.92) translateY(14px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        /* ===== Compact receipt printing ===== */
+        .receipt-sheet { width: 100%; max-width: 320px; }
+        @media print {
+            body { background: #fff !important; }
+            body * { visibility: hidden; }
+            #order-placed-modal, #pickup-placed-modal,
+            #order-placed-modal *, #pickup-placed-modal * { visibility: visible; }
+            #order-placed-modal, #pickup-placed-modal {
+                position: fixed; inset: 0; gap: 0; padding: 0; background: #fff !important;
+                -webkit-backdrop-filter: none; backdrop-filter: none; display: flex;
+            }
+            #order-placed-modal .glass-panel, #pickup-placed-modal .glass-panel {
+                max-width: 300px; margin: auto; padding: 14px !important; box-shadow: none !important;
+                background: #fff !important; border: 1px solid #e4e4e7 !important;
+                -webkit-backdrop-filter: none; backdrop-filter: none;
+            }
+            #order-placed-modal .glass-panel *:not(.receipt-print-hide), 
+            #pickup-placed-modal .glass-panel *:not(.receipt-print-hide) { color: #111 !important; }
+        }
 
         /* ===== Glassmorphism UI system ===== */
         .glass-backdrop {
@@ -224,6 +256,12 @@
         body.light-mode #search-wrapper button {
             color: #0f172a !important;
         }
+        body.light-mode #search-input {
+            color: #0f172a !important;
+        }
+        body.light-mode #search-input::placeholder {
+            color: #94a3b8 !important;
+        }
         body.light-mode #hamburger-dropdown {
             background-color: #ffffff !important;
             color: #0f172a !important;
@@ -236,13 +274,108 @@
         body.light-mode #hamburger-dropdown button:hover {
             background-color: #f1f5f9 !important;
         }
+        body.light-mode #gps-location-text {
+            color: #0f172a !important;
+        }
+        body.light-mode .glass-panel span.text-white:not([class*="bg-"]),
+        body.light-mode .glass-panel strong.text-white,
+        body.light-mode .glass-panel p.text-white,
+        body.light-mode .glass-panel h3.text-white,
+        body.light-mode .glass-panel div.text-white,
+        body.light-mode .glass-panel [class*="text-white"] {
+            color: #0f172a !important;
+        }
+        body.light-mode .glass-panel .text-white\/70,
+        body.light-mode .glass-panel .text-white\/60,
+        body.light-mode .glass-panel .text-zinc-200,
+        body.light-mode .glass-panel .text-zinc-400 {
+            color: #475569 !important;
+        }
+        body.light-mode .glass-panel .text-white\/50,
+        body.light-mode .glass-panel .text-white\/40 {
+            color: #64748b !important;
+        }
+        body.light-mode .glass-panel .bg-white\/5,
+        body.light-mode .glass-panel .bg-white\/10 {
+            background-color: rgba(15, 23, 42, 0.06) !important;
+            border-color: rgba(148, 163, 184, 0.35) !important;
+            color: #0f172a !important;
+        }
+        body.light-mode .glass-panel button.bg-white\/5,
+        body.light-mode .glass-panel button.bg-white\/10 {
+            background-color: rgba(15, 23, 42, 0.06) !important;
+            color: #0f172a !important;
+            border: 1px solid rgba(148, 163, 184, 0.35) !important;
+        }
+        body.light-mode .glass-panel button.bg-white\/5:hover,
+        body.light-mode .glass-panel button.bg-white\/10:hover {
+            background-color: rgba(15, 23, 42, 0.12) !important;
+            color: #0f172a !important;
+        }
+        body.light-mode .glass-panel input,
+        body.light-mode .glass-panel select,
+        body.light-mode .glass-panel textarea {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+        body.light-mode .glass-panel input::placeholder,
+        body.light-mode .glass-panel textarea::placeholder {
+            color: #94a3b8 !important;
+        }
+        #info-bar {
+            box-shadow: none !important;
+            border-color: #fbbf24 !important;
+        }
+        body.light-mode #points-badge-btn {
+            background-color: #fbbf24 !important;
+            color: #0f172a !important;
+            border-color: #f59e0b !important;
+            box-shadow: none !important;
+        }
+        body.light-mode #points-badge-btn i,
+        body.light-mode #points-badge-btn span {
+            color: #0f172a !important;
+        }
+        body.light-mode .glass-panel button:not(.bg-brand-orange):not(.bg-emerald-600):not(.bg-emerald-500):not(.bg-blue-600):not(.bg-red-500):not(.bg-amber-500) {
+            color: #0f172a !important;
+            background-color: rgba(15, 23, 42, 0.06) !important;
+            border-color: rgba(148, 163, 184, 0.35) !important;
+        }
+        body.light-mode .glass-panel button:not(.bg-brand-orange):not(.bg-emerald-600):not(.bg-emerald-500):not(.bg-blue-600):not(.bg-red-500):not(.bg-amber-500):hover {
+            background-color: rgba(15, 23, 42, 0.12) !important;
+        }
+        body.light-mode #timeout-buttons button:not(.bg-brand-orange) {
+            color: #0f172a !important;
+            background-color: rgba(15, 23, 42, 0.06) !important;
+            border: 1px solid rgba(148, 163, 184, 0.35) !important;
+        }
+        body.light-mode #timeout-buttons button[onclick*="convertFacultyDeliveryToPickup"] {
+            background-color: rgba(245, 158, 11, 0.15) !important;
+            color: #b45309 !important;
+            border-color: rgba(245, 158, 11, 0.4) !important;
+        }
+        body.light-mode #timeout-buttons button[onclick*="convertFacultyDeliveryToPickup"]:hover {
+            background-color: rgba(245, 158, 11, 0.25) !important;
+        }
+        body.light-mode .glass-panel button.text-red-400,
+        body.light-mode #timeout-buttons button.text-red-400 {
+            color: #dc2626 !important;
+            background-color: transparent !important;
+        }
         .confirm-ring { animation: confirmRing 1.8s ease-out infinite; }
         @keyframes confirmRing { 0% { box-shadow: 0 0 0 0 rgba(255,97,23,0.45); } 70% { box-shadow: 0 0 0 18px rgba(255,97,23,0); } 100% { box-shadow: 0 0 0 0 rgba(255,97,23,0); } }
         .confirm-check { animation: confirmCheck 0.55s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes confirmCheck { 0% { transform: scale(0); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
     </style>
 </head>
-<body class="bg-brand-dark text-brand-light h-screen flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative" x-data="facultyPortal()">
+<body class="bg-brand-dark text-brand-light h-screen h-[100dvh] flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative" x-data="facultyPortal()">
+
+    <!-- MANUAL CLOSURE BANNER: shown when staff close the canteen -->
+    <div id="system-closed-banner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9998; background:rgba(127,29,29,0.96); color:#ffffff; padding:10px 16px; text-align:center; font-size:12.5px; font-weight:700; box-shadow:0 8px 24px rgba(0,0,0,0.35);">
+        <i class="fa-solid fa-store-slash"></i>
+        <span>Canteen is currently closed — ordering is temporarily unavailable.</span><span id="system-closed-banner-reason" style="display:none; color:#fecaca; font-weight:600;"></span>
+    </div>
 
     <!-- ================= HEADER ================= -->
     <header class="bg-brand-dark border-b border-white/10 shrink-0 space-y-2 pb-2">
@@ -308,16 +441,17 @@
             </div>
 
             <!-- Info Bar (GPS Location & Pts / Logout) -->
-            <div class="flex items-center justify-between bg-brand-card/90 border border-white/10 px-4 py-2 rounded-xl text-xs">
-                <div class="flex items-center gap-2">
+            <div id="info-bar" class="flex items-center justify-between glass-panel border border-white/10 px-4 py-2.5 rounded-xl text-xs backdrop-blur-md">
+                <div onclick="openMapModal()" class="flex items-center gap-2 cursor-pointer hover:bg-white/10 px-2 py-1 rounded-lg transition active:scale-95" title="Click to view real-time location on map">
                     <span class="w-6 h-6 rounded-lg bg-brand-orange text-white flex items-center justify-center text-[10px]">
                         <i class="fa-solid fa-location-dot"></i>
                     </span>
                     <span id="gps-location-text" class="font-bold text-white">Acquiring GPS...</span>
+                    <i class="fa-solid fa-chevron-right text-[10px] text-white/50 ml-1"></i>
                 </div>
                 <div class="flex items-center gap-3">
                     <!-- Rewards / Points Badge -->
-                    <span onclick="openPointsModal()" class="cursor-pointer bg-brand-card hover:bg-white/10 border border-white/10 px-3 py-2 rounded-xl text-amber-400 font-black text-xs flex items-center gap-1.5 transition active:scale-95 shadow">
+                    <span id="points-badge-btn" onclick="openPointsModal()" class="cursor-pointer bg-brand-card hover:bg-white/10 border border-white/10 px-3 py-2 rounded-xl text-amber-400 font-black text-xs flex items-center gap-1.5 transition active:scale-95 shadow">
                         <i class="fa-solid fa-coins"></i> <span x-text="userPoints.toFixed(1)">{{ user_points|default:0.0 }}</span> Pts
                     </span>
                 </div>
@@ -326,17 +460,17 @@
 
         <div class="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-brand-orange text-white flex items-center justify-center font-black text-lg">
-                    <i class="fa-solid fa-graduation-cap"></i>
+                <div class="w-10 h-10 rounded-xl bg-brand-orange/20 border border-brand-orange/30 p-1 flex items-center justify-center overflow-hidden shadow">
+                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="w-full h-full object-contain">
                 </div>
-                <div>
+                <div id="greeting-container" class="transition-all duration-300">
                     <h1 class="text-xs sm:text-base font-black text-white leading-tight">Hello, {{ faculty_display_name }}!</h1>
                 </div>
             </div>
 
             <div class="flex items-center gap-2">
                 <!-- Search Wrapper (First) -->
-                <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10 shadow-lg">
+                <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10">
                     <button onclick="toggleSearch(event)" id="search-toggle-btn" type="button" class="w-10 h-10 shrink-0 flex items-center justify-center text-white transition active:scale-95">
                         <i class="fa-solid fa-magnifying-glass text-xs"></i>
                     </button>
@@ -422,7 +556,42 @@
             </button>
             {% for cat in categories %}
             <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
-                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid {% if 'ulam' in cat.name|lower %}fa-drumstick-bite{% elif 'kakanin' in cat.name|lower %}fa-plate-wheat{% elif 'candies' in cat.name|lower %}fa-candy-cane{% elif 'pastry' in cat.name|lower or 'cake' in cat.name|lower %}fa-bread-slice{% elif 'pasta' in cat.name|lower %}fa-bowl-food{% elif 'instant' in cat.name|lower %}fa-fire{% elif 'add' in cat.name|lower or 'addon' in cat.name|lower or 'extra' in cat.name|lower %}fa-puzzle-piece{% elif 'rice' in cat.name|lower %}fa-bowl-rice{% elif 'biscuit' in cat.name|lower %}fa-cookie{% elif 'beverage' in cat.name|lower or 'drink' in cat.name|lower %}fa-bottle-water{% elif 'meryenda' in cat.name|lower %}fa-burger{% elif 'diet' in cat.name|lower %}fa-heart-pulse{% else %}fa-bowl-food{% endif %}"></i></span>
+                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl">
+                    {% if 'ulam' in cat.name|lower %}
+                        <i class="fa-solid fa-drumstick-bite"></i>
+                    {% elif 'pasta' in cat.name|lower or 'noodle' in cat.name|lower %}
+                        <svg class="w-6 h-6 text-current" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3.5 11h17a0.5 0.5 0 0 1 0.5 0.5 8 8 0 0 1-8 8h-3a8 8 0 0 1-8-8 0.5 0.5 0 0 1 0.5-0.5z"/>
+                            <rect x="9" y="5" width="1.5" height="6" rx="0.75"/>
+                            <rect x="12" y="4" width="1.5" height="7" rx="0.75"/>
+                            <rect x="15" y="6" width="1.5" height="5" rx="0.75"/>
+                            <line x1="6" y1="5" x2="20" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="6" y1="7" x2="19" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    {% elif 'instant' in cat.name|lower %}
+                        <i class="fa-solid fa-mug-hot"></i>
+                    {% elif 'pastry' in cat.name|lower or 'bakery' in cat.name|lower %}
+                        <i class="fa-solid fa-bread-slice"></i>
+                    {% elif 'kakanin' in cat.name|lower %}
+                        <i class="fa-solid fa-plate-wheat"></i>
+                    {% elif 'candies' in cat.name|lower %}
+                        <i class="fa-solid fa-candy-cane"></i>
+                    {% elif 'add' in cat.name|lower or 'addon' in cat.name|lower or 'extra' in cat.name|lower %}
+                        <i class="fa-solid fa-plus-circle"></i>
+                    {% elif 'rice' in cat.name|lower %}
+                        <i class="fa-solid fa-bowl-rice"></i>
+                    {% elif 'biscuit' in cat.name|lower %}
+                        <i class="fa-solid fa-cookie"></i>
+                    {% elif 'beverage' in cat.name|lower or 'drink' in cat.name|lower %}
+                        <i class="fa-solid fa-bottle-water"></i>
+                    {% elif 'pastry' in cat.name|lower %}
+                        <i class="fa-solid fa-burger"></i>
+                    {% elif 'diet' in cat.name|lower %}
+                        <i class="fa-solid fa-heart-pulse"></i>
+                    {% else %}
+                        <i class="fa-solid fa-bowl-food"></i>
+                    {% endif %}
+                </span>
                 <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">{{ cat.name }}</span>
             </button>
             {% endfor %}
@@ -468,7 +637,7 @@
 
 
     <!-- ================= FOOTER BAR ================= -->
-    <footer class="shrink-0 bg-brand-card border-t border-white/10 p-3 sm:p-4 shadow-2xl z-20">
+    <footer class="shrink-0 bg-brand-card border-t border-white/10 p-3 sm:p-4 pb-[max(env(safe-area-inset-bottom),12px)] shadow-2xl z-20">
         <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
             <div class="text-left">
@@ -528,9 +697,20 @@
                     <span id="drawer-total-amount" class="font-black text-brand-orange text-xl">₱0.00</span>
                 </div>
 
-                <button onclick="closeCartDrawer(); openCheckoutModal()" class="w-full py-3.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-check"></i> Proceed to Checkout
-                </button>
+                <!-- Same 2-up footer as the kiosk cart: keep browsing, or check out.
+                     Both buttons share one structure (icon + label, centred, same
+                     height/weight) so the pair reads as a matched set. Labels are
+                     kept short so neither wraps inside its half-width column. -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="closeCartDrawer()" class="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3.5 rounded-2xl uppercase tracking-wider text-xs border border-white/10 transition active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Add More</span>
+                    </button>
+                    <button type="button" onclick="closeCartDrawer(); openCheckoutModal()" class="w-full py-3.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2 active:scale-95">
+                        <span>Checkout</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
             </div>
 
         </div>
@@ -558,22 +738,13 @@
 
                 <!-- ADD-ONS / CUSTOMIZERS -->
                 <div class="space-y-4 pt-3 border-t border-white/10">
-                    <div class="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
-                        <div>
-                            <span class="text-xs font-bold text-white block">Steamed Rice Portions</span>
-                            <span class="text-[10px] text-brand-orange font-bold">₱15.00 per serving</span>
-                        </div>
-                        <div class="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-md">
-                            <button type="button" onclick="changeRiceQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition"><i class="fa-solid fa-minus text-xs"></i></button>
-                            <span id="modal-rice-count" class="text-xs font-black text-white w-4 text-center">0</span>
-                            <button type="button" onclick="changeRiceQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition"><i class="fa-solid fa-plus text-xs"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="space-y-1.5" id="modal-beverage-container">
-                        <label class="text-[11px] font-bold text-brand-slate uppercase tracking-wider block">Optional Beverage Pairing</label>
-                        <select id="modal-beverage-select" onchange="updateModalTotal()" class="w-full bg-white/5 border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange backdrop-blur-md">
-                            <option value="">-- No Beverage --</option>
+                    <!-- Size / Volume Selector for Nature's Spring & Bottled Water -->
+                    <div class="space-y-1.5" id="modal-size-container" style="display: none;">
+                        <label class="text-[11px] font-bold text-brand-slate uppercase tracking-wider block flex items-center gap-1.5">
+                            <i class="fa-solid fa-bottle-water text-brand-orange"></i> Select Size / Volume
+                        </label>
+                        <select id="modal-size-select" onchange="updateModalTotal()" class="w-full bg-brand-dark border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange">
+                            <!-- Populated dynamically -->
                         </select>
                     </div>
                 </div>
@@ -581,11 +752,19 @@
                 <div class="flex items-center justify-between pt-3 border-t border-white/10">
                     <div>
                         <span class="text-[10px] text-brand-slate uppercase font-bold block">Total Amount</span>
-                        <span id="modal-item-price" class="text-2xl font-black text-brand-orange">₱0.00</span>
+                        <span id="modal-item-price" class="text-xl sm:text-2xl font-black text-brand-orange">₱0.00</span>
                     </div>
-                    <button onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-6 py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95">
-                        <i class="fa-solid fa-cart-plus"></i> Add to Cart
-                    </button>
+                    <div class="flex items-center gap-3">
+                        <!-- Quantity Counter [ - qty + ] -->
+                        <div class="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-2xl border border-white/10 backdrop-blur-md">
+                            <button type="button" onclick="changeItemModalQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-minus text-xs"></i></button>
+                            <span id="modal-item-qty" class="text-sm font-black text-white w-5 text-center">1</span>
+                            <button type="button" onclick="changeItemModalQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-plus text-xs"></i></button>
+                        </div>
+                        <button onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-5 py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95 cursor-pointer">
+                            <i class="fa-solid fa-cart-plus"></i> Add
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -593,13 +772,13 @@
 
 
     <!-- ================= CHECKOUT MODAL ================= -->
-    <div id="checkout-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 overflow-y-auto">
-        <div class="glass-panel glass-panel-accent rounded-3xl max-w-md w-full flex flex-col overflow-hidden shadow-2xl max-h-[90vh] animate-fade-in">
+    <div id="checkout-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 pt-[max(env(safe-area-inset-top),24px)] pb-[max(env(safe-area-inset-bottom),24px)] overflow-y-auto">
+        <div class="glass-panel glass-panel-accent rounded-3xl max-w-md w-full flex flex-col overflow-hidden shadow-2xl max-h-[88vh] my-auto animate-fade-in">
 
             <!-- Header -->
             <div class="shrink-0 flex items-center justify-between px-5 py-4 border-b border-brand-orange/25 glass-panel-head">
                 <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-10 h-10 rounded-xl bg-brand-orange/15 border border-brand-orange/30 text-brand-orange flex items-center justify-center text-base shrink-0">
+                    <div class="w-10 h-10 rounded-xl bg-brand-orange/15 border border-brand-orange/30 text-brand-orange flex items-center justify-center text-base shrink-0 shadow-sm">
                         <i class="fa-solid fa-bag-shopping"></i>
                     </div>
                     <div class="min-w-0">
@@ -607,7 +786,7 @@
                         <p class="text-[10px] font-bold text-brand-slate truncate">Confirm details to place your order</p>
                     </div>
                 </div>
-                <button onclick="closeCheckoutModal()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center shrink-0 transition">
+                <button onclick="closeCheckoutModal()" class="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center shrink-0 transition cursor-pointer">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
@@ -616,24 +795,19 @@
             <div class="glass-scroll flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0 text-xs">
 
                 <!-- Delivery Method -->
-                <div class="space-y-1.5">
-                    <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate">Delivery Method</label>
-                    <div class="grid grid-cols-2 gap-2 p-1 bg-white/5 border border-white/10 rounded-2xl">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate block">Delivery Method</label>
+                    <div class="grid grid-cols-2 gap-2 p-1.5 bg-white/5 border border-white/10 rounded-2xl">
                         <button type="button" id="fulfillment-delivery" onclick="setFulfillment('delivery')"
-                            class="relative rounded-xl text-[11px] bg-emerald-600 text-white font-black flex items-center justify-center gap-1.5 transition shadow-lg shadow-emerald-600/30">
-                            <i class="fa-solid fa-motorcycle"></i> Delivery
-                            <span class="text-[8px] font-black bg-emerald-400 text-emerald-950 px-1.5 py-0.5 rounded-full">₱15+</span>
+                            class="relative rounded-xl py-3 px-3 text-[11px] font-black flex items-center justify-center gap-2 transition shadow-md cursor-pointer">
+                            <i class="fa-solid fa-motorcycle text-sm"></i> Delivery
+                            <span id="fulfillment-delivery-badge" class="text-[9px] font-black px-2 py-0.5 rounded-full">₱15+</span>
                         </button>
                         <button type="button" id="fulfillment-pickup" onclick="setFulfillment('pickup')"
-                            class="relative rounded-xl text-[11px] bg-white/5 text-brand-slate font-bold flex items-center justify-center gap-1.5 transition hover:text-white">
-                            <i class="fa-solid fa-store"></i> Pickup
-                            <span class="text-[8px] font-black bg-emerald-400 text-emerald-950 px-1.5 py-0.5 rounded-full">Free</span>
+                            class="relative rounded-xl py-3 px-3 text-[11px] font-bold flex items-center justify-center gap-2 transition cursor-pointer">
+                            <i class="fa-solid fa-store text-sm"></i> Pickup
+                            <span id="fulfillment-pickup-badge" class="text-[9px] font-black px-2 py-0.5 rounded-full">Free</span>
                         </button>
-                    </div>
-                    <div class="flex items-center gap-2 px-0.5">
-                        <span class="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400"><i class="fa-solid fa-circle text-[6px]"></i> Delivery</span>
-                        <span class="text-brand-slate">·</span>
-                        <span class="flex items-center gap-1.5 text-[10px] font-bold text-brand-orange"><i class="fa-solid fa-circle text-[6px]"></i> Pickup</span>
                     </div>
                 </div>
 
@@ -646,17 +820,19 @@
                     </div>
 
                     <div class="space-y-1.5">
-                        <div class="flex items-center justify-between">
-                            <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate flex items-center gap-1.5"><i class="fa-solid fa-location-crosshairs text-brand-orange"></i> Pin on Campus Map</label>
-                            <button type="button" onclick="recenterCheckoutMap()" class="flex items-center gap-1 text-[10px] font-bold text-brand-slate hover:text-brand-orange transition bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1">
-                                <i class="fa-solid fa-crosshairs"></i> Recenter
-                            </button>
+                        <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate flex items-center gap-1.5"><i class="fa-solid fa-map-location-dot text-brand-orange"></i> Campus Location Map</label>
+                        <div onclick="openMapModal()" class="w-full p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between cursor-pointer transition group">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-brand-orange/20 text-brand-orange flex items-center justify-center text-base group-hover:scale-105 transition">
+                                    <i class="fa-solid fa-map"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-white text-xs">View Campus Delivery Map</p>
+                                    <p class="text-[10px] text-brand-slate" id="checkout-map-status">PalSU Campus · Tap to open interactive map</p>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-brand-slate group-hover:text-white transition"></i>
                         </div>
-                        <div id="checkout-mini-map" class="w-full h-52 rounded-2xl border border-white/10 overflow-hidden bg-zinc-800 z-[5]"></div>
-                        <p class="text-[10px] font-bold text-brand-slate flex items-center gap-1.5">
-                            <i class="fa-solid fa-circle-dot text-emerald-400"></i>
-                            <span id="checkout-map-status">Tap the map to set your exact delivery pin (campus only)</span>
-                        </p>
                     </div>
                 </div>
 
@@ -769,6 +945,33 @@
     </div>
 
 
+    <!-- ================= ACTIVE ORDER ALERT MODAL (mirrors student kiosk) ================= -->
+    <div id="active-order-alert-modal" class="fixed inset-0 z-[95] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="modal-pop glass-panel glass-panel-accent rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl relative">
+            <button onclick="closeActiveOrderAlert()" class="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto text-2xl animate-bounce">
+                <i class="fa-solid fa-truck-fast"></i>
+            </div>
+            <div>
+                <h3 class="font-black text-white text-base">Order in Progress</h3>
+                <p class="text-[11px] text-brand-slate font-medium mt-1.5 leading-relaxed">
+                    You have an active order (<b id="active-order-alert-number" class="text-brand-orange">#CE-0000</b>).
+                    Complete payment or cancel it before placing a new one.
+                </p>
+            </div>
+            <div class="space-y-2">
+                <button onclick="closeActiveOrderAlert(); openViewOrderModal();" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-2.5 rounded-xl uppercase tracking-wider text-xs transition active:scale-95 shadow-lg shadow-brand-orange/25 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-location-dot"></i> View My Order
+                </button>
+                <button onclick="closeActiveOrderAlert()" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-xl text-xs transition active:scale-95">
+                    Got it
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= REAL-TIME LEAFLET MAP MODAL ================= -->
     <div id="map-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
         <div class="glass-panel rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col h-[450px]">
@@ -788,7 +991,7 @@
         <div class="glass-panel rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
             <div class="p-4 border-b border-white/10 flex justify-between items-center glass-panel-head">
                 <h3 class="font-black text-white text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-bell text-brand-orange"></i> Ongoing Orders & Live Tracking
+                    <i class="fa-solid fa-bell text-brand-orange"></i> Recent Orders History & Live Tracking
                 </h3>
                 <button onclick="closeOngoingOrdersModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
@@ -797,6 +1000,60 @@
             </div>
             <div class="p-4 glass-panel-foot border-t border-white/10 text-center text-xs text-brand-slate">
                 <span>Palawan State University Canteen Express Delivery System</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= FACULTY E-RECEIPT MODAL ================= -->
+    <div id="faculty-ereceipt-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center glass-panel-head">
+                <h3 class="font-black text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-receipt text-brand-orange"></i> Faculty Order E-Receipt
+                </h3>
+                <button onclick="closeFacultyEReceiptModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="faculty-ereceipt-content" class="p-6 overflow-y-auto space-y-4 flex-1 glass-scroll text-xs text-white">
+                <div id="printable-faculty-ereceipt" class="bg-white text-black p-5 rounded-2xl space-y-3 shadow-xl font-mono">
+                    <div class="text-center space-y-1 border-b border-dashed border-zinc-400 pb-3">
+                        <h4 class="font-black text-sm tracking-widest text-black">CANTEEN EXPRESS</h4>
+                        <p class="text-[10px] text-zinc-700">Palawan State University - Main Campus</p>
+                        <p class="text-[10px] text-zinc-700" id="fac-receipt-date">--</p>
+                    </div>
+                    <div class="space-y-1 border-b border-dashed border-zinc-400 pb-3 text-[11px] text-black">
+                        <div class="flex justify-between"><span class="text-black">Order No:</span><strong id="fac-rec-order-no" class="text-black">#CE-0000</strong></div>
+                        <div class="flex justify-between"><span class="text-black">Customer:</span><strong id="fac-rec-customer" class="text-black">--</strong></div>
+                        <div class="flex justify-between"><span class="text-black">Location:</span><strong id="fac-rec-location" class="text-black text-right truncate max-w-[180px]">--</strong></div>
+                        <div class="flex justify-between"><span class="text-black">Rider:</span><strong id="fac-rec-rider" class="text-black">--</strong></div>
+                        <div class="flex justify-between"><span class="text-black">Status:</span><strong class="text-emerald-600">DELIVERED</strong></div>
+                        <div class="flex justify-between"><span class="text-black">Delivered At:</span><strong id="fac-rec-time" class="text-black">--</strong></div>
+                    </div>
+                    <div class="space-y-1 border-b border-dashed border-zinc-400 pb-3">
+                        <p class="font-bold text-[10px] uppercase text-zinc-700">Items Ordered</p>
+                        <div id="fac-rec-items-list" class="space-y-1 text-black">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    <div class="space-y-1 text-[11px] pt-1 text-black">
+                        <div class="flex justify-between"><span class="text-black">Subtotal:</span><span id="fac-rec-subtotal" class="text-black">₱0.00</span></div>
+                        <div class="flex justify-between"><span class="text-black">Delivery Fee:</span><span id="fac-rec-fee" class="text-black">₱0.00</span></div>
+                        <div class="flex justify-between font-black text-sm pt-1 border-t border-zinc-400 text-orange-600">
+                            <span>Total Paid:</span><span id="fac-rec-total" class="text-orange-600">₱0.00</span>
+                        </div>
+                    </div>
+                    <div class="pt-3 text-center space-y-1 border-t border-dashed border-zinc-400">
+                        <svg id="faculty-ereceipt-barcode" class="w-full h-12 mx-auto"></svg>
+                        <p class="text-[9px] text-zinc-700">Verified Campus E-Receipt</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 glass-panel-foot border-t border-white/10 flex justify-between items-center text-xs">
+                <button onclick="downloadFacultyEReceipt()" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-download"></i> Download Receipt
+                </button>
+                <button onclick="closeFacultyEReceiptModal()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-bold px-4 py-2 rounded-xl transition shadow">
+                    Close
+                </button>
             </div>
         </div>
     </div>
@@ -901,6 +1158,40 @@
                     <div id="view-order-map" class="w-full h-48 rounded-2xl border border-white/10 overflow-hidden bg-zinc-800"></div>
                 </div>
 
+                <!-- E-Receipt: final once the rider has delivered with photo proof -->
+                <div id="view-order-ereceipt" class="hidden space-y-2">
+                    <h4 class="text-xs font-black text-brand-slate uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-receipt text-orange-400"></i> E-Receipt
+                    </h4>
+                    <div class="bg-white/5 border border-orange-500/25 rounded-2xl p-3.5 space-y-1.5 text-xs">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-brand-slate">Order number</span>
+                            <span id="ereceipt-no" class="font-black text-white">--</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-brand-slate">Delivered by</span>
+                            <span id="ereceipt-rider" class="font-bold text-white">--</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-brand-slate">Handed over</span>
+                            <span id="ereceipt-time" class="font-bold text-white">--</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-brand-slate">Photo proof</span>
+                            <span id="ereceipt-proof" class="font-bold text-emerald-400">--</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2 pt-1.5 mt-1.5 border-t border-white/10">
+                            <span class="text-brand-slate font-black uppercase tracking-wider">Amount paid</span>
+                            <span id="ereceipt-total" class="font-black text-orange-400 text-sm">--</span>
+                        </div>
+                        <div class="pt-2">
+                            <button onclick="openFacultyEReceiptById(viewOrderDeliveryId)" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow">
+                                <i class="fa-solid fa-receipt"></i> View Official E-Receipt
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Proof of Delivery Photo -->
                 <div id="view-order-proof-wrap" class="hidden space-y-2">
                     <h4 class="text-xs font-black text-brand-slate uppercase tracking-wider flex items-center gap-1.5">
@@ -956,47 +1247,47 @@
 
     <!-- ================= ORDER PLACED CONFIRMATION MODAL ================= -->
     <div id="order-placed-modal" class="fixed inset-0 z-[70] glass-backdrop hidden flex items-center justify-center p-4">
-        <div class="modal-pop glass-panel rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl text-center">
-            <div class="relative mx-auto w-20 h-20">
+        <div class="modal-pop glass-panel receipt-sheet rounded-2xl w-full p-4 sm:p-3 space-y-3 shadow-2xl text-center">
+            <div class="relative mx-auto w-12 h-12">
                 <div class="confirm-ring absolute inset-0 rounded-full bg-brand-orange/20"></div>
-                <div class="confirm-check relative w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 via-brand-orange to-orange-600 text-white flex items-center justify-center text-3xl shadow-lg">
+                <div class="confirm-check relative w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 via-brand-orange to-orange-600 text-white flex items-center justify-center text-lg shadow-lg">
                     <i class="fa-solid fa-check"></i>
                 </div>
             </div>
 
-            <div class="space-y-1.5">
-                <h3 class="text-xl font-black text-white">Delivery Order Placed!</h3>
-                <p class="text-[11px] font-black text-brand-orange uppercase tracking-wider">Order <span id="place-order-number">#CE-0000</span></p>
+            <div class="space-y-0.5">
+                <h3 class="text-sm font-black text-white">Delivery Order Placed!</h3>
+                <p class="text-[10px] font-black text-brand-orange uppercase tracking-wider">Order <span id="place-order-number">#CE-0000</span></p>
             </div>
 
-            <div class="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2 text-xs text-left">
-                <div class="flex justify-between gap-4 text-brand-slate border-b border-white/10 pb-2">
-                    <span><i class="fa-solid fa-location-dot text-brand-orange mr-1.5"></i>Delivery To</span>
-                    <span id="place-order-location" class="font-bold text-white text-right">--</span>
+            <div class="bg-white/5 border border-white/10 rounded-xl p-2.5 space-y-1.5 text-[11px] text-left">
+                <div class="flex justify-between gap-3 text-brand-slate">
+                    <span><i class="fa-solid fa-location-dot text-brand-orange mr-1"></i>Delivery To</span>
+                    <span id="place-order-location" class="font-bold text-white text-right max-w-[55%]">--</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate border-b border-white/10 pb-2">
-                    <span><i class="fa-solid fa-motorcycle text-brand-orange mr-1.5"></i>Delivery Fee (Rider)</span>
+                <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
+                    <span><i class="fa-solid fa-motorcycle text-brand-orange mr-1"></i>Delivery Fee (Rider)</span>
                     <span id="place-order-fee" class="font-bold text-brand-orange">₱0.00</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate">
-                    <span><i class="fa-solid fa-credit-card text-brand-orange mr-1.5"></i>Total Payment</span>
-                    <span id="place-order-total" class="font-black text-orange-400 text-base bg-orange-950/80 border border-orange-500/40 px-3 py-1 rounded-full shadow-glow-orange">₱0.00</span>
+                <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
+                    <span><i class="fa-solid fa-credit-card text-brand-orange mr-1"></i>Total Payment</span>
+                    <span id="place-order-total" class="font-black text-orange-400 text-sm bg-orange-950/80 border border-orange-500/40 px-2.5 py-0.5 rounded-full shadow-glow-orange">₱0.00</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate pt-2 border-t border-white/10">
-                    <span><i class="fa-solid fa-coins text-amber-400 mr-1.5"></i>Loyalty Points Earned</span>
+                <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
+                    <span><i class="fa-solid fa-coins text-amber-400 mr-1"></i>Loyalty Points</span>
                     <span id="place-order-points" class="font-bold text-emerald-400">+0 pts</span>
                 </div>
             </div>
 
-            <p class="text-[11px] text-brand-slate leading-relaxed">
-                A rider will be assigned to your order shortly. Track your rider's live location below.
+            <p class="text-[10px] text-brand-slate leading-relaxed">
+                A rider will be assigned shortly. Track your rider's live location below.
             </p>
 
-            <div class="grid grid-cols-2 gap-2.5">
-                <button onclick="closeOrderPlacedModal()" class="py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider transition">
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="closeOrderPlacedModal()" class="py-2.5 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-[11px] uppercase tracking-wider transition">
                     Continue Shopping
                 </button>
-                <button onclick="closeOrderPlacedModal(); openViewOrderModal();" class="py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow flex items-center justify-center gap-1.5">
+                <button onclick="closeOrderPlacedModal(); openViewOrderModal();" class="py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-[11px] uppercase tracking-wider transition shadow flex items-center justify-center gap-1.5">
                     <i class="fa-solid fa-location-dot"></i> Track Order
                 </button>
             </div>
@@ -1005,49 +1296,49 @@
 
     <!-- ================= PICKUP ORDER PLACED CONFIRMATION MODAL ================= -->
     <div id="pickup-placed-modal" class="fixed inset-0 z-[70] glass-backdrop hidden flex items-center justify-center p-4">
-        <div class="modal-pop glass-panel rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl text-center">
-            <div class="relative mx-auto w-20 h-20">
+        <div class="modal-pop glass-panel receipt-sheet rounded-2xl w-full p-4 sm:p-3 space-y-3 shadow-2xl text-center">
+            <div class="relative mx-auto w-12 h-12">
                 <div class="confirm-ring absolute inset-0 rounded-full bg-emerald-500/20"></div>
-                <div class="confirm-check relative w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 text-white flex items-center justify-center text-3xl shadow-lg">
+                <div class="confirm-check relative w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 text-white flex items-center justify-center text-lg shadow-lg">
                     <i class="fa-solid fa-store"></i>
                 </div>
             </div>
 
-            <div class="space-y-1.5">
-                <h3 class="text-xl font-black text-white">Pickup Order Placed!</h3>
-                <p class="text-[11px] font-black text-brand-orange uppercase tracking-wider">Order <span id="pickup-place-number">#CE-0000</span></p>
+            <div class="space-y-0.5">
+                <h3 class="text-sm font-black text-white">Pickup Order Placed!</h3>
+                <p class="text-[10px] font-black text-brand-orange uppercase tracking-wider">Order <span id="pickup-place-number">#CE-0000</span></p>
             </div>
 
-            <div class="bg-white rounded-2xl p-4 space-y-1.5 shadow-inner">
-                <p class="text-[10px] uppercase tracking-widest font-black text-gray-500">Your Queue Slip Barcode</p>
-                <svg id="pickup-place-barcode" class="w-full h-16"></svg>
-                <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Scan at Counter to Process Payment</p>
+            <div class="bg-white rounded-xl p-2.5 space-y-1 shadow-inner">
+                <p class="text-[9px] uppercase tracking-widest font-black text-gray-500">Your Queue Slip Barcode</p>
+                <svg id="pickup-place-barcode" class="w-full h-12"></svg>
+                <p class="text-[8px] text-gray-400 font-bold uppercase tracking-widest">Scan at Counter to Process Payment</p>
             </div>
 
-            <div class="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2 text-xs text-left">
-                <div class="flex justify-between gap-4 text-brand-slate border-b border-white/10 pb-2">
-                    <span><i class="fa-solid fa-store text-emerald-400 mr-1.5"></i>Pickup Location</span>
+            <div class="bg-white/5 border border-white/10 rounded-xl p-2.5 space-y-1.5 text-[11px] text-left">
+                <div class="flex justify-between gap-3 text-brand-slate">
+                    <span><i class="fa-solid fa-store text-emerald-400 mr-1"></i>Pickup Location</span>
                     <span class="font-bold text-white text-right">Canteen Express Counter</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate border-b border-white/10 pb-2">
-                    <span><i class="fa-solid fa-money-bill-wave text-emerald-400 mr-1.5"></i>Delivery Fee</span>
+                <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
+                    <span><i class="fa-solid fa-money-bill-wave text-emerald-400 mr-1"></i>Delivery Fee</span>
                     <span class="font-bold text-emerald-400">Free (Pickup)</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate">
-                    <span><i class="fa-solid fa-credit-card text-brand-orange mr-1.5"></i>Total Payment</span>
-                    <span id="pickup-place-total" class="font-black text-orange-400 text-base bg-orange-950/80 border border-orange-500/40 px-3 py-1 rounded-full shadow-glow-orange">₱0.00</span>
+                <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
+                    <span><i class="fa-solid fa-credit-card text-brand-orange mr-1"></i>Total Payment</span>
+                    <span id="pickup-place-total" class="font-black text-orange-400 text-sm bg-orange-950/80 border border-orange-500/40 px-2.5 py-0.5 rounded-full shadow-glow-orange">₱0.00</span>
                 </div>
-                <div class="flex justify-between gap-4 text-brand-slate pt-2 border-t border-white/10">
-                    <span><i class="fa-solid fa-coins text-amber-400 mr-1.5"></i>Loyalty Points Earned</span>
+                <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
+                    <span><i class="fa-solid fa-coins text-amber-400 mr-1"></i>Loyalty Points</span>
                     <span id="pickup-place-points" class="font-bold text-emerald-400">+0 pts</span>
                 </div>
             </div>
 
-            <p class="text-[11px] text-brand-slate leading-relaxed">
-                Head to the Canteen Express counter and show this barcode to pay. Your order will be prepared right away.
+            <p class="text-[10px] text-brand-slate leading-relaxed">
+                Head to the counter and show this barcode to pay.
             </p>
 
-            <button onclick="closePickupPlacedModal()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow">
+            <button onclick="closePickupPlacedModal()" class="w-full py-2.5 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-[11px] uppercase tracking-wider transition shadow">
                 Continue Shopping
             </button>
         </div>
@@ -1067,6 +1358,29 @@
     const ongoingDeliveriesData = JSON.parse('{{ ongoing_deliveries_json|escapejs }}');
     let activeChatDeliveryId = null;
     let chatInterval = null;
+
+    // Small non-blocking toast stack (keeps the dark glassmorphism feel).
+    function showToast(message, type = 'info') {
+        let stack = document.getElementById('faculty-toast-stack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.id = 'faculty-toast-stack';
+            stack.style.cssText = 'position:fixed;top:16px;right:16px;z-index:99999;display:flex;flex-direction:column;gap:8px;max-width:320px;pointer-events:none;';
+            document.body.appendChild(stack);
+        }
+        const colors = { info: 'rgba(59,130,246,.92)', success: 'rgba(16,185,129,.92)', error: 'rgba(239,68,68,.92)' };
+        const el = document.createElement('div');
+        el.style.cssText = 'color:#fff;padding:10px 14px;border-radius:12px;font-size:12px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14);opacity:0;transform:translateX(16px);transition:all .25s ease;';
+        el.style.background = colors[type] || colors.info;
+        el.textContent = message;
+        stack.appendChild(el);
+        requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateX(0)'; });
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateX(16px)';
+            setTimeout(() => el.remove(), 250);
+        }, 3200);
+    }
 
     // A delivery still blocks a new faculty order while it is offered/accepted.
     // Once it is DELIVERED (or REJECTED/TIMEOUT) the faculty can order again.
@@ -1094,17 +1408,38 @@
         return d.status || 'Processing';
     }
 
+    // Mirrors the kiosk's menuData map field-for-field (kiosk_menu.html) so both
+    // surfaces -- the item grid, the beverage-pairing dropdown and the cart -- read
+    // the same shape and the same ordering.
     let menuData = rawMenuData.map(item => ({
         id: item.id,
         name: item.name,
-        category: item.category ? String(item.category) : 'General',
+        category: item.category ? String(item.category) : '',
         price: parseFloat(item.price || 0),
-        desc: item.desc || '',
+        desc: item.desc || item.description || '',
         badge: item.badge || '',
-        img: item.img || ''
+        isSiomai: item.isSiomai || false,
+        stock: (item.stock === null || item.stock === undefined) ? -1 : parseInt(item.stock, 10),
+        img: item.img || item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
     }));
 
+    const CART_STORAGE_KEY = 'canex_faculty_cart_{{ request.user.id|default:"guest" }}';
     let cart = {};
+    try {
+        const savedCart = localStorage.getItem(CART_STORAGE_KEY);
+        if (savedCart) {
+            cart = JSON.parse(savedCart);
+        }
+    } catch (e) {
+        cart = {};
+    }
+
+    function saveCart() {
+        try {
+            localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+        } catch (e) {}
+    }
+
     let activeCategory = 'all';
     let selectedItemForModal = null;
     let modalRiceQty = 0;
@@ -1124,6 +1459,27 @@
     const CAMPUS_CENTER_LAT = 9.77778;
     const CAMPUS_CENTER_LNG = 118.73333;
     const CAMPUS_RADIUS_KM = 0.8;
+    const ENFORCE_GEOFENCE = {{ enforce_geofence|yesno:"true,false" }};
+
+    // Required basemap credit. Standard OSM raster tiles, free and keyless.
+    // Verified to return real tiles at z19 for this campus, so building
+    // footprints render when zoomed in. Rejected alternatives: Esri
+    // World_Street_Map (and World_Imagery) return their "Map data not yet
+    // available" placeholder from z18/z17 onward here, and CARTO's keyless
+    // basemaps return one identical placeholder for every location and style.
+    const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+
+    // Leaflet is served from /static/vendor/leaflet, but if the bundle ever
+    // fails to load we say so in the container instead of leaving a blank box
+    // (map failures used to be completely silent).
+    function mapLoadError(containerId) {
+        const el = document.getElementById(containerId);
+        if (el) {
+            el.innerHTML = '<div style="display:flex;height:100%;min-height:120px;align-items:center;'
+                + 'justify-content:center;text-align:center;padding:16px;color:#a1a1aa;font-size:12px;'
+                + 'font-weight:700;line-height:1.5;">Map could not load.<br>Check your connection and refresh the page.</div>';
+        }
+    }
 
     // Campus landmark directory used to display the nearest building instead of
     // raw coordinates. Coordinates are approximate (relative to the campus
@@ -1171,6 +1527,7 @@
     }
 
     function isOnCampus(lat, lng) {
+        if (!ENFORCE_GEOFENCE) return true;
         const R = 6371.0;
         const dLat = (lat - CAMPUS_CENTER_LAT) * Math.PI / 180;
         const dLng = (lng - CAMPUS_CENTER_LNG) * Math.PI / 180;
@@ -1186,34 +1543,38 @@
         updateLiveRiderStrip();
         updateCartUI();
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const gpsEl = document.getElementById('gps-location-text');
-                    if (isOnCampus(pos.coords.latitude, pos.coords.longitude)) {
+            const initGeo = (highAcc) => {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const gpsEl = document.getElementById('gps-location-text');
                         currentLat = pos.coords.latitude;
                         currentLng = pos.coords.longitude;
-                        if (gpsEl) gpsEl.innerText = `${buildGpsLabel(currentLat, currentLng)} (GPS Active)`;
-                    } else {
-                        // Off-campus device: keep the campus anchor as the
-                        // checkout/delivery location and inform the user.
-                        if (gpsEl) gpsEl.innerText = "PSU Campus (No Delivery)";
-                        console.warn('Device GPS is off-campus; keeping campus default.');
-                    }
-                },
-                () => {
-                    const gpsEl = document.getElementById('gps-location-text');
-                    if (gpsEl) gpsEl.innerText = "PSU Campus (Default GPS)";
-                },
-                { enableHighAccuracy: true }
-            );
+                        if (isOnCampus(currentLat, currentLng)) {
+                            if (gpsEl) gpsEl.innerText = `${buildGpsLabel(currentLat, currentLng)} (GPS Active)`;
+                        } else {
+                            if (gpsEl) gpsEl.innerText = "Outside PalSU (No Delivery)";
+                        }
+                    },
+                    (err) => {
+                        if (highAcc && (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE)) {
+                            initGeo(false);
+                            return;
+                        }
+                        const gpsEl = document.getElementById('gps-location-text');
+                        if (gpsEl) gpsEl.innerText = "Outside PalSU (GPS Default)";
+                    },
+                    { enableHighAccuracy: highAcc, timeout: highAcc ? 12000 : 8000, maximumAge: 0 }
+                );
+            };
+            initGeo(true);
 
             // Live tracking: keep updating the user's pin as they move around.
             navigator.geolocation.watchPosition(
                 (pos) => {
                     const gpsEl = document.getElementById('gps-location-text');
-                    if (isOnCampus(pos.coords.latitude, pos.coords.longitude)) {
-                        currentLat = pos.coords.latitude;
-                        currentLng = pos.coords.longitude;
+                    currentLat = pos.coords.latitude;
+                    currentLng = pos.coords.longitude;
+                    if (isOnCampus(currentLat, currentLng)) {
                         if (gpsEl) gpsEl.innerText = `${buildGpsLabel(currentLat, currentLng)} (GPS Active)`;
                         // Live-update the checkout map pin while it's open.
                         if (checkoutMap && !document.getElementById('checkout-modal').classList.contains('hidden')) {
@@ -1231,12 +1592,19 @@
                             if (mapBuilding) mapBuilding.innerText = buildGpsLabel(currentLat, currentLng);
                         }
                     } else {
-                        if (gpsEl) gpsEl.innerText = "PSU Campus (No Delivery)";
-                        console.warn('Device GPS moved off-campus; keeping campus default.');
+                        if (gpsEl) gpsEl.innerText = "Outside PalSU (No Delivery)";
+                        if (leafletMap && leafletMarker && !document.getElementById('map-modal').classList.contains('hidden')) {
+                            leafletMarker.setLatLng([currentLat, currentLng]);
+                            leafletMap.setView([currentLat, currentLng], 16);
+                            document.getElementById('map-lat').innerText = currentLat.toFixed(4);
+                            document.getElementById('map-lng').innerText = currentLng.toFixed(4);
+                            const mapBuilding = document.getElementById('map-building');
+                            if (mapBuilding) mapBuilding.innerText = `Outside PalSU (${currentLat.toFixed(4)}, ${currentLng.toFixed(4)})`;
+                        }
                     }
                 },
                 () => {},
-                { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
             );
         }
     });
@@ -1386,11 +1754,29 @@
                         <span>Rider: <strong class="text-white">${d.rider_name}</strong></span>
                         <span class="text-brand-orange font-bold">₱${(d.total_payment || d.total_amount || 0).toFixed(2)}</span>
                     </div>
-                    <div class="pt-2 border-t border-white/5 flex justify-end">
-                        ${hasAssignedRider(d) ? `
-                        <button onclick="openRiderChat(${d.id}, '${d.order_number}', '${d.rider_name}')" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md">
-                            <i class="fa-solid fa-comments"></i> In-App Chat with Rider
-                        </button>` : ''}
+                    ${d.proof_photo ? `
+                    <div class="pt-2 border-t border-white/5 space-y-1">
+                        <span class="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                            <i class="fa-solid fa-camera"></i> Proof of Delivery Photo
+                        </span>
+                        <a href="${d.proof_photo}" target="_blank" rel="noopener" class="block">
+                            <img src="${d.proof_photo}" alt="Proof of Delivery" class="w-full h-32 object-cover rounded-xl border border-white/10 shadow hover:opacity-90 transition">
+                        </a>
+                    </div>
+                    ` : ''}
+                    <div class="pt-2 border-t border-white/5 flex justify-between items-center">
+                        <div>
+                            ${d.raw_status === 'DELIVERED' ? `
+                            <button onclick="openFacultyEReceiptById(${d.id})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md cursor-pointer">
+                                <i class="fa-solid fa-receipt"></i> E-Receipt
+                            </button>` : ''}
+                        </div>
+                        <div>
+                            ${hasAssignedRider(d) ? `
+                            <button onclick="openRiderChat(${d.id}, '${d.order_number}', '${d.rider_name}')" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md cursor-pointer">
+                                <i class="fa-solid fa-comments"></i> Chat
+                            </button>` : ''}
+                        </div>
                     </div>
                 `;
                 container.appendChild(card);
@@ -1400,6 +1786,82 @@
 
     function closeOngoingOrdersModal() {
         document.getElementById('ongoing-orders-modal').classList.add('hidden');
+    }
+
+    function openFacultyEReceiptById(deliveryId) {
+        const d = ongoingDeliveriesData.find(item => item.id === deliveryId);
+        if (!d) return;
+        openFacultyEReceiptModal(d);
+    }
+
+    function openFacultyEReceiptModal(d) {
+        document.getElementById('fac-rec-order-no').innerText = d.order_number || '--';
+        document.getElementById('fac-rec-customer').innerText = d.customer_name || '--';
+        document.getElementById('fac-rec-location').innerText = d.location || '--';
+        document.getElementById('fac-rec-rider').innerText = d.rider_name || '--';
+        document.getElementById('fac-rec-time').innerText = d.delivered_at || d.created_at || '--';
+        document.getElementById('fac-receipt-date').innerText = new Date().toLocaleString();
+
+        const itemsList = document.getElementById('fac-rec-items-list');
+        itemsList.innerHTML = '';
+        if (d.items && d.items.length > 0) {
+            d.items.forEach(i => {
+                const row = document.createElement('div');
+                row.className = "flex justify-between text-[11px]";
+                row.innerHTML = `<span>${i.qty}x ${escapeHTML(i.name)}</span><span>₱${(i.price * i.qty).toFixed(2)}</span>`;
+                itemsList.appendChild(row);
+            });
+        } else {
+            itemsList.innerHTML = '<p class="text-[10px] text-zinc-400 italic">Order items details</p>';
+        }
+
+        document.getElementById('fac-rec-subtotal').innerText = '₱' + Number(d.total_amount || 0).toFixed(2);
+        document.getElementById('fac-rec-fee').innerText = '₱' + Number(d.delivery_fee || 0).toFixed(2);
+        document.getElementById('fac-rec-total').innerText = '₱' + Number(d.total_payment || d.total_amount || 0).toFixed(2);
+
+        document.getElementById('ongoing-orders-modal').classList.add('hidden');
+        document.getElementById('faculty-ereceipt-modal').classList.remove('hidden');
+
+        try {
+            JsBarcode("#faculty-ereceipt-barcode", (d.order_number || "CE-0000").toString(), {
+                format: "CODE128",
+                lineColor: "#111",
+                width: 2,
+                height: 40,
+                displayValue: true
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function closeFacultyEReceiptModal() {
+        document.getElementById('faculty-ereceipt-modal').classList.add('hidden');
+    }
+
+    async function downloadFacultyEReceipt() {
+        const receiptCard = document.getElementById('printable-faculty-ereceipt');
+        if (!receiptCard) return;
+
+        if (document.fonts) {
+            await document.fonts.ready;
+        }
+
+        html2canvas(receiptCard, {
+            scale: 3,
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            logging: false
+        }).then(canvas => {
+            const link = document.createElement('a');
+            const orderNum = document.getElementById('fac-rec-order-no').innerText || 'Receipt';
+            link.download = `CanteenExpress-EReceipt-${orderNum}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }).catch(err => {
+            console.error('Download receipt error:', err);
+            showToast('Failed to download receipt image.');
+        });
     }
 
     function openRiderChat(deliveryId, orderNum, riderName) {
@@ -1526,12 +1988,14 @@
         document.getElementById('map-building').innerText = buildGpsLabel(currentLat, currentLng);
 
         setTimeout(() => {
+            if (typeof L === 'undefined') { mapLoadError('leaflet-map'); return; }
             if (!leafletMap) {
-                leafletMap = L.map('leaflet-map', { attributionControl: false }).setView([currentLat, currentLng], 16);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19, subdomains: 'abcd',
-                    attribution: ''
-                }).addTo(leafletMap);
+                leafletMap = L.map('leaflet-map').setView([currentLat, currentLng], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            subdomains: 'abc',
+            attribution: OSM_ATTRIBUTION
+        }).addTo(leafletMap);
                 leafletMarker = L.marker([currentLat, currentLng]).addTo(leafletMap)
                     .bindPopup('<b>Your Current Office Location</b><br>Faculty Delivery Zone').openPopup();
             } else {
@@ -1551,12 +2015,15 @@
         e.stopPropagation();
         const wrapper = document.getElementById('search-wrapper');
         const input = document.getElementById('search-input');
+        const greeting = document.getElementById('greeting-container');
         if (wrapper.style.width === '200px' || wrapper.style.width === '100%') {
             wrapper.style.width = '40px';
             input.value = '';
+            if (greeting) greeting.classList.remove('hidden');
             renderMenu();
         } else {
             wrapper.style.width = window.innerWidth < 640 ? '160px' : '200px';
+            if (greeting) greeting.classList.add('hidden');
             input.focus();
         }
     }
@@ -1565,8 +2032,10 @@
         const wrapper = document.getElementById('search-wrapper');
         if (wrapper && !wrapper.contains(e.target)) {
             const input = document.getElementById('search-input');
+            const greeting = document.getElementById('greeting-container');
             if (input && !input.value.trim()) {
                 wrapper.style.width = '40px';
+                if (greeting) greeting.classList.remove('hidden');
             }
         }
     });
@@ -1578,6 +2047,17 @@
         
         const searchInput = document.getElementById('search-input');
         const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const greeting = document.getElementById('greeting-container');
+        if (greeting) {
+            if (searchQuery) {
+                greeting.classList.add('hidden');
+            } else {
+                const wrapper = document.getElementById('search-wrapper');
+                if (!wrapper || wrapper.style.width === '40px' || wrapper.style.width === '') {
+                    greeting.classList.remove('hidden');
+                }
+            }
+        }
         grid.innerHTML = '';
 
         const filtered = menuData.filter(item => {
@@ -1608,8 +2088,8 @@
             card.className = "bg-brand-card rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group cursor-pointer shadow-lg h-full";
             card.onclick = () => openItemModal(item.id);
             card.innerHTML = `
-                <div class="relative w-full h-36 sm:h-40 overflow-hidden bg-white/5 shrink-0">
-                    <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                <div class="relative h-36 w-full overflow-hidden bg-white/5 flex items-center justify-center p-3">
+                    <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-300">
                     ${badgeHTML}
                     <span class="absolute bottom-2 right-2 w-7 h-7 rounded-xl bg-white/5 group-hover:bg-brand-orange/25 group-hover:text-brand-orange text-brand-slate flex items-center justify-center transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg></span>
                 </div>
@@ -1621,6 +2101,9 @@
                     </div>
                     <div class="pt-1.5 border-t border-white/5 flex items-center justify-between gap-2">
                         <span class="text-sm font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
+                        <button type="button" onclick="event.stopPropagation(); quickAddToCart(${item.id})" class="w-8 h-8 rounded-xl bg-brand-orange hover:bg-orange-600 text-white flex items-center justify-center transition active:scale-95 shadow cursor-pointer" title="Quick Add">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                        </button>
                     </div>
                 </div>
             `;
@@ -1639,8 +2122,67 @@
         renderMenu();
     }
 
+    function parseSizePrices(desc, basePrice) {
+        let p350 = basePrice;
+        let p500 = basePrice + 5.00;
+        let p1L = basePrice + 20.00;
+
+        if (!desc) return { p350, p500, p1L };
+
+        const regex350 = /350\s*ml\s*[:=]\s*(?:₱)?([0-9]+(?:\.[0-9]+)?)/i;
+        const regex500 = /500\s*ml\s*[:=]\s*(?:₱)?([0-9]+(?:\.[0-9]+)?)/i;
+        const regex1l = /(?:1\s*l|1000\s*ml)\s*[:=]\s*(?:₱)?([0-9]+(?:\.[0-9]+)?)/i;
+
+        const m350 = desc.match(regex350);
+        if (m350) p350 = parseFloat(m350[1]);
+
+        const m500 = desc.match(regex500);
+        if (m500) p500 = parseFloat(m500[1]);
+
+        const m1l = desc.match(regex1l);
+        if (m1l) p1L = parseFloat(m1l[1]);
+
+        return { p350, p500, p1L };
+    }
+
+    function quickAddToCart(itemId) {
+        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
+        if (activeOrder) {
+            showActiveOrderAlert(activeOrder);
+            return;
+        }
+        const item = menuData.find(i => i.id === itemId);
+        if (!item) return;
+        if (item.stock === 0) {
+            showToast('This item is sold out.');
+            return;
+        }
+        const cartKey = String(item.id);
+        const wasEmpty = Object.keys(cart).length === 0;
+        if (cart[cartKey]) {
+            cart[cartKey].qty += 1;
+        } else {
+            cart[cartKey] = {
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                qty: 1,
+                img: item.img || item.image || item.image_url || '',
+                category: item.category || 'General'
+            };
+        }
+        updateCartUI();
+        if (wasEmpty) openCartDrawer();
+        showToast(`Added ${item.name} to cart!`);
+    }
+
     // Item Details Modal
     function openItemModal(itemId) {
+        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
+        if (activeOrder) {
+            showActiveOrderAlert(activeOrder);
+            return;
+        }
         const item = menuData.find(i => i.id === itemId);
         if (!item) return;
         selectedItemForModal = item;
@@ -1674,25 +2216,30 @@
             }).join('');
         }
 
-        document.getElementById('modal-rice-count').innerText = modalRiceQty;
-
-        const bevContainer = document.getElementById('modal-beverage-container');
-        if (bevContainer) {
-            if (catL.includes('beverage')) {
-                bevContainer.style.display = 'none';
+        // Size / Volume selector for Nature's Spring & Bottled Water
+        const sizeContainer = document.getElementById('modal-size-container');
+        const sizeSelect = document.getElementById('modal-size-select');
+        if (sizeContainer && sizeSelect) {
+            if (nameL.includes("nature's spring") || nameL.includes("natures spring") || (catL.includes('beverage') && (nameL.includes('water') || nameL.includes('nature')))) {
+                sizeContainer.style.display = 'block';
+                const prices = parseSizePrices(item.desc || item.description, item.price);
+                sizeSelect.innerHTML = `
+                    <option value="350ml" data-price="${prices.p350}">350ml - ₱${prices.p350.toFixed(2)}</option>
+                    <option value="500ml" data-price="${prices.p500}">500ml - ₱${prices.p500.toFixed(2)}</option>
+                    <option value="1L" data-price="${prices.p1L}">1 Liter (1L) - ₱${prices.p1L.toFixed(2)}</option>
+                `;
             } else {
-                bevContainer.style.display = 'block';
+                sizeContainer.style.display = 'none';
+                sizeSelect.innerHTML = '';
             }
         }
 
-        const bevSelect = document.getElementById('modal-beverage-select');
-        if (bevSelect) {
-            bevSelect.innerHTML = '<option value="">-- No Beverage --</option>';
-            const beverages = menuData.filter(i => String(i.category).toLowerCase().includes('beverage') || i.name.toLowerCase().includes('coke') || i.name.toLowerCase().includes('sprite') || i.name.toLowerCase().includes('water') || i.name.toLowerCase().includes('juice'));
-            beverages.forEach(b => {
-                bevSelect.innerHTML += `<option value="${b.id}" data-price="${b.price}">${b.name} (+₱${b.price.toFixed(2)})</option>`;
-            });
-        }
+        const riceCountEl = document.getElementById('modal-rice-count');
+        if (riceCountEl) riceCountEl.innerText = modalRiceQty;
+
+        modalItemQty = 1;
+        const qtyEl = document.getElementById('modal-item-qty');
+        if (qtyEl) qtyEl.innerText = modalItemQty;
 
         updateModalTotal();
         document.getElementById('item-details-modal').classList.remove('hidden');
@@ -1705,18 +2252,36 @@
 
     function changeRiceQty(change) {
         modalRiceQty = Math.max(0, modalRiceQty + change);
-        document.getElementById('modal-rice-count').innerText = modalRiceQty;
+        const riceCountEl = document.getElementById('modal-rice-count');
+        if (riceCountEl) riceCountEl.innerText = modalRiceQty;
+        updateModalTotal();
+    }
+
+    let modalItemQty = 1;
+
+    function changeItemModalQty(change) {
+        modalItemQty = Math.max(1, modalItemQty + change);
+        const qtyEl = document.getElementById('modal-item-qty');
+        if (qtyEl) qtyEl.innerText = modalItemQty;
         updateModalTotal();
     }
 
     function updateModalTotal() {
         if (!selectedItemForModal) return;
-        let total = selectedItemForModal.price + (modalRiceQty * 15);
-        const bevSelect = document.getElementById('modal-beverage-select');
-        if (bevSelect && bevSelect.value) {
-            const selectedOpt = bevSelect.options[bevSelect.selectedIndex];
-            total += parseFloat(selectedOpt.getAttribute('data-price') || 0);
+        let total = selectedItemForModal.price;
+
+        const sizeSelect = document.getElementById('modal-size-select');
+        const sizeContainer = document.getElementById('modal-size-container');
+        if (sizeContainer && sizeContainer.style.display !== 'none' && sizeSelect) {
+            const selectedSizeOpt = sizeSelect.options[sizeSelect.selectedIndex];
+            if (selectedSizeOpt && selectedSizeOpt.getAttribute('data-price')) {
+                total = parseFloat(selectedSizeOpt.getAttribute('data-price'));
+            }
         }
+
+        total += (modalRiceQty * 15);
+        total = total * modalItemQty;
+
         document.getElementById('modal-item-price').innerText = `₱${total.toFixed(2)}`;
     }
 
@@ -1724,36 +2289,43 @@
         if (!selectedItemForModal) return;
         const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
         if (activeOrder) {
-            showCheckoutError('Order in Progress',
-                'You must complete your previous order (' + activeOrder.order_number + ') before ordering again. Please wait for it to be delivered.');
+            showActiveOrderAlert(activeOrder);
             return;
         }
-        let basePrice = selectedItemForModal.price + (modalRiceQty * 15);
+        let basePrice = selectedItemForModal.price;
         let displayName = selectedItemForModal.name;
+        let cartKeyBase = String(selectedItemForModal.id);
+
+        const sizeSelect = document.getElementById('modal-size-select');
+        const sizeContainer = document.getElementById('modal-size-container');
+        if (sizeContainer && sizeContainer.style.display !== 'none' && sizeSelect && sizeSelect.value) {
+            const selectedSizeOpt = sizeSelect.options[sizeSelect.selectedIndex];
+            if (selectedSizeOpt) {
+                const sizeLabel = sizeSelect.value;
+                basePrice = parseFloat(selectedSizeOpt.getAttribute('data-price') || selectedItemForModal.price);
+                displayName = `${selectedItemForModal.name} (${sizeLabel})`;
+                cartKeyBase = `${selectedItemForModal.id}_${sizeLabel}`;
+            }
+        }
+
+        basePrice += (modalRiceQty * 15);
         let additions = [];
         if (modalRiceQty > 0) additions.push(`+${modalRiceQty} Rice`);
-
-        const bevSelect = document.getElementById('modal-beverage-select');
-        if (bevSelect && bevSelect.value) {
-            const selectedOpt = bevSelect.options[bevSelect.selectedIndex];
-            basePrice += parseFloat(selectedOpt.getAttribute('data-price') || 0);
-            additions.push(`+ ${selectedOpt.text.split(' (+')[0]}`);
-        }
 
         if (additions.length > 0) {
             displayName += ` (${additions.join(', ')})`;
         }
 
-        const cartKey = `${selectedItemForModal.id}_${modalRiceQty}_${bevSelect ? bevSelect.value : ''}`;
+        const cartKey = `${cartKeyBase}_${modalRiceQty}`;
         const wasEmpty = Object.keys(cart).length === 0;
         if (cart[cartKey]) {
-            cart[cartKey].qty += 1;
+            cart[cartKey].qty += modalItemQty;
         } else {
             cart[cartKey] = {
                 id: selectedItemForModal.id,
                 name: displayName,
                 price: basePrice,
-                qty: 1,
+                qty: modalItemQty,
                 img: selectedItemForModal.img || '',
                 category: selectedItemForModal.category || 'General'
             };
@@ -1790,6 +2362,7 @@
 
     function clearCart() {
         cart = {};
+        saveCart();
         updateCartUI();
         closeCartDrawer();
     }
@@ -1805,6 +2378,7 @@
     }
 
     function updateCartUI() {
+        saveCart();
         const drawerList = document.getElementById('drawer-cart-list');
         if (!drawerList) return;
         drawerList.innerHTML = '';
@@ -1974,7 +2548,7 @@
     function openActiveRiderChat() {
         const activeD = ongoingDeliveriesData.find(hasAssignedRider);
         if (!activeD) {
-            alert('Wala pang rider na nakapag-accept ng delivery para sa chat.');
+            showToast('Wala pang rider na nakapag-accept ng delivery para sa chat.');
             return;
         }
         openRiderChat(activeD.id, activeD.order_number, activeD.rider_name);
@@ -1993,11 +2567,72 @@
     let viewOrderDestMarker = null;
     let viewOrderRouteLine = null;
     let viewOrderDeliveryId = null;
+    // Slip number of the order currently in the view-order modal. Kept as its own
+    // variable because the heading element also carries prose ("Order Details &
+    // Live Tracking (#CE-1234)") and must never be parsed for the slip number.
+    let viewOrderNumber = null;
 
     // Live-track the rider's actual position inside the view-order modal.
     // Called on open and then on every SSE push so the rider's pin moves in
     // real-time and the status badge stays fresh. The delivery destination is
     // pinned too so the faculty can always see where the order is heading.
+    // The road-following path comes from the tracking endpoint, so it is
+    // fetched on a throttle here instead of riding along on every SSE push.
+    let viewOrderRoutePath = null;
+    let viewOrderRouteCasing = null;
+    let viewOrderRouteAt = 0;
+    let viewOrderRouteFor = null;
+    let viewOrderRouteLoading = false;
+    const VIEW_ORDER_ROUTE_MIN_MS = 8000;
+
+    async function loadViewOrderRoute(d) {
+        if (!d || typeof d.id === 'undefined') return;
+        if (viewOrderRouteLoading) return;
+        if (Date.now() - viewOrderRouteAt < VIEW_ORDER_ROUTE_MIN_MS) return;
+        viewOrderRouteLoading = true;
+        viewOrderRouteAt = Date.now();
+        try {
+            const res = await fetch(`/deliveries/api/location/${d.id}/`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            // A new delivery resets the throttle so switching orders shows a route.
+            if (viewOrderRouteFor !== d.id) {
+                viewOrderRouteFor = d.id;
+                viewOrderRouteAt = 0;
+            }
+            viewOrderRoutePath = (data && Array.isArray(data.path) && data.path.length > 1)
+                ? data.path
+                : null;
+            if (viewOrderMap) {
+                if (viewOrderRouteLine && viewOrderRoutePath) {
+                    viewOrderRouteLine.setLatLngs(viewOrderRoutePath.map(p => [p[0], p[1]]));
+                    viewOrderRouteLine.setStyle({ color: '#FF6117', weight: 5, opacity: 0.95 });
+                    if (viewOrderRouteCasing) viewOrderRouteCasing.setLatLngs(viewOrderRoutePath.map(p => [p[0], p[1]]));
+                }
+            }
+        } catch (err) {
+            // Offline or not authorised for this delivery: keep the straight line.
+            viewOrderRoutePath = null;
+        } finally {
+            viewOrderRouteLoading = false;
+        }
+    }
+
+    // A delivery is rateable once the rider marked it DELIVERED and attached the
+    // proof-of-delivery photo -- the moment the e-receipt is final. Mirrors
+    // _feedback_gate() in customer_portal/views.py so the button and the server
+    // never disagree about whether a rating can be submitted.
+    function isRateable(d) {
+        return !!d && (d.raw_status === 'DELIVERED' || d.raw_status === 'COMPLETED');
+    }
+    function rateBlockedReason(d) {
+        if (!d) return 'No order selected.';
+        if (d.raw_status !== 'DELIVERED' && d.raw_status !== 'COMPLETED') return 'Rating opens once the order is completed.';
+        return '';
+    }
+
     function refreshViewOrderTracking(d) {
         const statusEl = document.getElementById('view-order-status');
         if (statusEl) statusEl.innerText = `Status: ${deliveryStatusLabel(d)}`;
@@ -2006,7 +2641,7 @@
 
         // Rating is only meaningful once the order has actually been received.
         const rateBtn = document.getElementById('view-order-rate-btn');
-        if (rateBtn) rateBtn.style.display = isDelivered ? '' : 'none';
+        if (rateBtn) rateBtn.style.display = isRateable(d) ? '' : 'none';
 
         const chatBtn = document.getElementById('view-order-chat-btn');
         if (chatBtn) chatBtn.style.display = (isDelivered ? 'none' : hasAssignedRider(d) ? '' : 'none');
@@ -2025,7 +2660,24 @@
             }
         }
 
-        if (typeof L === 'undefined') return;
+        // E-Receipt: shown only once the handover is real (delivered + photo),
+        // so the totals and the proof always appear together.
+        const receipt = document.getElementById('view-order-ereceipt');
+        if (receipt) {
+            if (isRateable(d)) {
+                receipt.classList.remove('hidden');
+                const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+                set('ereceipt-no', d.order_number || '--');
+                set('ereceipt-rider', d.assigned_rider_name || d.rider_name || '--');
+                set('ereceipt-time', d.delivered_at || '--');
+                set('ereceipt-proof', 'Verified');
+                set('ereceipt-total', '₱' + Number(d.total_payment || d.total_amount || 0).toFixed(2));
+            } else {
+                receipt.classList.add('hidden');
+            }
+        }
+
+        if (typeof L === 'undefined') { mapLoadError('view-order-map'); return; }
         const hasPos = typeof d.rider_lat === 'number' && typeof d.rider_lng === 'number';
         const hasDest = typeof d.dest_lat === 'number' && typeof d.dest_lng === 'number';
 
@@ -2033,10 +2685,10 @@
             const init = (hasPos && hasDest)
                 ? [(d.rider_lat + d.dest_lat) / 2, (d.rider_lng + d.dest_lng) / 2]
                 : (hasPos ? [d.rider_lat, d.rider_lng] : [currentLat, currentLng]);
-            viewOrderMap = L.map('view-order-map', { attributionControl: false }).setView(init, 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19, subdomains: 'abcd', attribution: ''
-            }).addTo(viewOrderMap);
+            viewOrderMap = L.map('view-order-map').setView(init, 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19, subdomains: 'abc', attribution: OSM_ATTRIBUTION
+        }).addTo(viewOrderMap);
             if (hasPos) {
                 viewOrderMarker = L.marker([d.rider_lat, d.rider_lng], {
                     icon: L.divIcon({
@@ -2060,13 +2712,25 @@
             if (hasPos) viewOrderMarker.setLatLng([d.rider_lat, d.rider_lng]);
             if (hasDest && viewOrderDestMarker) viewOrderDestMarker.setLatLng([d.dest_lat, d.dest_lng]);
 
-            // Route line from rider to the pinned destination (out-for-delivery view).
+            // Route line: real campus roads when the tracking endpoint could
+            // route us, else the dashed straight line. The path is fetched
+            // separately (see loadViewOrderRoute) because the faculty SSE
+            // payload carries positions but not the routed geometry.
             if (hasPos && hasDest) {
-                const pts = [[d.rider_lat, d.rider_lng], [d.dest_lat, d.dest_lng]];
+                const routed = Array.isArray(viewOrderRoutePath) && viewOrderRoutePath.length > 1;
+                const pts = routed
+                    ? viewOrderRoutePath.map(p => [p[0], p[1]])
+                    : [[d.rider_lat, d.rider_lng], [d.dest_lat, d.dest_lng]];
+                const style = routed
+                    ? { color: '#FF6117', weight: 5, opacity: 0.95 }
+                    : { color: '#FF6117', weight: 5, opacity: 0.95 };
                 if (!viewOrderRouteLine) {
-                    viewOrderRouteLine = L.polyline(pts, { color: '#FF6117', weight: 3, opacity: 0.8, dashArray: '7 6' }).addTo(viewOrderMap);
+                    viewOrderRouteCasing = L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.35 }).addTo(viewOrderMap);
+                    viewOrderRouteLine = L.polyline(pts, style).addTo(viewOrderMap);
                 } else {
                     viewOrderRouteLine.setLatLngs(pts);
+                    viewOrderRouteLine.setStyle(style);
+                    if (viewOrderRouteCasing) viewOrderRouteCasing.setLatLngs(pts);
                 }
             }
 
@@ -2077,6 +2741,10 @@
             }
             viewOrderMap.invalidateSize();
         }
+
+        // Kick off (throttled) fetch of the road-following path for the order
+        // currently being viewed. Runs on open and on every SSE push.
+        loadViewOrderRoute(d);
     }
 
     // Pro-level success screen shown right after an order is placed.
@@ -2102,10 +2770,10 @@
                 JsBarcode("#pickup-place-barcode", data.order_number.toString(), {
                     format: "CODE128",
                     lineColor: "#111827",
-                    width: 2,
-                    height: 50,
+                    width: 1.6,
+                    height: 36,
                     displayValue: true,
-                    fontSize: 12,
+                    fontSize: 9,
                     margin: 0
                 });
             }, 50);
@@ -2122,10 +2790,11 @@
         const activeD = ongoingDeliveriesData.find(isOngoingDelivery)
             || [...ongoingDeliveriesData].reverse().find(d => d.raw_status === 'DELIVERED');
         if (!activeD) {
-            alert('Wala kang active order sa ngayon.');
+            showToast('Wala kang active order sa ngayon.');
             return;
         }
         viewOrderDeliveryId = activeD.id;
+        viewOrderNumber = activeD.order_number;
 
         document.getElementById('view-order-no').innerText = `Order Details & Live Tracking (${activeD.order_number})`;
         document.getElementById('view-order-status').innerText = `Status: ${deliveryStatusLabel(activeD)}`;
@@ -2154,7 +2823,7 @@
         document.getElementById('view-order-modal').classList.remove('hidden');
 
         const rateBtn = document.getElementById('view-order-rate-btn');
-        if (rateBtn) rateBtn.style.display = (activeD.raw_status === 'DELIVERED') ? '' : 'none';
+        if (rateBtn) rateBtn.style.display = isRateable(activeD) ? '' : 'none';
 
         setTimeout(() => refreshViewOrderTracking(activeD), 150);
     }
@@ -2175,6 +2844,8 @@
 
         const deliveryBtn = document.getElementById('fulfillment-delivery');
         const pickupBtn = document.getElementById('fulfillment-pickup');
+        const deliveryBadge = document.getElementById('fulfillment-delivery-badge');
+        const pickupBadge = document.getElementById('fulfillment-pickup-badge');
         const deliveryDetails = document.getElementById('delivery-details-section');
         const pickupDetails = document.getElementById('pickup-details-section');
         const feeLabel = document.getElementById('summary-fee-label');
@@ -2182,12 +2853,15 @@
         const submitText = document.getElementById('checkout-submit-text');
         const modalTitle = document.getElementById('checkout-modal-title');
 
-        const deliveryActiveCls = "rounded-xl text-[11px] bg-emerald-600 text-white border-emerald-500 font-black shadow-lg shadow-emerald-600/30";
-        const pickupActiveCls = "rounded-xl text-[11px] bg-brand-orange text-white border-brand-orange font-black shadow-lg shadow-brand-orange/30";
-        const idleCls = "rounded-xl text-[11px] bg-white/5 text-brand-slate border-transparent font-bold hover:text-white";
+        const deliveryActiveCls = "rounded-xl py-3 px-3 text-[11px] bg-emerald-600 text-white border-emerald-500 font-black shadow-lg shadow-emerald-600/30";
+        const pickupActiveCls = "rounded-xl py-3 px-3 text-[11px] bg-brand-orange text-white border-brand-orange font-black shadow-lg shadow-brand-orange/30";
+        const idleCls = "rounded-xl py-3 px-3 text-[11px] bg-white/5 text-brand-slate border-transparent font-bold hover:text-white";
 
-        deliveryBtn.className = `relative py-2.5 flex items-center justify-center gap-1.5 transition border ${isDelivery ? deliveryActiveCls : idleCls}`;
-        pickupBtn.className = `relative py-2.5 flex items-center justify-center gap-1.5 transition border ${isDelivery ? idleCls : pickupActiveCls}`;
+        deliveryBtn.className = `relative flex items-center justify-center gap-2 transition border cursor-pointer ${isDelivery ? deliveryActiveCls : idleCls}`;
+        pickupBtn.className = `relative flex items-center justify-center gap-2 transition border cursor-pointer ${isDelivery ? idleCls : pickupActiveCls}`;
+
+        deliveryBadge.className = `text-[9px] font-black px-2 py-0.5 rounded-full ${isDelivery ? 'bg-emerald-400 text-emerald-950' : 'bg-white/10 text-brand-slate'}`;
+        pickupBadge.className = `text-[9px] font-black px-2 py-0.5 rounded-full ${!isDelivery ? 'bg-amber-400 text-amber-950' : 'bg-white/10 text-brand-slate'}`;
 
         deliveryDetails.style.display = isDelivery ? '' : 'none';
         pickupDetails.style.display = isDelivery ? 'none' : '';
@@ -2202,77 +2876,16 @@
 
     function openCheckoutModal() {
         if (Object.keys(cart).length === 0) return;
+        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
+        if (activeOrder) {
+            closeCartDrawer();
+            showActiveOrderAlert(activeOrder);
+            return;
+        }
+        closeCartDrawer();
         setFulfillment('delivery');
         updateCheckoutSummary();
         document.getElementById('checkout-modal').classList.remove('hidden');
-
-        setTimeout(() => {
-            if (!checkoutMap) {
-                const latDelta = CAMPUS_RADIUS_KM / 110.574;
-                const lngDelta = CAMPUS_RADIUS_KM / (111.320 * Math.cos(CAMPUS_CENTER_LAT * Math.PI / 180));
-                const campusBounds = L.latLngBounds(
-                    [CAMPUS_CENTER_LAT - latDelta, CAMPUS_CENTER_LNG - lngDelta],
-                    [CAMPUS_CENTER_LAT + latDelta, CAMPUS_CENTER_LNG + lngDelta]
-                );
-
-                checkoutMap = L.map('checkout-mini-map', {
-                    attributionControl: false,
-                    zoomControl: true,
-                    minZoom: 15,
-                    maxZoom: 19,
-                    maxBounds: campusBounds,
-                    maxBoundsViscosity: 1.0
-                }).setView([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], 17);
-
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19, subdomains: 'abcd',
-                    attribution: ''
-                }).addTo(checkoutMap);
-
-                // Draw the campus delivery zone outline
-                L.circle([CAMPUS_CENTER_LAT, CAMPUS_CENTER_LNG], {
-                    radius: CAMPUS_RADIUS_KM * 1000,
-                    color: '#f97316', weight: 1.5, dashArray: '4 6', fillColor: '#f97316', fillOpacity: 0.05
-                }).addTo(checkoutMap);
-
-                const pinIcon = L.divIcon({
-                    className: '',
-                    html: '<div class="w-8 h-8 rounded-full bg-brand-orange border-2 border-white flex items-center justify-center shadow-xl" style="box-shadow:0 6px 20px rgba(255,97,23,.6)"><i class="fa-solid fa-location-dot text-white text-sm"></i></div>',
-                    iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -28]
-                });
-
-                currentLat = isOnCampus(currentLat, currentLng) ? currentLat : CAMPUS_CENTER_LAT;
-                currentLng = isOnCampus(currentLat, currentLng) ? currentLng : CAMPUS_CENTER_LNG;
-                checkoutMarker = L.marker([currentLat, currentLng], { icon: pinIcon, draggable: true }).addTo(checkoutMap);
-                syncCheckoutStatus();
-
-                checkoutMap.on('click', (e) => {
-                    if (isOnCampus(e.latlng.lat, e.latlng.lng)) {
-                        setCheckoutPin(e.latlng.lat, e.latlng.lng);
-                    } else {
-                        const statusEl = document.getElementById('checkout-map-status');
-                        if (statusEl) { statusEl.innerText = 'Outside delivery zone — keep pin inside campus'; statusEl.classList.add('text-red-400'); statusEl.classList.remove('text-brand-slate'); statusEl.closest('p')?.classList.add('text-red-400'); }
-                        setTimeout(recenterHidden, 1800);
-                    }
-                });
-
-                checkoutMarker.on('dragend', (e) => {
-                    const pos = e.target.getLatLng();
-                    if (isOnCampus(pos.lat, pos.lng)) {
-                        setCheckoutPin(pos.lat, pos.lng);
-                    } else {
-                        checkoutMarker.setLatLng([currentLat, currentLng]);
-                        const statusEl = document.getElementById('checkout-map-status');
-                        if (statusEl) { statusEl.innerText = 'Outside campus — pin snapped back'; statusEl.classList.add('text-red-400'); }
-                        setTimeout(recenterHidden, 1600);
-                    }
-                });
-            } else {
-                checkoutMap.setView([currentLat, currentLng], 17);
-                checkoutMarker.setLatLng([currentLat, currentLng]);
-                checkoutMap.invalidateSize();
-            }
-        }, 150);
     }
 
     function setCheckoutPin(lat, lng) {
@@ -2286,7 +2899,7 @@
     function syncCheckoutStatus() {
         const statusEl = document.getElementById('checkout-map-status');
         if (statusEl) {
-            statusEl.innerText = `Pin set: ${currentLat.toFixed(5)}, ${currentLng.toFixed(5)} — PSU Campus`;
+            statusEl.innerText = `Pin set: ${currentLat.toFixed(5)}, ${currentLng.toFixed(5)} — PalSU Campus`;
             statusEl.classList.remove('text-red-400');
             statusEl.classList.add('text-brand-slate');
             statusEl.closest('p')?.classList.remove('text-red-400');
@@ -2350,15 +2963,72 @@
 
         const activeD = ongoingDeliveriesData.find(isOngoingDelivery);
         if (activeD) {
-            showCheckoutError('Order in Progress',
-                'You must complete your previous order (' + activeD.order_number + ') before ordering again. Please wait for it to be delivered.');
             const submitBtn = document.getElementById('checkout-submit-btn');
             submitBtn.disabled = false;
             submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
             closeCheckoutModal();
+            showActiveOrderAlert(activeD);
             return;
         }
 
+        const submitBtn = document.getElementById('checkout-submit-btn');
+
+        if (isDelivery) {
+            if (!navigator.geolocation) {
+                showCheckoutError('Location Not Supported', 'Your browser does not support geolocation. Location access is required for campus delivery orders.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sensing Live Location...`;
+
+            const handlePosition = (lat, lng) => {
+                if (ENFORCE_GEOFENCE && !isOnCampus(lat, lng)) {
+                    showCheckoutError('Outside Campus Geofence', 'Your current GPS location is outside the Palawan State University campus. Delivery is strictly campus-only.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
+                    return;
+                }
+                currentLat = lat;
+                currentLng = lng;
+                proceedWithFacultyOrder();
+            };
+
+            const attemptGeo = (highAcc) => {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        handlePosition(pos.coords.latitude, pos.coords.longitude);
+                    },
+                    (err) => {
+                        if (highAcc && (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE)) {
+                            attemptGeo(false);
+                            return;
+                        }
+
+                        let errMessage = 'Live GPS location is required for campus delivery orders. Please ensure location services are enabled on your device and try again.';
+                        if (err.code === err.PERMISSION_DENIED) {
+                            errMessage = 'Location permission was denied. You must allow location access to place a campus delivery order.';
+                        } else if (err.code === err.POSITION_UNAVAILABLE || err.code === err.TIMEOUT) {
+                            errMessage = 'Unable to detect your real-time GPS location. Please make sure your device location is turned on and you are within PalSU campus.';
+                        }
+                        showCheckoutError('Location Verification Failed', errMessage);
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
+                    },
+                    { timeout: highAcc ? 12000 : 6000, enableHighAccuracy: highAcc, maximumAge: 0 }
+                );
+            };
+
+            attemptGeo(true);
+        } else {
+            proceedWithFacultyOrder();
+        }
+    }
+
+    function proceedWithFacultyOrder() {
+        const isDelivery = fulfillmentMode === 'delivery';
         let subtotal = getCartSubtotal();
         let fee = isDelivery ? getConvenienceFee(subtotal) : 0;
         let pointsToUse = parseInt(document.getElementById('points-redeem-input').value) || 0;
@@ -2418,10 +3088,11 @@
                     });
                 }
                 cart = {};
+                saveCart();
                 closeCheckoutModal();
                 updateCartUI();
                 submitBtn.disabled = false;
-if (isDelivery) {
+                if (isDelivery) {
                     submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
                     openOrderPlacedModal(data, deliveryLoc, pointsEarned);
                 } else {
@@ -2445,6 +3116,21 @@ if (isDelivery) {
         document.getElementById('checkout-error-title').innerText = title || 'Checkout Error';
         document.getElementById('checkout-error-message').innerText = message || 'Something went wrong. Please try again.';
         document.getElementById('checkout-error-modal').classList.remove('hidden');
+    }
+
+    // Mirrors the student kiosk: any attempt to start a new order while an
+    // active order exists is blocked with a dedicated pop-up until the
+    // current order state is resolved (paid/completed or cancelled).
+    function showActiveOrderAlert(activeOrder) {
+        const numEl = document.getElementById('active-order-alert-number');
+        if (numEl && activeOrder && activeOrder.order_number) {
+            numEl.innerText = activeOrder.order_number;
+        }
+        document.getElementById('active-order-alert-modal').classList.remove('hidden');
+    }
+
+    function closeActiveOrderAlert() {
+        document.getElementById('active-order-alert-modal').classList.add('hidden');
     }
 
     function closeCheckoutErrorModal() {
@@ -2480,54 +3166,79 @@ if (isDelivery) {
         setCarouselSlide(currentCarouselSlide);
     }
 
+    function prevCarouselSlide() {
+        currentCarouselSlide = (currentCarouselSlide - 1 + totalCarouselSlides) % totalCarouselSlides;
+        setCarouselSlide(currentCarouselSlide);
+    }
+
     let carouselInterval = setInterval(nextCarouselSlide, 4500);
 
-    function resetCarouselTimer() {
+    function resetCarouselInterval() {
         clearInterval(carouselInterval);
         carouselInterval = setInterval(nextCarouselSlide, 4500);
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const promoCarouselWrapper = document.getElementById('promo-carousel');
-        if (promoCarouselWrapper) {
-            let touchStartX = 0;
-            let touchEndX = 0;
-            promoCarouselWrapper.addEventListener('touchstart', e => {
-                touchStartX = e.changedTouches[0].screenX;
-            }, {passive: true});
-            promoCarouselWrapper.addEventListener('touchend', e => {
-                touchEndX = e.changedTouches[0].screenX;
-                if (touchEndX < touchStartX - 40) {
-                    nextCarouselSlide();
-                    resetCarouselTimer();
-                } else if (touchEndX > touchStartX + 40) {
-                    currentCarouselSlide = (currentCarouselSlide - 1 + totalCarouselSlides) % totalCarouselSlides;
-                    setCarouselSlide(currentCarouselSlide);
-                    resetCarouselTimer();
-                }
-            }, {passive: true});
+    // Clean & Reliable Touch & Mouse Swipe Support for Promo Carousel
+    let promoStartX = 0;
+    let promoStartY = 0;
+    let promoIsSwiping = false;
+    const promoCarouselEl = document.getElementById('promo-carousel');
 
-            let isDragging = false;
-            let startX = 0;
-            promoCarouselWrapper.addEventListener('mousedown', e => {
-                isDragging = true;
-                startX = e.clientX;
-            });
-            window.addEventListener('mouseup', e => {
-                if (!isDragging) return;
-                isDragging = false;
-                let diff = e.clientX - startX;
-                if (diff < -40) {
+    if (promoCarouselEl) {
+        promoCarouselEl.addEventListener('touchstart', e => {
+            promoStartX = e.touches[0].clientX;
+            promoStartY = e.touches[0].clientY;
+            promoIsSwiping = true;
+            clearInterval(carouselInterval);
+        }, {passive: true});
+
+        promoCarouselEl.addEventListener('touchend', e => {
+            if (!promoIsSwiping) return;
+            promoIsSwiping = false;
+            const endX = e.changedTouches[0].clientX;
+            const endY = e.changedTouches[0].clientY;
+            const diffX = endX - promoStartX;
+            const diffY = endY - promoStartY;
+
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
+                if (diffX < 0) {
                     nextCarouselSlide();
-                    resetCarouselTimer();
-                } else if (diff > 40) {
-                    currentCarouselSlide = (currentCarouselSlide - 1 + totalCarouselSlides) % totalCarouselSlides;
-                    setCarouselSlide(currentCarouselSlide);
-                    resetCarouselTimer();
+                } else {
+                    prevCarouselSlide();
                 }
-            });
-        }
-    });
+                resetCarouselInterval();
+            }
+        }, {passive: true});
+
+        promoCarouselEl.addEventListener('mousedown', e => {
+            promoStartX = e.clientX;
+            promoStartY = e.clientY;
+            promoIsSwiping = true;
+            clearInterval(carouselInterval);
+        });
+
+        promoCarouselEl.addEventListener('mouseup', e => {
+            if (!promoIsSwiping) return;
+            promoIsSwiping = false;
+            const endX = e.clientX;
+            const endY = e.clientY;
+            const diffX = endX - promoStartX;
+            const diffY = endY - promoStartY;
+
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
+                if (diffX < 0) {
+                    nextCarouselSlide();
+                } else {
+                    prevCarouselSlide();
+                }
+                resetCarouselInterval();
+            }
+        });
+
+        promoCarouselEl.addEventListener('mouseleave', () => {
+            promoIsSwiping = false;
+        });
+    }
 
     let currentFacultyRating = 5;
     function setFacultyRating(r) {
@@ -2544,10 +3255,12 @@ if (isDelivery) {
     }
 
     function openFacultyFeedbackModal() {
-        // Rating is locked until the delivery is fully completed.
+        // Rating is locked until the rider has delivered AND attached the
+        // proof-of-delivery photo (same rule the server enforces).
         const target = (ongoingDeliveriesData || []).find(d => d.id === viewOrderDeliveryId);
-        if (!target || target.raw_status !== 'DELIVERED') {
-            alert('Rating is only available after the delivery has been completed.');
+        const blocked = rateBlockedReason(target);
+        if (blocked) {
+            showToast(blocked);
             return;
         }
         document.getElementById('faculty-feedback-modal').classList.remove('hidden');
@@ -2559,8 +3272,14 @@ if (isDelivery) {
 
     async function submitFacultyFeedback() {
         const comment = document.getElementById('faculty-feedback-comment').value;
-        const orderNumEl = document.getElementById('view-order-no');
-        const orderNum = orderNumEl ? orderNumEl.innerText.replace('Order', '').trim() : '';
+        // Read the slip number from the delivery data, NOT from the heading text:
+        // the heading reads "Order Details & Live Tracking (#CE-1234)" and
+        // stripping the word "Order" from it leaves prose, not a slip number.
+        const orderNum = viewOrderNumber;
+        if (!orderNum) {
+            showToast('Could not tell which order to rate. Reopen the order and try again.', 'error');
+            return;
+        }
         try {
             const res = await fetch("{% url 'customer_portal:submit_feedback_api' %}", {
                 method: 'POST',
@@ -2574,11 +3293,11 @@ if (isDelivery) {
                 showFeedbackSuccessPopup(`Thank you for your feedback! ${randomEmoji}`);
                 closeFacultyFeedbackModal();
             } else {
-                alert('Error: ' + data.message);
+                showToast('Error: ' + data.message, 'error');
             }
         } catch (err) {
             console.error(err);
-            alert('Failed to submit feedback.');
+            showToast('Failed to submit feedback.', 'error');
         }
     }
 
@@ -2714,6 +3433,8 @@ if (isDelivery) {
             message: 'Are you sure you want to convert this delivery order to Counter Pick-up? You will not be able to undo this.',
             confirmLabel: 'Convert',
             onConfirm: () => {
+                const confirmModal = document.getElementById('faculty-confirm-modal');
+                if (confirmModal) confirmModal.classList.add('hidden');
                 fetch(`/deliveries/api/convert-to-pickup/${facultyTimeoutDeliveryId}/`, {
                     method: 'POST',
                     headers: {
@@ -2722,45 +3443,42 @@ if (isDelivery) {
                     }
                 }).then(res => res.json()).then(data => {
                     if (data.success) {
-                        // Find order number from ongoingDeliveriesData if possible
                         const ongoing = (ongoingDeliveriesData || []).find(d => d.id === facultyTimeoutDeliveryId);
-                        const orderNum = ongoing ? ongoing.order_number : 'Order';
-                        const modalBox = document.querySelector('#rider-timeout-modal > div');
-                        modalBox.innerHTML = `
-                            <div class="text-center pb-3 border-b border-white/10">
-                                <span class="bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-amber-500/30">Converted to Walk-In</span>
-                                <h3 class="text-xl font-black text-white mt-2">Queue Slip Generated</h3>
-                            </div>
-                            <div class="space-y-1.5 py-1">
-                                <p class="text-[10px] uppercase tracking-wider text-white/60 font-bold">Your Queue Number</p>
-                                <span class="text-4xl font-black text-orange-400 tracking-tight">${orderNum}</span>
-                                <p class="text-xs text-white/80 font-medium">Counter Pick-up Mode Activated</p>
-                            </div>
-                            <div class="bg-white p-3 rounded-2xl flex flex-col items-center justify-center">
-                                <svg id="faculty-timeout-slip-barcode" class="w-full h-14"></svg>
-                                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Scan at Counter to Process Payment</span>
-                            </div>
-                            <button onclick="window.location.reload()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition">
-                                Done / Refresh Dashboard
-                            </button>
-                        `;
-                        if (typeof JsBarcode !== 'undefined') {
-                            JsBarcode("#faculty-timeout-slip-barcode", orderNum, {
-                                format: "CODE128",
-                                lineColor: "#111827",
-                                width: 2,
-                                height: 45,
-                                displayValue: true,
-                                fontSize: 11,
-                                margin: 0
-                            });
-                        }
+                        const orderNum = data.queue_number || data.order_number || (ongoing ? ongoing.order_number : 'Order');
+                        hideFacultyTimeoutModal();
+                        showFacultySuccess({
+                            badge: 'Converted to Pick-up',
+                            badgeClass: 'inline-block bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-amber-500/30',
+                            icon: 'fa-solid fa-basket-shopping',
+                            iconClass: 'w-14 h-14 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg',
+                            title: 'Queue Slip Generated',
+                            message: 'Counter Pick-up mode activated. Scan this slip at the counter to collect your order.',
+                            queueNumber: orderNum,
+                            queueCaption: 'Scan at Counter to Process Payment',
+                            buttonLabel: 'Back to Menu',
+                        });
                     } else {
-                        alert(data.error || "Failed to convert.");
+                        showToast(data.error || "Failed to convert.", 'error');
+                        showFacultyCancelReasonsBackOrRestore();
                     }
+                }).catch(() => {
+                    showToast("Could not reach the server. Please try again.", 'error');
                 });
             }
         });
+    }
+
+    // Restore the timeout modal's action buttons after an in-place failure.
+    function showFacultyCancelReasonsBackOrRestore() {
+        const container = document.getElementById('cancel-reason-container');
+        const buttons = document.getElementById('timeout-buttons');
+        if (container) container.classList.add('hidden');
+        if (buttons) buttons.classList.remove('hidden');
+    }
+
+    function hideFacultyTimeoutModal() {
+        const modal = document.getElementById('rider-timeout-modal');
+        if (modal) modal.classList.add('hidden');
     }
 
     function showFacultyCancelReasons() {
@@ -2768,9 +3486,49 @@ if (isDelivery) {
         document.getElementById('cancel-reason-container').classList.remove('hidden');
     }
 
+    function toggleFacultyOtherReason() {
+        const sel = document.getElementById('cancel-reason-select');
+        const other = document.getElementById('cancel-reason-other');
+        if (!sel || !other) return;
+        const isOther = sel.value === 'Other reason';
+        other.classList.toggle('hidden', !isOther);
+        if (isOther) {
+            other.focus();
+        } else {
+            other.value = '';
+        }
+    }
+
+    function getFacultyCancelReason() {
+        const sel = document.getElementById('cancel-reason-select');
+        let reason = sel ? sel.value : 'Waiting for too long';
+        if (reason === 'Other reason') {
+            const other = document.getElementById('cancel-reason-other');
+            const custom = other ? (other.value || '').trim() : '';
+            if (custom) reason = custom;
+        }
+        return reason;
+    }
+
+    // Step 1: confirm the cancellation through the shared glass dialog.
     function submitFacultyCancelOrder() {
         if (!facultyTimeoutDeliveryId) return;
-        const reason = document.getElementById('cancel-reason-select').value;
+        const reason = getFacultyCancelReason();
+        showFacultyConfirm({
+            title: 'Cancel this order?',
+            subtitle: 'Delivery request',
+            message: `This will cancel the order, return any redeemed points and restore the stock. Reason: "${reason}". This cannot be undone.`,
+            confirmLabel: 'Cancel Order',
+            onConfirm: () => {
+                const confirmModal = document.getElementById('faculty-confirm-modal');
+                if (confirmModal) confirmModal.classList.add('hidden');
+                performFacultyCancel(reason);
+            }
+        });
+    }
+
+    // Step 2: perform the cancellation and celebrate the outcome.
+    function performFacultyCancel(reason) {
         fetch(`/deliveries/api/cancel-with-reason/${facultyTimeoutDeliveryId}/`, {
             method: 'POST',
             headers: {
@@ -2780,13 +3538,126 @@ if (isDelivery) {
             body: JSON.stringify({ reason: reason })
         }).then(res => res.json()).then(data => {
             if (data.success) {
-                alert("Order cancelled successfully.");
-                window.location.reload();
+                hideFacultyTimeoutModal();
+                showFacultySuccess({
+                    badge: 'Order Cancelled',
+                    badgeClass: 'inline-block bg-red-500/20 text-red-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-red-500/30',
+                    icon: 'fa-solid fa-ban',
+                    iconClass: 'w-14 h-14 bg-red-500/20 border border-red-500/40 text-red-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg',
+                    title: 'Order Cancelled Successfully',
+                    message: `Reason: ${reason}. Any redeemed loyalty points were returned and the stock restored.`,
+                    buttonLabel: 'Back to Menu',
+                });
             } else {
-                alert(data.error || "Failed to cancel.");
+                showToast(data.error || "Failed to cancel.", 'error');
             }
+        }).catch(() => {
+            showToast("Could not reach the server. Please try again.", 'error');
         });
     }
+
+    // Reusable success dialog. Gives every cancel/convert a clear, on-brand
+    // confirmation instead of a fleeting toast, then returns to the menu.
+    function showFacultySuccess(opts) {
+        opts = opts || {};
+        const modal = document.getElementById('faculty-success-modal');
+        if (!modal) return;
+
+        const iconEl = document.getElementById('faculty-success-icon');
+        iconEl.className = opts.iconClass || 'w-14 h-14 bg-green-500/20 border border-green-500/40 text-green-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg';
+        iconEl.innerHTML = `<i class="${opts.icon || 'fa-solid fa-circle-check'}"></i>`;
+
+        const badgeEl = document.getElementById('faculty-success-badge');
+        badgeEl.innerText = opts.badge || 'Success';
+        badgeEl.className = opts.badgeClass || 'inline-block bg-green-500/20 text-green-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-green-500/30';
+
+        document.getElementById('faculty-success-title').innerText = opts.title || 'Done';
+        document.getElementById('faculty-success-message').innerText = opts.message || '';
+
+        const slipWrap = document.getElementById('faculty-success-slip');
+        if (opts.queueNumber) {
+            slipWrap.classList.remove('hidden');
+            document.getElementById('faculty-success-slip-no').innerText = opts.queueNumber;
+            document.getElementById('faculty-success-slip-caption').innerText = opts.queueCaption || 'Scan at Counter';
+            if (typeof JsBarcode !== 'undefined') {
+                try {
+                    JsBarcode("#faculty-success-barcode", opts.queueNumber, {
+                        format: "CODE128",
+                        lineColor: "#111827",
+                        width: 2,
+                        height: 45,
+                        displayValue: true,
+                        fontSize: 11,
+                        margin: 0
+                    });
+                } catch (e) { /* barcode is a nicety, never block the dialog */ }
+            }
+        } else {
+            slipWrap.classList.add('hidden');
+        }
+
+        const doneBtn = document.getElementById('faculty-success-done');
+        doneBtn.innerText = opts.buttonLabel || 'Back to Menu';
+        doneBtn.onclick = () => {
+            // The dashboard root is the menu; a reload lands the user back on it.
+            window.location.reload();
+        };
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeFacultySuccess() {
+        document.getElementById('faculty-success-modal').classList.add('hidden');
+    }
+
+    // ================= MANUAL CLOSURE (staff open/close switch) =================
+    // Server-rendered initial state, then polled so a closure made from the
+    // staff dashboard appears here without the customer reloading the page.
+    window.__systemClosed = !{{ SYSTEM_IS_OPEN|yesno:'true,false' }};
+    window.__systemClosedMessage = '{{ SYSTEM_CLOSED_MESSAGE|escapejs }}';
+
+    function renderSystemClosedBanner() {
+        const banner = document.getElementById('system-closed-banner');
+        if (!banner) return;
+        if (!window.__systemClosed) { banner.style.display = 'none'; return; }
+        const reason = document.getElementById('system-closed-banner-reason');
+        if (reason) {
+            if (window.__systemClosedMessage) {
+                reason.textContent = ' ' + window.__systemClosedMessage;
+                reason.style.display = 'inline';
+            } else {
+                reason.style.display = 'none';
+            }
+        }
+        banner.style.display = 'block';
+    }
+
+    function refreshSystemStatus() {
+        fetch('{% url "core_app:system_status_api" %}', { headers: { 'Accept': 'application/json' } })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                window.__systemClosed = !data.is_open;
+                window.__systemClosedMessage = data.message || '';
+                renderSystemClosedBanner();
+            })
+            .catch(() => { /* offline: leave the current state alone */ });
+    }
+
+    // The server refuses checkout anyway; stopping here just avoids a pointless
+    // round trip and the "processing order" spinner.
+    const _originalProceedWithFacultyOrder = proceedWithFacultyOrder;
+    proceedWithFacultyOrder = function () {
+        if (window.__systemClosed) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            renderSystemClosedBanner();
+            return;
+        }
+        return _originalProceedWithFacultyOrder.apply(this, arguments);
+    };
+
+    renderSystemClosedBanner();
+    setInterval(refreshSystemStatus, 15000);
     </script>
 
     <!-- Smart Rider Timeout Modal for Faculty/Staff Dashboard -->
@@ -2800,27 +3671,45 @@ if (isDelivery) {
                 It's been 2 minutes and no rider has accepted your delivery request yet. What would you like to do?
             </p>
 
-            <div id="cancel-reason-container" class="hidden space-y-2 text-left pt-2">
-                <label class="block text-[10px] font-extrabold uppercase tracking-wider text-white/70">Select cancellation reason:</label>
-                <select id="cancel-reason-select" class="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-orange">
-                    <option value="Waiting for too long" class="bg-zinc-900">Waiting for too long</option>
-                    <option value="No riders available" class="bg-zinc-900">No riders available</option>
-                    <option value="Change of plans" class="bg-zinc-900">Change of plans</option>
-                    <option value="Other reason" class="bg-zinc-900">Other reason</option>
-                </select>
-                <button onclick="submitFacultyCancelOrder()" class="w-full mt-2 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
-                    Confirm Cancellation
-                </button>
-                <button onclick="document.getElementById('cancel-reason-container').classList.add('hidden'); document.getElementById('timeout-buttons').classList.remove('hidden');" class="w-full py-1.5 text-white/50 hover:text-white text-xs font-bold">
-                    Back
-                </button>
+            <div id="cancel-reason-container" class="hidden space-y-3 text-left pt-2">
+                <div>
+                    <label for="cancel-reason-select" class="block text-[10px] font-extrabold uppercase tracking-wider text-white/70 mb-1.5">Cancellation reason</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-list-ul absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 text-[11px] pointer-events-none"></i>
+                        <select id="cancel-reason-select" onchange="toggleFacultyOtherReason()"
+                                class="w-full appearance-none pl-9 pr-9 py-3 bg-white/5 border border-white/15 rounded-xl text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-brand-orange transition cursor-pointer">
+                            <option value="Waiting for too long" class="bg-zinc-900 text-white">Waiting for too long</option>
+                            <option value="No riders available" class="bg-zinc-900 text-white">No riders available</option>
+                            <option value="Change of plans" class="bg-zinc-900 text-white">Change of plans</option>
+                            <option value="Wrong order details" class="bg-zinc-900 text-white">Wrong order details</option>
+                            <option value="Other reason" class="bg-zinc-900 text-white">Other reason</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 text-[11px] pointer-events-none"></i>
+                    </div>
+                </div>
+                <input id="cancel-reason-other" type="text" maxlength="120" placeholder="Type your reason (optional)"
+                       class="hidden w-full px-3.5 py-3 bg-white/5 border border-white/15 rounded-xl text-xs text-white placeholder-white/35 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-brand-orange transition">
+                <p class="text-[10px] text-white/50 leading-relaxed font-medium flex items-start gap-1.5">
+                    <i class="fa-solid fa-circle-info mt-0.5 text-white/40"></i>
+                    <span>The delivery fee is removed, redeemed loyalty points are returned, and stock is restored.</span>
+                </p>
+                <div class="grid grid-cols-2 gap-2.5 pt-1">
+                    <button type="button" onclick="showFacultyCancelReasonsBackOrRestore()"
+                            class="py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
+                        Back
+                    </button>
+                    <button type="button" onclick="submitFacultyCancelOrder()"
+                            class="py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer shadow-lg shadow-red-900/30 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-ban"></i> Confirm
+                    </button>
+                </div>
             </div>
 
             <div id="timeout-buttons" class="space-y-2 pt-2">
                 <button onclick="extendFacultySearchTimer()" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition cursor-pointer">
                     Wait (+2 Mins)
                 </button>
-                <button onclick="convertFacultyDeliveryToPickup()" class="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider border border-white/10 transition cursor-pointer">
+                <button onclick="convertFacultyDeliveryToPickup()" class="w-full py-3 bg-yellow/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider border border-white/10 transition cursor-pointer">
                     Convert to Pick-up
                 </button>
                 <button onclick="showFacultyCancelReasons()" class="w-full py-2.5 bg-transparent hover:bg-red-500/10 text-red-400 font-bold rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
@@ -2856,6 +3745,34 @@ if (isDelivery) {
                     <i class="fa-solid fa-check"></i> Confirm
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- ================= SUCCESS DIALOG (cancel / convert outcome) ================= -->
+    <div id="faculty-success-modal" class="fixed inset-0 z-[100001] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 text-center space-y-4 text-white relative modal-pop">
+            <button onclick="closeFacultySuccess()" class="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div id="faculty-success-icon" class="w-14 h-14 bg-green-500/20 border border-green-500/40 text-green-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <span id="faculty-success-badge" class="inline-block bg-green-500/20 text-green-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-green-500/30">Success</span>
+            <h3 id="faculty-success-title" class="text-lg font-black font-poppins text-white">Done</h3>
+            <p id="faculty-success-message" class="text-xs text-zinc-200 leading-relaxed font-medium"></p>
+
+            <div id="faculty-success-slip" class="hidden space-y-2">
+                <p class="text-[10px] uppercase tracking-wider text-white/60 font-bold">Your Queue Number</p>
+                <span id="faculty-success-slip-no" class="block text-4xl font-black text-orange-400 tracking-tight">--</span>
+                <div class="bg-white p-3 rounded-2xl flex flex-col items-center justify-center">
+                    <svg id="faculty-success-barcode" class="w-full h-14"></svg>
+                    <span id="faculty-success-slip-caption" class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Scan at Counter</span>
+                </div>
+            </div>
+
+            <button id="faculty-success-done" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition cursor-pointer">
+                Back to Menu
+            </button>
         </div>
     </div>
 </body>

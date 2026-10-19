@@ -153,8 +153,11 @@
                     <label class="block text-xs font-semibold text-brand-slate mb-1 ml-1 uppercase tracking-wider">Password</label>
                     <div class="relative flex items-center">
                         <i class="fa-solid fa-lock absolute left-4 text-brand-slate text-sm"></i>
-                        <input type="password" name="password" required placeholder="Enter password" 
-                               class="w-full bg-[#1C1C1C] text-white text-xs sm:text-sm pl-11 pr-4 py-3.5 rounded-2xl border border-white/10 focus:border-brand-orange focus:outline-none transition placeholder-gray-500">
+                        <input type="password" id="kiosk-password" name="password" required placeholder="Enter password" 
+                               class="w-full bg-[#1C1C1C] text-white text-xs sm:text-sm pl-11 pr-12 py-3.5 rounded-2xl border border-white/10 focus:border-brand-orange focus:outline-none transition placeholder-gray-500">
+                        <button type="button" onclick="togglePassword('kiosk-password', this)" title="Show/Hide password" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); padding: 6px;" class="text-orange-400 hover:text-orange-300 cursor-pointer text-base bg-transparent border-none hover:scale-110 active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -217,6 +220,18 @@
         function nextSlide() {
             let nextIndex = (currentSlide + 1) % totalSlides;
             goToSlide(nextIndex);
+        }
+
+        function togglePassword(fieldId, btn) {
+            const input = document.getElementById(fieldId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
         }
     </script>
 

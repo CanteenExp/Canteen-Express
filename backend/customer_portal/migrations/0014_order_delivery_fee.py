@@ -9,10 +9,11 @@ class Migration(migrations.Migration):
         ('customer_portal', '0013_order_delivery_fee_alter_order_created_at_and_more'),
     ]
 
+    # No-op on purpose: the parallel line that produced this file also added
+    # `order.delivery_fee`, but so does the already-applied 0015_order_delivery_fee
+    # on this side. Keeping the AddField here would make a fresh graph (and any
+    # database that already has the column) fail with "column already exists",
+    # so this migration only preserves the name in migration history. Same
+    # convention as 0011/0012_order_delivery_fee, which are empty for this reason.
     operations = [
-        migrations.AddField(
-            model_name='order',
-            name='delivery_fee',
-            field=models.DecimalField(decimal_places=2, default=0.0, max_digits=10),
-        ),
     ]

@@ -18,6 +18,9 @@
     <link rel="stylesheet" href="{% static 'css/rider.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Leaflet powers the live route map on each job card (served locally, no CDN). -->
+    <link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}" />
+    <script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
     
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -114,14 +117,17 @@
                            :class="isAvailable ? 'text-green-400' : 'text-zinc-500'">
                             <span x-text="isAvailable ? 'Online & Ready' : 'Offline'"></span>
                             <span class="text-zinc-600">•</span>
-                            <span class="text-zinc-400 truncate">{{ request.user.get_full_name|default:request.user.username }}</span>
+                            <span class="text-zinc-400 truncate">{{ request.user.get_full_name|default:request.user.first_name|default:request.user.username }}</span>
                         </p>
                     </div>
                 </div>
 
-                <div class="shrink-0">
-                    <a href="{% url 'accounts:delivery_logout' %}" class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 backdrop-blur-md px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2">
-                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                <div class="flex items-center gap-2 shrink-0">
+                    <button @click="showChangePasswordModal = true" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 w-10 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center" title="Change Password">
+                        <i class="fa-solid fa-key"></i>
+                    </button>
+                    <a href="{% url 'accounts:delivery_logout' %}" class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 backdrop-blur-md w-10 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center" title="Logout">
+                        <i class="fa-solid fa-right-from-bracket"></i>
                     </a>
                 </div>
             </div>
@@ -262,13 +268,28 @@
                                     <h4 class="text-base font-black text-white mt-0.5"><i class="fa-solid fa-building text-green-400 mr-1"></i> {{ d.delivery_location }}</h4>
                                     <p class="text-[11px] text-zinc-400 flex items-center gap-1.5 mt-1">
                                         <i class="fa-solid fa-user-tie text-[9px] text-green-400/70"></i>
-                                        Customer: <span class="font-bold text-white">{% if d.order.customer %}{{ d.order.customer.get_full_name|default:d.order.customer.username }}{% else %}Guest{% endif %}</span>
+                                        Customer: <span class="font-bold text-white">{% if d.order.customer %}{{ d.order.customer.get_full_name|default:d.order.customer.username }}{% elif d.order.guest_name %}{{ d.order.guest_name }}{% else %}Guest{% endif %}</span>
                                     </p>
                                 </button>
                                 <span class="bg-green-500/15 text-green-400 border border-green-500/30 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase shrink-0"
                               data-delivery-status="{{ d.raw_status }}"
                               x-text="liveStatus({{ d.id }})"></span>
                             </div>
+
+                            {% if d.dest_lat and d.dest_lng %}
+                            <div class="space-y-1.5">
+                                <p class="text-zinc-500 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                                    <i class="fa-solid fa-route text-orange-400"></i> Live Route to Customer
+                                    <span id="route-meta-{{ d.id }}" class="ml-auto text-[10px] font-black text-orange-400 normal-case tracking-normal tabular-nums">Locating…</span>
+                                </p>
+                                <div class="live-route-map w-full h-44 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900"
+                                     data-route-id="{{ d.id }}"
+                                     data-route-url="{% url 'deliveries:api_live_route' d.id %}"
+                                     data-dest-lat="{{ d.dest_lat }}"
+                                     data-dest-lng="{{ d.dest_lng }}"
+                                     data-dest-label="{{ d.delivery_location|escapejs }}"></div>
+                            </div>
+                            {% endif %}
 
                             <div class="text-xs space-y-1.5 text-zinc-300">
                                 <p class="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Items</p>
@@ -289,40 +310,34 @@
                                     <span>Delivery Fee (Rider)</span>
                                     <span class="font-black text-orange-400">₱{{ d.order.delivery_fee }}</span>
                                 </div>
-<div class="flex justify-between items-center pt-1 border-t border-white/5">
+                                <div class="flex justify-between items-center pt-1 border-t border-white/5">
                                     <span class="text-zinc-500 font-bold uppercase tracking-wider">Total Payment</span>
                                     <span class="font-black text-orange-400 bg-orange-500/15 border border-orange-500/30 px-2.5 py-0.5 rounded-lg">₱{{ d.order.total_payment }}</span>
                                 </div>
+                            </div>
 
-                            <div class="pt-3 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap mt-auto">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <button @click="openChat({{ d.id }}, '{{ d.order.order_number }}', '{% if d.order.customer %}{{ d.order.customer.get_full_name|default:d.order.customer.username|escapejs }}{% else %}Guest{% endif %}')" class="relative bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center gap-2 border border-white/10 active:scale-95">
+                            <div class="pt-4 border-t border-white/5 mt-auto flex flex-col gap-2">
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button @click="openChat({{ d.id }}, '{{ d.order.order_number }}', '{% if d.order.customer %}{{ d.order.customer.get_full_name|default:d.order.customer.username|escapejs }}{% elif d.order.guest_name %}{{ d.order.guest_name|escapejs }}{% else %}Guest{% endif %}')" class="relative bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-2 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 border border-white/10 active:scale-95">
                                         <i class="fa-solid fa-comments text-green-400"></i> Chat
                                         <span x-show="(unread[{{ d.id }}] || 0) > 0"
                                               x-text="unread[{{ d.id }}] || 0"
                                               class="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border border-white/30"></span>
                                     </button>
-                                    <a href="{% url 'deliveries:track_order' d.id %}" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-3.5 py-2.5 rounded-xl text-xs transition flex items-center gap-2 border border-white/10 active:scale-95">
+                                    <a href="{% url 'deliveries:track_order' d.id %}" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-2 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 border border-white/10 active:scale-95">
                                         <i class="fa-solid fa-location-crosshairs text-orange-400"></i> Track
                                     </a>
+                                    <button @click="confirmAction('{% url 'deliveries:cancel_delivery' d.id %}', 'Release this delivery?', 'It will be returned to the pool for another rider.', 'release')"
+                                            class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-2 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 flex items-center justify-center gap-1.5" title="Release back to pool">
+                                        <i class="fa-solid fa-rotate-left"></i> Release
+                                    </button>
                                 </div>
 
-                                <div class="flex items-center gap-2">
-                                    <button type="button"
-                                            onclick="openCameraCapture('{% url 'deliveries:complete_delivery' d.id %}')"
-                                            class="btn-shine bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-black px-3.5 py-2.5 rounded-xl text-xs shadow-glow-green transition active:scale-95 flex items-center gap-1.5" title="Capture a live photo as proof of delivery (gallery uploads are not accepted)">
-                                        <i class="fa-solid fa-camera"></i> Delivered + Photo
-                                    </button>
-                                    <a href="{% url 'deliveries:complete_delivery' d.id %}"
-                                       onclick="return confirm('Complete without a photo proof?');"
-                                       class="bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-300 px-3 py-2.5 rounded-xl text-[10px] font-bold transition border border-white/10" title="Complete without a photo">
-                                        No photo
-                                    </a>
-                                    <button @click="confirmAction('{% url 'deliveries:cancel_delivery' d.id %}', 'Release this delivery?', 'It will be returned to the pool for another rider.', 'release')"
-                                            class="bg-red-500/15 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-3 py-2.5 rounded-xl text-xs font-bold transition active:scale-95" title="Release back to pool">
-                                        <i class="fa-solid fa-rotate-left"></i>
-                                    </button>
-                                </div>
+                                <button type="button"
+                                        onclick="openCameraCapture('{% url 'deliveries:complete_delivery' d.id %}')"
+                                        class="btn-shine w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-black px-3.5 py-3 rounded-xl text-xs shadow-glow-green transition active:scale-95 flex items-center justify-center gap-1.5" title="Capture a live photo as proof of delivery (gallery uploads are not accepted)">
+                                    <i class="fa-solid fa-camera"></i> Delivered + Photo
+                                </button>
                             </div>
                         </div>
                         {% empty %}
@@ -614,14 +629,15 @@
 
         // Live rider location sharing: watchPosition continuously streams the
         // rider's GPS and pushes each fix to the tracking API so the customer's
-        // pin moves in near-real-time.
+        // pin moves in near-real-time. The reported accuracy (metres) rides
+        // along so the server can reject fuzzy fixes and the customer's map can
+        // draw the real error radius.
         function startLocationWatch() {
             if (!navigator.geolocation) return;
             navigator.geolocation.watchPosition(
                 (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-                    pushRiderLocation(lat, lng);
+                    pushRiderLocation(
+                        pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
                 },
                 (err) => {
                     if (err.code === err.PERMISSION_DENIED) return;
@@ -629,7 +645,8 @@
                     if (!window.__locWatchRetry) {
                         window.__locWatchRetry = setInterval(() => {
                             navigator.geolocation.getCurrentPosition(
-                                (p) => pushRiderLocation(p.coords.latitude, p.coords.longitude),
+                                (p) => pushRiderLocation(
+                                    p.coords.latitude, p.coords.longitude, p.coords.accuracy),
                                 () => {}, { enableHighAccuracy: true, timeout: 10000 }
                             );
                         }, 8000);
@@ -639,7 +656,10 @@
             );
         }
 
-        function pushRiderLocation(lat, lng) {
+        function pushRiderLocation(lat, lng, accuracy) {
+            // Drive the live route maps from the same freshest fix, then fan the
+            // position out to every active delivery the server tracks.
+            onRiderFix(lat, lng);
             document.querySelectorAll('[data-location-id]').forEach(el => {
                 const id = el.getAttribute('data-location-id');
                 fetch(`/deliveries/api/location/${id}/update/`, {
@@ -648,7 +668,10 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': '{{ csrf_token }}'
                     },
-                    body: JSON.stringify({ lat, lng })
+                    body: JSON.stringify({
+                        lat, lng,
+                        accuracy: (typeof accuracy === 'number') ? accuracy : null
+                    })
                 }).catch(() => {});
             });
         }
@@ -659,7 +682,8 @@
         function pushRiderLocationFromGPS() {
             if (!navigator.geolocation) return;
             navigator.geolocation.getCurrentPosition(
-                (p) => pushRiderLocation(p.coords.latitude, p.coords.longitude),
+                (p) => pushRiderLocation(
+                    p.coords.latitude, p.coords.longitude, p.coords.accuracy),
                 () => {}, { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
             );
         }
@@ -682,6 +706,10 @@
             newMessage: '',
             pollInterval: null,
             statusInterval: null,
+            showChangePasswordModal: false,
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
 
             // Live refresh + unread badges
             lastPendingCount: {{ reachable_loc_count }},
@@ -757,6 +785,13 @@
                 // Poll pool status for live refresh + unread badges (SSE fallback)
                 this.statusInterval = setInterval(() => this.pollStatus(), 7000);
                 this.pollStatus();
+                // The live route maps render inside the Active tab, which x-show
+                // keeps hidden until selected; build them now and re-measure the
+                // moment the tab becomes visible (Leaflet caches a hidden size).
+                setTimeout(() => { initLiveRouteMaps(); resizeLiveRouteMaps(); }, 120);
+                this.$watch('activeTab', (tab) => {
+                    if (tab === 'active') setTimeout(resizeLiveRouteMaps, 80);
+                });
                 // Real-time: single SSE stream carrying pool, statuses, unread
                 // chat, earnings, and chat-change signals all at once.
                 this.connectLiveStream();
@@ -1152,6 +1187,246 @@
             form.submit();
         }, 'image/jpeg', 0.92);
     }
+
+    /* ===== Live orange route while delivering =====
+       Each in-transit card carries its own small map. The rider's freshest GPS
+       fix is the origin, the drop-off is the destination, and the line follows
+       the actual campus road (server-side OSRM/Valhalla) with the same orange
+       (#FF6117) plus white casing used on every other map in the app. The line
+       is re-fetched on a throttle and whenever the rider has moved a meaningful
+       distance, so it stays accurate and real-time without hammering the
+       routing provider. If routing is down the line falls back to a dashed
+       straight line rather than disappearing. */
+    const liveRouteMaps = {};
+    let riderLiveFix = null;               // { lat, lng } newest GPS fix
+    const LIVE_ROUTE_MIN_INTERVAL_MS = 8000;
+    const LIVE_ROUTE_MOVE_M = 25;          // early refetch after this much travel
+
+    function _routeDistanceM(a, b) {
+        if (!a || !b) return Infinity;
+        const R = 6371000, toRad = d => d * Math.PI / 180;
+        const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
+        const s = Math.sin(dLat / 2) ** 2
+            + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(s));
+    }
+
+    function initLiveRouteMaps() {
+        if (typeof L === 'undefined') return;
+        document.querySelectorAll('.live-route-map[data-route-id]').forEach(el => {
+            const id = el.getAttribute('data-route-id');
+            if (liveRouteMaps[id]) return;
+            const dest = [parseFloat(el.getAttribute('data-dest-lat')),
+                          parseFloat(el.getAttribute('data-dest-lng'))];
+            if (isNaN(dest[0]) || isNaN(dest[1])) return;
+
+            const map = L.map(el, { zoomControl: false })
+                .setView(dest, 16);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19, minZoom: 13,
+                // OSM serves a/b/c only; a 'd' fails DNS and leaves grey holes.
+                subdomains: 'abc',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+            }).addTo(map);
+
+            L.marker(dest, {
+                icon: L.divIcon({
+                    className: '',
+                    html: '<i class="fa-solid fa-location-dot" style="color:#22c55e;font-size:22px;text-shadow:0 0 10px rgba(34,197,94,.85)"></i>',
+                    iconSize: [22, 22], iconAnchor: [11, 22],
+                }),
+            }).addTo(map).bindTooltip(el.getAttribute('data-dest-label') || 'Drop-off');
+
+            const casing = L.polyline([dest, dest], {
+                color: '#ffffff', weight: 9, opacity: 0.35, dashArray: '1 8',
+            }).addTo(map);
+            const line = L.polyline([dest, dest], {
+                color: '#FF6117', weight: 5, opacity: 0.95, dashArray: '1 8',
+            }).addTo(map);
+
+            const riderMarker = L.marker(dest, {
+                zIndexOffset: 1000,
+                icon: L.divIcon({
+                    className: '',
+                    html: '<div style="width:34px;height:34px;border-radius:9999px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#fb923c,#ea580c);color:#fff;font-size:15px;border:2px solid rgba(255,255,255,.55);box-shadow:0 4px 12px rgba(234,88,12,.55)"><i class="fa-solid fa-motorcycle"></i></div>',
+                    iconSize: [34, 34], iconAnchor: [17, 17],
+                }),
+            }).addTo(map);
+
+            liveRouteMaps[id] = {
+                map, line, casing, riderMarker, dest,
+                url: el.getAttribute('data-route-url') || `/deliveries/api/live-route/${id}/`,
+                lastFetch: 0, fetching: false, lastOrigin: null,
+            };
+            if (riderLiveFix) riderMarker.setLatLng([riderLiveFix.lat, riderLiveFix.lng]);
+            refreshLiveRoute(id, true);
+        });
+    }
+
+    function resizeLiveRouteMaps() {
+        Object.values(liveRouteMaps).forEach(m => {
+            try { m.map.invalidateSize(); } catch (e) {}
+        });
+    }
+
+    function refreshLiveRoute(id, force) {
+        const m = liveRouteMaps[id];
+        if (!m || m.fetching) return;
+        const now = Date.now();
+        if (!force && now - m.lastFetch < LIVE_ROUTE_MIN_INTERVAL_MS) return;
+        m.fetching = true;
+        m.lastFetch = now;
+        const q = riderLiveFix
+            ? `?lat=${riderLiveFix.lat}&lng=${riderLiveFix.lng}` : '';
+        fetch(m.url + q, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (!data || !data.success
+                    || !Array.isArray(data.path) || data.path.length < 2) return;
+                const pts = data.path.map(p => [p[0], p[1]]);
+                const dash = data.routed ? null : '1 8';
+                m.line.setLatLngs(pts);
+                m.casing.setLatLngs(pts);
+                m.line.setStyle({ dashArray: dash });
+                m.casing.setStyle({ dashArray: dash });
+                if (riderLiveFix) m.riderMarker.setLatLng([riderLiveFix.lat, riderLiveFix.lng]);
+                const bounds = L.latLngBounds(pts);
+                if (riderLiveFix) bounds.extend([riderLiveFix.lat, riderLiveFix.lng]);
+                m.map.fitBounds(bounds, { padding: [26, 26], maxZoom: 17 });
+                m.lastOrigin = riderLiveFix
+                    ? { lat: riderLiveFix.lat, lng: riderLiveFix.lng } : null;
+                const meta = document.getElementById('route-meta-' + id);
+                if (meta) {
+                    const km = Number(data.distance_km).toFixed(2);
+                    const mins = (data.duration_min != null) ? ` \u2022 ${data.duration_min} min` : '';
+                    meta.textContent = `${km} km${mins}`;
+                }
+            })
+            .catch(() => {})
+            .finally(() => { m.fetching = false; });
+    }
+
+    // Called from pushRiderLocation on every GPS fix: move the markers, and
+    // refetch the road line once the rider has actually travelled far enough.
+    function onRiderFix(lat, lng) {
+        riderLiveFix = { lat, lng };
+        Object.keys(liveRouteMaps).forEach(id => {
+            const m = liveRouteMaps[id];
+            m.riderMarker.setLatLng([lat, lng]);
+            if (_routeDistanceM(m.lastOrigin, riderLiveFix) >= LIVE_ROUTE_MOVE_M) {
+                refreshLiveRoute(id, false);
+            }
+        });
+    }
+
+    // Keep distance / ETA fresh even while the rider is standing still.
+    setInterval(() => {
+        Object.keys(liveRouteMaps).forEach(id => refreshLiveRoute(id, false));
+    }, LIVE_ROUTE_MIN_INTERVAL_MS);
+
+    // Build the maps once the DOM is parsed. Leaflet is loaded in <head>, so it
+    // is always defined here; the tab handler also re-measures hidden maps.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLiveRouteMaps);
+    } else {
+        initLiveRouteMaps();
+    }
     </script>
+    <script>
+        // Dark theme on the live-route tiles; the orange line, casing and
+        // markers stay true-colour, matching the customer tracking map.
+        (function () {
+            const css = document.createElement('style');
+            css.textContent = '.live-route-map .leaflet-tile-pane .leaflet-layer,'
+                + '.live-route-map .leaflet-tile-pane .leaflet-tile {'
+                + 'filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(88%); }';
+            document.head.appendChild(css);
+        })();
+    </script>
+
+    <!-- Change Password Modal -->
+    <div x-show="showChangePasswordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4" x-cloak>
+        <div class="glass-strong rounded-3xl max-w-md w-full p-6 shadow-glass space-y-4 text-zinc-100 border border-white/10" @click.outside="showChangePasswordModal = false">
+            <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                <h3 class="text-base font-black flex items-center gap-2"><i class="fa-solid fa-key text-orange-400"></i> Change Password</h3>
+                <button @click="showChangePasswordModal = false" class="text-zinc-400 hover:text-white font-bold text-sm">✕</button>
+            </div>
+            <form @submit.prevent="
+                fetch('{% url "accounts:change_password" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    })
+                })
+                .then(async res => {
+                    const data = await res.json().catch(() => ({ success: false, error: 'Invalid server response' }));
+                    if (res.ok && data.success) {
+                        addToast('success', 'Success', 'Password successfully updated!');
+                        showChangePasswordModal = false;
+                        currentPassword = '';
+                        newPassword = '';
+                        confirmPassword = '';
+                    } else {
+                        addToast('error', 'Error', data.error || 'Failed to update password');
+                    }
+                })
+                .catch(err => addToast('error', 'Error', 'Error connecting to server: ' + err.message))
+            " class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1">Current Password</label>
+                    <div class="relative">
+                        <input type="password" id="rider-cp-current" x-model="currentPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <button type="button" onclick="togglePassword('rider-cp-current', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-800 cursor-pointer text-base p-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1">New Password</label>
+                    <div class="relative">
+                        <input type="password" id="rider-cp-new" x-model="newPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <button type="button" onclick="togglePassword('rider-cp-new', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-800 cursor-pointer text-base p-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-400 mb-1">Confirm New Password</label>
+                    <div class="relative">
+                        <input type="password" id="rider-cp-confirm" x-model="confirmPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <button type="button" onclick="togglePassword('rider-cp-confirm', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-800 cursor-pointer text-base p-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+    <script>
+        function togglePassword(fieldId, btn) {
+            const input = document.getElementById(fieldId);
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
+    </script>
+                <div class="flex justify-end gap-2 pt-2 border-t border-white/10">
+                    <button type="button" @click="showChangePasswordModal = false" class="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-bold hover:bg-zinc-700 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-bold hover:from-orange-600 hover:to-orange-700 transition shadow-glow-orange">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

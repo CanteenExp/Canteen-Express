@@ -10,6 +10,35 @@
          showEditModal: false,
          showRiderModal: false,
          showCategoryModal: false,
+         showChangePasswordModal: false,
+         currentPassword: '',
+         newPassword: '',
+         confirmPassword: '',
+         showReasonModal: false,
+         reasonFormUrl: '',
+         reasonFormAction: '',
+         reasonActionName: '',
+         reasonPresets: [
+             'Spamming orders / Flooding queue',
+             'Fake ordering / No-show pickup',
+             'Fraudulent payment / Scammer',
+             'Violation of canteen policies',
+             'Inappropriate behavior',
+             'Other reason'
+         ],
+         selectedReason: 'Spamming orders / Flooding queue',
+         customReason: '',
+         get finalReason() {
+             return this.selectedReason === 'Other reason' ? (this.customReason || 'Other reason') : this.selectedReason;
+         },
+         openReasonModal(url, actionName) {
+             this.reasonFormUrl = url;
+             this.reasonFormAction = actionName;
+             this.reasonActionName = actionName;
+             this.selectedReason = 'Spamming orders / Flooding queue';
+             this.customReason = '';
+             this.showReasonModal = true;
+         },
          showDeleteModal: false,
          deleteItemId: '',
          deleteItemName: '',
@@ -32,6 +61,154 @@
          },
          filterCategory: 'all',
          searchQuery: '',
+         activityEntries: [],
+         activityTotal: 0,
+         activityPage: 1,
+         activityPages: 1,
+         activityCategory: 'ALL',
+         activityLevel: 'ALL',
+         activityDays: '7',
+         activitySearch: '',
+         activityLoading: false,
+         activityError: '',
+         activityUnread: 0,
+         _activityTimer: null,
+         _activitySearchTimer: null,
+         levelStyle(level) {
+             const map = {
+                 SUCCESS: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                 WARNING: 'bg-amber-50 text-amber-700 border-amber-200',
+                 DANGER:  'bg-red-50 text-red-700 border-red-200',
+                 INFO:    'bg-blue-50 text-blue-700 border-blue-200'
+             };
+             return map[level] || map.INFO;
+         },
+         levelIcon(level) {
+             const map = {
+                 SUCCESS: 'fa-circle-check',
+                 WARNING: 'fa-triangle-exclamation',
+                 DANGER:  'fa-circle-xmark',
+                 INFO:    'fa-circle-info'
+             };
+             return map[level] || map.INFO;
+         },
+         levelLabel(level) {
+             const map = {
+                 SUCCESS: 'Success',
+                 WARNING: 'Warning',
+                 DANGER:  'Critical',
+                 INFO:    'Info'
+             };
+             return map[level] || 'Info';
+         },
+         categoryStyle(category) {
+             const map = {
+                 ORDER:    'bg-orange-50 text-orange-700 border-orange-200',
+                 MENU:     'bg-indigo-50 text-indigo-700 border-indigo-200',
+                 PAYMENT:  'bg-emerald-50 text-emerald-700 border-emerald-200',
+                 USER:     'bg-purple-50 text-purple-700 border-purple-200',
+                 DELIVERY: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+                 SYSTEM:   'bg-gray-50 text-gray-600 border-gray-200'
+             };
+             return map[category] || 'bg-gray-50 text-gray-600 border-gray-200';
+         },
+         markActivityRead() {
+             this.activityUnread = 0;
+         },
+         describeChanges(changes) {
+             if (!changes) return [];
+             return Object.keys(changes).map(function (field) {
+                 const pair = changes[field];
+                 const from = pair && pair.from !== undefined ? pair.from : '-';
+                 const to = pair && pair.to !== undefined ? pair.to : '-';
+                 return field + ': ' + from + ' -> ' + to;
+             });
+         },
+         loadActivityLog(page) {
+             if (page) this.activityPage = page;
+             this.activityLoading = true;
+             this.activityError = '';
+             const self = this;
+             const params = new URLSearchParams({
+                 page: this.activityPage,
+                 category: this.activityCategory,
+                 level: this.activityLevel,
+                 days: this.activityDays
+             });
+             if (this.activitySearch.trim()) {
+                 params.set('q', this.activitySearch.trim());
+             }
+             fetch('{% url "activity_log:activity_log_api" %}?' + params.toString(), {
+                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+             })
+                 .then(function (res) {
+                     if (res.status === 401 || res.status === 403) {
+                         throw new Error('Your session expired. Please sign in again to view the activity log.');
+                     }
+                     if (!res.ok) {
+                         throw new Error('Could not load the activity log (HTTP ' + res.status + ').');
+                     }
+                     return res.json();
+                 })
+                 .then(function (data) {
+                     if (!data.success) {
+                         throw new Error(data.error || 'Could not load the activity log.');
+                     }
+                     if (self.activeTab === 'logs') {
+                         self.activityUnread = 0;
+                     } else if (self.activityEntries.length) {
+                         const seen = {};
+                         self.activityEntries.forEach(function (e) { seen[e.id] = true; });
+                         const fresh = data.results.filter(function (e) { return !seen[e.id]; });
+                         self.activityUnread += fresh.length;
+                     }
+                     self.activityEntries = data.results;
+                     self.activityTotal = data.total;
+                     self.activityPage = data.page;
+                     self.activityPages = Math.max(data.num_pages, 1);
+                     self.activityRefreshSeconds = data.refresh_seconds || 60;
+                 })
+                 .catch(function (err) {
+                     self.activityError = err && err.message
+                         ? err.message
+                         : 'Network error. Please check your connection and try again.';
+                 })
+                 .finally(function () {
+                     self.activityLoading = false;
+                 });
+         },
+         onActivitySearch() {
+             const self = this;
+             clearTimeout(this._activitySearchTimer);
+             this._activitySearchTimer = setTimeout(function () {
+                 self.activityPage = 1;
+                 self.loadActivityLog();
+             }, 350);
+         },
+         resetActivityFilters() {
+             this.activityCategory = 'ALL';
+             this.activityLevel = 'ALL';
+             this.activityDays = '7';
+             this.activitySearch = '';
+             this.activityPage = 1;
+             this.loadActivityLog();
+         },
+         stopActivityPolling() {
+             if (this._activityTimer) {
+                 clearInterval(this._activityTimer);
+                 this._activityTimer = null;
+             }
+         },
+         startActivityPolling() {
+             const self = this;
+             this.stopActivityPolling();
+             this._activityTimer = setInterval(function () {
+                 if (!document.hidden) {
+                     self.loadActivityLog();
+                 }
+             }, (this.activityRefreshSeconds || 60) * 1000);
+         },
+
          editItem: { id: '', name: '', price: '', stock: '', category_id: '', image_url: '', description: '' },
          openEdit(id, name, price, stock, catId, imgUrl, desc) {
              this.editItem = {
@@ -45,7 +222,8 @@
              };
              this.showEditModal = true;
          }
-     }">
+     }"
+     x-init="loadActivityLog(1); startActivityPolling()">
 
     <!-- ========================================= -->
     <!-- DESKTOP SIDEBAR - FIXED -->
@@ -137,7 +315,23 @@
                     class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition text-left">
 
                     <i class="fa-solid fa-file-invoice-dollar w-5 text-center text-base"></i>
-                    <span>Reports & Sales</span>
+                    <span>Reports &amp; Sales</span>
+                </button>
+
+                <button
+                    @click="activeTab = 'logs'; loadActivityLog()"
+                    :class="activeTab === 'logs'
+                        ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/25'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'"
+                    class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition text-left">
+
+                    <i class="fa-solid fa-clock-rotate-left w-5 text-center text-base"></i>
+                    <span class="flex-1">Activity Log</span>
+                    <span
+                        x-show="activityUnread > 0"
+                        x-cloak
+                        class="bg-brand-500 text-white text-[10px] font-black rounded-full px-1.5 py-0.5 min-w-[20px] text-center"
+                        x-text="activityUnread > 99 ? '99+' : activityUnread"></span>
                 </button>
 
             </nav>
@@ -163,6 +357,13 @@
                 <i class="fa-solid fa-barcode"></i>
                 Counter POS ↗
             </a>
+
+            <button
+                @click="showChangePasswordModal = true"
+                class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-key"></i>
+                Change Password
+            </button>
 
             <a
                 href="{% url 'accounts:staff_logout' %}"
@@ -270,6 +471,20 @@
                 Reports
             </button>
 
+            <button
+                @click="activeTab = 'logs'; loadActivityLog()"
+                :class="activeTab === 'logs'
+                    ? 'bg-brand-500 text-white font-bold'
+                    : 'bg-white/10 text-gray-300'"
+                class="px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition flex items-center gap-1.5">
+                Activity
+                <span
+                    x-show="activityUnread > 0"
+                    x-cloak
+                    class="bg-brand-500 text-white text-[9px] font-black rounded-full px-1.5 min-w-[16px] text-center"
+                    x-text="activityUnread > 99 ? '99+' : activityUnread"></span>
+            </button>
+
         </div>
     </div>
 
@@ -340,6 +555,104 @@
 
                 <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-brand-500/10 rounded-full blur-2xl"></div>
 
+            </div>
+
+
+            <!-- CANTEEN OPEN / CLOSE CONTROL -->
+            {# The canteen runs itself 8:00 AM-5:00 PM. This override is how staff #}
+            {# extend the day, or close it early with a reason customers will read. #}
+            <div x-data="{
+                    mode: '{{ SYSTEM_MODE|escapejs }}',
+                    isOpen: {{ SYSTEM_IS_OPEN|yesno:'true,false' }},
+                    reasonLabel: '{{ SYSTEM_REASON_LABEL|escapejs }}',
+                    reasonCode: '',
+                    reason: '',
+                    busy: false,
+                    notice: '',
+                    error: '',
+                    hours: '{{ SYSTEM_OPERATING_HOURS|escapejs }}',
+                    nextOpening: '{{ SYSTEM_NEXT_OPENING|escapejs }}',
+                    canClose() {
+                        return !!this.reasonCode && (this.reasonCode !== 'OTHER' || this.reason.trim().length > 0);
+                    },
+                    statusLine() {
+                        if (this.mode === 'FORCE_OPEN') return 'Manually opened — the automatic schedule is relaxed until you set it back.';
+                        if (this.mode === 'FORCE_CLOSED') return 'Manually closed — customers read the reason you picked.';
+                        if (this.isOpen) return 'On the automatic schedule (' + this.hours + ').';
+                        return 'Outside the automatic schedule (' + this.hours + '). Ordering opens again ' + this.nextOpening + '.';
+                    },
+                    async apply(mode) {
+                        this.busy = true; this.notice = ''; this.error = '';
+                        try {
+                            const res = await fetch('{% url "core_app:system_toggle_api" %}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': '{{ csrf_token }}',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: JSON.stringify({ mode: mode, reason_code: this.reasonCode, message: this.reason })
+                            });
+                            const data = await res.json();
+                            if (!data.success) { this.error = data.message || 'Could not update the canteen status.'; return; }
+                            this.mode = data.mode;
+                            this.isOpen = data.is_open;
+                            this.reasonLabel = data.reason_label || '';
+                            this.notice = data.notice;
+                            if (data.mode === 'FORCE_CLOSED') { this.reasonCode = ''; this.reason = ''; }
+                        } catch (e) {
+                            this.error = 'Network error. Please try again.';
+                        } finally {
+                            this.busy = false;
+                        }
+                    },
+                    close() {
+                        if (!this.canClose()) { this.error = 'Pick a reason for closing before you close the canteen.'; return; }
+                        this.apply('FORCE_CLOSED');
+                    }
+                 }"
+                 class="rounded-3xl border p-6 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                 :class="isOpen ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'">
+                <div class="flex items-start gap-4">
+                    <span class="p-3 rounded-2xl text-lg shrink-0" :class="isOpen ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'">
+                        <i class="fa-solid" :class="isOpen ? 'fa-store' : 'fa-store-slash'"></i>
+                    </span>
+                    <div>
+                        <p class="text-[10px] font-extrabold uppercase tracking-wider" :class="isOpen ? 'text-emerald-600' : 'text-red-600'">Canteen Status</p>
+                        <h3 class="text-lg font-black text-dark-900" x-text="isOpen ? 'Open — accepting orders' : 'Closed — orders blocked'"></h3>
+                        <p class="text-xs text-gray-600 mt-0.5" x-text="statusLine()"></p>
+                        <p x-show="!isOpen && reasonLabel" x-cloak class="text-xs font-bold text-red-700 mt-1" x-text="'Reason: ' + reasonLabel"></p>
+                        <p x-show="notice" x-cloak class="text-xs font-bold mt-1" :class="isOpen ? 'text-emerald-700' : 'text-red-700'" x-text="notice"></p>
+                        <p x-show="error" x-cloak class="text-xs font-bold text-red-700 mt-1" x-text="error"></p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <button type="button" @click="apply('AUTO')" :disabled="busy || mode === 'AUTO'"
+                            class="px-4 py-2.5 rounded-xl text-xs font-bold border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 transition flex items-center gap-2">
+                        <i class="fa-solid fa-clock"></i> Automatic
+                    </button>
+                    <button type="button" @click="apply('FORCE_OPEN')" :disabled="busy || mode === 'FORCE_OPEN'"
+                            class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-600/30 transition flex items-center gap-2">
+                        <i class="fa-solid fa-store"></i> <span x-text="busy ? 'Working…' : 'Open now'"></span>
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <select x-model="reasonCode" aria-label="Reason for closing"
+                                class="px-3 py-2.5 rounded-xl border border-red-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-red-300">
+                            <option value="">Closing reason…</option>
+                            {% for reason in CLOSURE_REASONS %}
+                            <option value="{{ reason.code }}">{{ reason.label }}</option>
+                            {% endfor %}
+                        </select>
+                        <input x-show="reasonCode === 'OTHER'" x-cloak x-model="reason" maxlength="200" type="text"
+                               placeholder="Type the reason customers will see"
+                               class="px-3 py-2.5 rounded-xl border border-red-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-red-300">
+                        <button type="button" @click="close()" :disabled="busy"
+                                class="bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-red-600/30 transition flex items-center gap-2">
+                            <i class="fa-solid fa-store-slash"></i> Close
+                        </button>
+                    </div>
+                </div>
             </div>
 
 
@@ -850,48 +1163,39 @@
 
                                 </td>
 
-                                <td class="py-3.5 px-3 text-right space-x-1">
+                                 <td class="py-3.5 px-3 text-right space-x-1">
 
-                                    <form
-                                        method="POST"
-                                        action="{% url 'canteen_menu:update_user_status' u.id %}"
-                                        class="inline">
+                                     {% if u.account_status != 'restricted' and u.account_status != 'banned' and u.is_active %}
+                                     <button
+                                         type="button"
+                                         @click="openReasonModal('{% url 'canteen_menu:update_user_status' u.id %}', 'restrict')"
+                                         class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">
+                                         Restrict
+                                     </button>
+                                     {% endif %}
 
-                                        {% csrf_token %}
+                                     {% if u.account_status != 'banned' and u.is_active %}
+                                     <button
+                                         type="button"
+                                         @click="openReasonModal('{% url 'canteen_menu:update_user_status' u.id %}', 'ban')"
+                                         class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">
+                                         Ban
+                                     </button>
+                                     {% endif %}
 
-                                        {% if u.is_active and u.account_status != 'restricted' %}
+                                     {% if not u.is_active or u.account_status == 'restricted' or u.account_status == 'banned' %}
+                                     <form method="POST" action="{% url 'canteen_menu:update_user_status' u.id %}" class="inline">
+                                         {% csrf_token %}
+                                         <input type="hidden" name="action" value="activate">
+                                         <button
+                                             type="submit"
+                                             class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1.5 rounded-xl transition">
+                                             Activate
+                                         </button>
+                                     </form>
+                                     {% endif %}
 
-                                        <input type="hidden" name="action" value="restrict">
-
-                                        <button
-                                            type="submit"
-                                            class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">
-                                            Restrict
-                                        </button>
-
-                                        <input type="hidden" name="action" value="ban">
-
-                                        <button
-                                            type="submit"
-                                            class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">
-                                            Ban
-                                        </button>
-
-                                        {% else %}
-
-                                        <input type="hidden" name="action" value="activate">
-
-                                        <button
-                                            type="submit"
-                                            class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1.5 rounded-xl transition">
-                                            Activate
-                                        </button>
-
-                                        {% endif %}
-
-                                    </form>
-
-                                </td>
+                                 </td>
 
                             </tr>
 
@@ -1063,11 +1367,12 @@
                                             name="action"
                                             value="hold">
 
-                                        <button
-                                            type="submit"
-                                            class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">
-                                            Hold
-                                        </button>
+                                     <button
+                                         type="button"
+                                         @click="openReasonModal('{% url 'canteen_menu:update_delivery_staff_status' rider.id %}', 'hold')"
+                                         class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">
+                                         Hold
+                                     </button>
 
                                     </form>
 
@@ -1084,11 +1389,12 @@
                                             name="action"
                                             value="penalize">
 
-                                        <button
-                                            type="submit"
-                                            class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">
-                                            Penalize
-                                        </button>
+                                     <button
+                                         type="button"
+                                         @click="openReasonModal('{% url 'canteen_menu:update_delivery_staff_status' rider.id %}', 'penalize')"
+                                         class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">
+                                         Penalize
+                                     </button>
 
                                     </form>
 
@@ -1136,6 +1442,7 @@
                                 <th class="py-3 px-3">Order Number</th>
                                 <th class="py-3 px-3">Location</th>
                                 <th class="py-3 px-3">Assigned Rider</th>
+                                <th class="py-3 px-3">Proof Photo</th>
                                 <th class="py-3 px-3 text-right">Status</th>
 
                             </tr>
@@ -1160,29 +1467,39 @@
                                     {{ d.delivery_location }}
                                 </td>
 
-                                <td class="py-3.5 px-3 text-gray-800">
-                                    {% if d.rider %}{{ d.rider.get_full_name|default:d.rider.username }}{% elif d.assigned_to %}{{ d.assigned_to.get_full_name|default:d.assigned_to.username }}{% else %}Unassigned{% endif %}
-                                </td>
+                                 <td class="py-3.5 px-3 text-gray-800">
+                                     {% if d.rider %}{{ d.rider.get_full_name|default:d.rider.username }}{% elif d.assigned_to %}{{ d.assigned_to.get_full_name|default:d.assigned_to.username }}{% else %}Unassigned{% endif %}
+                                 </td>
 
-                                <td class="py-3.5 px-3 text-right">
+                                 <td class="py-3.5 px-3">
+                                     {% if d.proof_photo %}
+                                         <a href="{{ d.proof_photo.url }}" target="_blank" rel="noopener" class="inline-block" title="View Proof of Delivery">
+                                             <img src="{{ d.proof_photo.url }}" alt="Proof" class="w-9 h-9 object-cover rounded-lg border border-gray-200 hover:scale-110 transition shadow-sm">
+                                         </a>
+                                     {% else %}
+                                         <span class="text-gray-400 text-[10px] italic">Pending</span>
+                                     {% endif %}
+                                 </td>
 
-                                    <span class="bg-brand-50 text-brand-700 font-bold px-2.5 py-1 rounded-full text-[10px] uppercase">
-                                        {{ d.status }}
-                                    </span>
+                                 <td class="py-3.5 px-3 text-right">
 
-                                </td>
+                                     <span class="bg-brand-50 text-brand-700 font-bold px-2.5 py-1 rounded-full text-[10px] uppercase">
+                                         {{ d.status }}
+                                     </span>
 
-                            </tr>
+                                 </td>
 
-                            {% empty %}
+                             </tr>
 
-                            <tr>
+                             {% empty %}
 
-                                <td colspan="5" class="py-8 text-center text-gray-400">
-                                    No active delivery requests at the moment.
-                                </td>
+                             <tr>
 
-                            </tr>
+                                 <td colspan="6" class="py-8 text-center text-gray-400">
+                                     No active delivery requests at the moment.
+                                 </td>
+
+                             </tr>
 
                             {% endfor %}
 
@@ -1199,65 +1516,9 @@
 
         <!-- ========================================= -->
         <!-- 5. FEEDBACK & RATINGS -->
+        <!-- Kiosk vs delivery reviews, segregated -->
         <!-- ========================================= -->
-        <div x-show="activeTab === 'feedback'" class="space-y-6" style="display: none;">
-
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm">
-
-                <h2 class="text-xl font-black text-dark-900">
-                    Customer Feedback & Ratings
-                </h2>
-
-                <p class="text-xs text-gray-500 mt-0.5">
-                    Read student and faculty reviews regarding canteen meals and service.
-                </p>
-
-            </div>
-
-            {% if feedbacks %}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {% for fb in feedbacks %}
-                <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-3">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-xs font-bold text-gray-400">Order #{{ fb.order.order_number|default:"Walk-in" }}</span>
-                            <h4 class="text-sm font-black text-dark-900">
-                                {% if fb.customer %}
-                                    {{ fb.customer.get_full_name|default:fb.customer.username }}
-                                {% else %}
-                                    Anonymous Customer
-                                {% endif %}
-                            </h4>
-                        </div>
-                        <div class="flex items-center gap-1 bg-amber-50 text-amber-600 px-3 py-1 rounded-xl font-black text-xs border border-amber-200">
-                            <i class="fa-solid fa-star"></i>
-                            <span>{{ fb.rating }}.0</span>
-                        </div>
-                    </div>
-                    <p class="text-xs text-gray-700 bg-gray-50 p-3 rounded-2xl border border-gray-100">“{{ fb.comment|default:"No comment provided." }}”</p>
-                    <span class="text-[10px] text-gray-400 font-medium block">{{ fb.created_at|date:"M d, Y H:i" }}</span>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-8 text-center space-y-3">
-
-                <div class="w-16 h-16 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-2xl mx-auto">
-                    <i class="fa-solid fa-star"></i>
-                </div>
-
-                <h3 class="font-bold text-gray-800 text-sm">
-                    No feedback received yet
-                </h3>
-
-                <p class="text-xs text-gray-400 max-w-sm mx-auto">
-                    Customer ratings and reviews will automatically populate here once orders are completed.
-                </p>
-
-            </div>
-            {% endif %}
-
-        </div>
+        {% include "partials/feedback_ratings_panel.html" %}
 
 
         <!-- ========================================= -->
@@ -1522,68 +1783,273 @@
                 </div>
             </div>
 
-            <!-- Category Revenue Pie Chart & Breakdown -->
-            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Revenue Distribution by Category (Pie Chart)</h3>
-                    <span class="text-xs font-bold text-gray-400">Percentage Share</span>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                    <div class="md:col-span-1 h-60 relative flex justify-center">
-                        <canvas id="pieChart"></canvas>
-                    </div>
-                    <div class="md:col-span-2 overflow-x-auto">
-                        <table class="w-full text-left text-xs">
-                            <thead>
-                                <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
-                                    <th class="py-3 px-4">Category</th>
-                                    <th class="py-3 px-4 text-right">Revenue Share</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100 font-medium text-gray-700" id="categoryShareBody">
-                                <!-- Populated by JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Audit Reports Section -->
+            <!-- Top Selling Menu Items Sales Report -->
             <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
                 <div class="flex justify-between items-center">
                     <div>
-                        <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">System Audit Reports & Activity Logs</h3>
-                        <p class="text-xs text-gray-400">Recent staff, customer orders, and registration events.</p>
+                        <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Top Selling Menu Items Sales Report</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Itemized sales performance and total revenue generated across completed and ready orders.</p>
                     </div>
-                    <span class="px-3 py-1 bg-gray-100 text-gray-600 font-bold rounded-xl text-xs">Live Logs</span>
+                    <span class="text-xs font-bold text-brand-orange bg-brand-50 px-3 py-1.5 rounded-xl">Item Sales Summary</span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs">
                         <thead>
                             <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
-                                <th class="py-3 px-4">Timestamp</th>
-                                <th class="py-3 px-4">Event / Action</th>
-                                <th class="py-3 px-4">Actor / User</th>
-                                <th class="py-3 px-4">Type</th>
+                                <th class="py-3 px-4">Menu Item Name</th>
+                                <th class="py-3 px-4 text-center">Total Quantity Sold</th>
+                                <th class="py-3 px-4 text-right">Total Revenue</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
-                            {% for log in audit_logs %}
+                            {% for item in top_selling_items %}
                             <tr class="hover:bg-gray-50">
-                                <td class="py-3 px-4 text-gray-500 font-mono text-[11px]">{{ log.timestamp|date:"M j, Y, g:i a" }}</td>
-                                <td class="py-3 px-4 font-bold text-dark-900">{{ log.action }}</td>
-                                <td class="py-3 px-4 font-semibold">{{ log.user }}</td>
-                                <td class="py-3 px-4">
-                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-black {% if log.type == 'ORDER' %}bg-orange-100 text-orange-700{% else %}bg-blue-100 text-blue-700{% endif %}">
-                                        {{ log.type }}
-                                    </span>
-                                </td>
+                                <td class="py-3.5 px-4 font-bold text-dark-900">{{ item.item_name }}</td>
+                                <td class="py-3.5 px-4 text-center font-bold text-gray-600">{{ item.total_qty }} units</td>
+                                <td class="py-3.5 px-4 text-right font-black text-emerald-600">₱{{ item.total_revenue|floatformat:2 }}</td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="4" class="py-6 text-center text-gray-400">No audit logs recorded yet.</td></tr>
+                            <tr>
+                                <td colspan="3" class="py-6 text-center text-gray-400">No sales report data available yet.</td>
+                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+
+        </div>
+
+        <div x-show="activeTab === 'logs'" class="space-y-6" style="display: none;" @click="markActivityRead()">
+
+            <!-- Activity Log Header -->
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-black text-dark-900">Activity Log</h3>
+                        <p class="text-xs text-gray-400 mt-1">
+                            Every order, menu, payment, user, and delivery action across the canteen.
+                            <span x-text="'Refreshes automatically every ' + activityRefreshSeconds + 's.'"></span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-3 py-1.5 bg-gray-100 text-gray-600 font-bold rounded-xl text-xs">
+                            <span x-text="activityTotal"></span> entries
+                        </span>
+                        <button
+                            @click="loadActivityLog()"
+                            class="inline-flex items-center gap-2 px-3.5 py-2 bg-dark-900 text-white text-xs font-bold rounded-xl hover:bg-brand-500 transition">
+                            <i class="fa-solid fa-rotate" :class="activityLoading ? 'fa-spin' : ''"></i>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">Category</span>
+                        <select
+                            x-model="activityCategory"
+                            @change="activityPage = 1; loadActivityLog()"
+                            class="mt-1 w-full text-xs bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 font-semibold text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="ALL">All categories</option>
+                            <option value="ORDER">Orders</option>
+                            <option value="MENU">Menu & Stock</option>
+                            <option value="PAYMENT">Payments</option>
+                            <option value="USER">User Management</option>
+                            <option value="DELIVERY">Deliveries</option>
+                            <option value="SYSTEM">System</option>
+                        </select>
+                    </label>
+
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">Level</span>
+                        <select
+                            x-model="activityLevel"
+                            @change="activityPage = 1; loadActivityLog()"
+                            class="mt-1 w-full text-xs bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 font-semibold text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="ALL">All levels</option>
+                            <option value="INFO">Info</option>
+                            <option value="SUCCESS">Success</option>
+                            <option value="WARNING">Warning</option>
+                            <option value="DANGER">Critical</option>
+                        </select>
+                    </label>
+
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">Time Range</span>
+                        <select
+                            x-model="activityDays"
+                            @change="activityPage = 1; loadActivityLog()"
+                            class="mt-1 w-full text-xs bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 font-semibold text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="1">Last 24 hours</option>
+                            <option value="3">Last 3 days</option>
+                            <option value="7">Last 7 days</option>
+                            <option value="30">Last 30 days</option>
+                            <option value="90">Last 90 days</option>
+                        </select>
+                    </label>
+
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">Search</span>
+                        <div class="relative mt-1">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                            <input
+                                type="text"
+                                x-model="activitySearch"
+                                @input="onActivitySearch()"
+                                placeholder="Order #, item, user..."
+                                class="w-full text-xs bg-gray-50 rounded-xl pl-8 pr-8 py-2 border border-gray-200 font-semibold text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <button
+                                x-show="activitySearch"
+                                x-cloak
+                                @click="activitySearch = ''; onActivitySearch()"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 text-xs">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                            </button>
+                        </div>
+                    </label>
+                </div>
+
+                <div x-show="activityCategory !== 'ALL' || activityLevel !== 'ALL' || activityDays !== '7' || activitySearch" x-cloak class="mt-3">
+                    <button
+                        @click="resetActivityFilters()"
+                        class="text-[11px] font-bold text-brand-600 hover:text-brand-700 inline-flex items-center gap-1.5">
+                        <i class="fa-solid fa-filter-circle-xmark"></i> Clear all filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results / Timeline -->
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm">
+
+                <!-- Error state -->
+                <div x-show="activityError && !activityLoading" x-cloak
+                     class="flex flex-col items-center justify-center py-14 text-center">
+                    <div class="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 text-xl mb-3">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <p class="text-sm font-bold text-dark-900">Could not load the activity log</p>
+                    <p class="text-xs text-gray-400 mt-1 max-w-sm" x-text="activityError"></p>
+                    <button
+                        @click="loadActivityLog()"
+                        class="mt-4 px-4 py-2 bg-dark-900 text-white text-xs font-bold rounded-xl hover:bg-brand-500 transition">
+                        Try again
+                    </button>
+                </div>
+
+                <!-- Empty state -->
+                <div x-show="!activityLoading && !activityError && activityEntries.length === 0" x-cloak
+                     class="flex flex-col items-center justify-center py-14 text-center">
+                    <div class="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 text-xl mb-3">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                    <p class="text-sm font-bold text-dark-900">No activity found</p>
+                    <p class="text-xs text-gray-400 mt-1">Try widening the time range or clearing the filters.</p>
+                </div>
+
+                <!-- Loading skeletons -->
+                <div x-show="activityLoading && activityEntries.length === 0" class="space-y-3 py-2">
+                    <template x-for="i in 6" :key="i">
+                        <div class="flex items-center gap-4 animate-pulse">
+                            <div class="w-9 h-9 rounded-xl bg-gray-200"></div>
+                            <div class="flex-1 space-y-2">
+                                <div class="h-3 bg-gray-200 rounded-full w-1/2"></div>
+                                <div class="h-2.5 bg-gray-100 rounded-full w-1/3"></div>
+                            </div>
+                            <div class="h-4 bg-gray-200 rounded-full w-16"></div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Timeline table -->
+                <div x-show="activityEntries.length > 0" class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
+                                <th class="py-3 pr-4">Time</th>
+                                <th class="py-3 pr-4">Activity</th>
+                                <th class="py-3 pr-4">Actor</th>
+                                <th class="py-3">Type</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
+                            <template x-for="e in activityEntries" :key="e.id">
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="py-3.5 pr-4 whitespace-nowrap text-gray-400 font-mono text-[11px]"
+                                        x-text="e.created_display"></td>
+                                    <td class="py-3.5 pr-4">
+                                        <div class="font-bold text-dark-900" x-text="e.action"></div>
+                                        <div x-show="e.metadata && e.metadata.changes && Object.keys(e.metadata.changes).length" x-cloak class="mt-1.5 space-y-0.5">
+                                            <template x-for="line in describeChanges(e.metadata.changes)" :key="line">
+                                                <div class="text-[11px] font-semibold text-gray-500 flex items-center gap-1.5">
+                                                    <span class="inline-flex items-center justify-center w-4 h-4 rounded bg-gray-100 text-gray-500">
+                                                        <i class="fa-solid fa-right-left text-[8px]"></i>
+                                                    </span>
+                                                    <span x-text="line"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                        <div x-show="e.target" x-cloak class="mt-1 text-[11px] font-semibold text-gray-400"
+                                             x-text="e.target"></div>
+                                    </td>
+                                    <td class="py-3.5 pr-4 whitespace-nowrap">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-7 h-7 rounded-full bg-brand-500/10 text-brand-600 flex items-center justify-center text-[10px] font-black uppercase"
+                                                  x-text="(e.actor || 'S').charAt(0)"></span>
+                                            <div>
+                                                <div class="font-semibold" x-text="e.actor"></div>
+                                                <div x-show="e.is_guest" x-cloak class="text-[10px] text-gray-400">Guest / Walk-in</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3.5 whitespace-nowrap">
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black border"
+                                              :class="categoryStyle(e.category)">
+                                            <i :class="'fa-solid ' + levelIcon(e.level)"></i>
+                                            <span x-text="e.category_label || e.category"></span>
+                                        </span>
+                                        <div class="mt-1">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border"
+                                                  :class="levelStyle(e.level)">
+                                                <i :class="'fa-solid ' + levelIcon(e.level)" class="mr-0.5"></i>
+                                                <span x-text="levelLabel(e.level)"></span>
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div x-show="activityEntries.length > 0" x-cloak
+                     class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-5 mt-2 border-t border-gray-100">
+                    <p class="text-[11px] text-gray-400 font-semibold">
+                        Page <span x-text="activityPage"></span> of <span x-text="activityPages"></span> ·
+                        <span x-text="activityTotal"></span> total
+                    </p>
+                    <div class="flex gap-2">
+                        <button
+                            @click="loadActivityLog(activityPage - 1)"
+                            :disabled="activityPage <= 1"
+                            class="px-3.5 py-2 rounded-xl text-xs font-bold transition inline-flex items-center gap-2
+                                   disabled:opacity-40 disabled:cursor-not-allowed
+                                   bg-gray-100 text-gray-700 hover:bg-gray-200">
+                            <i class="fa-solid fa-chevron-left text-[10px]"></i> Previous
+                        </button>
+                        <button
+                            @click="loadActivityLog(activityPage + 1)"
+                            :disabled="activityPage >= activityPages"
+                            class="px-3.5 py-2 rounded-xl text-xs font-bold transition inline-flex items-center gap-2
+                                   disabled:opacity-40 disabled:cursor-not-allowed
+                                   bg-dark-900 text-white hover:bg-brand-500">
+                            Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1718,6 +2184,20 @@
                     }
                 }, 200);
             });
+        </script>
+
+        <script>
+            function togglePassword(fieldId, btn) {
+                const input = document.getElementById(fieldId);
+                const icon = btn.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.className = 'fa-solid fa-eye-slash';
+                } else {
+                    input.type = 'password';
+                    icon.className = 'fa-solid fa-eye';
+                }
+            }
         </script>
 
     </main>
@@ -2176,11 +2656,18 @@
                         Password
                     </label>
 
-                    <input
-                        type="password"
-                        name="password"
-                        required
-                        class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    <div class="relative">
+                        <input
+                            type="password"
+                            id="new-staff-password"
+                            name="password"
+                            required
+                            class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+
+                        <button type="button" onclick="togglePassword('new-staff-password', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
 
                 </div>
 
@@ -2377,5 +2864,115 @@
         </div>
     </div>
 
+    <!-- Change Password Modal -->
+    <div x-show="showChangePasswordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" x-cloak style="display: none;">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-dark-900 border border-gray-100" @click.outside="showChangePasswordModal = false">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+                <h3 class="text-base font-black flex items-center gap-2"><i class="fa-solid fa-key text-brand-500"></i> Change Password</h3>
+                <button @click="showChangePasswordModal = false" class="text-gray-400 hover:text-gray-700 font-bold text-sm">✕</button>
+            </div>
+            <form @submit.prevent="
+                fetch('{% url "accounts:change_password" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    })
+                })
+                .then(async res => {
+                    const data = await res.json().catch(() => ({ success: false, error: 'Invalid server response' }));
+                    if (res.ok && data.success) {
+                        alert('Password successfully updated!');
+                        showChangePasswordModal = false;
+                        currentPassword = '';
+                        newPassword = '';
+                        confirmPassword = '';
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to update password'));
+                    }
+                })
+                .catch(err => alert('Error connecting to server: ' + err.message))
+            " class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Current Password</label>
+                    <div class="relative">
+                        <input type="password" id="cp-current" x-model="currentPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs text-dark-900 font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <button type="button" onclick="togglePassword('cp-current', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">New Password</label>
+                    <div class="relative">
+                        <input type="password" id="cp-new" x-model="newPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs text-dark-900 font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <button type="button" onclick="togglePassword('cp-new', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Confirm New Password</label>
+                    <div class="relative">
+                        <input type="password" id="cp-confirm" x-model="confirmPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs text-dark-900 font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <button type="button" onclick="togglePassword('cp-confirm', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                    <button type="button" @click="showChangePasswordModal = false" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-brand-500 text-white text-xs font-bold hover:bg-brand-600 transition shadow-md shadow-brand-500/20">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reason Selection Modal -->
+    <div x-show="showReasonModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" x-cloak style="display: none;">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-dark-900 border border-gray-100" @click.outside="showReasonModal = false">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+                <h3 class="text-base font-black flex items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> 
+                    <span>Specify Reason for <span x-text="reasonActionName.toUpperCase()" class="text-brand-500"></span></span>
+                </h3>
+                <button @click="showReasonModal = false" class="text-gray-400 hover:text-gray-700 font-bold text-sm">✕</button>
+            </div>
+            <form method="POST" :action="reasonFormUrl" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" x-model="reasonFormAction">
+                
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-gray-700">Select Reason:</label>
+                    <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                        <template x-for="preset in reasonPresets" :key="preset">
+                            <label class="flex items-center gap-2.5 p-2 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer text-xs font-medium">
+                                <input type="radio" name="reason_preset" x-model="selectedReason" :value="preset" class="text-brand-500 focus:ring-brand-500">
+                                <span x-text="preset"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <div x-show="selectedReason === 'Other reason'">
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Custom Reason</label>
+                    <input type="text" x-model="customReason" placeholder="Type custom reason..." class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <input type="hidden" name="reason" x-model="finalReason">
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                    <button type="button" @click="showReasonModal = false" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-brand-500 text-white text-xs font-bold hover:bg-brand-600 transition shadow-md shadow-brand-500/20">Confirm Action</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 </div>
+
 {% endblock %}

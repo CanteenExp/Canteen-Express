@@ -260,7 +260,21 @@
         }
     </style>
 </head>
-<body class="bg-brand-dark text-brand-light h-screen flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative">
+<body class="bg-brand-dark text-brand-light h-screen h-[100dvh] flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative">
+
+<!-- MANUAL CLOSURE OVERLAY: rendered server-side state, kept live by polling -->
+<div id="system-closed-overlay" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(6,6,7,0.94); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:24px;">
+    <div style="max-width:430px; width:100%; text-align:center; background:linear-gradient(160deg, rgba(32,32,41,0.95), rgba(18,18,24,0.92)); border:1px solid rgba(249,115,22,0.35); border-radius:26px; padding:36px 28px; box-shadow:0 28px 70px rgba(0,0,0,0.6);">
+        <div style="width:72px; height:72px; margin:0 auto 18px; border-radius:22px; display:flex; align-items:center; justify-content:center; background:rgba(249,115,22,0.14); border:1px solid rgba(249,115,22,0.4); font-size:30px; color:#f97316;">
+            <i class="fa-solid fa-store-slash"></i>
+        </div>
+        <h2 style="margin:0 0 8px; font-size:22px; font-weight:800; color:#ffffff;">Canteen is Currently Closed</h2>
+        <p style="margin:0; font-size:13.5px; line-height:1.6; color:#a1a1aa;">We are not accepting new orders right now. Please check back shortly.</p>
+        <p id="system-closed-reason" style="display:none; margin:18px 0 0; padding:12px 14px; border-radius:14px; background:rgba(249,115,22,0.10); border:1px solid rgba(249,115,22,0.28); color:#fdba74; font-size:13px; font-weight:600; line-height:1.5;"></p>
+        <button type="button" onclick="refreshSystemStatus()" style="margin-top:22px; width:100%; background:#f97316; color:#ffffff; border:0; border-radius:14px; padding:13px; font-size:13px; font-weight:800; cursor:pointer;">Check Again</button>
+        <button type="button" onclick="dismissClosedOverlay()" style="margin-top:10px; width:100%; background:rgba(255,255,255,0.06); color:#e4e4e7; border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:13px; font-size:13px; font-weight:700; cursor:pointer;">View My Existing Order</button>
+    </div>
+</div>
 
     <!-- ================= FLOATING TOAST NOTIFICATION (AUTO-DISMISSING) ================= -->
     <div id="pending-order-banner" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-black px-5 py-3 rounded-2xl shadow-2xl border border-amber-300 text-xs font-bold transition-all duration-300 transform -translate-y-4 opacity-0 max-w-xl w-[90%] sm:w-auto flex items-center justify-between gap-4">
@@ -392,7 +406,7 @@
 
             <div class="flex items-center gap-2" id="search-container">
                 <!-- Expanding Search Wrapper (Expands Left) -->
-                <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10 shadow-lg">
+                <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10">
                     <button onclick="toggleSearch(event)" id="search-toggle-btn" type="button" class="w-10 h-10 shrink-0 flex items-center justify-center text-white transition active:scale-95">
                         <i class="fa-solid fa-magnifying-glass text-xs"></i>
                     </button>
@@ -404,6 +418,11 @@
                         class="w-full bg-transparent border-0 pl-1 pr-3 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
                     >
                 </div>
+
+                <!-- Order History / Activity Log -->
+                <button onclick="openOrderHistory()" id="history-toggle-btn" class="w-10 h-10 shrink-0 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95" title="Order History & Activity">
+                    <i class="fa-solid fa-clock-rotate-left text-xs"></i>
+                </button>
 
                 <!-- Light / Dark Mode Toggle Button -->
                 <button onclick="toggleTheme()" id="theme-toggle-btn" class="w-10 h-10 shrink-0 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95" title="Toggle Light/Dark Mode">
@@ -425,7 +444,42 @@
 
             {% for cat in categories %}
             <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
-                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid {% if 'ulam' in cat.name|lower %}fa-drumstick-bite{% elif 'kakanin' in cat.name|lower %}fa-plate-wheat{% elif 'candies' in cat.name|lower %}fa-candy-cane{% elif 'pastry' in cat.name|lower or 'cake' in cat.name|lower %}fa-bread-slice{% elif 'pasta' in cat.name|lower %}fa-bowl-food{% elif 'instant' in cat.name|lower %}fa-fire{% elif 'add' in cat.name|lower or 'addon' in cat.name|lower or 'extra' in cat.name|lower %}fa-puzzle-piece{% elif 'rice' in cat.name|lower %}fa-bowl-rice{% elif 'biscuit' in cat.name|lower %}fa-cookie{% elif 'beverage' in cat.name|lower or 'drink' in cat.name|lower %}fa-bottle-water{% elif 'meryenda' in cat.name|lower %}fa-burger{% elif 'diet' in cat.name|lower %}fa-heart-pulse{% else %}fa-bowl-food{% endif %}"></i></span>
+                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl">
+                    {% if 'ulam' in cat.name|lower %}
+                        <i class="fa-solid fa-drumstick-bite"></i>
+                    {% elif 'pasta' in cat.name|lower or 'noodle' in cat.name|lower %}
+                        <svg class="w-6 h-6 text-current" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3.5 11h17a0.5 0.5 0 0 1 0.5 0.5 8 8 0 0 1-8 8h-3a8 8 0 0 1-8-8 0.5 0.5 0 0 1 0.5-0.5z"/>
+                            <rect x="9" y="5" width="1.5" height="6" rx="0.75"/>
+                            <rect x="12" y="4" width="1.5" height="7" rx="0.75"/>
+                            <rect x="15" y="6" width="1.5" height="5" rx="0.75"/>
+                            <line x1="6" y1="5" x2="20" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="6" y1="7" x2="19" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    {% elif 'instant' in cat.name|lower %}
+                        <i class="fa-solid fa-mug-hot"></i>
+                    {% elif 'pastry' in cat.name|lower or 'bakery' in cat.name|lower %}
+                        <i class="fa-solid fa-bread-slice"></i>
+                    {% elif 'kakanin' in cat.name|lower %}
+                        <i class="fa-solid fa-plate-wheat"></i>
+                    {% elif 'candies' in cat.name|lower %}
+                        <i class="fa-solid fa-candy-cane"></i>
+                    {% elif 'add' in cat.name|lower or 'addon' in cat.name|lower or 'extra' in cat.name|lower %}
+                        <i class="fa-solid fa-circle-plus"></i>
+                    {% elif 'rice' in cat.name|lower %}
+                        <i class="fa-solid fa-bowl-rice"></i>
+                    {% elif 'biscuit' in cat.name|lower %}
+                        <i class="fa-solid fa-cookie"></i>
+                    {% elif 'beverage' in cat.name|lower or 'drink' in cat.name|lower %}
+                        <i class="fa-solid fa-bottle-water"></i>
+                    {% elif 'meryenda' in cat.name|lower %}
+                        <i class="fa-solid fa-burger"></i>
+                    {% elif 'diet' in cat.name|lower %}
+                        <i class="fa-solid fa-heart-pulse"></i>
+                    {% else %}
+                        <i class="fa-solid fa-bowl-food"></i>
+                    {% endif %}
+                </span>
                 <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">{{ cat.name }}</span>
             </button>
             {% endfor %}
@@ -446,7 +500,7 @@
 
 
     <!-- ================= FOOTER BAR ================= -->
-    <footer class="shrink-0 glass-panel glass-panel-accent border-t border-white/10 p-3 sm:p-4 shadow-2xl z-20">
+    <footer class="shrink-0 glass-panel glass-panel-accent border-t border-white/10 p-3 sm:p-4 pb-[max(env(safe-area-inset-bottom),12px)] shadow-2xl z-20">
         <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
             <div class="text-left">
@@ -519,25 +573,43 @@
     </div>
 
 
+    <!-- ================= ORDER HISTORY / ACTIVITY LOG MODAL ================= -->
+    <div id="order-history-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[80vh] modal-pop">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center glass-panel-head">
+                <h3 class="font-black text-white text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-brand-orange"></i> Order History & Activity
+                </h3>
+                <button onclick="closeOrderHistory()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="order-history-container" class="p-5 overflow-y-auto space-y-3 flex-1 glass-scroll">
+                <!-- Populated dynamically -->
+            </div>
+            <div class="p-4 glass-panel-foot border-t border-white/10 text-center text-xs text-brand-slate">
+                <span>Palawan State University Canteen Express</span>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= QUEUE SLIP MODAL (DOWNLOADABLE & WITH BARCODE) ================= -->
     <div id="queue-slip-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 overflow-y-auto">
         <div class="max-w-sm w-full space-y-4 my-auto">
             
             <!-- Target Printable Queue Slip Container -->
-            <div id="queue-slip-card" class="bg-white text-gray-900 rounded-3xl p-6 shadow-2xl space-y-4 text-center border-2 border-gray-100">
+            <div id="queue-slip-card" class="bg-white text-gray-900 rounded-3xl p-4 shadow-2xl space-y-3 text-center border-2 border-gray-100">
                 
                 <!-- Slip Header -->
-                <div class="border-b border-dashed border-gray-300 pb-3 space-y-1">
-                    <h3 class="text-lg font-black text-gray-900 uppercase tracking-wider">CANTEEN EXPRESS</h3>
+                <div class="border-b border-dashed border-gray-300 pb-2 space-y-0.5">
+                    <h3 class="text-base font-black text-gray-900 uppercase tracking-wider">CANTEEN EXPRESS</h3>
                     <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest" id="slip-title-label">Official Kiosk Queue Slip</p>
                     <p class="text-[9px] text-gray-400 hidden" id="slip-receipt-date"></p>
                 </div>
 
                 <!-- Queue Number & Mode -->
-                <div class="bg-orange-50 rounded-2xl p-4 border border-orange-100 space-y-1">
+                <div class="bg-orange-50 rounded-2xl p-3 border border-orange-100 space-y-0.5">
                     <span class="text-[10px] font-black uppercase tracking-wider text-orange-600 block">Queue Number</span>
-                    <span id="slip-queue-number" class="text-4xl font-black text-orange-600 tracking-tight">#CE-0000</span>
-                    <div class="pt-1 flex items-center justify-center gap-2">
+                    <span id="slip-queue-number" class="text-3xl font-black text-orange-600 tracking-tight">#CE-0000</span>
+                    <div class="pt-0.5 flex items-center justify-center gap-2">
                         <span id="slip-dining-mode" class="inline-block bg-orange-600 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider">DINE-IN</span>
                         <span id="slip-payment-badge" class="hidden inline-block bg-emerald-600 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider">PAID</span>
                     </div>
@@ -546,18 +618,24 @@
                 <!-- Order Summary Items List -->
                 <div class="text-left space-y-2 text-xs">
                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block border-b border-gray-100 pb-1">Order List</span>
-                    <div id="slip-items-list" class="space-y-1 max-h-40 overflow-y-auto pr-1">
+                    <div id="slip-items-list" class="space-y-1 max-h-28 overflow-y-auto pr-1">
                         <!-- Dynamic Item Lines -->
                     </div>
-                    <div class="border-t border-dashed border-gray-300 pt-2 flex justify-between items-center text-sm font-black text-gray-900">
+                    <div class="border-t border-dashed border-gray-300 pt-1.5 flex justify-between items-center text-xs font-black text-gray-900">
                         <span>TOTAL AMOUNT:</span>
-                        <span id="slip-total-amount" class="text-orange-600 text-base">₱0.00</span>
+                        <span id="slip-total-amount" class="text-orange-600 text-sm">₱0.00</span>
                     </div>
                 </div>
 
+                <!-- Expiry Callout: pay at the counter before this time -->
+                <div id="slip-expiry-line" class="hidden rounded-2xl bg-amber-50 border border-amber-200 px-3 py-2 text-center">
+                    <span class="text-[9px] font-black uppercase tracking-wider text-amber-700 block"><i class="fa-regular fa-clock"></i> Counter payment only · valid for <span id="slip-expiry-hours">1</span>h</span>
+                    <span class="text-xs font-black text-amber-800 block mt-0.5">Pay before <span id="slip-expires-at">--:--</span></span>
+                </div>
+
                 <!-- Barcode Container / Footer -->
-                <div class="border-t border-dashed border-gray-300 pt-3 flex flex-col items-center justify-center" id="slip-footer-container">
-                    <svg id="slip-barcode" class="w-full h-16"></svg>
+                <div class="border-t border-dashed border-gray-300 pt-2 flex flex-col items-center justify-center" id="slip-footer-container">
+                    <svg id="slip-barcode" class="w-full h-12"></svg>
                     <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1" id="slip-footer-text">Scan at Counter to Process Payment</span>
                 </div>
 
@@ -565,10 +643,17 @@
 
             <!-- Action Buttons Below Queue Slip -->
             <div class="glass-panel glass-panel-accent rounded-3xl p-3.5 space-y-2 modal-pop">
-                <button onclick="downloadQueueSlip()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-download"></i>
-                    <span id="slip-download-text">Download Slip as Image</span>
-                </button>
+                <!-- Icon actions: Save Slip + Close (one container, professional) -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="downloadQueueSlip()" id="download-slip-btn" class="w-full h-12 rounded-xl bg-brand-orange hover:bg-orange-600 text-white shadow-lg shadow-brand-orange/25 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer">
+                        <i class="fa-solid fa-download text-sm"></i>
+                        <span id="slip-download-text" class="font-extrabold text-[11px] uppercase tracking-wider">Download</span>
+                    </button>
+                    <button onclick="closeQueueSlipModal()" id="close-slip-btn" class="w-full h-12 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/10 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                        <span class="font-extrabold text-[11px] uppercase tracking-wider">Close</span>
+                    </button>
+                </div>
 
                 <div class="grid grid-cols-2 gap-2" id="slip-actions-grid">
                     <button onclick="editPendingOrder()" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider text-[11px] transition border border-white/10 flex items-center justify-center gap-1.5">
@@ -580,13 +665,42 @@
                         <span>Cancel Order</span>
                     </button>
                 </div>
+            </div>
 
-                <button onclick="closeQueueSlipModal()" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider text-[11px] transition border border-white/10 flex items-center justify-center gap-1.5">
+        </div>
+    </div>
+
+    <!-- ================= OPTIONAL FEEDBACK MODAL (after e-receipt) ================= -->
+    <div id="feedback-modal" class="fixed inset-0 z-[80] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="bg-brand-card border border-white/10 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl modal-pop">
+            <div class="flex items-start justify-between gap-2">
+                <div>
+                    <h3 class="font-black text-white text-base"><i class="fa-solid fa-star text-amber-400 mr-1.5"></i>Rate your experience</h3>
+                    <p class="text-[10px] text-gray-400 font-semibold mt-0.5" id="feedback-order-label"></p>
+                </div>
+                <button onclick="skipFeedback()" class="text-gray-400 hover:text-white text-lg px-1 shrink-0" aria-label="Close feedback form">
                     <i class="fa-solid fa-xmark"></i>
-                    <span>Close / Back to Menu</span>
                 </button>
             </div>
 
+            <div class="flex justify-center gap-1.5 text-2xl text-amber-500" id="feedback-star-container">
+                <button type="button" onclick="setRating(1)" class="star-btn text-amber-500" data-star="1"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setRating(2)" class="star-btn text-amber-500" data-star="2"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setRating(3)" class="star-btn text-amber-500" data-star="3"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setRating(4)" class="star-btn text-amber-500" data-star="4"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setRating(5)" class="star-btn text-amber-500" data-star="5"><i class="fa-solid fa-star"></i></button>
+            </div>
+
+            <p class="text-[10px] text-gray-400 text-center font-semibold">Tap your rating and optionally leave a comment.</p>
+
+            <textarea id="feedback-comment-input" placeholder="Write feedback or comment (optional)..." class="w-full bg-white/5 border border-white/10 text-white placeholder:text-gray-500 rounded-xl p-3 text-xs focus:outline-none focus:border-brand-orange resize-none h-20"></textarea>
+
+            <p id="feedback-note" class="hidden text-[10px] font-bold text-amber-400 text-center leading-relaxed"></p>
+
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="skipFeedback()" class="w-full bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 font-bold py-2.5 rounded-xl uppercase tracking-wider text-[11px] transition active:scale-95">Skip</button>
+                <button onclick="submitKioskFeedback()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider text-[11px] transition active:scale-95">Submit</button>
+            </div>
         </div>
     </div>
 
@@ -618,6 +732,28 @@
     </div>
 
 
+    <!-- ================= CHECKOUT ERROR MODAL (Matching Image 1) ================= -->
+    <div id="checkout-error-modal" class="fixed inset-0 z-[90] hidden flex items-center justify-center p-4" style="background: rgba(8, 8, 12, 0.65); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);">
+        <div class="glass-panel glass-panel-accent rounded-3xl p-6 sm:p-7 max-w-xs sm:max-w-sm w-full text-center space-y-5 modal-pop relative shadow-2xl">
+            <button onclick="closeCheckoutErrorModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 w-8 h-8 rounded-full flex items-center justify-center transition cursor-pointer" aria-label="Close error modal">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+            <div class="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-400 flex items-center justify-center mx-auto text-2xl shadow-lg shadow-red-500/10">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="space-y-1.5">
+                <h3 class="text-lg font-black text-white tracking-wide">Checkout Error</h3>
+                <p id="checkout-error-message" class="text-xs text-gray-300 font-medium leading-relaxed">
+                    Canteen is currently closed. Operating hours are Monday to Friday, 8:00 AM to 5:00 PM.
+                </p>
+            </div>
+            <button onclick="closeCheckoutErrorModal()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3.5 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/30 transition active:scale-95 cursor-pointer">
+                GOT IT
+            </button>
+        </div>
+    </div>
+
+
     <!-- ================= ITEM EXPAND / DETAILS MODAL ================= -->
     <div id="item-details-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 overflow-y-auto">
         <div class="glass-panel glass-panel-accent rounded-3xl max-w-md w-full overflow-hidden modal-pop relative my-8">
@@ -642,23 +778,13 @@
                 <!-- ADD-ONS / CUSTOMIZERS -->
                 <div class="space-y-4 pt-3 border-t border-white/10" id="modal-addons-container">
                     
-                    <!-- Rice Counter (- / +) -->
-                    <div id="modal-rice-container" class="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
-                        <div>
-                            <span class="text-xs font-bold text-white block">Steamed Rice Portions</span>
-                            <span class="text-[10px] text-brand-orange font-bold">₱15.00 per serving</span>
-                        </div>
-                        <div class="flex items-center gap-3 bg-brand-dark px-3 py-1.5 rounded-xl border border-white/10">
-                            <button type="button" onclick="changeRiceQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition"><i class="fa-solid fa-minus text-xs"></i></button>
-                            <span id="modal-rice-count" class="text-xs font-black text-white w-4 text-center">0</span>
-                            <button type="button" onclick="changeRiceQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition"><i class="fa-solid fa-plus text-xs"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="space-y-1.5" id="modal-beverage-container">
-                        <label class="text-[11px] font-bold text-brand-slate uppercase tracking-wider block">Optional Beverage Pairing</label>
-                        <select id="modal-beverage-select" onchange="updateModalTotal()" class="w-full bg-brand-dark border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange">
-                            <option value="">-- No Beverage --</option>
+                    <!-- Size / Volume Selector for Nature's Spring & Bottled Water -->
+                    <div class="space-y-1.5" id="modal-size-container" style="display: none;">
+                        <label class="text-[11px] font-bold text-brand-slate uppercase tracking-wider block flex items-center gap-1.5">
+                            <i class="fa-solid fa-bottle-water text-brand-orange"></i> Select Size / Volume
+                        </label>
+                        <select id="modal-size-select" onchange="updateModalTotal()" class="w-full bg-brand-dark border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange">
+                            <!-- Populated dynamically -->
                         </select>
                     </div>
                 </div>
@@ -666,11 +792,19 @@
                 <div class="flex items-center justify-between pt-3 border-t border-white/10">
                     <div>
                         <span class="text-[10px] text-brand-slate uppercase font-bold block">Total Amount</span>
-                        <span id="modal-item-price" class="text-2xl font-black text-brand-orange">₱0.00</span>
+                        <span id="modal-item-price" class="text-xl sm:text-2xl font-black text-brand-orange">₱0.00</span>
                     </div>
-                    <button id="modal-add-btn" onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-6 py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95">
-                        <i class="fa-solid fa-cart-plus"></i> Add to Cart
-                    </button>
+                    <div class="flex items-center gap-3">
+                        <!-- Quantity Counter [ - qty + ] -->
+                        <div class="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-2xl border border-white/10 backdrop-blur-md">
+                            <button type="button" onclick="changeItemModalQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-minus text-xs"></i></button>
+                            <span id="modal-item-qty" class="text-sm font-black text-white w-5 text-center">1</span>
+                            <button type="button" onclick="changeItemModalQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-plus text-xs"></i></button>
+                        </div>
+                        <button id="modal-add-btn" onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-5 py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95 cursor-pointer">
+                            <i class="fa-solid fa-cart-plus"></i> Add
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -693,6 +827,7 @@ let menuData = rawMenuData.map(item => ({
     price: parseFloat(item.price || 0),
     desc: item.desc || item.description || '',
     badge: item.badge || '',
+    stock: (item.stock === null || item.stock === undefined) ? -1 : parseInt(item.stock, 10),
     img: item.img || item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
 }));
 
@@ -723,6 +858,7 @@ async function fetchLatestMenu() {
                 price: parseFloat(item.price || 0),
                 desc: item.desc || item.description || '',
                 badge: item.badge || '',
+                stock: (item.stock === null || item.stock === undefined) ? -1 : parseInt(item.stock, 10),
                 img: item.img || item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
             }));
             renderMenu();
@@ -765,13 +901,26 @@ function renderMenu() {
             ? `<span class="absolute top-2 right-2 bg-brand-dark/90 backdrop-blur-md border border-white/10 text-brand-amber text-[9px] font-black uppercase px-2 py-0.5 rounded-md">${item.badge}</span>` 
             : '';
 
+        const soldOut = item.stock === 0;
+        const lowStock = item.stock !== -1 && item.stock > 0 && item.stock <= 5;
+        const stockBadgeHTML = soldOut
+            ? `<span class="absolute top-2 left-2 bg-red-500/95 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md">Sold Out</span>`
+            : (lowStock ? `<span class="absolute top-2 left-2 bg-amber-500/95 text-black text-[9px] font-black uppercase px-2 py-0.5 rounded-md">${item.stock} left</span>` : '');
+
         const card = document.createElement('div');
-        card.className = "bg-brand-card rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group cursor-pointer shadow-lg h-full";
-        card.onclick = () => openItemModal(item.id);
+        card.className = "bg-brand-card rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group cursor-pointer shadow-lg" + (soldOut ? " opacity-60" : "");
+        card.onclick = () => {
+            if (soldOut) {
+                kioskToast('This item is sold out.');
+                return;
+            }
+            openItemModal(item.id);
+        };
         card.innerHTML = `
-            <div class="relative w-full h-36 sm:h-40 overflow-hidden bg-white/5 shrink-0">
-                <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+            <div class="relative h-36 w-full overflow-hidden bg-white/5 flex items-center justify-center p-3">
+                <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-300">
                 ${badgeHTML}
+                ${stockBadgeHTML}
                 <span class="absolute bottom-2 right-2 w-7 h-7 rounded-xl bg-white/5 group-hover:bg-brand-orange/25 group-hover:text-brand-orange text-brand-slate flex items-center justify-center transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg></span>
             </div>
             <div class="p-3 flex-1 flex flex-col justify-between gap-1.5">
@@ -782,6 +931,10 @@ function renderMenu() {
                 </div>
                 <div class="pt-1.5 border-t border-white/5 flex items-center justify-between gap-2">
                     <span class="text-sm font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
+                    ${soldOut ? '<span class="text-[9px] font-black text-red-400 uppercase tracking-wider">Sold Out</span>' : `
+                    <button type="button" onclick="event.stopPropagation(); quickAddToCart(${item.id})" class="w-8 h-8 rounded-xl bg-brand-orange hover:bg-orange-600 text-white flex items-center justify-center transition active:scale-95 shadow cursor-pointer" title="Quick Add">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                    </button>`}
                 </div>
             </div>
         `;
@@ -829,28 +982,69 @@ function closeCartDrawer() {
     setTimeout(() => el.classList.add('hidden'), 260);
 }
 
-function addToCart(itemId) {
+function kioskToast(msg) {
+    let t = document.getElementById('kiosk-toast');
+    if (!t) {
+        t = document.createElement('div');
+        t.id = 'kiosk-toast';
+        t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(0,0,0,.92);color:#fff;padding:10px 18px;border-radius:12px;font-size:12px;font-weight:700;z-index:99999;box-shadow:0 8px 30px rgba(0,0,0,.4);pointer-events:none;border:1px solid rgba(255,255,255,.15);opacity:0;transition:opacity .3s;';
+        document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._h);
+    t._h = setTimeout(() => { t.style.opacity = '0'; }, 2200);
+}
+
+function quickAddToCart(itemId) {
+    const item = menuData.find(i => i.id === itemId);
+    if (!item) return;
+    if (item.stock === 0) {
+        kioskToast('This item is sold out.');
+        return;
+    }
+    addToCart(itemId);
+}
+
+function addToCart(itemId, customItem = null) {
     if (currentPendingOrder && Object.keys(cart).length === 0) {
         showPendingBanner();
         return;
     }
 
-    if (cart[itemId]) {
-        cart[itemId].qty += 1;
-    } else {
-        const item = menuData.find(i => i.id === itemId);
-        if (item) {
-            cart[itemId] = { ...item, qty: 1 };
+    const item = menuData.find(i => i.id === itemId);
+    if (!item && !customItem) return;
+
+    const baseItem = customItem || item;
+    const cartKey = customItem && customItem.cartKey ? customItem.cartKey : itemId;
+
+    if (baseItem.stock === 0) {
+        kioskToast('This item is sold out.');
+        return;
+    }
+
+    if (cart[cartKey]) {
+        if (baseItem.stock !== -1 && cart[cartKey].qty >= baseItem.stock) {
+            kioskToast(`Only ${baseItem.stock} left in stock.`);
+            return;
         }
+        cart[cartKey].qty += 1;
+    } else {
+        cart[cartKey] = { ...baseItem, id: itemId, qty: 1 };
     }
     updateCartUI();
 }
 
-function updateQuantity(itemId, change) {
-    if (cart[itemId]) {
-        cart[itemId].qty += change;
-        if (cart[itemId].qty <= 0) {
-            delete cart[itemId];
+function updateQuantity(cartKey, change) {
+    if (cart[cartKey]) {
+        const stock = cart[cartKey].stock === undefined ? -1 : cart[cartKey].stock;
+        if (change > 0 && stock !== -1 && cart[cartKey].qty + change > stock) {
+            kioskToast(`Only ${stock} left in stock.`);
+            return;
+        }
+        cart[cartKey].qty += change;
+        if (cart[cartKey].qty <= 0) {
+            delete cart[cartKey];
         }
     }
     updateCartUI();
@@ -969,10 +1163,13 @@ async function checkoutOrder() {
                 cart: cart,
                 cart_array: cartArray,
                 total_amount: totalAmount,
-                dining_option: diningOption
+                dining_option: diningOption,
+                expires_at: data.expires_at,
+                expiry_hours: data.expiry_hours
             };
 
             localStorage.setItem('canteen_pending_order', JSON.stringify(currentPendingOrder));
+            recordOrderInHistory(currentPendingOrder);
 
             cart = {};
             updateCartUI();
@@ -981,11 +1178,11 @@ async function checkoutOrder() {
             openQueueSlipModal();
             showPendingBanner();
         } else {
-            alert("Error: " + data.message);
+            showCheckoutErrorModal(data.message || 'Unable to process your order.');
         }
     } catch (error) {
         console.error("Checkout error:", error);
-        alert("Failed to process queue slip. Please check server.");
+        showCheckoutErrorModal('Failed to process queue slip. Please check server.');
     } finally {
         if (drawerPayBtn) {
             drawerPayBtn.disabled = false;
@@ -995,6 +1192,26 @@ async function checkoutOrder() {
 }
 
 // ================= QUEUE SLIP & BARCODE RENDERER =================
+function slipExpiryDate(order) {
+    const iso = order && order.expires_at;
+    if (iso) {
+        const d = new Date(iso);
+        if (!isNaN(d.getTime())) return d;
+    }
+    // No server timestamp (older localStorage record): fall back to now + 1h.
+    return new Date(Date.now() + 60 * 60 * 1000);
+}
+
+function renderQueueSlipExpiry(order) {
+    const line = document.getElementById('slip-expiry-line');
+    if (!line) return;
+    line.classList.remove('hidden');
+    const hoursEl = document.getElementById('slip-expiry-hours');
+    if (hoursEl) hoursEl.textContent = (order && order.expiry_hours) ? order.expiry_hours : 1;
+    const atEl = document.getElementById('slip-expires-at');
+    if (atEl) atEl.textContent = slipExpiryDate(order).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
 // 1. RENDER FUNCTION (Pinalitan ng float/table layout ang flexbox para hindi i-cut ng html2canvas ang text)
 function renderQueueSlipUI(order) {
     document.getElementById('slip-queue-number').innerText = order.order_number;
@@ -1020,11 +1237,13 @@ function renderQueueSlipUI(order) {
         format: "CODE128",
         lineColor: "#111827",
         width: 2,
-        height: 50,
+        height: 38,
         displayValue: true,
-        fontSize: 12,
+        fontSize: 10,
         margin: 0
     });
+
+    renderQueueSlipExpiry(order);
 }
 
 // 2. DOWNLOAD FUNCTION (Hihintayin munang ma-load ang custom fonts + explicit line-height reset bago i-capture)
@@ -1087,19 +1306,23 @@ function startKioskStatusPolling() {
     kioskPollInterval = setInterval(async () => {
         if (!currentPendingOrder || !currentPendingOrder.order_number) return;
         try {
-            const response = await fetch("{% url 'canteen_menu:process_barcode_api' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'fetch',
-                    order_id: currentPendingOrder.order_number
-                })
-            });
+            // The kiosk is public (no login), so it polls the dedicated
+            // anonymous order-status endpoint, NOT the staff-gated barcode API
+            // (which answers anonymous guests with a 302 to the staff login
+            // page, killing the e-receipt auto-pop).
+            const orderNum = encodeURIComponent(currentPendingOrder.order_number);
+            const response = await fetch("{% url 'customer_portal:check_order_status_api' 'KIOKS-PLACEHOLDER' %}".replace('KIOKS-PLACEHOLDER', orderNum));
             const data = await response.json();
-            if (data.status === 'success' && data.order) {
-                if (data.order.status && data.order.status !== 'unpaid') {
+
+            // Client-side deadline first: even if the sweep did not run yet,
+            // never let a slip older than 1h sit around pretending to be valid.
+            if (data.exists && currentPendingOrder) {
+                const deadline = slipExpiryDate(currentPendingOrder);
+                const overdue = Date.now() > deadline.getTime();
+                if (overdue || data.status === 'cancelled') {
+                    return showSlipExpired(overdue);
+                }
+                if (data.status && data.status !== 'unpaid') {
                     transformToOfficialReceipt();
                 }
             }
@@ -1107,6 +1330,38 @@ function startKioskStatusPolling() {
             console.error("Error polling order status:", err);
         }
     }, 2500);
+}
+
+function showSlipExpired(overdue) {
+    stopKioskStatusPolling();
+    localStorage.removeItem('canteen_pending_order');
+    currentPendingOrder = null;
+
+    const titleLabel = document.getElementById('slip-title-label');
+    if (titleLabel) titleLabel.textContent = "Queue Slip Expired";
+
+    const paymentBadge = document.getElementById('slip-payment-badge');
+    if (paymentBadge) paymentBadge.classList.add('hidden');
+
+    const downloadBtn = document.getElementById('download-slip-btn');
+    if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.classList.add('opacity-40', 'cursor-not-allowed'); }
+
+    const actionsGrid = document.getElementById('slip-actions-grid');
+    if (actionsGrid) actionsGrid.style.display = 'none';
+
+    const footerContainer = document.getElementById('slip-footer-container');
+    if (footerContainer) {
+        footerContainer.innerHTML = `
+            <div class="text-[10px] text-red-600 font-extrabold uppercase tracking-wider py-1">
+                <i class="fa-solid fa-hourglass-end"></i> ${overdue ? 'Payment window has passed' : 'This slip was cancelled'}
+            </div>
+            <p class="text-[9px] text-gray-400 mt-0.5">Please build a new order at the kiosk.</p>
+        `;
+    }
+
+    if (typeof kioskToast === 'function') {
+        kioskToast(overdue ? 'This queue slip has expired. Please reorder.' : 'This queue slip is no longer valid. Please reorder.');
+    }
 }
 
 function stopKioskStatusPolling() {
@@ -1121,6 +1376,9 @@ function transformToOfficialReceipt() {
     localStorage.removeItem('canteen_pending_order');
     currentPendingOrder = null;
 
+    const expLine = document.getElementById('slip-expiry-line');
+    if (expLine) expLine.classList.add('hidden');
+
     const titleLabel = document.getElementById('slip-title-label');
     if (titleLabel) titleLabel.textContent = "Official Payment Receipt";
 
@@ -1133,36 +1391,36 @@ function transformToOfficialReceipt() {
     const paymentBadge = document.getElementById('slip-payment-badge');
     if (paymentBadge) paymentBadge.classList.remove('hidden');
 
+    const downloadText = document.getElementById('slip-download-text');
+    if (downloadText) downloadText.textContent = "Download Receipt";
+
+    const actionsGrid = document.getElementById('slip-actions-grid');
+    if (actionsGrid) actionsGrid.style.display = 'none';
+
     const footerContainer = document.getElementById('slip-footer-container');
     if (footerContainer) {
         footerContainer.innerHTML = `
             <div class="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wider py-1">
                 <i class="fa-solid fa-circle-check"></i> Payment Verified & Sent to Kitchen
             </div>
-            <p class="text-[9px] text-gray-400 mt-0.5">Salamat sa pagtangkilik sa Canteen Express!</p>
-            <div class="mt-3 pt-3 border-t border-dashed border-gray-300 space-y-2 text-left w-full">
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider block text-center">Rate Your Experience</span>
-                <div class="flex justify-center gap-1.5 text-lg text-amber-500" id="star-rating-container">
-                    <button type="button" onclick="setRating(1)" class="star-btn text-amber-500" data-star="1"><i class="fa-solid fa-star"></i></button>
-                    <button type="button" onclick="setRating(2)" class="star-btn text-amber-500" data-star="2"><i class="fa-solid fa-star"></i></button>
-                    <button type="button" onclick="setRating(3)" class="star-btn text-amber-500" data-star="3"><i class="fa-solid fa-star"></i></button>
-                    <button type="button" onclick="setRating(4)" class="star-btn text-amber-500" data-star="4"><i class="fa-solid fa-star"></i></button>
-                    <button type="button" onclick="setRating(5)" class="star-btn text-amber-500" data-star="5"><i class="fa-solid fa-star"></i></button>
-                </div>
-                <textarea id="feedback-comment-input" placeholder="Write feedback or comment..." class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl p-2 text-xs focus:outline-none focus:border-orange-500 resize-none h-14"></textarea>
-                <button onclick="submitKioskFeedback()" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-2 rounded-xl text-xs uppercase tracking-wider transition">Submit Feedback</button>
-            </div>
+            <p class="text-[9px] text-gray-400 mt-0.5">Thank you, enjoy your meal!</p>
+            <button onclick="showFeedbackModal()" id="rate-open-btn"
+                class="mt-3 mx-auto flex items-center gap-1.5 text-[10px] font-bold text-brand-orange hover:text-orange-600 transition">
+                <i class="fa-solid fa-star"></i> Rate your experience <span class="text-gray-400 font-semibold">(optional)</span>
+            </button>
         `;
     }
-
-    const downloadText = document.getElementById('slip-download-text');
-    if (downloadText) downloadText.textContent = "Download Official Receipt Image";
-
-    const actionsGrid = document.getElementById('slip-actions-grid');
-    if (actionsGrid) actionsGrid.style.display = 'none';
+    // The rating form is optional: show it as a small pop-up right after the
+    // e-receipt appears, then again the moment the order actually completes
+    // (the backend only accepts ratings once a pickup is completed / a delivery
+    // is handed off). The customer can dismiss it either time.
+    scheduleFeedbackPrompt();
 }
 
 let currentSelectedRating = 5;
+let feedbackOrderNumber = null;
+let feedbackSkipped = false;
+let feedbackWatcher = null;
 function getCSRFToken() {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -1176,6 +1434,69 @@ function getCSRFToken() {
         }
     }
     return cookieValue || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
+function showFeedbackModal() {
+    const modal = document.getElementById('feedback-modal');
+    if (!modal) return;
+    const label = document.getElementById('feedback-order-label');
+    if (label && feedbackOrderNumber) label.textContent = `Order ${feedbackOrderNumber}`;
+    const note = document.getElementById('feedback-note');
+    if (note) note.classList.add('hidden');
+    modal.classList.remove('hidden');
+}
+
+function hideFeedbackModal() {
+    const modal = document.getElementById('feedback-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function skipFeedback() {
+    feedbackSkipped = true;
+    stopFeedbackWatcher();
+    hideFeedbackModal();
+}
+
+function stopFeedbackWatcher() {
+    if (feedbackWatcher) {
+        clearInterval(feedbackWatcher);
+        feedbackWatcher = null;
+    }
+}
+
+// After the e-receipt appears, quietly watch for the moment this order
+// becomes rateable (completed for pickup, delivered for delivery) and only
+// then surface the optional rating pop-up. Feedback never blocks anything.
+function scheduleFeedbackPrompt() {
+    stopFeedbackWatcher();
+    if (feedbackSkipped) return;
+    const orderNumEl = document.getElementById('slip-queue-number');
+    feedbackOrderNumber = orderNumEl ? orderNumEl.innerText.trim() : feedbackOrderNumber;
+    if (!feedbackOrderNumber) return;
+
+    // Warm the modal up right away so the customer knows it exists...
+    setTimeout(() => {
+        const modal = document.getElementById('feedback-modal');
+        if (!feedbackSkipped && modal && modal.classList.contains('hidden')) {
+            showFeedbackModal();
+        }
+    }, 1200);
+
+    // ...then re-pop it once the kitchen has actually completed the order,
+    // when a rating can genuinely be saved.
+    feedbackWatcher = setInterval(async () => {
+        try {
+            const orderNum = encodeURIComponent(feedbackOrderNumber);
+            const res = await fetch("{% url 'customer_portal:check_order_status_api' 'KIOKS-PLACEHOLDER' %}".replace('KIOKS-PLACEHOLDER', orderNum));
+            const data = await res.json();
+            if (data.exists && data.status === 'completed') {
+                stopFeedbackWatcher();
+                if (!feedbackSkipped) showFeedbackModal();
+            }
+        } catch (err) {
+            console.error('Error watching for completed order:', err);
+        }
+    }, 8000);
 }
 
 function setRating(r) {
@@ -1193,7 +1514,8 @@ function setRating(r) {
 
 async function submitKioskFeedback() {
     const comment = document.getElementById('feedback-comment-input').value;
-    const orderNum = document.getElementById('slip-queue-number').innerText;
+    const orderNum = feedbackOrderNumber || (document.getElementById('slip-queue-number') ? document.getElementById('slip-queue-number').innerText : '');
+    const note = document.getElementById('feedback-note');
     try {
         const res = await fetch("{% url 'customer_portal:submit_feedback_api' %}", {
             method: 'POST',
@@ -1202,16 +1524,28 @@ async function submitKioskFeedback() {
         });
         const data = await res.json();
         if (data.success) {
+            hideFeedbackModal();
+            stopFeedbackWatcher();
             const happyEmojis = ['😊', '🎉', '🌟', '🥳', '🙌', '🤩', '✨', '🚀', '💖'];
             const randomEmoji = happyEmojis[Math.floor(Math.random() * happyEmojis.length)];
             showFeedbackSuccessPopup(`Thank you for your feedback! ${randomEmoji}`);
-            document.getElementById('slip-footer-container').innerHTML = `<p class="text-xs text-emerald-600 font-bold text-center py-4"><i class="fa-solid fa-circle-check"></i> Thank you! Feedback & Rating submitted successfully. ${randomEmoji}</p>`;
+            const footerContainer = document.getElementById('slip-footer-container');
+            if (footerContainer) {
+                footerContainer.innerHTML = `<p class="text-xs text-emerald-600 font-bold text-center py-4"><i class="fa-solid fa-circle-check"></i> Thank you! Feedback & Rating submitted successfully. ${randomEmoji}</p>`;
+            }
         } else {
-            alert('Error: ' + data.message);
+            // Not rateable yet (e.g. still cooking): explain and stay optional.
+            if (note) {
+                note.textContent = data.message || 'Feedback is not available for this order yet.';
+                note.classList.remove('hidden');
+            }
         }
     } catch (err) {
         console.error(err);
-        alert('Failed to submit feedback.');
+        if (note) {
+            note.textContent = 'Could not submit feedback. Please try again.';
+            note.classList.remove('hidden');
+        }
     }
 }
 
@@ -1240,6 +1574,18 @@ function cancelPendingOrder() {
 
 function closeQueueCancelModal() {
     document.getElementById('queue-cancel-modal').classList.add('hidden');
+}
+
+function showCheckoutErrorModal(msg) {
+    const el = document.getElementById('checkout-error-message');
+    if (el) el.textContent = msg || 'Unable to process your order.';
+    const modal = document.getElementById('checkout-error-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeCheckoutErrorModal() {
+    const modal = document.getElementById('checkout-error-modal');
+    if (modal) modal.classList.add('hidden');
 }
 
 function confirmCancelPendingOrder() {
@@ -1274,6 +1620,250 @@ function openQueueSlipModal() {
 function closeQueueSlipModal() {
     document.getElementById('queue-slip-modal').classList.add('hidden');
     stopKioskStatusPolling();
+}
+
+// ================= ORDER HISTORY / ACTIVITY LOG =================
+const ORDER_HISTORY_KEY = 'canteen_order_history';
+
+function getOrderHistory() {
+    try {
+        return JSON.parse(localStorage.getItem(ORDER_HISTORY_KEY)) || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveOrderHistory(list) {
+    try {
+        localStorage.setItem(ORDER_HISTORY_KEY, JSON.stringify(list));
+    } catch (e) { /* storage full/denied — ignore */ }
+}
+
+function recordOrderInHistory(order) {
+    if (!order || !order.order_number) return;
+    const list = getOrderHistory();
+    if (list.some(o => o.order_number === order.order_number)) return;
+    list.unshift({
+        order_number: order.order_number,
+        dining_option: order.dining_option || 'Dine-In',
+        total_amount: order.total_amount,
+        created_at: new Date().toISOString(),
+        items: (order.cart_array || []).map(i => ({ name: i.name, qty: i.qty, price: i.price }))
+    });
+    saveOrderHistory(list.slice(0, 30));
+}
+
+function openOrderHistory() {
+    const modal = document.getElementById('order-history-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    renderOrderHistory();
+}
+
+function closeOrderHistory() {
+    document.getElementById('order-history-modal').classList.add('hidden');
+}
+
+function historyId(num) {
+    return String(num || 'x').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+}
+
+function historyStatusChip(status) {
+    const map = {
+        unpaid: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+        pending: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+        preparing: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+        ready: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+        completed: 'bg-green-500/20 text-green-400 border-green-500/30',
+        delivered: 'bg-green-500/20 text-green-400 border-green-500/30',
+        cancelled: 'bg-red-500/20 text-red-400 border-red-500/30',
+    };
+    const c = map[status] || 'bg-white/10 text-white/70 border-white/10';
+    return `<span class="inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${c}">${status}</span>`;
+}
+
+async function renderOrderHistory() {
+    const container = document.getElementById('order-history-container');
+    if (!container) return;
+    const list = getOrderHistory();
+
+    // Sort so unpaid/pre-orders come first
+    list.sort((a, b) => {
+        if (a.status === 'unpaid' && b.status !== 'unpaid') return -1;
+        if (a.status !== 'unpaid' && b.status === 'unpaid') return 1;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-10 space-y-3">
+                <div class="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 text-brand-slate flex items-center justify-center mx-auto text-2xl">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+                <p class="text-xs text-brand-slate font-bold">No orders yet on this kiosk.</p>
+                <p class="text-[11px] text-brand-slate/70">Orders you place here will show up as activity for rating & review.</p>
+            </div>`;
+        return;
+    }
+
+    const cards = await Promise.all(list.map(async (rec) => {
+        let status = rec.status || 'unpaid';
+        let expiresAt = rec.expires_at;
+        try {
+            const res = await fetch(`/kiosk/api/order-status/${encodeURIComponent(rec.order_number)}/`);
+            const data = await res.json();
+            if (data.exists) {
+                status = data.status;
+                if (data.expires_at) expiresAt = data.expires_at;
+            }
+        } catch (e) { /* leave unpaid */ }
+
+        const when = new Date(rec.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        const items = (rec.items || []).slice(0, 3).map(i => {
+            const price = Number(i.price || 0).toFixed(2);
+            const total = (Number(i.price || 0) * Number(i.qty || 1)).toFixed(2);
+            return `<div class="flex justify-between text-xs text-brand-slate">
+                        <span>${i.qty}x ${i.name}</span>
+                        <span class="text-white font-bold">₱${total}</span>
+                    </div>`;
+        }).join('');
+        const more = (rec.items || []).length > 3 ? `<p class="text-[10px] text-brand-slate">+ ${rec.items.length - 3} more item(s)</p>` : '';
+        let expiryHint = '';
+        if (status === 'unpaid' && expiresAt) {
+            const d = new Date(expiresAt);
+            if (!isNaN(d.getTime())) {
+                const at = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                expiryHint = `<div class="mt-1.5 flex items-center gap-1.5 text-[10px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1">
+                    <i class="fa-regular fa-clock"></i> Pay at counter before ${at} (Click to view slip)
+                </div>`;
+            }
+        } else if (status === 'cancelled') {
+            expiryHint = `<div class="mt-1.5 flex items-center gap-1.5 text-[10px] text-red-400 font-bold bg-red-500/10 border border-red-500/20 rounded-lg px-2 py-1">
+                <i class="fa-solid fa-hourglass-end"></i> Slip cancelled — expired or voided
+            </div>`;
+        }
+        const rateable = status === 'completed';
+        const rateBtn = rateable
+            ? `<button onclick="event.stopPropagation(); openHistoryRating('${rec.order_number}', this)" class="mt-2 w-full bg-brand-orange hover:bg-orange-600 text-white text-[10px] font-extrabold py-2 rounded-xl uppercase tracking-wider transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-star"></i> Rate & Review
+               </button>`
+            : '';
+
+        return `
+            <div onclick="viewOrderSlipFromHistory('${rec.order_number}')" class="hist-card bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-3.5 space-y-2 cursor-pointer transition">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-black text-white">${rec.order_number}</span>
+                    ${historyStatusChip(status)}
+                </div>
+                <div class="flex items-center justify-between text-[10px] text-brand-slate font-bold">
+                    <span><i class="fa-solid fa-utensils text-brand-orange mr-1"></i>${rec.dining_option}</span>
+                    <span><i class="fa-regular fa-clock mr-1"></i>${when}</span>
+                </div>
+                <div class="space-y-1 pt-1">
+                    ${items}
+                    ${more}
+                </div>
+                <div class="flex justify-between border-t border-white/10 pt-2 text-xs font-black text-white">
+                    <span class="uppercase tracking-wider">Total</span>
+                    <span class="text-brand-orange">₱${Number(rec.total_amount || 0).toFixed(2)}</span>
+                </div>
+                ${expiryHint}
+                ${rateBtn}
+            </div>`;
+    }));
+
+    container.innerHTML = cards.join('');
+}
+
+async function viewOrderSlipFromHistory(orderNumber) {
+    try {
+        const res = await fetch(`/kiosk/api/order-status/${encodeURIComponent(orderNumber)}/`);
+        const data = await res.json();
+        if (data.exists) {
+            currentPendingOrder = {
+                order_number: orderNumber,
+                total_amount: data.total_amount || 0,
+                dining_option: data.dining_option || 'DINE-IN',
+                created_at: data.created_at,
+                expires_at: data.expires_at,
+                status: data.status,
+                items: data.items || []
+            };
+            openQueueSlipModal();
+        } else {
+            showToast('Order slip not found.', 'error');
+        }
+    } catch (e) {
+        showToast('Could not load order slip.', 'error');
+    }
+}
+
+const historyRatings = {};
+
+function openHistoryRating(orderNumber, btn) {
+    const slotId = 'rate-' + historyId(orderNumber);
+    if (document.getElementById(slotId)) return;
+    const card = btn ? btn.closest('.hist-card') : null;
+    if (!card) return;
+
+    const slot = document.createElement('div');
+    slot.id = slotId;
+    slot.className = "mt-1 pt-2 border-t border-white/10 space-y-2";
+    slot.innerHTML = `
+        <span class="text-[10px] font-bold text-brand-slate uppercase tracking-wider block text-center">Rate Your Experience</span>
+        <div class="flex justify-center gap-1.5 text-base text-amber-500" id="stars-${historyId(orderNumber)}">
+            <button type="button" onclick="setHistoryRating('${orderNumber}', 1)" class="star-btn text-gray-400" data-val="1"><i class="fa-solid fa-star"></i></button>
+            <button type="button" onclick="setHistoryRating('${orderNumber}', 2)" class="star-btn text-gray-400" data-val="2"><i class="fa-solid fa-star"></i></button>
+            <button type="button" onclick="setHistoryRating('${orderNumber}', 3)" class="star-btn text-gray-400" data-val="3"><i class="fa-solid fa-star"></i></button>
+            <button type="button" onclick="setHistoryRating('${orderNumber}', 4)" class="star-btn text-gray-400" data-val="4"><i class="fa-solid fa-star"></i></button>
+            <button type="button" onclick="setHistoryRating('${orderNumber}', 5)" class="star-btn text-gray-400" data-val="5"><i class="fa-solid fa-star"></i></button>
+        </div>
+        <textarea id="comment-${historyId(orderNumber)}" placeholder="Write feedback or comment..." class="w-full bg-brand-dark/70 border border-white/10 text-white rounded-xl p-2 text-xs placeholder-brand-slate focus:outline-none focus:border-brand-orange resize-none h-12"></textarea>
+        <button onclick="submitHistoryRating('${orderNumber}')" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-2 rounded-xl text-xs uppercase tracking-wider transition">Submit Feedback</button>
+    `;
+    card.appendChild(slot);
+    if (btn) btn.remove();
+    historyRatings[orderNumber] = 5;
+    setHistoryRating(orderNumber, 5);
+}
+
+function setHistoryRating(orderNumber, val) {
+    historyRatings[orderNumber] = val;
+    const stars = document.getElementById('stars-' + historyId(orderNumber));
+    if (!stars) return;
+    stars.querySelectorAll('.star-btn').forEach((b, idx) => {
+        if (idx < val) {
+            b.classList.remove('text-gray-400');
+            b.classList.add('text-amber-500');
+        } else {
+            b.classList.remove('text-amber-500');
+            b.classList.add('text-gray-400');
+        }
+    });
+}
+
+async function submitHistoryRating(orderNumber) {
+    const comment = (document.getElementById('comment-' + historyId(orderNumber)) || {}).value || '';
+    try {
+        const res = await fetch("{% url 'customer_portal:submit_feedback_api' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+            body: JSON.stringify({ order_number: orderNumber, rating: historyRatings[orderNumber] || 5, comment: comment })
+        });
+        const data = await res.json();
+        if (data.success) {
+            const happyEmojis = ['😊', '🎉', '🌟', '🥳', '🙌', '🤩', '✨', '🚀', '💖'];
+            const emoji = happyEmojis[Math.floor(Math.random() * happyEmojis.length)];
+            showFeedbackSuccessPopup(`Thank you for your feedback! ${emoji}`);
+            const slot = document.getElementById('rate-' + historyId(orderNumber));
+            if (slot) slot.innerHTML = `<p class="text-xs text-emerald-400 font-bold text-center py-2"><i class="fa-solid fa-circle-check"></i> Thank you! Feedback submitted. ${emoji}</p>`;
+        } else {
+            kioskToast(data.message || 'Failed to submit feedback.');
+        }
+    } catch (err) {
+        console.error(err);
+        kioskToast('Failed to submit feedback.');
+    }
 }
 
 // ================= FLOATING TOAST NOTIFICATION HELPERS =================
@@ -1338,11 +1928,37 @@ function checkPendingOrderOnLoad() {
 let currentModalItem = null;
 let modalRiceQty = 0;
 
+function parseSizePrices(desc, basePrice) {
+    let p350 = basePrice;
+    let p500 = basePrice + 5.00;
+    let p1L = basePrice + 20.00;
+
+    if (!desc) return { p350, p500, p1L };
+
+    const regex350 = /350\s*ml\s*[:=]\s*(?:₱)?([0-9]+(?:\.[0-9]+)?)/i;
+    const regex500 = /500\s*ml\s*[:=]\s*(?:₱)?([0-9]+(?:\.[0-9]+)?)/i;
+    const regex1l = /(?:1\s*l|1000\s*ml)\s*[:=]\s*(?:₱)?([0-9]+(?:\.[0-9]+)?)/i;
+
+    const m350 = desc.match(regex350);
+    if (m350) p350 = parseFloat(m350[1]);
+
+    const m500 = desc.match(regex500);
+    if (m500) p500 = parseFloat(m500[1]);
+
+    const m1l = desc.match(regex1l);
+    if (m1l) p1L = parseFloat(m1l[1]);
+
+    return { p350, p500, p1L };
+}
+
 function openItemModal(itemId) {
     const item = menuData.find(i => i.id === itemId);
     if (!item) return;
     currentModalItem = item;
     modalRiceQty = 0; // default 0 rice for ulam
+    modalItemQty = 1;
+    const qtyEl = document.getElementById('modal-item-qty');
+    if (qtyEl) qtyEl.textContent = modalItemQty;
 
     document.getElementById('modal-item-img').src = item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';
     document.getElementById('modal-item-category').textContent = item.category || 'General';
@@ -1386,23 +2002,22 @@ function openItemModal(itemId) {
         }
     }
 
-    const bevContainer = document.getElementById('modal-beverage-container');
-    if (bevContainer) {
-        if (catL.includes('beverage')) {
-            bevContainer.style.display = 'none';
+    // Size / Volume selector for Nature's Spring & Bottled Water
+    const sizeContainer = document.getElementById('modal-size-container');
+    const sizeSelect = document.getElementById('modal-size-select');
+    if (sizeContainer && sizeSelect) {
+        if (nameL.includes("nature's spring") || nameL.includes("natures spring") || (catL.includes('beverage') && (nameL.includes('water') || nameL.includes('nature')))) {
+            sizeContainer.style.display = 'block';
+            const prices = parseSizePrices(item.desc || item.description, item.price);
+            sizeSelect.innerHTML = `
+                <option value="350ml" data-price="${prices.p350}">350ml - ₱${prices.p350.toFixed(2)}</option>
+                <option value="500ml" data-price="${prices.p500}">500ml - ₱${prices.p500.toFixed(2)}</option>
+                <option value="1L" data-price="${prices.p1L}">1 Liter (1L) - ₱${prices.p1L.toFixed(2)}</option>
+            `;
         } else {
-            bevContainer.style.display = 'block';
+            sizeContainer.style.display = 'none';
+            sizeSelect.innerHTML = '';
         }
-    }
-
-    // Populate beverage options
-    const bevSelect = document.getElementById('modal-beverage-select');
-    if (bevSelect) {
-        bevSelect.innerHTML = '<option value="">-- No Beverage --</option>';
-        const beverages = menuData.filter(i => String(i.category).toLowerCase().includes('beverage') || i.name.toLowerCase().includes('coke') || i.name.toLowerCase().includes('sprite') || i.name.toLowerCase().includes('water') || i.name.toLowerCase().includes('juice'));
-        beverages.forEach(b => {
-            bevSelect.innerHTML += `<option value="${b.id}" data-price="${b.price}">${b.name} (+₱${b.price.toFixed(2)})</option>`;
-        });
     }
 
     updateModalTotal();
@@ -1418,22 +2033,34 @@ function changeRiceQty(delta) {
     updateModalTotal();
 }
 
+let modalItemQty = 1;
+
+function changeItemModalQty(delta) {
+    modalItemQty = Math.max(1, modalItemQty + delta);
+    const qtyEl = document.getElementById('modal-item-qty');
+    if (qtyEl) qtyEl.textContent = modalItemQty;
+    updateModalTotal();
+}
+
 function updateModalTotal() {
     if (!currentModalItem) return;
     let total = currentModalItem.price;
+
+    const sizeSelect = document.getElementById('modal-size-select');
+    const sizeContainer = document.getElementById('modal-size-container');
+    if (sizeContainer && sizeContainer.style.display !== 'none' && sizeSelect) {
+        const selectedSizeOpt = sizeSelect.options[sizeSelect.selectedIndex];
+        if (selectedSizeOpt && selectedSizeOpt.getAttribute('data-price')) {
+            total = parseFloat(selectedSizeOpt.getAttribute('data-price'));
+        }
+    }
 
     const currentCatL = currentModalItem ? String(currentModalItem.category).toLowerCase() : '';
     if (currentCatL.includes('rice')) {
         total += (modalRiceQty * 15.00);
     }
 
-    const bevSelect = document.getElementById('modal-beverage-select');
-    if (bevSelect) {
-        const selectedOpt = bevSelect.options[bevSelect.selectedIndex];
-        if (selectedOpt && selectedOpt.value) {
-            total += parseFloat(selectedOpt.getAttribute('data-price') || 0);
-        }
-    }
+    total = total * modalItemQty;
 
     document.getElementById('modal-item-price').textContent = '₱' + total.toFixed(2);
 }
@@ -1441,8 +2068,30 @@ function updateModalTotal() {
 function addCustomizedItemToCart() {
     if (!currentModalItem) return;
     
-    // Add main item
-    addToCart(currentModalItem.id);
+    let itemName = currentModalItem.name;
+    let itemPrice = currentModalItem.price;
+    let cartKey = String(currentModalItem.id);
+
+    const sizeSelect = document.getElementById('modal-size-select');
+    const sizeContainer = document.getElementById('modal-size-container');
+    if (sizeContainer && sizeContainer.style.display !== 'none' && sizeSelect && sizeSelect.value) {
+        const selectedSizeOpt = sizeSelect.options[sizeSelect.selectedIndex];
+        if (selectedSizeOpt) {
+            const sizeLabel = sizeSelect.value;
+            itemPrice = parseFloat(selectedSizeOpt.getAttribute('data-price') || currentModalItem.price);
+            itemName = `${currentModalItem.name} (${sizeLabel})`;
+            cartKey = `${currentModalItem.id}_${sizeLabel}`;
+        }
+    }
+
+    // Add main item (with size variant)
+    addToCart(currentModalItem.id, {
+        ...currentModalItem,
+        name: itemName,
+        price: itemPrice,
+        qty: modalItemQty,
+        cartKey: cartKey
+    });
 
     // Add rice portions if > 0
     if (modalRiceQty > 0) {
@@ -1454,12 +2103,6 @@ function addCustomizedItemToCart() {
         for (let i = 0; i < modalRiceQty; i++) {
             addToCart(riceItem ? riceItem.id : virtualRiceId);
         }
-    }
-
-    // Add selected beverage if any
-    const bevSelect = document.getElementById('modal-beverage-select');
-    if (bevSelect && bevSelect.value) {
-        addToCart(parseInt(bevSelect.value));
     }
 
     closeItemModal();
@@ -1562,59 +2205,142 @@ function nextCarouselSlide() {
     setCarouselSlide(currentCarouselSlide);
 }
 
+function prevCarouselSlide() {
+    currentCarouselSlide = (currentCarouselSlide - 1 + totalCarouselSlides) % totalCarouselSlides;
+    setCarouselSlide(currentCarouselSlide);
+}
+
+// Auto slide every 4.5 seconds
 let carouselInterval = setInterval(nextCarouselSlide, 4500);
 
-function resetCarouselTimer() {
+function resetCarouselInterval() {
     clearInterval(carouselInterval);
     carouselInterval = setInterval(nextCarouselSlide, 4500);
 }
 
-// Add touch swipe and mouse drag support to promo carousel
+// Clean & Reliable Touch & Mouse Swipe Support for Promo Carousel
+let promoStartX = 0;
+let promoStartY = 0;
+let promoIsSwiping = false;
+const promoCarouselEl = document.getElementById('promo-carousel');
+
+if (promoCarouselEl) {
+    promoCarouselEl.addEventListener('touchstart', e => {
+        promoStartX = e.touches[0].clientX;
+        promoStartY = e.touches[0].clientY;
+        promoIsSwiping = true;
+        clearInterval(carouselInterval);
+    }, {passive: true});
+
+    promoCarouselEl.addEventListener('touchend', e => {
+        if (!promoIsSwiping) return;
+        promoIsSwiping = false;
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        const diffX = endX - promoStartX;
+        const diffY = endY - promoStartY;
+
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
+            if (diffX < 0) {
+                nextCarouselSlide();
+            } else {
+                prevCarouselSlide();
+            }
+            resetCarouselInterval();
+        }
+    }, {passive: true});
+
+    promoCarouselEl.addEventListener('mousedown', e => {
+        promoStartX = e.clientX;
+        promoStartY = e.clientY;
+        promoIsSwiping = true;
+        clearInterval(carouselInterval);
+    });
+
+    promoCarouselEl.addEventListener('mouseup', e => {
+        if (!promoIsSwiping) return;
+        promoIsSwiping = false;
+        const endX = e.clientX;
+        const endY = e.clientY;
+        const diffX = endX - promoStartX;
+        const diffY = endY - promoStartY;
+
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
+            if (diffX < 0) {
+                nextCarouselSlide();
+            } else {
+                prevCarouselSlide();
+            }
+            resetCarouselInterval();
+        }
+    });
+
+    promoCarouselEl.addEventListener('mouseleave', () => {
+        promoIsSwiping = false;
+    });
+}
+
+// ================= EVENT LISTENERS & POLLING =================
 document.addEventListener('DOMContentLoaded', () => {
-    const promoCarouselWrapper = document.getElementById('promo-carousel');
-    if (promoCarouselWrapper) {
-        let touchStartX = 0;
-        let touchEndX = 0;
-        promoCarouselWrapper.addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-        }, {passive: true});
-        promoCarouselWrapper.addEventListener('touchend', e => {
-            touchEndX = e.changedTouches[0].screenX;
-            if (touchEndX < touchStartX - 40) {
-                nextCarouselSlide();
-                resetCarouselTimer();
-            } else if (touchEndX > touchStartX + 40) {
-                currentCarouselSlide = (currentCarouselSlide - 1 + totalCarouselSlides) % totalCarouselSlides;
-                setCarouselSlide(currentCarouselSlide);
-                resetCarouselTimer();
-            }
-        }, {passive: true});
-
-        let isDragging = false;
-        let startX = 0;
-        promoCarouselWrapper.addEventListener('mousedown', e => {
-            isDragging = true;
-            startX = e.clientX;
-        });
-        window.addEventListener('mouseup', e => {
-            if (!isDragging) return;
-            isDragging = false;
-            let diff = e.clientX - startX;
-            if (diff < -40) {
-                nextCarouselSlide();
-                resetCarouselTimer();
-            } else if (diff > 40) {
-                currentCarouselSlide = (currentCarouselSlide - 1 + totalCarouselSlides) % totalCarouselSlides;
-                setCarouselSlide(currentCarouselSlide);
-                resetCarouselTimer();
-            }
-        });
-    }
-
     renderMenu();
     checkPendingOrderOnLoad();
     setInterval(fetchLatestMenu, 3000);
-}); 
+});
+
+// ================= MANUAL CLOSURE (staff open/close switch) =================
+// The initial state is rendered by the server; polling keeps an already-open
+// screen honest, so a closure made from the staff dashboard shows up here
+// without anyone touching the kiosk.
+window.__systemClosed = !{{ SYSTEM_IS_OPEN|yesno:'true,false' }};
+
+function showClosedOverlay(message) {
+    const reason = document.getElementById('system-closed-reason');
+    if (reason) {
+        if (message) { reason.textContent = message; reason.style.display = 'block'; }
+        else { reason.style.display = 'none'; }
+    }
+    const overlay = document.getElementById('system-closed-overlay');
+    if (overlay) overlay.style.display = 'flex';
+    const payBtn = document.getElementById('drawer-pay-btn');
+    if (payBtn) { payBtn.disabled = true; payBtn.style.opacity = '0.5'; }
+}
+
+function hideClosedOverlay() {
+    const overlay = document.getElementById('system-closed-overlay');
+    if (overlay) overlay.style.display = 'none';
+    const payBtn = document.getElementById('drawer-pay-btn');
+    if (payBtn) { payBtn.disabled = false; payBtn.style.opacity = ''; }
+}
+
+// "View My Existing Order": a walk-in with an unpaid slip must still be able to
+// read it, so the notice is dismissible until the next poll re-checks.
+function dismissClosedOverlay() {
+    const overlay = document.getElementById('system-closed-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function refreshSystemStatus() {
+    fetch('{% url "core_app:system_status_api" %}', { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+            if (!data) return;
+            window.__systemClosed = !data.is_open;
+            if (data.is_open) { hideClosedOverlay(); }
+            else { showClosedOverlay(data.message); }
+        })
+        .catch(function () { /* offline: leave the current state alone */ });
+}
+
+// Belt and braces: the server refuses checkout anyway, but stop the tap before
+// it becomes a round trip and a confusing error.
+const _originalCheckoutOrder = checkoutOrder;
+checkoutOrder = async function () {
+    if (window.__systemClosed) { showClosedOverlay(); return; }
+    return _originalCheckoutOrder.apply(this, arguments);
+};
+
+if (window.__systemClosed) { showClosedOverlay('{{ SYSTEM_CLOSED_MESSAGE|escapejs }}'); }
+setInterval(refreshSystemStatus, 15000);
     </script>
 </body>
 </html>

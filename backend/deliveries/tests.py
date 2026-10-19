@@ -1,9 +1,11 @@
 import json
-from django.test import TestCase, Client
+import re
+from django.conf import settings
+from django.test import TestCase, Client, SimpleTestCase, override_settings
 from django.urls import reverse
 from accounts.models import CustomUser
 from customer_portal.models import Order
-from deliveries.models import DeliveryRequest, DeliveryMessage
+from deliveries.models import DeliveryRequest, DeliveryMessage, RiderLocationPoint
 
 class DeliveryChatTestCase(TestCase):
     def setUp(self):
@@ -159,7 +161,10 @@ class DeliveryRiderFeatureTestCase(TestCase):
             content_type='application/json'
         )
         self.assertTrue(resp.json()['success'])
-        self.assertEqual(RiderLocationPoint.objects.filter(delivery=self.delivery).count(), 2)
+        # Two location pushes: history points are throttled to one per 4s so
+        # watchPosition bursts don't blow up the table, but the LIVE
+        # coordinates always update immediately (asserted below).
+        self.assertGreaterEqual(RiderLocationPoint.objects.filter(delivery=self.delivery).count(), 1)
 
         track = self.client.get(reverse('deliveries:get_tracking', args=[self.delivery.id])).json()
         self.assertTrue(track['success'])
@@ -177,6 +182,7 @@ class DeliveryRiderFeatureTestCase(TestCase):
         page = self.client.get(reverse('deliveries:track_order', args=[self.delivery.id]))
         self.assertEqual(page.status_code, 200)
 
+    @override_settings(ENFORCE_GEOFENCE=True)
     def test_rider_location_push_outside_campus_is_rejected(self):
         self.client.login(username='rider2', password='password123')
 
@@ -429,3 +435,801 @@ class DeliverySyncTestCase(TestCase):
 
         self.delivery.refresh_from_db()
         self.assertEqual(self.delivery.status, DeliveryRequest.RequestStatus.TIMEOUT)
+
+
+class RoadRoutingTestCase(TestCase):
+    """The routing helpers must work without ever touching the network."""
+
+    def test_decode_polyline_round_trip(self):
+        from .routing import decode_polyline
+        # A real Valhalla shape (precision 6) for a campus route, so this pins
+        # the decoder against known-good coordinates rather than against itself.
+        shape = r'{gxsQec|maF@_JEci@xh@yB~k@cCaIwPkDmHqDeHo@`AoA\wABuFaAuE_BQO'
+        path = decode_polyline(shape)
+        self.assertEqual(len(path), 14)
+        self.assertAlmostEqual(path[0][0], 9.777806, places=5)
+        self.assertAlmostEqual(path[0][1], 118.733379, places=5)
+        self.assertAlmostEqual(path[-1][0], 9.777102, places=5)
+        self.assertAlmostEqual(path[-1][1], 118.734977, places=5)
+        # Every point stays on the campus and the path travels east.
+        for lat, lng in path:
+            self.assertTrue(9.776 < lat < 9.779)
+            self.assertTrue(118.733 < lng < 118.736)
+        self.assertGreater(path[-1][1], path[0][1])
+
+    def test_get_road_route_is_disabled_during_tests(self):
+        """No outbound call may ever happen from the test suite."""
+        from .routing import get_road_route
+        self.assertIsNone(get_road_route(9.77800, 118.73338, 9.77725, 118.73480))
+
+    def test_get_road_route_requires_both_endpoints(self):
+        from .routing import get_road_route
+        self.assertIsNone(get_road_route(9.77800, 118.73338, None, None))
+
+    @override_settings(ROUTING_ENABLED=False)
+    def test_routing_can_be_switched_off_by_setting(self):
+        from .routing import get_road_route
+        self.assertIsNone(get_road_route(9.77800, 118.73338, 9.77725, 118.73480))
+
+    def test_tracking_payload_exposes_path_keys(self):
+        """The map falls back to a straight line, so the keys must always exist
+        even when no provider answered."""
+        from accounts.models import CustomUser
+        from django.core.cache import cache
+        cache.clear()
+        rider = CustomUser.objects.create_user(
+            username='route_rider', password='password123', role='DELIVERY'
+        )
+        order = Order.objects.create(
+            order_number='#CE-7777', total_amount=100.00, status='pending'
+        )
+        delivery = DeliveryRequest.objects.create(
+            order=order, rider=rider, delivery_location='Gymnasium',
+            status=DeliveryRequest.RequestStatus.ACCEPTED,
+            dest_lat=9.77725, dest_lng=118.73480,
+            rider_lat=9.77800, rider_lng=118.73338,
+        )
+        self.client.login(username='route_rider', password='password123')
+        data = self.client.get(
+            reverse('deliveries:get_tracking', args=[delivery.id])).json()
+        self.assertTrue(data['success'])
+        self.assertIn('path', data)
+        self.assertIn('routing_provider', data)
+        # Routing is off in tests, so the map gets the straight-line fallback and
+        # remaining_km stays the haversine value.
+        self.assertIsNone(data['path'])
+        self.assertIsNone(data['routing_provider'])
+        self.assertIsNotNone(data['remaining_km'])
+
+    def test_route_total_is_measured_from_the_first_recorded_fix(self):
+        """Progress is (route_total_km - remaining_km) / route_total_km, so the
+        total must be the length of the real pickup->drop-off trip -- taken from
+        the rider's FIRST fix (the canteen), not a hard-coded canteen coordinate
+        that could coincide with the customer's own drop-off."""
+        from accounts.models import CustomUser
+        from deliveries.models import RiderLocationPoint
+        from deliveries.utils import haversine_km
+        from django.core.cache import cache
+        cache.clear()
+        rider = CustomUser.objects.create_user(
+            username='progress_rider', password='password123', role='DELIVERY'
+        )
+        order = Order.objects.create(
+            order_number='#CE-8888', total_amount=100.00, status='pending'
+        )
+        dest_lat, dest_lng = 9.77725, 118.73480
+        # First fix = canteen pickup. Second fix = rider a little closer.
+        start_lat, start_lng = 9.77800, 118.73338
+        mid_lat, mid_lng = 9.77760, 118.73410
+        delivery = DeliveryRequest.objects.create(
+            order=order, rider=rider, delivery_location='Library',
+            status=DeliveryRequest.RequestStatus.ACCEPTED,
+            dest_lat=dest_lat, dest_lng=dest_lng,
+            rider_lat=mid_lat, rider_lng=mid_lng,
+        )
+        RiderLocationPoint.objects.create(
+            delivery=delivery, rider=rider, lat=start_lat, lng=start_lng)
+        RiderLocationPoint.objects.create(
+            delivery=delivery, rider=rider, lat=mid_lat, lng=mid_lng)
+
+        self.client.login(username='progress_rider', password='password123')
+        data = self.client.get(
+            reverse('deliveries:get_tracking', args=[delivery.id])).json()
+        # Routing is disabled in tests, so both fall back to haversine.
+        expected_total = haversine_km(start_lat, start_lng, dest_lat, dest_lng)
+        self.assertAlmostEqual(data['route_total_km'], expected_total, places=2)
+        # The total describes the whole trip, so it must be the LONGER of the two
+        # legs -- never the shorter remaining leg.
+        self.assertGreater(data['route_total_km'], data['remaining_km'])
+        pct = round(
+            ((data['route_total_km'] - data['remaining_km']) / data['route_total_km']) * 100)
+        self.assertTrue(0 < pct < 100, f"expected mid-trip progress, got {pct}%")
+
+    def test_route_total_is_none_before_the_first_fix(self):
+        """With no history yet there is no trip origin, so the client must fall
+        back to seeding the total from the first remaining_km it sees."""
+        from accounts.models import CustomUser
+        from django.core.cache import cache
+        cache.clear()
+        rider = CustomUser.objects.create_user(
+            username='noorigin_rider', password='password123', role='DELIVERY'
+        )
+        order = Order.objects.create(
+            order_number='#CE-9999', total_amount=100.00, status='pending'
+        )
+        delivery = DeliveryRequest.objects.create(
+            order=order, rider=rider, delivery_location='Gymnasium',
+            status=DeliveryRequest.RequestStatus.ACCEPTED,
+            dest_lat=9.77725, dest_lng=118.73480,
+            rider_lat=9.77800, rider_lng=118.73338,
+        )
+        self.client.login(username='noorigin_rider', password='password123')
+        data = self.client.get(
+            reverse('deliveries:get_tracking', args=[delivery.id])).json()
+        self.assertIsNone(data['route_total_km'])
+
+
+class GpsAccuracyTestCase(TestCase):
+    """GPS quality gate: a fuzzy fix must never move the rider on the map."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.rider = CustomUser.objects.create_user(
+            username='acc_rider', password='password123', role='DELIVERY'
+        )
+        self.order = Order.objects.create(
+            order_number='#CE-8100', total_amount=100.00, status='pending'
+        )
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, rider=self.rider, delivery_location='Gymnasium',
+            status=DeliveryRequest.RequestStatus.ACCEPTED,
+            dest_lat=9.77725, dest_lng=118.73480,
+            rider_lat=9.77800, rider_lng=118.73338,
+        )
+        self.client.login(username='acc_rider', password='password123')
+        self.url = reverse('deliveries:update_location', args=[self.delivery.id])
+
+    def _push(self, **overrides):
+        payload = {'lat': 9.77810, 'lng': 118.73350}
+        payload.update(overrides)
+        return self.client.post(
+            self.url, json.dumps(payload), content_type='application/json')
+
+    def test_accurate_fix_is_stored_and_exposed(self):
+        res = self._push(accuracy=8.5)
+        self.assertEqual(res.status_code, 200)
+        self.delivery.refresh_from_db()
+        self.assertAlmostEqual(self.delivery.rider_acc, 8.5, places=1)
+        self.assertEqual(self.delivery.location_points.count(), 1)
+        point = self.delivery.location_points.first()
+        self.assertAlmostEqual(point.accuracy, 8.5, places=1)
+
+    def test_fuzzy_fix_is_rejected_and_last_good_position_kept(self):
+        self._push(accuracy=8.5)
+        res = self._push(lat=9.77950, lng=118.73450, accuracy=250)
+        self.assertEqual(res.status_code, 422)
+        body = res.json()
+        self.assertFalse(body['success'])
+        self.assertTrue(body['ignored'])
+        self.assertEqual(body['max_accuracy_m'], 40)
+        # The rider must NOT have jumped to the noisy fix.
+        self.delivery.refresh_from_db()
+        self.assertAlmostEqual(self.delivery.rider_lat, 9.77810, places=5)
+        self.assertAlmostEqual(self.delivery.rider_acc, 8.5, places=1)
+
+    def test_missing_accuracy_is_accepted_for_older_devices(self):
+        """Devices that do not report accuracy must still be able to push."""
+        res = self._push()
+        self.assertEqual(res.status_code, 200)
+        self.delivery.refresh_from_db()
+        self.assertIsNone(self.delivery.rider_acc)
+
+    def test_nonsense_accuracy_is_treated_as_unreported(self):
+        res = self._push(accuracy=-5)
+        self.assertEqual(res.status_code, 200)
+        self.delivery.refresh_from_db()
+        self.assertIsNone(self.delivery.rider_acc)
+
+    def test_accuracy_threshold_is_configurable(self):
+        with override_settings(GPS_MAX_ACCURACY_M=500):
+            res = self._push(accuracy=250)
+            self.assertEqual(res.status_code, 200)
+
+    def test_tracking_payload_reports_accuracy(self):
+        self._push(accuracy=12.0)
+        data = self.client.get(
+            reverse('deliveries:get_tracking', args=[self.delivery.id])).json()
+        self.assertAlmostEqual(data['accuracy_m'], 12.0, places=1)
+
+
+class TrackingStreamTestCase(TestCase):
+    """The customer tracking page is pushed over SSE, with the 4s poll as the
+    fallback. Both must expose the identical payload shape."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.customer = CustomUser.objects.create_user(
+            username='track_owner', password='password123', role='STUDENT'
+        )
+        self.stranger = CustomUser.objects.create_user(
+            username='track_stranger', password='password123', role='STUDENT'
+        )
+        self.rider = CustomUser.objects.create_user(
+            username='stream_rider', password='password123', role='DELIVERY'
+        )
+        self.order = Order.objects.create(
+            order_number='#CE-8200', total_amount=100.00, status='pending',
+            customer=self.customer,
+        )
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, rider=self.rider, delivery_location='Library',
+            status=DeliveryRequest.RequestStatus.ACCEPTED,
+            dest_lat=9.77725, dest_lng=118.73480,
+            rider_lat=9.77800, rider_lng=118.73338, rider_acc=10.0,
+        )
+        self.url = reverse('deliveries:tracking_stream', args=[self.delivery.id])
+
+    def test_owner_receives_event_stream(self):
+        self.client.login(username='track_owner', password='password123')
+        res = self.client.get(self.url)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res['Content-Type'], 'text/event-stream')
+        self.assertEqual(res['Cache-Control'], 'no-cache')
+        # Read only the first frame so the test never blocks on the open stream.
+        frame = next(res.streaming_content).decode()
+        self.assertTrue(frame.startswith('data: '))
+        payload = json.loads(frame[len('data: '):])
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['order_number'], self.order.order_number)
+
+    def test_stream_payload_matches_polling_payload_shape(self):
+        self.client.login(username='track_owner', password='password123')
+        frame = next(self.client.get(self.url).streaming_content).decode()
+        pushed = json.loads(frame[len('data: '):])
+        polled = self.client.get(
+            reverse('deliveries:get_tracking', args=[self.delivery.id])).json()
+        self.assertEqual(sorted(pushed), sorted(polled))
+
+    def test_stream_denied_to_other_customers(self):
+        self.client.login(username='track_stranger', password='password123')
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+
+    def test_stream_denied_to_anonymous(self):
+        self.assertEqual(self.client.get(self.url).status_code, 302)
+
+    def test_location_push_bumps_the_stream_version(self):
+        from django.core.cache import cache
+        from deliveries.views import tracking_version_key
+        self.client.login(username='stream_rider', password='password123')
+        self.client.post(
+            reverse('deliveries:update_location', args=[self.delivery.id]),
+            json.dumps({'lat': 9.77811, 'lng': 118.73351, 'accuracy': 9.0}),
+            content_type='application/json')
+        self.assertIsNotNone(cache.get(tracking_version_key(self.delivery.id)))
+
+class RiderRoutePayloadTestCase(TestCase):
+    """The tracking payload carries the rider's route only.
+
+    The map draws a single solid orange line for the rider's route: the live
+    remaining leg when the server could route it, or a dashed straight line when
+    routing is down. A separate whole-trip "campus route" layer and a
+    calculation-details panel were both removed at the user's request, so this
+    pins that neither silently comes back. Routing is stubbed here because the
+    suite must not touch the network.
+    """
+
+    def setUp(self):
+        from accounts.models import CustomUser
+        from django.core.cache import cache
+        cache.clear()
+        self.rider = CustomUser.objects.create_user(
+            username='route_rider', password='testpass', role='DELIVERY')
+        self.order = Order.objects.create(
+            order_number='#CE-6600', total_amount=100.00, status='pending')
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, rider=self.rider, delivery_location='Library',
+            status=DeliveryRequest.RequestStatus.ACCEPTED,
+            dest_lat=9.77725, dest_lng=118.73480,
+            rider_lat=9.77790, rider_lng=118.73350)
+        # The trip origin is the rider's FIRST recorded fix.
+        RiderLocationPoint.objects.create(
+            delivery=self.delivery, rider=self.rider,
+            lat=9.77810, lng=118.73320, speed_kmh=12.0, accuracy=8.0)
+
+    def _stub_route(self, patch_target):
+        from unittest import mock
+        def fake(origin_lat, origin_lng, dest_lat, dest_lng):
+            return {
+                'path': [[origin_lat, origin_lng], [9.77760, 118.73410],
+                         [dest_lat, dest_lng]],
+                'distance_km': 0.42,
+                'duration_min': 6.0,
+                'provider': 'stub',
+            }
+        return mock.patch(patch_target, side_effect=fake)
+
+    def test_payload_carries_rider_route_and_no_campus_layer(self):
+        import deliveries.views as dv
+        with self._stub_route('deliveries.views.get_road_route'):
+            payload = dv._tracking_payload(self.delivery)
+        # The orange rider route is present and routed.
+        self.assertIsNotNone(payload['path'])
+        self.assertGreater(len(payload['path']), 1)
+        self.assertEqual(payload['routing_provider'], 'stub')
+        self.assertEqual(payload['route_duration_min'], 6)
+        # The progress denominator is still derived from the real trip.
+        self.assertIsNotNone(payload['route_total_km'])
+        self.assertAlmostEqual(payload['route_total_km'], 0.42, places=2)
+        # The removed campus-route keys must stay gone.
+        for key in ('campus_path', 'campus_provider', 'campus_duration_min',
+                    'is_campus_routed', 'is_road_routed'):
+            self.assertNotIn(key, payload)
+
+    def test_routing_outage_degrades_to_straight_line(self):
+        """When routing is unavailable the map still gets coordinates, and
+        route_total_km falls back to haversine instead of vanishing."""
+        self.client.force_login(self.rider)
+        data = self.client.get(
+            reverse('deliveries:get_tracking', args=[self.delivery.id])).json()
+        self.assertTrue(data['success'])
+        self.assertIsNone(data['path'])
+        self.assertIsNone(data['routing_provider'])
+        # Straight-line estimate still drives the progress bar.
+        self.assertIsNotNone(data['route_total_km'])
+        # ...and the card is told to label those figures as approximate, so a
+        # shorter-than-real crow-flight distance is never shown as exact.
+        self.assertTrue(data['distance_is_approximate'])
+
+    def test_routed_delivery_is_not_flagged_approximate(self):
+        """A real road route means the figures are exact, so no "approx." badge."""
+        import deliveries.views as dv
+        with self._stub_route('deliveries.views.get_road_route'):
+            payload = dv._tracking_payload(self.delivery)
+        self.assertFalse(payload['distance_is_approximate'])
+
+    def test_payload_carries_travelled_trail(self):
+        """The ridden ground is served from the DB, not rebuilt in the browser.
+
+        The previous breadcrumb only ever contained fixes that arrived while the
+        tracking page happened to be open, so it restarted empty on every reload.
+        """
+        import deliveries.views as dv
+        for lat, lng in ((9.77780, 118.73360), (9.77740, 118.73410)):
+            RiderLocationPoint.objects.create(
+                delivery=self.delivery, rider=self.rider,
+                lat=lat, lng=lng, speed_kmh=11.0, accuracy=7.0)
+        with self._stub_route('deliveries.views.get_road_route'):
+            payload = dv._tracking_payload(self.delivery)
+        trail = payload['trail']
+        self.assertGreaterEqual(len(trail), 2)
+        # Starts at the recorded pickup and ends at the rider's live position.
+        self.assertAlmostEqual(trail[0][0], 9.77810, places=4)
+        self.assertAlmostEqual(trail[-1][1], 118.73350, places=4)
+        # Coordinates are [lat, lng] pairs rounded to 5dp, JSON-serialisable.
+        self.assertIsInstance(json.dumps(trail), str)
+
+    def test_trail_is_thinned_and_bounded(self):
+        """A stationary rider collapses to a short trail instead of hundreds of
+        jittery fixes, and a long trip cannot bloat the payload."""
+        from deliveries.utils import thin_trail
+        # Sub-metre wobble (~0.06 m per fix): what a phone reports while parked.
+        parked = [(9.77778 + i * 0.0000005, 118.73333) for i in range(120)]
+        self.assertLessEqual(len(thin_trail(parked)), 4)
+        # ~22 m per fix: genuine travel, so it must NOT be thinned away.
+        moving = [(9.77778 + i * 0.0002, 118.73333) for i in range(400)]
+        trail = thin_trail(moving)
+        self.assertLessEqual(len(trail), 180)
+        # Endpoints always survive the thinning.
+        self.assertEqual(trail[0], moving[0])
+        self.assertEqual(trail[-1], moving[-1])
+
+    def test_tracking_page_draws_only_the_orange_route(self):
+        self.client.force_login(self.rider)
+        res = self.client.get(
+            reverse('deliveries:track_order', args=[self.delivery.id]))
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        # The single orange route line, driven by the payload's `path`.
+        self.assertIn("#FF6117", html)
+        self.assertIn("data.path", html)
+        # The travelled track is drawn from the server payload, not a local
+        # accumulator, and stays dimmer than the live route.
+        self.assertIn("data.trail", html)
+        self.assertIn("opacity: 0.35", html)
+        # The route legend overlay was removed at the user's request; the map is
+        # meant to read on its own.
+        for removed in ('Route legend', 'Already travelled', 'Rider route',
+                        'fa-route'):
+            self.assertNotIn(removed, html)
+        # Approximate-distance labelling is wired to the server flag.
+        self.assertIn("distance_is_approximate", html)
+        self.assertIn("approx-badge", html)
+        # No campus route layer, no calculation panel.
+        for removed in ('campus_path', 'Campus route (shortest)',
+                        'calc-total-val', 'calc-covered-val', 'calc-basis'):
+            self.assertNotIn(removed, html)
+        # Recenter control is present and wired to the recenter() handler.
+        self.assertIn("ce-recenter", html)
+        self.assertIn("recenter()", html)
+        # The recenter button's styling must survive CSS parsing: a "//" comment
+        # in the <style> block used to swallow the whole .ce-recenter a rule.
+        self.assertIn(".ce-recenter a {", html)
+
+
+class RiderRoutePreviewTestCase(TestCase):
+    """A rider can see the road and its travel time BEFORE accepting a job.
+
+    The origin is the canteen, because a pending job has no rider position yet.
+    """
+
+    def setUp(self):
+        from accounts.models import CustomUser
+        from django.core.cache import cache
+        cache.clear()
+        self.rider = CustomUser.objects.create_user(
+            username='preview_rider', password='testpass', role='DELIVERY')
+        self.order = Order.objects.create(
+            order_number='#CE-7700', total_amount=100.00, status='pending')
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, delivery_location='Engineering Bldg',
+            status=DeliveryRequest.RequestStatus.SEARCHING,
+            dest_lat=9.77725, dest_lng=118.73480)
+
+    def _post(self):
+        return self.client.post(reverse(
+            'deliveries:route_preview', args=[self.delivery.id]))
+
+    def test_requires_a_rider_session(self):
+        self.assertEqual(self._post().status_code, 302)
+
+    def test_returns_orange_map_route_from_the_canteen(self):
+        import deliveries.views as dv
+        from unittest import mock
+
+        def fake(origin_lat, origin_lng, dest_lat, dest_lng):
+            return {
+                'path': [[origin_lat, origin_lng], [dest_lat, dest_lng]],
+                'distance_km': 0.4, 'duration_min': 7.0, 'provider': 'stub',
+            }
+
+        self.client.force_login(self.rider)
+        with mock.patch('deliveries.views.get_road_route', side_effect=fake):
+            data = self._post().json()
+
+        self.assertTrue(data['success'])
+        self.assertTrue(data['routed'])
+        self.assertEqual(data['routing_provider'], 'stub')
+        self.assertEqual(data['duration_min'], 7)
+        self.assertAlmostEqual(data['distance_km'], 0.4, places=2)
+        # Origin is the canteen, not the rider's (nonexistent) position.
+        self.assertAlmostEqual(data['origin_lat'], settings.CANTEEN_LAT, places=4)
+        self.assertAlmostEqual(data['origin_lng'], settings.CANTEEN_LNG, places=4)
+        self.assertGreaterEqual(len(data['path']), 2)
+
+    def test_routing_outage_still_returns_a_usable_preview(self):
+        """A provider outage must not leave the rider staring at a blank popup."""
+        import deliveries.views as dv
+        from unittest import mock
+        self.client.force_login(self.rider)
+        with mock.patch('deliveries.views.get_road_route', return_value=None):
+            data = self._post().json()
+        self.assertTrue(data['success'])
+        self.assertFalse(data['routed'])
+        self.assertIsNone(data['routing_provider'])
+        self.assertIsNone(data['duration_min'])
+        # A straight line is still drawn rather than nothing at all.
+        self.assertEqual(len(data['path']), 2)
+        self.assertGreater(data['distance_km'], 0)
+
+    def test_delivery_without_destination_is_rejected(self):
+        self.client.force_login(self.rider)
+        self.delivery.dest_lat = None
+        self.delivery.dest_lng = None
+        self.delivery.save()
+        res = self._post()
+        self.assertEqual(res.status_code, 422)
+        self.assertFalse(res.json()['success'])
+
+    def test_rider_dashboard_shows_a_live_route_map_on_active_cards(self):
+        """The rider's active delivery card carries its own live orange route.
+
+        The route button was removed at the user's request; the road line is now
+        drawn straight onto the card and driven by the live-route endpoint, so
+        the rider sees an accurate, real-time route without tapping anything.
+        """
+        self.client.force_login(self.rider)
+        self.delivery.status = DeliveryRequest.RequestStatus.ACCEPTED
+        self.delivery.rider = self.rider
+        self.delivery.save(update_fields=['status', 'rider'])
+
+        # The dashboard redirects once to a session-token URL, hence follow=True.
+        res = self.client.get(reverse('deliveries:dashboard'), follow=True)
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        # The active card hosts a live map instead of a route button.
+        self.assertIn('live-route-map', html)
+        self.assertIn('data-route-id="%d"' % self.delivery.id, html)
+        self.assertNotIn('openRoute(', html)
+        self.assertNotIn('id="route-modal"', html)
+        # The live-route endpoint is resolved onto the card, so the line is
+        # reachable without a page reload.
+        self.assertIn(
+            reverse('deliveries:api_live_route', args=[self.delivery.id]), html)
+        # Same orange route treatment as the customer tracking map.
+        self.assertIn('#FF6117', html)
+        # And no dead tile subdomain, which would leave grey holes.
+        self.assertIn("subdomains: 'abc'", html)
+        self.assertNotIn("subdomains: 'abcd'", html)
+
+
+class ConvertToPickupTestCase(TestCase):
+    """Converting a delivery to counter pick-up must stick, every single time.
+
+    Regression guard: the old implementation parked the request at TIMEOUT, and
+    ``expire_stale_requests`` revives TIMEOUT rows back into the rider pool the
+    moment the food is ready -- so a converted order silently turned back into a
+    delivery. Conversion now parks at REJECTED, which is never revived.
+    """
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.customer = CustomUser.objects.create_user(
+            username='convert_faculty', password='testpass', role='FACULTY')
+        self.other = CustomUser.objects.create_user(
+            username='convert_other', password='testpass', role='FACULTY')
+        self.order = Order.objects.create(
+            order_number='#CE-8800', total_amount=100.00, delivery_fee=20.00,
+            status='pending', customer=self.customer)
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, delivery_location='Library',
+            status=DeliveryRequest.RequestStatus.SEARCHING,
+            dest_lat=9.77730, dest_lng=118.73460)
+
+    def _post(self):
+        return self.client.post(
+            reverse('deliveries:api_convert_to_pickup', args=[self.delivery.id]))
+
+    def test_conversion_strips_the_fee_and_makes_a_slip(self):
+        from queuing.models import DigitalQueueSlip
+        self.client.force_login(self.customer)
+        res = self._post()
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['queue_number'], self.order.order_number)
+
+        self.delivery.refresh_from_db()
+        self.order.refresh_from_db()
+        self.assertEqual(self.delivery.status,
+                         DeliveryRequest.RequestStatus.REJECTED)
+        self.assertEqual(self.order.delivery_fee, 0)
+        slip = DigitalQueueSlip.objects.get(order=self.order)
+        self.assertEqual(slip.queue_number, self.order.order_number)
+
+    def test_conversion_is_idempotent(self):
+        from queuing.models import DigitalQueueSlip
+        self.client.force_login(self.customer)
+        first = self._post().json()
+        second = self._post().json()
+        self.assertTrue(first['success'])
+        self.assertTrue(second['success'])
+        self.assertEqual(
+            DigitalQueueSlip.objects.filter(order=self.order).count(), 1)
+
+    def test_converted_order_is_never_revived_by_expiry(self):
+        from deliveries.views import expire_stale_requests
+        self.client.force_login(self.customer)
+        self.assertTrue(self._post().json()['success'])
+        # The kitchen gets the food ready after the conversion...
+        self.order.status = 'ready'
+        self.order.save(update_fields=['status'])
+        expire_stale_requests()
+        self.delivery.refresh_from_db()
+        # ...and the order must stay a pick-up, not flip back to SEARCHING.
+        self.assertEqual(self.delivery.status,
+                         DeliveryRequest.RequestStatus.REJECTED)
+
+    def test_a_rider_accepted_delivery_cannot_be_converted(self):
+        self.client.force_login(self.customer)
+        self.delivery.status = DeliveryRequest.RequestStatus.ACCEPTED
+        self.delivery.save(update_fields=['status'])
+        res = self._post()
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(res.json()['success'])
+
+    def test_cancelled_order_cannot_be_converted(self):
+        self.client.force_login(self.customer)
+        self.order.status = 'cancelled'
+        self.order.save(update_fields=['status'])
+        self.assertEqual(self._post().status_code, 400)
+
+    def test_only_the_owner_or_staff_may_convert(self):
+        self.client.force_login(self.other)
+        self.assertEqual(self._post().status_code, 403)
+
+
+class LiveRouteEndpointTestCase(TestCase):
+    """The rider's live orange route: origin = freshest fix, dest = drop-off."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.rider = CustomUser.objects.create_user(
+            username='live_route_rider', password='testpass', role='DELIVERY')
+        self.order = Order.objects.create(
+            order_number='#CE-8801', total_amount=80.00, status='pending')
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, delivery_location='Science Bldg',
+            status=DeliveryRequest.RequestStatus.ACCEPTED, rider=self.rider,
+            dest_lat=9.77725, dest_lng=118.73480)
+
+    def _get(self, **params):
+        return self.client.get(
+            reverse('deliveries:api_live_route', args=[self.delivery.id]), params)
+
+    def test_route_starts_at_the_live_rider_fix(self):
+        from unittest import mock
+
+        def fake(origin_lat, origin_lng, dest_lat, dest_lng):
+            return {'path': [[origin_lat, origin_lng], [dest_lat, dest_lng]],
+                    'distance_km': 0.3, 'duration_min': 5.0, 'provider': 'stub'}
+
+        self.client.force_login(self.rider)
+        with mock.patch('deliveries.views.get_road_route', side_effect=fake):
+            data = self._get(lat=9.77700, lng=118.73300).json()
+        self.assertTrue(data['success'])
+        self.assertTrue(data['routed'])
+        self.assertAlmostEqual(data['origin_lat'], 9.77700, places=5)
+        self.assertAlmostEqual(data['origin_lng'], 118.73300, places=5)
+        self.assertAlmostEqual(data['dest_lat'], 9.77725, places=5)
+        self.assertGreaterEqual(len(data['path']), 2)
+
+    def test_falls_back_to_stored_position_without_a_query_fix(self):
+        from unittest import mock
+        self.delivery.rider_lat = 9.77710
+        self.delivery.rider_lng = 118.73310
+        self.delivery.save(update_fields=['rider_lat', 'rider_lng'])
+        self.client.force_login(self.rider)
+        with mock.patch('deliveries.views.get_road_route', return_value=None):
+            data = self._get().json()
+        self.assertTrue(data['success'])
+        self.assertFalse(data['routed'])
+        self.assertAlmostEqual(data['origin_lat'], 9.77710, places=5)
+        # A straight line is still drawn rather than nothing at all.
+        self.assertEqual(len(data['path']), 2)
+
+    def test_missing_destination_is_rejected(self):
+        self.client.force_login(self.rider)
+        self.delivery.dest_lat = None
+        self.delivery.dest_lng = None
+        self.delivery.save(update_fields=['dest_lat', 'dest_lng'])
+        res = self._get(lat=9.777, lng=118.733)
+        self.assertEqual(res.status_code, 422)
+
+    def test_requires_a_privileged_session(self):
+        self.assertEqual(self._get().status_code, 302)
+
+
+class TrackingPageDialogsTestCase(TestCase):
+    """The customer tracking page ships the reason dropdown, confirmation and a
+    dedicated success dialog instead of a bare ``alert()``."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.rider = CustomUser.objects.create_user(
+            username='track_dialog_rider', password='testpass', role='DELIVERY')
+        self.order = Order.objects.create(
+            order_number='#CE-8802', total_amount=60.00, status='pending')
+        self.delivery = DeliveryRequest.objects.create(
+            order=self.order, delivery_location='Gym',
+            status=DeliveryRequest.RequestStatus.SEARCHING,
+            dest_lat=9.77740, dest_lng=118.73420)
+
+    def test_dialogs_render(self):
+        self.client.force_login(self.rider)
+        res = self.client.get(
+            reverse('deliveries:track_order', args=[self.delivery.id]))
+        self.assertEqual(res.status_code, 200)
+        html = res.content.decode()
+        for marker in (
+            'id="cancel-reason-select"',
+            'id="cancel-reason-other"',
+            'toggleTrackingOtherReason()',
+            'id="tracking-confirm-modal"',
+            'id="tracking-success-modal"',
+            'showTrackingSuccess(',
+            'submitCancelOrder()',
+            'convertToPickup()',
+        ):
+            self.assertIn(marker, html)
+
+
+class TileProviderPolicyTestCase(SimpleTestCase):
+    """Guard the basemap tile host and the subdomain list.
+
+    Standard OSM raster tiles are the only keyless provider verified to return
+    real per-location tiles at z19 for this campus, which is what makes building
+    footprints render when the map is zoomed in. Verified by hashing four
+    adjacent tiles at z17/18/19 near the campus centre: OSM gave four distinct
+    tiles at every zoom, while Esri's World_Street_Map collapsed to one
+    identical tile from z18 and its World_Imagery from z17 -- that placeholder
+    is literally the "Map data not yet available" graphic the user reported --
+    and CARTO's keyless basemaps returned one identical tile for every location
+    and style at every zoom.
+
+    An earlier note here claimed OSM was blocked. That was a testing artefact:
+    OSM rejects requests that send no User-Agent, and the check that produced
+    that conclusion was a scripted fetch without one. Browsers always send a
+    User-Agent, so standard tiles are correct here.
+    """
+
+    BLOCKED_HOSTS = ('server.arcgisonline.com', 'basemaps.cartocdn.com')
+    EXPECTED_HOST = 'tile.openstreetmap.org'
+    # OSM runs a/b/c only. 'd' does not resolve, so listing it makes every
+    # fourth tile request fail and leaves grey holes across the map.
+    FORBIDDEN_SUBDOMAINS = ('abcd',)
+
+    def _sources(self):
+        from pathlib import Path
+        base = Path(settings.BASE_DIR)
+        roots = [base / 'templates', base / 'static' / 'js',
+                 base / 'accounts' / 'templates']
+        for root in roots:
+            if not root.exists():
+                continue
+            for path in root.rglob('*'):
+                if path.suffix in ('.html', '.js') and path.is_file():
+                    yield path
+
+    @staticmethod
+    def _code_only(text):
+        """Drop comment lines.
+
+        The blocked hosts are named on purpose in comments explaining why they
+        are not used, so scanning raw text would always fail. Only real code
+        (a tile layer, a config default) must be free of them.
+        """
+        markers = ('//', '*', '#', '<!--')
+        return '\n'.join(
+            line for line in text.splitlines()
+            if not line.strip().startswith(markers))
+
+    def test_no_blocked_tile_host_is_referenced(self):
+        offenders = []
+        for path in self._sources():
+            text = self._code_only(
+                path.read_text(encoding='utf-8', errors='ignore'))
+            for host in self.BLOCKED_HOSTS:
+                if host in text:
+                    offenders.append('%s -> %s' % (path.name, host))
+        self.assertEqual(
+            offenders, [],
+            'Blocked/broken tile hosts referenced: %s' % offenders)
+
+    def test_every_tile_layer_uses_the_verified_provider(self):
+        layers = 0
+        for path in self._sources():
+            text = path.read_text(encoding='utf-8', errors='ignore')
+            for match in re.finditer(r"L\.tileLayer\(\s*'([^']+)'", text):
+                layers += 1
+                self.assertIn(
+                    self.EXPECTED_HOST, match.group(1),
+                    'Tile layer in %s uses an unverified host: %s'
+                    % (path.name, match.group(1)))
+        # Guards against the test passing simply because no layer was found.
+        self.assertGreaterEqual(layers, 5)
+
+    def test_no_dead_tile_subdomain_is_requested(self):
+        offenders = []
+        for path in self._sources():
+            text = path.read_text(encoding='utf-8', errors='ignore')
+            for bad in self.FORBIDDEN_SUBDOMAINS:
+                if re.search(r"subdomains:\s*['\"]%s['\"]" % bad, text):
+                    offenders.append('%s -> %s' % (path.name, bad))
+        self.assertEqual(
+            offenders, [],
+            'Tile layers requesting non-existent OSM subdomains: %s' % offenders)

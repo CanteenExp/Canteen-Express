@@ -1,0 +1,113 @@
+{% comment %}
+Feedback & Ratings tab, shared by both staff dashboards. Kiosk (counter
+pick-up) and delivery reviews are kept apart because they grade different
+things: food/service at the counter vs food + rider experience on a delivery.
+Expects: fb_kiosk, fb_delivery, fb_kiosk_stats, fb_delivery_stats, fb_total,
+fb_overall.
+{% endcomment %}
+<div x-show="activeTab === 'feedback'" class="space-y-6" style="display: none;">
+
+    <!-- header -->
+    <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-xl font-black text-dark-900 flex items-center gap-2">
+                <i class="fa-solid fa-star text-amber-500"></i> Feedback &amp; Ratings
+            </h2>
+            <p class="text-xs text-gray-500 mt-1">
+                Customer reviews are segregated by channel &mdash; kiosk pick-ups and deliveries are graded separately.
+            </p>
+        </div>
+        <div class="flex items-center gap-5 shrink-0">
+            <div class="text-center">
+                <p class="text-2xl font-black text-dark-900 leading-none">{{ fb_total }}</p>
+                <p class="text-[9px] font-black text-gray-400 uppercase tracking-wider mt-1">Total reviews</p>
+            </div>
+            <div class="w-px h-9 bg-gray-200"></div>
+            <div class="text-center">
+                <p class="text-2xl font-black text-amber-500 leading-none">{% if fb_total %}{{ fb_overall.avg }}{% else %}&mdash;{% endif %}</p>
+                <p class="text-[9px] font-black text-gray-400 uppercase tracking-wider mt-1">Overall avg</p>
+            </div>
+            <div class="w-px h-9 bg-gray-200"></div>
+            <div class="text-center">
+                <p class="text-2xl font-black text-emerald-600 leading-none">{{ fb_kiosk_stats.count }}</p>
+                <p class="text-[9px] font-black text-gray-400 uppercase tracking-wider mt-1">Kiosk</p>
+            </div>
+            <div class="text-center">
+                <p class="text-2xl font-black text-sky-600 leading-none">{{ fb_delivery_stats.count }}</p>
+                <p class="text-[9px] font-black text-gray-400 uppercase tracking-wider mt-1">Delivery</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- per-channel summaries -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        {% include "partials/feedback_channel_summary.html" with stats=fb_kiosk_stats %}
+        {% include "partials/feedback_channel_summary.html" with stats=fb_delivery_stats %}
+    </div>
+
+    <!-- segregated review lists -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+        <!-- kiosk reviews -->
+        <section class="space-y-3">
+            <div class="flex items-center justify-between gap-3">
+                <h3 class="text-sm font-black text-dark-900 flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-[10px]"><i class="fa-solid fa-store"></i></span>
+                    Kiosk Reviews
+                </h3>
+                <span class="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-100 rounded-full px-2.5 py-1">
+                    {{ fb_kiosk_stats.count }} {{ fb_kiosk_stats.count|pluralize:"review,reviews" }}
+                </span>
+            </div>
+
+            {% if fb_kiosk %}
+                <div class="space-y-2">
+                    {% for fb in fb_kiosk %}
+                        {% include "partials/feedback_card.html" with fb=fb %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="bg-white rounded-3xl border border-dashed border-gray-200 p-8 text-center space-y-2">
+                    <div class="w-12 h-12 mx-auto rounded-2xl bg-orange-50 text-orange-400 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                    <p class="text-xs font-black text-gray-500">No kiosk reviews yet</p>
+                    <p class="text-[11px] text-gray-400 leading-relaxed max-w-[16rem] mx-auto">
+                        Counter pick-up ratings show up here after a guest finishes their order.
+                    </p>
+                </div>
+            {% endif %}
+        </section>
+
+        <!-- delivery reviews -->
+        <section class="space-y-3">
+            <div class="flex items-center justify-between gap-3">
+                <h3 class="text-sm font-black text-dark-900 flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center text-[10px]"><i class="fa-solid fa-motorcycle"></i></span>
+                    Delivery Reviews
+                </h3>
+                <span class="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-100 rounded-full px-2.5 py-1">
+                    {{ fb_delivery_stats.count }} {{ fb_delivery_stats.count|pluralize:"review,reviews" }}
+                </span>
+            </div>
+
+            {% if fb_delivery %}
+                <div class="space-y-2">
+                    {% for fb in fb_delivery %}
+                        {% include "partials/feedback_card.html" with fb=fb %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="bg-white rounded-3xl border border-dashed border-gray-200 p-8 text-center space-y-2">
+                    <div class="w-12 h-12 mx-auto rounded-2xl bg-sky-50 text-sky-400 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-motorcycle"></i>
+                    </div>
+                    <p class="text-xs font-black text-gray-500">No delivery reviews yet</p>
+                    <p class="text-[11px] text-gray-400 leading-relaxed max-w-[16rem] mx-auto">
+                        Delivery ratings show up here once a rider completes the drop-off.
+                    </p>
+                </div>
+            {% endif %}
+        </section>
+    </div>
+</div>

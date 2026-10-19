@@ -2,10 +2,14 @@ import json
 import time
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, StreamingHttpResponse
+from django.core.cache import cache
+from django.db import transaction
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from accounts.decorators import role_required
+from activity_log.models import ActivityLog
+from activity_log.services import log_activity
 
 from customer_portal.models import Order 
 from canteen_menu.models import MenuItem 
@@ -22,14 +26,14 @@ def staff_dashboard(request):
     today = timezone.now().date()
     week_start = today - timezone.timedelta(days=7)
     month_start = today.replace(day=1)
-    today_orders = Order.objects.filter(created_at__date=today).exclude(status='unpaid')
+    today_orders = Order.objects.filter(created_at__date=today).exclude(status__in=['unpaid', 'cancelled'])
     
     total_orders_today = today_orders.count()
     pending_count = Order.objects.filter(status='pending').count()
     preparing_count = Order.objects.filter(status='preparing').count()
     ready_count = Order.objects.filter(status='ready').count()
     
-    recent_orders = Order.objects.exclude(status='completed').exclude(status='unpaid').order_by('-created_at')[:5]
+    recent_orders = Order.objects.exclude(status__in=['completed', 'unpaid', 'cancelled']).order_by('-created_at')[:5]
     menu_items = MenuItem.objects.all().order_by('name')
     users_list = User.objects.all().order_by('-date_joined')[:30] if hasattr(User, 'date_joined') else User.objects.all()[:30]
     
@@ -38,96 +42,104 @@ def staff_dashboard(request):
     except Exception:
         delivery_requests = []
 
-    # Sales Reports & Analytics
-    valid_orders = Order.objects.filter(status__in=['ready', 'completed'])
-    overall_orders = valid_orders
-    kiosk_orders = valid_orders.filter(customer__isnull=True)
-    faculty_orders = valid_orders.filter(customer__role='FACULTY')
-    from deliveries.models import DeliveryRequest
-    delivery_order_ids = DeliveryRequest.objects.values_list('order_id', flat=True)
-    delivery_orders = valid_orders.filter(id__in=delivery_order_ids)
+    # Sales Reports & Analytics (Cached for 30s to ensure instant staff dashboard loading)
+    cache_key = f'staff_dashboard_analytics_{today.isoformat()}'
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        overall_stats, kiosk_stats, faculty_stats, delivery_stats, rider_rankings, daily_sales, weekly_sales, monthly_sales, daily_chart_data, weekly_chart_data, monthly_chart_data, sales_today, sales_week, sales_month = cached_data
+    else:
+        valid_orders = Order.objects.filter(status__in=['ready', 'completed'])
+        overall_orders = valid_orders
+        kiosk_orders = valid_orders.filter(customer__isnull=True)
+        faculty_orders = valid_orders.filter(customer__role='FACULTY')
+        from deliveries.models import DeliveryRequest
+        delivery_order_ids = DeliveryRequest.objects.values_list('order_id', flat=True)
+        delivery_orders = valid_orders.filter(id__in=delivery_order_ids)
 
-    def compute_stats(qs):
-        s_today = qs.filter(created_at__date=today).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        s_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        s_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        c_today = qs.filter(created_at__date=today).count()
-        c_week = qs.filter(created_at__date__gte=week_start).count()
-        c_month = qs.filter(created_at__date__gte=month_start).count()
-        return {'today': s_today, 'week': s_week, 'month': s_month, 'count_today': c_today, 'count_week': c_week, 'count_month': c_month}
+        def compute_stats(qs):
+            s_today = qs.filter(created_at__date=today).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            s_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            s_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            c_today = qs.filter(created_at__date=today).count()
+            c_week = qs.filter(created_at__date__gte=week_start).count()
+            c_month = qs.filter(created_at__date__gte=month_start).count()
+            return {'today': s_today, 'week': s_week, 'month': s_month, 'count_today': c_today, 'count_week': c_week, 'count_month': c_month}
 
-    def compute_delivery_stats(qs):
-        base = compute_stats(qs)
-        d_fees_today = qs.filter(created_at__date=today).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
-        d_fees_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
-        d_fees_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
-        base['delivery_fees'] = {'today': d_fees_today, 'week': d_fees_week, 'month': d_fees_month}
-        return base
+        def compute_delivery_stats(qs):
+            base = compute_stats(qs)
+            d_fees_today = qs.filter(created_at__date=today).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
+            d_fees_week = qs.filter(created_at__date__gte=week_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
+            d_fees_month = qs.filter(created_at__date__gte=month_start).aggregate(Sum('delivery_fee'))['delivery_fee__sum'] or 0
+            base['delivery_fees'] = {'today': d_fees_today, 'week': d_fees_week, 'month': d_fees_month}
+            return base
 
-    overall_stats = compute_stats(overall_orders)
-    kiosk_stats = compute_stats(kiosk_orders)
-    faculty_stats = compute_stats(faculty_orders)
-    delivery_stats = compute_delivery_stats(delivery_orders)
+        overall_stats = compute_stats(overall_orders)
+        kiosk_stats = compute_stats(kiosk_orders)
+        faculty_stats = compute_stats(faculty_orders)
+        delivery_stats = compute_delivery_stats(delivery_orders)
 
-    def get_rankings(date_filter=None):
-        f = Q(assigned_deliveries__status='DELIVERED')
-        if date_filter == 'daily':
-            f &= Q(assigned_deliveries__order__created_at__date=today)
-        elif date_filter == 'weekly':
-            f &= Q(assigned_deliveries__order__created_at__date__gte=week_start)
-        elif date_filter == 'monthly':
-            f &= Q(assigned_deliveries__order__created_at__date__gte=month_start)
-        return list(
-            User.objects.filter(role__in=['RIDER', 'DELIVERY'])
-            .annotate(
-                total_delivered=Count('assigned_deliveries', filter=f),
-                total_earnings=Sum('assigned_deliveries__order__delivery_fee', filter=f)
+        def get_rankings(date_filter=None):
+            f = Q(assigned_deliveries__status='DELIVERED')
+            if date_filter == 'daily':
+                f &= Q(assigned_deliveries__order__created_at__date=today)
+            elif date_filter == 'weekly':
+                f &= Q(assigned_deliveries__order__created_at__date__gte=week_start)
+            elif date_filter == 'monthly':
+                f &= Q(assigned_deliveries__order__created_at__date__gte=month_start)
+            return list(
+                User.objects.filter(role__in=['RIDER', 'DELIVERY'])
+                .annotate(
+                    total_delivered=Count('assigned_deliveries', filter=f),
+                    total_earnings=Sum('assigned_deliveries__order__delivery_fee', filter=f)
+                )
+                .order_by('-total_delivered')
             )
-            .order_by('-total_delivered')
+
+        rider_rankings = get_rankings(None)
+
+        daily_sales = list(
+            valid_orders
+            .annotate(period=TruncDate('created_at'))
+            .values('period')
+            .annotate(total=Sum('total_amount'), count=Count('id'))
+            .order_by('-period')[:7]
+        )
+        
+        weekly_sales = list(
+            valid_orders
+            .annotate(period=TruncWeek('created_at'))
+            .values('period')
+            .annotate(total=Sum('total_amount'), count=Count('id'))
+            .order_by('-period')[:4]
+        )
+        
+        monthly_sales = list(
+            valid_orders
+            .annotate(period=TruncMonth('created_at'))
+            .values('period')
+            .annotate(total=Sum('total_amount'), count=Count('id'))
+            .order_by('-period')[:6]
         )
 
-    rider_rankings = get_rankings(None)
+        daily_chart_data = {
+            'labels': [row['period'].strftime('%b %d') if row['period'] else '' for row in reversed(daily_sales)],
+            'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(daily_sales)],
+        }
+        weekly_chart_data = {
+            'labels': [f"Week of {row['period'].strftime('%b %d')}" if row['period'] else '' for row in reversed(weekly_sales)],
+            'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(weekly_sales)],
+        }
+        monthly_chart_data = {
+            'labels': [row['period'].strftime('%b %Y') if row['period'] else '' for row in reversed(monthly_sales)],
+            'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(monthly_sales)],
+        }
 
-    daily_sales = list(
-        valid_orders
-        .annotate(period=TruncDate('created_at'))
-        .values('period')
-        .annotate(total=Sum('total_amount'), count=Count('id'))
-        .order_by('-period')[:7]
-    )
-    
-    weekly_sales = list(
-        valid_orders
-        .annotate(period=TruncWeek('created_at'))
-        .values('period')
-        .annotate(total=Sum('total_amount'), count=Count('id'))
-        .order_by('-period')[:4]
-    )
-    
-    monthly_sales = list(
-        valid_orders
-        .annotate(period=TruncMonth('created_at'))
-        .values('period')
-        .annotate(total=Sum('total_amount'), count=Count('id'))
-        .order_by('-period')[:6]
-    )
+        sales_today = overall_stats['today']
+        sales_week = overall_stats['week']
+        sales_month = overall_stats['month']
 
-    daily_chart_data = {
-        'labels': [row['period'].strftime('%b %d') if row['period'] else '' for row in reversed(daily_sales)],
-        'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(daily_sales)],
-    }
-    weekly_chart_data = {
-        'labels': [f"Week of {row['period'].strftime('%b %d')}" if row['period'] else '' for row in reversed(weekly_sales)],
-        'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(weekly_sales)],
-    }
-    monthly_chart_data = {
-        'labels': [row['period'].strftime('%b %Y') if row['period'] else '' for row in reversed(monthly_sales)],
-        'data': [float(row['total']) if row['total'] else 0.0 for row in reversed(monthly_sales)],
-    }
-
-    sales_today = overall_stats['today']
-    sales_week = overall_stats['week']
-    sales_month = overall_stats['month']
+        cached_data = (overall_stats, kiosk_stats, faculty_stats, delivery_stats, rider_rankings, daily_sales, weekly_sales, monthly_sales, daily_chart_data, weekly_chart_data, monthly_chart_data, sales_today, sales_week, sales_month)
+        cache.set(cache_key, cached_data, timeout=30)
 
     if request.method == 'POST' and 'add_menu_item' in request.POST:
         name = request.POST.get('name')
@@ -146,8 +158,8 @@ def staff_dashboard(request):
 
     staff_name = request.user.first_name if request.user.is_authenticated and request.user.first_name else (request.user.username if request.user.is_authenticated else 'Staff')
 
-    from customer_portal.models import OrderFeedback
-    feedbacks = OrderFeedback.objects.all().order_by('-created_at')
+    from customer_portal.feedback_context import build_feedback_context
+    feedback_ctx = build_feedback_context()
 
     context = {
         'total_orders_today': total_orders_today,
@@ -169,7 +181,13 @@ def staff_dashboard(request):
         'sales_today': sales_today,
         'sales_week': sales_week,
         'sales_month': sales_month,
-        'feedbacks': feedbacks,
+        'feedbacks': feedback_ctx['feedbacks'],
+        'fb_kiosk': feedback_ctx['fb_kiosk'],
+        'fb_delivery': feedback_ctx['fb_delivery'],
+        'fb_kiosk_stats': feedback_ctx['fb_kiosk_stats'],
+        'fb_delivery_stats': feedback_ctx['fb_delivery_stats'],
+        'fb_total': feedback_ctx['fb_total'],
+        'fb_overall': feedback_ctx['fb_overall'],
         'overall_stats': overall_stats,
         'kiosk_stats': kiosk_stats,
         'faculty_stats': faculty_stats,
@@ -182,9 +200,12 @@ def staff_dashboard(request):
 @role_required(allowed_roles=['STAFF'])
 def kitchen_display(request):
     """Kanban-style Order Board for real-time order processing."""
-    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status='completed').exclude(status='ready').exclude(status='unpaid').order_by('created_at')
-    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status='completed').exclude(status='ready').order_by('created_at')
-    ready_orders = Order.objects.filter(status='ready').order_by('created_at')
+    # A cancelled order is NOT active work: once cancel is pressed the card must
+    # vanish from every column immediately, or staff keep tapping a dead order
+    # and hit "Cannot move order from 'cancelled'..." errors.
+    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).select_related('customer').prefetch_related('items').order_by('created_at')
+    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).select_related('customer').prefetch_related('items').order_by('created_at')
+    ready_orders = Order.objects.filter(status='ready').select_related('customer').prefetch_related('items').order_by('created_at')
 
     for o in list(kiosk_orders) + list(delivery_orders) + list(ready_orders):
         o.is_delivery = DeliveryRequest.objects.filter(order=o).exists()
@@ -214,9 +235,9 @@ def kitchen_orders_json_api(request):
             'total_payment': str(o.total_payment),
         }
 
-    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status='completed').exclude(status='ready').exclude(status='unpaid').order_by('created_at')
-    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status='completed').exclude(status='ready').order_by('created_at')
-    ready_orders = Order.objects.filter(status='ready').order_by('created_at')
+    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).select_related('customer').prefetch_related('items').order_by('created_at')
+    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).select_related('customer').prefetch_related('items').order_by('created_at')
+    ready_orders = Order.objects.filter(status='ready').select_related('customer').prefetch_related('items').order_by('created_at')
 
     boards = {
         'kiosk': [order_map(o, False) for o in kiosk_orders],
@@ -255,9 +276,9 @@ def kitchen_live_stream(request):
         }
 
     def boards():
-        kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status='completed').exclude(status='ready').exclude(status='unpaid').order_by('created_at')
-        delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status='completed').exclude(status='ready').order_by('created_at')
-        ready_orders = Order.objects.filter(status='ready').order_by('created_at')
+        kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).select_related('customer').prefetch_related('items').order_by('created_at')
+        delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).select_related('customer').prefetch_related('items').order_by('created_at')
+        ready_orders = Order.objects.filter(status='ready').select_related('customer').prefetch_related('items').order_by('created_at')
         return {
             'kiosk': [order_map(o, False) for o in kiosk_orders],
             'delivery': [order_map(o, True) for o in delivery_orders],
@@ -303,23 +324,80 @@ def kitchen_live_stream(request):
 def update_order_status(request, order_id):
     """API endpoint to update order status via AJAX.
 
-    The instant a delivery order is marked READY, it is auto-assigned to the
-    next online rider (if any) so it lands in the rider's incoming queue as
-    ready-for-delivery without waiting for the rider's dashboard to poll.
+    Enforces a sane Kanban flow (unpaid -> pending -> preparing -> ready ->
+    completed) with one-step-back correction and cancel from any active state,
+    so an order can't jump straight past the kitchen or move backwards freely.
+    Completing an order grants loyalty points once; cancelling refunds redeemed
+    points and returns stock to the menu.
     """
     try:
         data = json.loads(request.body)
         new_status = data.get('status', '').lower()
+        ORDER_STATUSES = {s[0] for s in Order.STATUS_CHOICES}
+        if new_status not in ORDER_STATUSES:
+            return JsonResponse({'success': False, 'error': f'Unknown status "{new_status}".'}, status=400)
 
-        order = Order.objects.get(id=order_id)
-        order.status = new_status
-        order.save()
+        ALLOWED_MOVES = {
+            'unpaid': {'pending', 'cancelled'},
+            'pending': {'preparing', 'ready', 'cancelled'},
+            'preparing': {'pending', 'ready', 'cancelled'},
+            'ready': {'preparing', 'completed', 'cancelled'},
+            'completed': set(),
+            'cancelled': set(),
+        }
+
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(id=order_id)
+            old_status = order.status
+            if new_status not in ALLOWED_MOVES.get(old_status, set()):
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Cannot move order from "{old_status}" to "{new_status}".'
+                }, status=400)
+
+            order.status = new_status
+            order.save()
+
+            # Invalidate staff dashboard analytics cache
+            today_str = timezone.now().date().isoformat()
+            cache.delete(f'staff_dashboard_analytics_{today_str}')
+
+            if new_status == 'completed' and old_status != 'completed':
+                # Credit loyalty earned once, only at true completion.
+                from customer_portal.views import credit_points_for_order
+                credit_points_for_order(order)
+            elif new_status == 'cancelled' and old_status != 'cancelled':
+                from customer_portal.views import refund_points_for_cancel, restore_stock_for_order
+                refund_points_for_cancel(order)
+                restore_stock_for_order(order)
 
         if new_status == 'ready' and DeliveryRequest.objects.filter(order=order).exists():
             # Fast-track: offer this (and any other waiting) delivery to the
             # next online rider right now. Idempotent if the rider already has it.
             from deliveries.views import expire_stale_requests
             expire_stale_requests()
+
+        # Logged after the transaction block so a rolled-back status change
+        # never leaves a row claiming the move succeeded.
+        if old_status != new_status:
+            is_delivery = DeliveryRequest.objects.filter(order=order).exists()
+            log_activity(
+                request,
+                action=f"Order {order.order_number}: {old_status} -> {new_status}",
+                category=ActivityLog.Category.DELIVERY if is_delivery else ActivityLog.Category.ORDER,
+                level=(ActivityLog.Level.DANGER if new_status == 'cancelled'
+                       else ActivityLog.Level.SUCCESS if new_status == 'completed'
+                       else ActivityLog.Level.INFO),
+                target=order.order_number,
+                is_guest=order.customer_id is None,
+                metadata={
+                    'order_id': order.id,
+                    'from_status': old_status,
+                    'to_status': new_status,
+                    'is_delivery': is_delivery,
+                    'total': float(order.total_amount),
+                },
+            )
 
         return JsonResponse({'success': True, 'message': 'Status updated successfully'})
     except Order.DoesNotExist:
@@ -359,33 +437,47 @@ def toggle_item_availability(request, item_id):
     item = get_object_or_404(MenuItem, id=item_id)
     item.is_available = not item.is_available
     item.save()
+    cache.delete('formatted_menu_active_kiosk')
     return redirect('kitchen_display:manage_menu')
 
 
 @role_required(allowed_roles=['STAFF'])
 def admin_pin_verify(request):
-    """Prompt staff for a PIN code to access Admin/System governance controls."""
+    """Prompt staff for a PIN code to access Admin/System governance controls.
+
+    The PIN comes from settings (env ADMIN_PIN, overridable per environment)
+    and is compared in constant time so timing can't leak it.
+    """
+    from django.conf import settings as django_settings
+    import secrets as _secrets
     if request.method == 'POST':
         entered_pin = request.POST.get('pin')
-        CORRECT_PIN = '1234'
-        
-        if entered_pin == CORRECT_PIN:
+        correct_pin = str(getattr(django_settings, 'ADMIN_PIN', '1234'))
+        if _secrets.compare_digest(str(entered_pin or ''), correct_pin):
             request.session['admin_verified'] = True
+            request.session['admin_verified_at'] = timezone.now().timestamp()
             return redirect('kitchen_display:admin_governance')
         else:
             return render(request, 'admin_pin_verify.html', {'error': 'Invalid PIN Code. Please try again.'})
-            
+
     return render(request, 'admin_pin_verify.html')
 
 
 @role_required(allowed_roles=['STAFF'])
 def admin_governance(request):
     """Central Governance, User Approvals, and Analytics Dashboard (PIN Protected)."""
-    if not request.session.get('admin_verified'):
+    # PIN verification expires after 2 hours so a shared terminal can't stay
+    # perpetually unlocked after the staff member leaves.
+    verified_at = request.session.get('admin_verified_at')
+    if not request.session.get('admin_verified') or verified_at is None:
         return redirect('kitchen_display:admin_pin_verify')
-        
+    if (timezone.now().timestamp() - float(verified_at)) > 7200:
+        request.session.pop('admin_verified', None)
+        request.session.pop('admin_verified_at', None)
+        return redirect('kitchen_display:admin_pin_verify')
+
     pending_users = User.objects.filter(is_active=False) if hasattr(User, 'is_active') else []
-    all_orders = Order.objects.all().order_by('-created_at')[:20]
+    all_orders = Order.objects.all().select_related('customer', 'delivery_info').prefetch_related('feedbacks', 'items').order_by('-created_at')[:20]
 
     context = {
         'pending_users': pending_users,

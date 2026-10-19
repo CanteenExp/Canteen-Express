@@ -21,8 +21,8 @@
     {% if USE_GOOGLE_MAPS %}
     <script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&v=weekly&callback=ceGoogleMapsReady&loading=async"></script>
     {% else %}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}" />
+    <script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
     {% endif %}
     <script src="{% static 'js/maps.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
@@ -79,6 +79,59 @@
         #map .leaflet-tile-pane .leaflet-tile {
             filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(88%);
         }
+
+        /* Live position uncertainty: a soft halo sized to the GPS error radius. */
+        .acc-circle {
+            background: rgba(96, 165, 250, 0.16);
+            border: 1.5px solid rgba(96, 165, 250, 0.55);
+            border-radius: 50%;
+        }
+        /* Faint GPS trail so the customer can see where the rider has been.
+           Leaflet's `className` option adds a CLASS, not an id, so this selector
+           must be `.trail-line`; as `#trail-line` it never matched anything and
+           the round caps/joins were silently doing nothing. */
+        .trail-line { stroke-linecap: round; stroke-linejoin: round; }
+
+        /* Recenter is a Leaflet bar button like the zoom controls, so the two
+           read as one aligned control in the bottom-right corner.
+           NOTE: this must be a real block comment. A double-slash line here is
+           not valid CSS: the parser treats everything up to the next brace as a
+           selector, so the whole rule (declarations included) is silently
+           discarded and the button renders unstyled. */
+        .ce-recenter a {
+            color: #FF6117;
+            font-size: 16px;
+            /* Same box as .leaflet-bar a so it lines up with the zoom buttons. */
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+        .ce-recenter a:hover,
+        .ce-recenter a:focus-visible {
+            background: rgba(255, 97, 23, 0.25);
+            color: #fff;
+        }
+        .ce-recenter a:active { background: rgba(255, 97, 23, 0.45); }
+        /* While the map is following the rider, the button reads as "on". */
+        .ce-recenter.is-following a {
+            color: #34d399;
+            text-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+        }
+
+        /* Required tile credit, kept legible on the dark inverted basemap. */
+        #map .leaflet-control-attribution {
+            background: rgba(8,8,12,.7) !important;
+            color: #d4d4d8 !important;
+            font-size: 10px !important;
+            padding: 1px 6px !important;
+            border-radius: 6px 0 0 0;
+        }
+        #map .leaflet-control-attribution a { color: #fb923c !important; }
+
         /* Ensure the map area never flashes white before tiles load */
         #map { background: #0b0b0d !important; }
     </style>
@@ -127,50 +180,88 @@
 
     <!-- ===== MAXIM-STYLE FLOATING BOTTOM CARD ===== -->
     <div class="shrink-0 z-20">
-        <div class="max-w-3xl mx-auto px-4 pb-4">
-            <div class="glass-card rounded-3xl p-4 slide-up shadow-2xl space-y-3">
+        <div class="max-w-3xl mx-auto px-3 pb-3">
+            <div class="glass-card rounded-3xl p-3.5 slide-up shadow-2xl space-y-3">
 
-                <!-- Delivery destination row -->
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-lg shrink-0">
+                <!-- Drop-off address: the single source of truth for the destination -->
+                <div class="flex items-start gap-2.5">
+                    <div class="w-9 h-9 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-base shrink-0">
                         <i class="fa-solid fa-location-dot"></i>
                     </div>
-                    <div class="min-w-0">
-                        <p class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Delivering to</p>
-                        <p class="text-sm font-black text-white truncate">{{ delivery_location }}</p>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold leading-none">Delivering to</p>
+                        <p class="text-[13px] font-black text-white normal-case leading-snug mt-1 break-words">{{ delivery_location }}</p>
                     </div>
                 </div>
 
-                <!-- Speed + Distance / Remaining -->
+                <!-- Live ride stats: big number + muted unit, label underneath -->
                 <div class="grid grid-cols-3 gap-2">
-                    <div class="bg-black/30 border border-white/5 rounded-2xl p-3 text-center">
-                        <h2 id="speed-val" class="text-2xl font-black text-orange-400 tabular-nums">--</h2>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-0.5">Speed</p>
+                    <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
+                        <p class="flex items-baseline justify-center gap-1 leading-none">
+                            <span id="speed-val" class="text-xl font-black text-orange-400 tabular-nums">--</span>
+                            <span id="speed-unit" class="text-[10px] font-bold text-zinc-500">km/h</span>
+                        </p>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Speed</p>
                     </div>
-                    <div class="bg-black/30 border border-white/5 rounded-2xl p-3 text-center">
-                        <h2 id="dist-val" class="text-2xl font-black text-emerald-400 tabular-nums">--</h2>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-0.5">Distance</p>
+                    <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
+                        <p class="flex items-baseline justify-center gap-1 leading-none">
+                            <span id="dist-val" class="text-xl font-black text-emerald-400 tabular-nums">--</span>
+                            <span id="dist-unit" class="text-[10px] font-bold text-zinc-500">km</span>
+                        </p>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Distance</p>
                     </div>
-                    <div class="bg-black/30 border border-white/5 rounded-2xl p-3 text-center">
-                        <h2 id="remain-val" class="text-2xl font-black text-white tabular-nums">--</h2>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-0.5">Remaining</p>
+                    <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
+                        <p class="flex items-baseline justify-center gap-1 leading-none">
+                            <span id="remain-val" class="text-xl font-black text-white tabular-nums">--</span>
+                            <span id="remain-unit" class="text-[10px] font-bold text-zinc-500">km</span>
+                        </p>
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">
+                            Remaining<span id="approx-badge" class="hidden text-amber-400 normal-case tracking-normal"> · approx.</span>
+                        </p>
                     </div>
                 </div>
 
-                <!-- Progress bar -->
-                <div class="space-y-1">
+                <!-- Trip progress: same 3-column tile row as the stats above, so the
+                     columns line up and each endpoint sits under its side of the bar -->
+                <div class="space-y-1.5">
                     <div class="h-2 w-full bg-zinc-800/80 rounded-full overflow-hidden">
                         <div id="progress-bar" class="h-full bg-gradient-to-r from-orange-500 to-emerald-500 rounded-full transition-all duration-700" style="width:0%"></div>
                     </div>
-                    <div class="flex items-center justify-between text-[10px] text-zinc-500 font-bold">
-                        <span><i class="fa-solid fa-store mr-1 text-orange-400"></i> Canteen</span>
-                        <span id="progress-pct">0%</span>
-                        <span><i class="fa-solid fa-flag-checkered mr-1 text-emerald-400"></i> {{ delivery_location }}</span>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
+                            <p class="flex items-center justify-center gap-1.5 leading-none min-w-0">
+                                <i class="fa-solid fa-store text-[13px] text-orange-400 shrink-0"></i>
+                                <span class="text-[13px] font-black text-orange-400 truncate">Canteen</span>
+                            </p>
+                            <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">From</p>
+                        </div>
+                        <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
+                            <p class="leading-none">
+                                <span id="progress-pct" class="text-xl font-black text-white tabular-nums">0%</span>
+                            </p>
+                            <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Progress</p>
+                        </div>
+                        <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
+                            <p class="flex items-center justify-center gap-1.5 leading-none min-w-0">
+                                <span class="text-[13px] font-black text-emerald-400 truncate">Drop-off</span>
+                                <i class="fa-solid fa-flag-checkered text-[13px] text-emerald-400 shrink-0"></i>
+                            </p>
+                            <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">To</p>
+                        </div>
                     </div>
                 </div>
 
-                <p id="status-msg" class="text-center text-[11px] text-zinc-400 font-bold"></p>
-                <p id="updated-at" class="text-center text-[9px] text-zinc-600 font-bold uppercase tracking-widest">--</p>
+
+                <!-- Live feed footer: last update + GPS accuracy (only when known) -->
+                <p class="flex items-center justify-center gap-1.5 text-[9px] text-zinc-600 font-bold uppercase tracking-widest leading-tight">
+                    <span id="live-dot" class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+                    <span id="updated-at" class="normal-case tracking-normal font-semibold">Waiting for update</span>
+                    <span id="gps-group" class="hidden items-center gap-1.5">
+                        <span class="text-zinc-700 normal-case tracking-normal">&#8226;</span>
+                        <span>GPS</span>
+                        <span id="acc-val" class="text-zinc-500 normal-case tracking-normal tabular-nums">--</span>
+                    </span>
+                </p>
             </div>
         </div>
     </div>
@@ -181,20 +272,71 @@
         const CAMPUS_CENTER = [9.77778, 118.73333];
         const ZOOM = 15;
         // Interactive campus map: starts zoomed in on the campus but lets the user
-        // pan and zoom freely. Uses free OpenStreetMap tiles rendered dark via a
-        // CSS invert filter, so no attribution text shows on screen.
+        // pan and zoom freely. Standard OSM raster tiles (free, no credentials)
+        // rendered dark via a CSS invert filter, with the required credit shown
+        // bottom-right.
+        //
+        // Why OSM: it is the only keyless provider verified to return real tiles at
+        // z19 for this campus, which is what makes building footprints visible.
+        //   - Esri World_Street_Map returns its "Map data not yet available"
+        //     placeholder from z18 onward here, so zooming in showed that text
+        //     instead of buildings. Its World_Imagery service stops at z17 too.
+        //   - CARTO's keyless basemaps return one identical placeholder tile for
+        //     every location and style.
+        // OSM only blocks clients that send no User-Agent; browsers always send
+        // one, so the earlier "OSM is blocked" reading was a testing artefact.
+        const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
         const map = L.map('map', {
-            attributionControl: false,
-            zoomControl: true,
+            zoomControl: false,
             scrollWheelZoom: true
         }).setView(CAMPUS_CENTER, ZOOM);
+        // Single zoom control, bottom-right, with the recenter button stacked above it
         L.control.zoom({ position: 'bottomright' }).addTo(map);
-        // Free standard tiles (requires no credentials)
+        // Free standard tiles (requires no credentials). {s} spreads load over
+        // OSM's a/b/c servers; 'd' does not exist and would fail every request.
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             minZoom: 13,
-            attribution: ''
+            subdomains: 'abc',
+            attribution: OSM_ATTRIBUTION
         }).addTo(map);
+
+        // Recenter: a Leaflet bar button, so Leaflet stacks it directly above the
+        // zoom controls in the same corner and they stay aligned at any size.
+        const RecenterControl = L.Control.extend({
+            options: { position: 'bottomright' },
+            onAdd: function () {
+                const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control ce-recenter');
+                const button = L.DomUtil.create('a', '', container);
+                button.href = '#';
+                button.title = 'Recenter on rider';
+                button.setAttribute('role', 'button');
+                button.setAttribute('aria-label', 'Recenter map on the rider');
+                button.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i>';
+                // Keep the control out of the map's own click/drag handling, but
+                // NOT out of keyboard focus -- the button must stay reachable by
+                // keyboard, so propagation is disabled on the container while the
+                // anchor itself keeps normal focus behaviour.
+                L.DomEvent.disableClickPropagation(container);
+                L.DomEvent.disableScrollPropagation(container);
+                L.DomEvent.on(button, 'click', (ev) => {
+                    L.DomEvent.stop(ev);
+                    recenter();
+                });
+                // Enter/Space on a focused anchor, so the control works without a
+                // pointer.
+                L.DomEvent.on(button, 'keydown', (ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') {
+                        L.DomEvent.stop(ev);
+                        recenter();
+                    }
+                });
+                return container;
+            },
+        });
+        map.addControl(new RecenterControl());
+        // Following is on from the start, so the button starts in its "on" state.
+        document.querySelector('.ce-recenter')?.classList.add('is-following');
 
         // Campus-only delivery zone as an irregular polygon that hugs the actual
         // PSU Main Campus footprint (instead of a perfect circle).
@@ -228,7 +370,23 @@
         let prevLatLng = null;
         let destMarker = null;
         let routeLine = null;
+        let routeCasing = null;
+        let accCircle = null;          // GPS error halo around the rider
+        let trailLine = null;          // faint breadcrumb of where they've been
         let currentHeading = 0;
+        let smoothLatLng = null;       // smoothed position actually drawn
+        let tripTotalKm = null;        // real canteen->drop-off route length (progress denominator)
+        let routePts = [];             // current drawn route, used for snapping
+        let routeKey = '';             // change-detector for the route polyline
+        let followRider = true;        // released when the user pans the map
+
+        // Any manual pan/zoom hands control back to the customer; the recenter
+        // button (or a fresh fix) turns following on again.
+        map.on('dragstart', () => {
+            followRider = false;
+            const el = document.querySelector('.ce-recenter');
+            if (el) el.classList.remove('is-following');
+        });
 
         // Smoothly animate the marker from its current position to a target latlng
         function animateMarker(marker, targetLatLng, ms) {
@@ -246,116 +404,320 @@
             requestAnimationFrame(step);
         }
 
-        function updateMap() {
-            fetch(`/deliveries/api/location/${DELIVERY_ID}/`)
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.success) return;
-
-                    // Check searching timer
-                    currentStatus = data.status;
-                    checkSearchingTimer(data.status);
-
-                    // Destination pin
-                    if (data.dest_lat != null && data.dest_lng != null && !destMarker) {
-                        destMarker = L.marker([data.dest_lat, data.dest_lng], {
-                            icon: L.divIcon({
-                                className: '',
-                                html: '<div class="text-3xl"><i class="fa-solid fa-location-dot text-emerald-500" style="text-shadow:0 0 14px rgba(34,197,94,0.9)"></i></div>',
-                                iconSize: [30, 30], iconAnchor: [15, 28]
-                            })
-                        }).addTo(map);
-                    }
-
-                    // Rider marker: rotate icon + animate movement
-                    let hasNewPos = false;
-                    if (data.lat != null && data.lng != null) {
-                        const target = L.latLng(data.lat, data.lng);
-                        const moving = ((data.speed_kmh || 0) > 0.5);
-
-                        if (!riderMarker) {
-                            riderMarker = L.marker(target, { icon: makeMotorIcon(0) }).addTo(map);
-                            // cache the rotating element
-                            riderMarker._icon && (riderIconEl = riderMarker._icon.querySelector('.motor-icon'));
-                            prevLatLng = target;
-                        } else {
-                            // Rotate to heading (direction of travel)
-                            if (data.heading != null) {
-                                currentHeading = data.heading;
-                            }
-                            if (riderIconEl) {
-                                riderIconEl.style.transform = `rotate(${currentHeading}deg)`;
-                            }
-                            // Animate movement toward the new point (use fixed duration when moving)
-                            animateMarker(riderMarker, target, moving ? 1500 : 600);
-                        }
-                        hasNewPos = true;
-                    }
-
-                    // "moving" chip visibility
-                    const chip = document.getElementById('moving-chip');
-                    if (hasNewPos && (data.speed_kmh || 0) > 0.5) {
-                        chip.classList.remove('hidden');
-                    } else {
-                        chip.classList.add('hidden');
-                    }
-
-                    // Live route line: connects the rider to the pinned customer destination.
-                    // Updates every poll so the rider visibly "approaches" the customer's pin.
-                    if (hasNewPos && data.dest_lat != null && data.dest_lng != null) {
-                        const pts = [[data.lat, data.lng], [data.dest_lat, data.dest_lng]];
-                        if (!routeLine) {
-                            routeLine = L.polyline(pts, {
-                                color: '#FF6117', weight: 3, opacity: 0.8,
-                                dashArray: '7 6'
-                            }).addTo(map);
-                        } else {
-                            routeLine.setLatLngs(pts);
-                        }
-                    }
-
-                    // Stats
-                    document.getElementById('speed-val').textContent = formatSpeed(data.speed_kmh);
-                    document.getElementById('dist-val').textContent = formatDist(data.total_distance_km);
-                    document.getElementById('remain-val').textContent = formatDist(data.remaining_km);
-                    document.getElementById('eta-val').textContent = formatEta(data.eta_minutes);
-
-                    // Progress
-                    const traveled = data.total_distance_km || 0;
-                    const remaining = data.remaining_km;
-                    if (remaining != null && (traveled + remaining) > 0) {
-                        const pct = Math.min(100, Math.round((traveled / (traveled + remaining)) * 100));
-                        document.getElementById('progress-bar').style.width = pct + '%';
-                        document.getElementById('progress-pct').textContent = pct + '%';
-                    } else if (data.status === 'DELIVERED') {
-                        document.getElementById('progress-bar').style.width = '100%';
-                        document.getElementById('progress-pct').textContent = '100%';
-                    }
-
-                    // Status
-                    const badge = document.getElementById('status-badge');
-                    const msg = document.getElementById('status-msg');
-                    const updated = document.getElementById('updated-at');
-                    updated.textContent = data.updated_at ? 'Updated ' + data.updated_at : '--';
-
-                    if (data.status === 'DELIVERED') {
-                        msg.textContent = 'Delivery completed!';
-                        badge.textContent = 'Delivered';
-                        badge.className = 'shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full uppercase border border-emerald-500/30 bg-emerald-500/20 text-emerald-400';
-                    } else if (hasNewPos) {
-                        msg.textContent = 'Rider heading to ' + (data.delivery_location || 'your location');
-                    } else {
-                        msg.textContent = 'Waiting for rider location...';
-                        document.getElementById('speed-val').textContent = '--';
-                        document.getElementById('eta-val').textContent = '--';
-                    }
-                });
+        // Phone GPS jitters 10-25 m even at a standstill. An exponential moving
+        // average plus a snap onto the road makes the rider glide along the route
+        // instead of wobbling across it. This is a DISPLAY smoothing only -- the
+        // numbers the server stores stay raw.
+        const SMOOTH_ALPHA = 0.4;
+        const SNAP_MAX_M = 45;
+        function smoothPosition(raw, snapped) {
+            if (!smoothLatLng) return raw;
+            // A big jump means a long gap (tab was backgrounded); do not lag.
+            if (map.distance(smoothLatLng, raw) > 120) return raw;
+            return L.latLng(
+                smoothLatLng.lat + (snapped.lat - smoothLatLng.lat) * SMOOTH_ALPHA,
+                smoothLatLng.lng + (snapped.lng - smoothLatLng.lng) * SMOOTH_ALPHA
+            );
+        }
+        function snapToRoute(point) {
+            if (routePts.length < 2) return point;
+            let best = null, bestDist = Infinity;
+            for (const p of routePts) {
+                const d = map.distance(point, p);
+                if (d < bestDist) { bestDist = d; best = p; }
+            }
+            return (best && bestDist <= SNAP_MAX_M) ? best : point;
+        }
+        function smoothHeading(target) {
+            if (target == null) return currentHeading;
+            let delta = ((target - currentHeading + 540) % 360) - 180;
+            return (currentHeading + delta * 0.35 + 360) % 360;
         }
 
-        function formatSpeed(v) { return v == null ? '--' : v.toFixed(0) + ''; }
-        function formatDist(v) {
-            if (v == null) return '--';
-            return (v < 1 ? (v * 1000).toFixed(0) + ' m' : v.toFixed(1) + ' km');
+        // Recentre on the rider (and optionally zoom to the whole route).
+        function fitRoute(includeRider) {
+            const pts = routePts.slice();
+            if (includeRider && smoothLatLng) pts.push(smoothLatLng);
+            if (pts.length < 2) {
+                // Nothing to frame yet: fall back so the button is never a no-op.
+                map.setView(smoothLatLng || CAMPUS_CENTER, ZOOM, { animate: true });
+                return;
+            }
+            map.fitBounds(L.latLngBounds(pts), { padding: [56, 56], maxZoom: 17 });
+        }
+
+        // The recenter button: re-enable following and frame the whole trip.
+        // Declared as a hoisted function so the control can call it from the
+        // handler defined above.
+        function recenter() {
+            followRider = true;
+            const el = document.querySelector('.ce-recenter');
+            if (el) el.classList.add('is-following');
+            fitRoute(true);
+            // A fix that landed just before the click may be a frame behind;
+            // pull the latest payload so the map does not stay a beat behind.
+            updateMap();
+        }
+
+        // Apply one tracking payload to the map + cards. Used by both the SSE
+        // push channel and the polling fallback so they can never disagree.
+        // The rider's route is the single solid orange line: it follows the real
+        // campus roads/paths when the server could route us, and degrades to a
+        // dashed straight line when routing is unavailable, so a routing outage
+        // never breaks tracking.
+
+        function applyTracking(data) {
+            if (!data || !data.success) return;
+
+            currentStatus = data.status;
+            checkSearchingTimer(data.status);
+
+            // Destination pin
+            if (data.dest_lat != null && data.dest_lng != null && !destMarker) {
+                destMarker = L.marker([data.dest_lat, data.dest_lng], {
+                    icon: L.divIcon({
+                        className: '',
+                        html: '<div class="text-3xl"><i class="fa-solid fa-location-dot text-emerald-500" style="text-shadow:0 0 14px rgba(34,197,94,0.9)"></i></div>',
+                        iconSize: [30, 30], iconAnchor: [15, 28]
+                    })
+                }).addTo(map);
+            }
+
+            // Route line: follows the real campus roads/paths when the server
+            // could route us, otherwise it degrades to a dashed straight line
+            // (a routing outage must never break tracking).
+            let hasNewPos = false;
+
+            if (data.lat != null && data.lng != null && data.dest_lat != null && data.dest_lng != null) {
+                const routed = Array.isArray(data.path) && data.path.length > 1;
+                const pts = routed
+                    ? data.path.map(p => [p[0], p[1]])
+                    : [[data.lat, data.lng], [data.dest_lat, data.dest_lng]];
+                routePts = pts;
+                const key = (routed ? 'R' : 'S') + pts.length + ':' + pts[0] + ':' + pts[pts.length - 1];
+                if (key !== routeKey) {
+                    routeKey = key;
+                    const style = routed
+                        ? { color: '#FF6117', weight: 5, opacity: 0.95 }
+                        : { color: '#FF6117', weight: 5, opacity: 0.95 };
+                    if (!routeLine) {
+                        // White casing underneath so the route stays legible over
+                        // dark tiles, the way nav apps draw it.
+                        routeCasing = L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.35 }).addTo(map);
+                        routeLine = L.polyline(pts, style).addTo(map);
+                    } else {
+                        routeLine.setLatLngs(pts);
+                        routeLine.setStyle(style);
+                        if (routeCasing) routeCasing.setLatLngs(pts);
+                    }
+                }
+                hasNewPos = true;
+            }
+
+            // Rider marker: smoothed position, snap onto the road, smoothed
+            // rotation, plus the GPS accuracy halo and a short breadcrumb trail.
+            if (data.lat != null && data.lng != null) {
+                const raw = L.latLng(data.lat, data.lng);
+                const target = smoothPosition(raw, snapToRoute(raw));
+                smoothLatLng = target;
+                const moving = ((data.speed_kmh || 0) > 0.5);
+
+                if (!riderMarker) {
+                    riderMarker = L.marker(target, { icon: makeMotorIcon(0), zIndexOffset: 1000 }).addTo(map);
+                    riderMarker._icon && (riderIconEl = riderMarker._icon.querySelector('.motor-icon'));
+                    prevLatLng = target;
+                    fitRoute(true);
+                } else {
+                    currentHeading = smoothHeading(data.heading);
+                    if (riderIconEl) {
+                        riderIconEl.style.transform = `rotate(${currentHeading}deg)`;
+                    }
+                    animateMarker(riderMarker, target, moving ? 1500 : 600);
+                    if (followRider) {
+                        map.panTo(target, { animate: true, duration: 0.6 });
+                    }
+                }
+
+                // Accuracy halo: shows how wide the real error radius is.
+                const acc = data.accuracy_m;
+                if (acc) {
+                    if (!accCircle) {
+                        accCircle = L.circle(target, {
+                            radius: acc, className: 'acc-circle',
+                            interactive: false, stroke: true, weight: 1.5,
+                        }).addTo(map);
+                    } else {
+                        accCircle.setLatLng(target);
+                        accCircle.setRadius(acc);
+                    }
+                } else if (accCircle) {
+                    accCircle.remove();
+                    accCircle = null;
+                }
+
+                // Travelled track: the ground the rider has ALREADY covered, from
+                // the canteen pickup to their current position. The server sends
+                // the whole history in data.trail (thinned of GPS jitter), so the
+                // track survives a page reload and every viewer sees the same
+                // path -- the previous breadcrumb was built only from fixes that
+                // arrived while the page happened to be open. Same orange hue as
+                // the live route but dimmed, so ridden and remaining read as one
+                // journey. Falls back to accumulating locally if the payload has
+                // no trail.
+                const serverTrail = Array.isArray(data.trail) && data.trail.length > 1
+                    ? data.trail.map(p => [p[0], p[1]])
+                    : null;
+                const trailPts = serverTrail
+                    ? serverTrail.concat([target])
+                    : (trailLine ? trailLine.getLatLngs() : []).concat([target]);
+                const trailStyle = { color: '#FF6117', weight: 3, opacity: 0.35 };
+                if (!trailLine) {
+                    trailLine = L.polyline(trailPts, Object.assign({ className: 'trail-line' }, trailStyle)).addTo(map);
+                } else {
+                    trailLine.setLatLngs(trailPts);
+                }
+            }
+
+            // "moving" chip visibility
+            const chip = document.getElementById('moving-chip');
+            if (hasNewPos && (data.speed_kmh || 0) > 0.5) {
+                chip.classList.remove('hidden');
+            } else {
+                chip.classList.add('hidden');
+            }
+
+            // Stats: value in the big span, unit in the small muted span.
+            // "Distance" is the whole canteen->drop-off trip, so it and "Remaining"
+            // are two views of the same route and always add up coherently.
+            setSpeed(data.speed_kmh);
+            setDist('dist', data.route_total_km);
+            setDist('remain', data.remaining_km);
+            // When no routing provider answered, the figures above are straight-line
+            // measurements, not road distances. Say so rather than quietly
+            // presenting a shorter-than-real distance as exact.
+            document.getElementById('approx-badge').classList.toggle('hidden', !data.distance_is_approximate);
+            document.getElementById('eta-val').textContent = formatEta(data.eta_minutes);
+            const gpsGroup = document.getElementById('gps-group');
+            if (data.accuracy_m != null) {
+                document.getElementById('acc-val').textContent = '±' + Math.round(data.accuracy_m) + ' m';
+                gpsGroup.classList.remove('hidden');
+                gpsGroup.classList.add('flex');
+            } else {
+                gpsGroup.classList.add('hidden');
+                gpsGroup.classList.remove('flex');
+            }
+
+            // Progress = how much of the real route is behind the rider, measured
+            // as (total - remaining) / total. The previous formula divided the
+            // rider's GPS breadcrumb trail by itself, which drifted with GPS
+            // jitter and read 0% whenever tracking started mid-trip.
+            if (data.route_total_km != null && data.route_total_km > 0) tripTotalKm = data.route_total_km;
+            const pct = computeProgress(data.remaining_km, data.status);
+            document.getElementById('progress-bar').style.width = pct + '%';
+            document.getElementById('progress-pct').textContent = pct + '%';
+
+            // Status
+            const badge = document.getElementById('status-badge');
+            const updated = document.getElementById('updated-at');
+            updated.textContent = data.updated_at ? 'Updated ' + data.updated_at : '--';
+
+            if (data.status === 'DELIVERED') {
+                badge.textContent = 'Delivered';
+                badge.className = 'shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full uppercase border border-emerald-500/30 bg-emerald-500/20 text-emerald-400';
+            } else if (!hasNewPos) {
+                setSpeed(null);
+                document.getElementById('eta-val').textContent = '--';
+            }
+        }
+
+        // Polling fallback / recovery path.
+        function updateMap() {
+            return fetch(`/deliveries/api/location/${DELIVERY_ID}/`)
+                .then(r => r.json())
+                .then(applyTracking)
+                .catch(() => {});
+        }
+
+        // ===== Live channel =====
+        // SSE pushes every accepted GPS fix immediately (<1s) instead of the
+        // rider appearing up to 4s stale. The 4s poll stays as a fallback for
+        // proxies that block EventSource, plus a slow 20s safety net.
+        let stream = null;
+        let pollTimer = null;
+        let safetyTimer = null;
+
+        function startPolling() {
+            if (pollTimer) return;
+            pollTimer = setInterval(updateMap, 4000);
+        }
+        function stopPolling() {
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        }
+        function setLive(on) {
+            const el = document.getElementById('live-dot');
+            if (el) el.className = 'inline-block w-1.5 h-1.5 rounded-full ' + (on ? 'bg-emerald-400' : 'bg-amber-400');
+        }
+        function startTracking() {
+            if (typeof EventSource === 'undefined') { startPolling(); return; }
+            try {
+                stream = new EventSource(`/deliveries/api/location/${DELIVERY_ID}/stream/`);
+            } catch (e) {
+                startPolling();
+                return;
+            }
+            stream.onmessage = (ev) => {
+                try { applyTracking(JSON.parse(ev.data)); } catch (e) {}
+            };
+            stream.onopen = () => { setLive(true); stopPolling(); };
+            // Browser auto-reconnects; poll in the meantime so the page is never
+            // frozen if the stream cannot be established at all.
+            stream.onerror = () => { setLive(false); startPolling(); };
+        }
+
+        updateMap();
+        startTracking();
+        safetyTimer = setInterval(updateMap, 20000);
+        window.addEventListener('beforeunload', () => {
+            if (stream) stream.close();
+            stopPolling();
+            if (safetyTimer) clearInterval(safetyTimer);
+        });
+
+        function setSpeed(v) {
+            document.getElementById('speed-val').textContent = v == null ? '--' : Math.max(0, v).toFixed(0);
+        }
+        // Progress along the canteen->drop-off route. Uses the server's real route
+        // length as the denominator so the bar tracks the distance actually left,
+        // not the rider's jittery breadcrumb trail. Until the first route_total_km
+        // arrives, the first remaining_km we see is taken as the full trip (the
+        // rider is still at the canteen then), so the bar never jumps or sticks.
+        function computeProgress(remainingKm, status) {
+            if (status === 'DELIVERED') return 100;
+            if (tripTotalKm == null) {
+                if (remainingKm != null && remainingKm > 0) tripTotalKm = remainingKm;
+                return 0;
+            }
+            if (remainingKm == null) return 0;
+            const pct = Math.round(((tripTotalKm - remainingKm) / tripTotalKm) * 100);
+            return Math.max(0, Math.min(100, pct));
+        }
+        // Splits a distance into a value and its unit so the card can style them
+        // separately (big number + small muted unit) instead of one pre-joined string.
+        function setDist(prefix, v) {
+            const valEl = document.getElementById(prefix + '-val');
+            const unitEl = document.getElementById(prefix + '-unit');
+            if (v == null) {
+                valEl.textContent = '--';
+                unitEl.textContent = '';
+                return;
+            }
+            if (v < 1) {
+                valEl.textContent = Math.round(v * 1000).toLocaleString();
+                unitEl.textContent = 'm';
+            } else {
+                valEl.textContent = v.toFixed(1);
+                unitEl.textContent = 'km';
+            }
         }
         function formatEta(mins) {
             if (mins == null) return '--';
@@ -364,8 +726,7 @@
             return Math.floor(mins / 60) + 'h ' + Math.round(mins % 60) + 'm';
         }
 
-        updateMap();
-        setInterval(updateMap, 4000);
+        // (boot + live channel started above, right after applyTracking)
 
         // Smart Rider Timeout Timer (2 minutes while SEARCHING) - 1-second precision tick
         let searchingSeconds = 0;
@@ -412,48 +773,127 @@
             document.getElementById('rider-timeout-modal').classList.add('hidden');
         }
 
-        function convertToPickup() {
-            if (!confirm("Are you sure you want to convert this delivery order to Counter Pick-up?")) return;
-            fetch(`/deliveries/api/convert-to-pickup/${deliveryId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json'
-                }
-            }).then(res => res.json()).then(data => {
-                if (data.success) {
-                    const modalBox = document.querySelector('#rider-timeout-modal > div');
-                    modalBox.innerHTML = `
-                        <div class="text-center pb-3 border-b border-white/10">
-                            <span class="bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-amber-500/30">Converted to Walk-In</span>
-                            <h3 class="text-xl font-black text-white mt-2">Queue Slip Generated</h3>
-                        </div>
-                        <div class="space-y-1.5 py-1">
-                            <p class="text-[10px] uppercase tracking-wider text-white/60 font-bold">Your Queue Number</p>
-                            <span class="text-4xl font-black text-orange-400 tracking-tight">{{ order.order_number }}</span>
-                            <p class="text-xs text-white/80 font-medium">Counter Pick-up Mode Activated</p>
-                        </div>
-                        <div class="bg-white p-3 rounded-2xl flex flex-col items-center justify-center">
-                            <svg id="timeout-slip-barcode" class="w-full h-14"></svg>
-                            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Scan at Counter to Process Payment</span>
-                        </div>
-                        <button onclick="window.location.href='{% url 'customer_portal:kiosk_menu' %}'" class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition">
-                            Done / Go to Menu
-                        </button>
-                    `;
-                    if (typeof JsBarcode !== 'undefined') {
-                        JsBarcode("#timeout-slip-barcode", "{{ order.order_number }}", {
-                            format: "CODE128",
-                            lineColor: "#111827",
-                            width: 2,
-                            height: 45,
-                            displayValue: true,
-                            fontSize: 11,
-                            margin: 0
+        // ---------- Shared glass dialogs (confirm + success) ----------
+        let trackingConfirmAction = null;
+        function showTrackingConfirm(opts) {
+            opts = opts || {};
+            trackingConfirmAction = opts.onConfirm || null;
+            document.getElementById('tracking-confirm-title').innerText = opts.title || 'Please Confirm';
+            document.getElementById('tracking-confirm-message').innerText = opts.message || 'Are you sure you want to continue?';
+            document.getElementById('tracking-confirm-ok').innerHTML = `<i class="fa-solid fa-check"></i> ${opts.confirmLabel || 'Confirm'}`;
+            document.getElementById('tracking-confirm-modal').classList.remove('hidden');
+        }
+        function closeTrackingConfirm() {
+            trackingConfirmAction = null;
+            document.getElementById('tracking-confirm-modal').classList.add('hidden');
+        }
+        function runTrackingConfirm() {
+            const cb = trackingConfirmAction;
+            closeTrackingConfirm();
+            if (typeof cb === 'function') cb();
+        }
+
+        let trackingRedirectTimer = null;
+        function showTrackingSuccess(opts) {
+            opts = opts || {};
+            const modal = document.getElementById('tracking-success-modal');
+            const iconEl = document.getElementById('tracking-success-icon');
+            iconEl.className = opts.iconClass || 'w-14 h-14 bg-green-500/20 border border-green-500/40 text-green-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg';
+            iconEl.innerHTML = `<i class="${opts.icon || 'fa-solid fa-circle-check'}"></i>`;
+
+            const badgeEl = document.getElementById('tracking-success-badge');
+            badgeEl.innerText = opts.badge || 'Success';
+            badgeEl.className = opts.badgeClass || 'inline-block bg-green-500/20 text-green-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-green-500/30';
+
+            document.getElementById('tracking-success-title').innerText = opts.title || 'Done';
+            document.getElementById('tracking-success-message').innerText = opts.message || '';
+
+            const slip = document.getElementById('tracking-success-slip');
+            if (opts.queueNumber) {
+                slip.classList.remove('hidden');
+                document.getElementById('tracking-success-slip-no').innerText = opts.queueNumber;
+                document.getElementById('tracking-success-slip-caption').innerText = opts.queueCaption || 'Scan at Counter';
+                if (typeof JsBarcode !== 'undefined') {
+                    try {
+                        JsBarcode("#tracking-success-barcode", opts.queueNumber, {
+                            format: "CODE128", lineColor: "#111827", width: 2,
+                            height: 45, displayValue: true, fontSize: 11, margin: 0
                         });
-                    }
-                } else {
-                    alert(data.error || "Failed to convert.");
+                    } catch (e) { /* barcode is a nicety */ }
+                }
+            } else {
+                slip.classList.add('hidden');
+            }
+
+            const done = document.getElementById('tracking-success-done');
+            done.innerText = opts.buttonLabel || 'Back to Menu';
+            done.onclick = goToKioskMenu;
+            modal.classList.remove('hidden');
+
+            // After a cancellation we return to the menu automatically, but the
+            // button stays available so the customer can leave immediately.
+            if (opts.autoReturn) {
+                clearTimeout(trackingRedirectTimer);
+                trackingRedirectTimer = setTimeout(goToKioskMenu, 4000);
+            }
+        }
+        function goToKioskMenu() {
+            window.location.href = "{% url 'customer_portal:kiosk_menu' %}";
+        }
+        function closeTrackingSuccess() {
+            clearTimeout(trackingRedirectTimer);
+            document.getElementById('tracking-success-modal').classList.add('hidden');
+        }
+
+        function toggleTrackingOtherReason() {
+            const sel = document.getElementById('cancel-reason-select');
+            const other = document.getElementById('cancel-reason-other');
+            if (!sel || !other) return;
+            const isOther = sel.value === 'Other reason';
+            other.classList.toggle('hidden', !isOther);
+            if (isOther) { other.focus(); } else { other.value = ''; }
+        }
+        function getTrackingCancelReason() {
+            const sel = document.getElementById('cancel-reason-select');
+            let reason = sel ? sel.value : 'Waiting for too long';
+            if (reason === 'Other reason') {
+                const other = document.getElementById('cancel-reason-other');
+                const custom = other ? (other.value || '').trim() : '';
+                if (custom) reason = custom;
+            }
+            return reason;
+        }
+
+        function convertToPickup() {
+            showTrackingConfirm({
+                title: 'Convert to Pick-up?',
+                message: 'Your order will be prepared for counter pick-up instead of delivery, and the delivery fee is removed. This cannot be undone.',
+                confirmLabel: 'Convert',
+                onConfirm: () => {
+                    fetch(`/deliveries/api/convert-to-pickup/${deliveryId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'Content-Type': 'application/json'
+                        }
+                    }).then(res => res.json()).then(data => {
+                        if (data.success) {
+                            document.getElementById('rider-timeout-modal').classList.add('hidden');
+                            showTrackingSuccess({
+                                badge: 'Converted to Pick-up',
+                                badgeClass: 'inline-block bg-amber-500/20 text-amber-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-amber-500/30',
+                                icon: 'fa-solid fa-basket-shopping',
+                                iconClass: 'w-14 h-14 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg',
+                                title: 'Queue Slip Generated',
+                                message: 'Counter Pick-up mode activated. Show this slip at the counter to collect your order.',
+                                queueNumber: data.queue_number || "{{ order.order_number }}",
+                                queueCaption: 'Scan at Counter to Process Payment',
+                                buttonLabel: 'Go to Menu',
+                            });
+                        } else {
+                            alert(data.error || "Failed to convert.");
+                        }
+                    }).catch(() => alert("Could not reach the server. Please try again."));
                 }
             });
         }
@@ -463,21 +903,42 @@
             document.getElementById('cancel-reason-container').classList.remove('hidden');
         }
 
+        function backToTimeoutOptions() {
+            document.getElementById('cancel-reason-container').classList.add('hidden');
+            document.getElementById('timeout-buttons').classList.remove('hidden');
+        }
+
         function submitCancelOrder() {
-            const reason = document.getElementById('cancel-reason-select').value;
-            fetch(`/deliveries/api/cancel-with-reason/${deliveryId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ reason: reason })
-            }).then(res => res.json()).then(data => {
-                if (data.success) {
-                    alert("Order cancelled successfully.");
-                    window.location.href = "{% url 'customer_portal:kiosk_menu' %}";
-                } else {
-                    alert(data.error || "Failed to cancel.");
+            const reason = getTrackingCancelReason();
+            showTrackingConfirm({
+                title: 'Cancel this order?',
+                message: `This cancels your order, returns any redeemed points and restores the stock. Reason: "${reason}". This cannot be undone.`,
+                confirmLabel: 'Cancel Order',
+                onConfirm: () => {
+                    fetch(`/deliveries/api/cancel-with-reason/${deliveryId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ reason: reason })
+                    }).then(res => res.json()).then(data => {
+                        if (data.success) {
+                            document.getElementById('rider-timeout-modal').classList.add('hidden');
+                            showTrackingSuccess({
+                                badge: 'Order Cancelled',
+                                badgeClass: 'inline-block bg-red-500/20 text-red-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-red-500/30',
+                                icon: 'fa-solid fa-ban',
+                                iconClass: 'w-14 h-14 bg-red-500/20 border border-red-500/40 text-red-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg',
+                                title: 'Order Cancelled Successfully',
+                                message: `Reason: ${reason}. Any redeemed loyalty points were returned and the stock restored.`,
+                                buttonLabel: 'Back to Menu',
+                                autoReturn: true,
+                            });
+                        } else {
+                            alert(data.error || "Failed to cancel.");
+                        }
+                    }).catch(() => alert("Could not reach the server. Please try again."));
                 }
             });
         }
@@ -494,20 +955,38 @@
                 It's been 2 minutes and no rider has accepted your delivery request yet. What would you like to do?
             </p>
 
-            <div id="cancel-reason-container" class="hidden space-y-2 text-left pt-2">
-                <label class="block text-[10px] font-extrabold uppercase tracking-wider text-white/70">Select cancellation reason:</label>
-                <select id="cancel-reason-select" class="w-full px-3 py-2 bg-white/5 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-orange">
-                    <option value="Waiting for too long" class="bg-zinc-900">Waiting for too long</option>
-                    <option value="No riders available" class="bg-zinc-900">No riders available</option>
-                    <option value="Change of plans" class="bg-zinc-900">Change of plans</option>
-                    <option value="Other reason" class="bg-zinc-900">Other reason</option>
-                </select>
-                <button onclick="submitCancelOrder()" class="w-full mt-2 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
-                    Confirm Cancellation
-                </button>
-                <button onclick="document.getElementById('cancel-reason-container').classList.add('hidden'); document.getElementById('timeout-buttons').classList.remove('hidden');" class="w-full py-1.5 text-white/50 hover:text-white text-xs font-bold">
-                    Back
-                </button>
+            <div id="cancel-reason-container" class="hidden space-y-3 text-left pt-2">
+                <div>
+                    <label for="cancel-reason-select" class="block text-[10px] font-extrabold uppercase tracking-wider text-white/70 mb-1.5">Cancellation reason</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-list-ul absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 text-[11px] pointer-events-none"></i>
+                        <select id="cancel-reason-select" onchange="toggleTrackingOtherReason()"
+                                class="w-full appearance-none pl-9 pr-9 py-3 bg-white/5 border border-white/15 rounded-xl text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-brand-orange transition cursor-pointer">
+                            <option value="Waiting for too long" class="bg-zinc-900 text-white">Waiting for too long</option>
+                            <option value="No riders available" class="bg-zinc-900 text-white">No riders available</option>
+                            <option value="Change of plans" class="bg-zinc-900 text-white">Change of plans</option>
+                            <option value="Wrong order details" class="bg-zinc-900 text-white">Wrong order details</option>
+                            <option value="Other reason" class="bg-zinc-900 text-white">Other reason</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 text-[11px] pointer-events-none"></i>
+                    </div>
+                </div>
+                <input id="cancel-reason-other" type="text" maxlength="120" placeholder="Type your reason (optional)"
+                       class="hidden w-full px-3.5 py-3 bg-white/5 border border-white/15 rounded-xl text-xs text-white placeholder-white/35 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-brand-orange transition">
+                <p class="text-[10px] text-white/50 leading-relaxed font-medium flex items-start gap-1.5">
+                    <i class="fa-solid fa-circle-info mt-0.5 text-white/40"></i>
+                    <span>The delivery fee is removed, redeemed loyalty points are returned, and stock is restored.</span>
+                </p>
+                <div class="grid grid-cols-2 gap-2.5 pt-1">
+                    <button type="button" onclick="backToTimeoutOptions()"
+                            class="py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
+                        Back
+                    </button>
+                    <button type="button" onclick="submitCancelOrder()"
+                            class="py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer shadow-lg shadow-red-900/30 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-ban"></i> Confirm
+                    </button>
+                </div>
             </div>
 
             <div id="timeout-buttons" class="space-y-2 pt-2">
@@ -521,6 +1000,54 @@
                     Cancel Order
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Dialog -->
+    <div id="tracking-confirm-modal" class="fixed inset-0 z-[100001] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm rounded-3xl p-6 text-center space-y-4 text-white relative z-[100002]">
+            <div class="w-14 h-14 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 id="tracking-confirm-title" class="text-lg font-black font-poppins text-white">Please Confirm</h3>
+            <p id="tracking-confirm-message" class="text-xs text-zinc-200 leading-relaxed font-medium">Are you sure you want to continue?</p>
+            <div class="grid grid-cols-2 gap-2.5 pt-1">
+                <button type="button" onclick="closeTrackingConfirm()"
+                        class="py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">
+                    Not Now
+                </button>
+                <button id="tracking-confirm-ok" type="button" onclick="runTrackingConfirm()"
+                        class="py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition cursor-pointer flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Dialog -->
+    <div id="tracking-success-modal" class="fixed inset-0 z-[100001] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm rounded-3xl p-6 text-center space-y-4 text-white relative z-[100002]">
+            <button onclick="closeTrackingSuccess()" class="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div id="tracking-success-icon" class="w-14 h-14 bg-green-500/20 border border-green-500/40 text-green-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <span id="tracking-success-badge" class="inline-block bg-green-500/20 text-green-400 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider border border-green-500/30">Success</span>
+            <h3 id="tracking-success-title" class="text-lg font-black font-poppins text-white">Done</h3>
+            <p id="tracking-success-message" class="text-xs text-zinc-200 leading-relaxed font-medium"></p>
+            <div id="tracking-success-slip" class="hidden space-y-2">
+                <p class="text-[10px] uppercase tracking-wider text-white/60 font-bold">Your Queue Number</p>
+                <span id="tracking-success-slip-no" class="block text-4xl font-black text-orange-400 tracking-tight">--</span>
+                <div class="bg-white p-3 rounded-2xl flex flex-col items-center justify-center">
+                    <svg id="tracking-success-barcode" class="w-full h-14"></svg>
+                    <span id="tracking-success-slip-caption" class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Scan at Counter</span>
+                </div>
+            </div>
+            <button id="tracking-success-done" onclick="goToKioskMenu()"
+                    class="w-full py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition cursor-pointer">
+                Back to Menu
+            </button>
         </div>
     </div>
 </body>
