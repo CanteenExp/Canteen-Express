@@ -389,18 +389,14 @@
 
         <div class="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <a href="{% url 'customer_portal:kiosk_welcome' %}" class="bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 font-extrabold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 transition active:scale-95 shrink-0" title="Exit Kiosk">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    <span class="hidden sm:inline font-black uppercase tracking-wider">Exit</span>
-                </a>
-                <div class="flex items-center gap-3">
-                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto object-contain shrink-0">
-                    <div id="brand-text-container" class="transition-all duration-300">
-                        <h1 class="text-xs sm:text-base font-black text-white leading-tight">Canteen Express</h1>
-                        <p class="text-[8px] sm:text-xs text-brand-orange font-bold uppercase tracking-wider flex items-center gap-1.5">
-                            <span id="dining-mode-badge" class="bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded-md border border-brand-orange/30">Dine-In</span>
-                        </p>
-                    </div>
+                <div class="w-10 h-10 rounded-xl bg-brand-orange/20 border border-brand-orange/30 p-1 flex items-center justify-center overflow-hidden shadow">
+                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="w-full h-full object-contain">
+                </div>
+                <div id="brand-text-container" class="transition-all duration-300">
+                    <h1 class="text-xs sm:text-base font-black text-white leading-tight">Welcome to Canteen Express!</h1>
+                    <p class="text-[8px] sm:text-xs text-brand-orange font-bold uppercase tracking-wider flex items-center gap-1.5">
+                        <span id="dining-mode-badge" class="bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded-md border border-brand-orange/30">Dine-In</span>
+                    </p>
                 </div>
             </div>
 
@@ -428,6 +424,12 @@
                 <button onclick="toggleTheme()" id="theme-toggle-btn" class="w-10 h-10 shrink-0 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95" title="Toggle Light/Dark Mode">
                     <i class="fa-solid fa-sun text-xs" id="theme-icon"></i>
                 </button>
+
+                <!-- Exit Kiosk -->
+                <a href="{% url 'customer_portal:kiosk_welcome' %}" class="bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 font-extrabold px-3.5 h-10 rounded-xl text-xs flex items-center gap-2 transition active:scale-95 shrink-0" title="Exit Kiosk">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span class="hidden sm:inline font-black uppercase tracking-wider">Exit</span>
+                </a>
             </div>
         </div>
     </header>
@@ -2342,5 +2344,6 @@ checkoutOrder = async function () {
 if (window.__systemClosed) { showClosedOverlay('{{ SYSTEM_CLOSED_MESSAGE|escapejs }}'); }
 setInterval(refreshSystemStatus, 15000);
     </script>
+    <script src="{% static 'js/ui-loading.js' %}"></script>
 </body>
 </html>
