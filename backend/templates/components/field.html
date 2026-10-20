@@ -1,0 +1,38 @@
+{% comment %}
+Field — label, control, hint and error in one block, so every form input has
+the same height, border, focus and error treatment.
+
+Params:
+  name         form field name
+  label        visible label, sentence case
+  control      input (default) | select | textarea
+  type         input type when control="input": text, number, tel, password,
+               search, date, time...
+  value        current value
+  placeholder  optional placeholder text
+  hint         helper line under the control
+  error        error message; also marks the control invalid
+  required     True
+  disabled     True
+  icon         Lucide name shown inside the control (input only)
+  options      when control="select": list of (value, label) pairs
+  id           optional id, defaults to name
+  attrs        raw attribute string for one-offs, e.g. '@input="filter()"'
+
+Usage:
+  {% include "components/field.html" with name="q" label="Search menu" placeholder="Item name" icon="search" %}
+  {% include "components/field.html" with name="reason" label="Reason" control="select" options=reason_choices value=current_reason %}
+  {% include "components/field.html" with name="amount" label="Amount" type="number" error="Enter an amount" %}
+{% endcomment %}<div class="ds-field">
+    {% if label %}<label class="ds-field__label" for="{{ id|default:name }}">{{ label }}{% if required %} <span class="ds-field__required" aria-hidden="true">*</span>{% endif %}</label>{% endif %}
+    {% if control == 'select' %}<div class="ds-select-wrap">
+        <select id="{{ id|default:name }}" name="{{ name }}" class="ds-select{% if error %} is-invalid{% endif %}"{% if required %} required{% endif %}{% if disabled %} disabled{% endif %}{% if error %} aria-invalid="true" aria-describedby="{{ id|default:name }}-error"{% endif %}{% if attrs %} {{ attrs|safe }}{% endif %}>
+            {% for option in options %}<option value="{{ option.0 }}"{% if option.0|stringformat:'s' == value|stringformat:'s' %} selected{% endif %}>{{ option.1 }}</option>{% endfor %}
+        </select>
+        <span class="ds-field__icon ds-field__icon--trailing">{% include "components/icon.html" with name="chevron-down" %}</span>
+    </div>{% elif control == 'textarea' %}<textarea id="{{ id|default:name }}" name="{{ name }}" class="ds-textarea{% if error %} is-invalid{% endif %}"{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if required %} required{% endif %}{% if disabled %} disabled{% endif %}{% if error %} aria-invalid="true" aria-describedby="{{ id|default:name }}-error"{% endif %}{% if attrs %} {{ attrs|safe }}{% endif %}>{{ value }}</textarea>{% else %}<div class="ds-input-wrap">
+        {% if icon %}<span class="ds-field__icon">{% include "components/icon.html" with name=icon %}</span>{% endif %}
+        <input id="{{ id|default:name }}" name="{{ name }}" type="{{ type|default:'text' }}" class="ds-input{% if error %} is-invalid{% endif %}"{% if value %} value="{{ value }}"{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if required %} required{% endif %}{% if disabled %} disabled{% endif %}{% if error %} aria-invalid="true" aria-describedby="{{ id|default:name }}-error"{% endif %}{% if attrs %} {{ attrs|safe }}{% endif %}>
+    </div>{% endif %}
+    {% if error %}<p class="ds-field__error" id="{{ id|default:name }}-error">{% include "components/icon.html" with name="alert-circle" class="ds-icon--sm" %}{{ error }}</p>{% elif hint %}<p class="ds-field__hint" id="{{ id|default:name }}-hint">{{ hint }}</p>{% endif %}
+</div>

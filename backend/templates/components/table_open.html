@@ -1,0 +1,26 @@
+{% comment %}
+Table — open/close pair emitting the wrapper and the table element, so the
+sticky header, borders, and horizontal scroll are consistent everywhere.
+Write your own <thead> / <tbody> between the two includes.
+
+Params (table_open):
+  no_hover     True -> rows do not highlight on hover
+  extra_class  extra classes for one-offs
+
+Params (table_close): none.
+
+Header cells: use a plain <th>, or <th class="ds-table__num"> for right
+aligned numbers. Put <span class="ds-skeleton"> in cells while loading, and
+an empty-state row when there is nothing to show.
+
+Usage:
+  {% include "components/table_open.html" %}
+      <thead>
+          <tr><th>Order</th><th>Status</th><th class="ds-table__num">Total</th></tr>
+      </thead>
+      <tbody>
+          <tr><td>#1042</td><td>Ready</td><td class="ds-table__num">₱180.00</td></tr>
+      </tbody>
+  {% include "components/table_close.html" %}
+{% endcomment %}<div class="ds-table-wrap">
+    <table class="ds-table{% if not no_hover %} ds-table--hover{% endif %}{% if extra_class %} {{ extra_class }}{% endif %}">

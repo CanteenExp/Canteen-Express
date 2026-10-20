@@ -1,0 +1,16 @@
+{% comment %}
+Status indicator — dot + label, colour keyed to one meaning only.
+
+Params:
+  label   required  e.g. "Open", "Ready", "In kitchen", "Late", "Closed"
+  status  success (open / ready / completed)
+          pending (waiting to start)
+          info    (in the kitchen)
+          danger  (late / closed / cancelled)
+          neutral (unknown / offline) — default
+  meta    optional muted text after the label, e.g. "closes 5:00 PM"
+  live    True -> soft halo, for values that update in place
+
+Usage:
+  {% include "components/status_indicator.html" with label="Open" status="success" meta="closes 5:00 PM" %}
+{% endcomment %}<span class="ds-status ds-status--{{ status|default:'neutral' }}{% if live %} ds-status--live{% endif %}"><span class="ds-status__dot" aria-hidden="true"></span><span>{{ label }}</span>{% if meta %}<span class="ds-status__meta">{{ meta }}</span>{% endif %}</span>

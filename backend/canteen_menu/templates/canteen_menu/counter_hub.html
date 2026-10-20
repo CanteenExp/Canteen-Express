@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Counter - Canteen Express{% endblock %}
+{% block header %}{% endblock %}
+{% block main_class %}w-full m-0 p-0 flex-grow flex flex-col{% endblock %}
+{% block bottom_nav %}{% endblock %}
+
+{% block content %}
+<div class="ds-shell"
+     x-data="{
+         showSidebar: false,
+         showChangePasswordModal: false,
+         currentPassword: '',
+         newPassword: '',
+         confirmPassword: ''
+     }">
+
+    {% include "components/staff_sidebar.html" with sidebar_alpine=False side_active='counter' %}
+
+    <div class="ds-shell__main">
+    <main class="ds-main">
+        <div class="ds-page">
+
+            {% include "components/page_header_open.html" with title="Counter" description="Scan queue slips, confirm payments, and watch the kitchen queue." %}
+            {% include "components/page_header_end.html" %}
+
+            <div class="bg-white rounded-xl p-6 border border-gray-200">
+                {% include "components/empty_state.html" with title="The counter console comes next" description="Barcode scan, payment confirmation, and the live kitchen queue all land here in the next step." icon="scan-line" action_label="Back to dashboard" action_href="/canteen/dashboard/" %}
+            </div>
+
+        </div>
+    </main>
+    </div>
+
+    {% include "components/change_password_modal.html" %}
+
+</div>
+{% endblock %}

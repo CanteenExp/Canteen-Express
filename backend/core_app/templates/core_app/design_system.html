@@ -1,0 +1,381 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design system — Canteen Express</title>
+    <link rel="stylesheet" href="{% static 'vendor/fonts/plus-jakarta-sans.css' %}">
+    <link rel="stylesheet" href="{% static 'css/design-system.css' %}">
+    <script src="{% static 'vendor/lucide/lucide.min.js' %}"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        /* Gallery scaffolding only — deliberately not part of the design
+           system, which must stay free of one-off classes. */
+        .gallery-section { display: flex; flex-direction: column; gap: 16px; }
+        .gallery-head { display: flex; flex-direction: column; gap: 4px; padding-bottom: 12px; border-bottom: 1px solid var(--ds-border); }
+        .gallery-note { padding: 12px 16px; border-left: 3px solid var(--ds-accent); background: var(--ds-accent-tint); border-radius: 8px; color: var(--ds-gray-800); }
+        .gallery-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+        .gallery-swatch { border: 1px solid var(--ds-border); border-radius: 8px; overflow: hidden; background: var(--ds-surface); }
+        .gallery-swatch__chip { height: 48px; }
+        .gallery-swatch__meta { padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--ds-border); }
+        .gallery-snippet { margin: 0; padding: 12px 16px; background: var(--ds-gray-900); color: var(--ds-gray-100); border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 20px; overflow-x: auto; }
+        .gallery-demo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .gallery-label { color: var(--ds-text-subtle); font-size: 12px; font-weight: 600; }
+        .gallery-scale { display: flex; align-items: center; gap: 12px; }
+        .gallery-scale__bar { height: 8px; background: var(--ds-accent-tint-strong); border: 1px solid var(--ds-accent); border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="ds-page">
+
+    {% include "components/page_header_open.html" with title="Design system" description="Tokens and shared components for the staff portal. Step 1 of the redesign — no page has been migrated yet." meta="Preview only: this route 404s when DEBUG is off." %}
+        {% include "components/badge.html" with label="Step 1 of 3" variant="accent" %}
+    {% include "components/page_header_end.html" %}
+
+    <div class="gallery-note ds-body">
+        One accent (orange) is reserved for the single primary action per screen and the active nav item.
+        Green, amber, blue and red appear only when they mean a status. Everything else is neutral,
+        separated by 1px borders rather than shadows.
+    </div>
+
+    <!-- ================= Colours ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">Colour</h2>
+            <p class="ds-body ds-muted">One neutral scale, one accent, four semantic colours. Every text pairing below meets WCAG AA.</p>
+        </div>
+
+        <p class="gallery-label">Neutral</p>
+        <div class="gallery-swatches">
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#ffffff"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">white</span><span class="ds-caption ds-subtle">#ffffff · surfaces</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#f9fafb"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">gray 50</span><span class="ds-caption ds-subtle">#f9fafb · page</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#f3f4f6"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">gray 100</span><span class="ds-caption ds-subtle">#f3f4f6</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#e5e7eb"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">gray 200</span><span class="ds-caption ds-subtle">#e5e7eb · borders</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#d1d5db"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">gray 300</span><span class="ds-caption ds-subtle">#d1d5db · control border</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#9ca3af"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">gray 400</span><span class="ds-caption ds-subtle">#9ca3af</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#6b7280"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">gray 500</span><span class="ds-caption ds-subtle">#6b7280 · 4.8:1</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#4b5563"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">gray 600</span><span class="ds-caption ds-subtle">#4b5563 · 7.6:1</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#374151"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">gray 700</span><span class="ds-caption ds-subtle">#374151</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#1f2937"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">gray 800</span><span class="ds-caption ds-subtle">#1f2937</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#111827"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">gray 900</span><span class="ds-caption ds-subtle">#111827 · 16.9:1</span></div></div>
+        </div>
+
+        <p class="gallery-label">Accent — orange, the only accent</p>
+        <div class="gallery-swatches">
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#f97316"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">accent</span><span class="ds-caption ds-subtle">#f97316 · marks, tints</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#c2410c"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">accent strong</span><span class="ds-caption ds-subtle">#c2410c · 5.2:1</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#9a3412"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">accent hover</span><span class="ds-caption ds-subtle">#9a3412 · 7.0:1</span></div></div>
+            <div class="gallery-swatch"><div class="gallery-swatch__chip" style="background:#fff7ed"></div><div class="gallery-swatch__meta"><span class="ds-caption ds-strong">accent tint</span><span class="ds-caption ds-subtle">#fff7ed · active nav</span></div></div>
+        </div>
+        <p class="ds-caption ds-subtle">
+            The primary fill is a step darker than the brand orange because white text on #f97316 is only 2.8:1.
+            #f97316 stays for identity, tints and marks; #c2410c is what carries a label.
+        </p>
+
+        <p class="gallery-label">Semantic — status only</p>
+        <div class="gallery-demo">
+            {% include "components/badge.html" with label="Open" variant="success" dot=True %}
+            {% include "components/badge.html" with label="Waiting" variant="pending" dot=True %}
+            {% include "components/badge.html" with label="In kitchen" variant="info" dot=True %}
+            {% include "components/badge.html" with label="Late" variant="danger" dot=True %}
+            {% include "components/badge.html" with label="Draft" variant="neutral" dot=True %}
+        </div>
+    </section>
+
+    <!-- ================= Type ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">Type</h2>
+            <p class="ds-body ds-muted">One family, four sizes, two weights. Labels are sentence case — never ALL CAPS.</p>
+        </div>
+        <div class="ds-stack ds-stack--tight">
+            <p class="ds-title">Page title — 22 / 600</p>
+            <p class="ds-section-title">Section title — 16 / 600</p>
+            <p class="ds-body">Body — 14 / 400. The default for text, table cells and control labels.</p>
+            <p class="ds-caption ds-subtle">Caption — 12 / 400. Column headers, hints, helper lines.</p>
+        </div>
+        <p class="ds-caption ds-subtle">Family: Plus Jakarta Sans, already self-hosted in the repo as a variable font, so 400 and 600 cost one request.</p>
+    </section>
+
+    <!-- ================= Space, radius, depth ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">Space, radius and depth</h2>
+        </div>
+        <div class="ds-stack ds-stack--tight">
+            <div class="gallery-scale"><span class="ds-caption ds-subtle" style="width:64px">space 1</span><span class="gallery-scale__bar" style="width:4px"></span><span class="ds-caption ds-subtle">4px</span></div>
+            <div class="gallery-scale"><span class="ds-caption ds-subtle" style="width:64px">space 2</span><span class="gallery-scale__bar" style="width:8px"></span><span class="ds-caption ds-subtle">8px</span></div>
+            <div class="gallery-scale"><span class="ds-caption ds-subtle" style="width:64px">space 3</span><span class="gallery-scale__bar" style="width:12px"></span><span class="ds-caption ds-subtle">12px</span></div>
+            <div class="gallery-scale"><span class="ds-caption ds-subtle" style="width:64px">space 4</span><span class="gallery-scale__bar" style="width:16px"></span><span class="ds-caption ds-subtle">16px · default gap</span></div>
+            <div class="gallery-scale"><span class="ds-caption ds-subtle" style="width:64px">space 5</span><span class="gallery-scale__bar" style="width:20px"></span><span class="ds-caption ds-subtle">20px</span></div>
+            <div class="gallery-scale"><span class="ds-caption ds-subtle" style="width:64px">space 6</span><span class="gallery-scale__bar" style="width:24px"></span><span class="ds-caption ds-subtle">24px</span></div>
+            <div class="gallery-scale"><span class="ds-caption ds-subtle" style="width:64px">space 8</span><span class="gallery-scale__bar" style="width:32px"></span><span class="ds-caption ds-subtle">32px</span></div>
+            <div class="gallery-scale"><span class="ds-caption ds-subtle" style="width:64px">space 10</span><span class="gallery-scale__bar" style="width:40px"></span><span class="ds-caption ds-subtle">40px</span></div>
+            <div class="gallery-scale"><span class="ds-caption ds-subtle" style="width:64px">space 12</span><span class="gallery-scale__bar" style="width:48px"></span><span class="ds-caption ds-subtle">48px</span></div>
+        </div>
+        <div class="gallery-demo">
+            <div style="border:1px solid var(--ds-border); border-radius:12px; padding:16px;"><span class="ds-caption ds-subtle">radius 12 · cards</span></div>
+            <div style="border:1px solid var(--ds-border-strong); border-radius:8px; padding:16px;"><span class="ds-caption ds-subtle">radius 8 · controls</span></div>
+            <div style="border:1px solid var(--ds-border); border-radius:12px; padding:16px; box-shadow:var(--ds-shadow-overlay); background:#fff;"><span class="ds-caption ds-subtle">shadow · overlays only</span></div>
+        </div>
+    </section>
+
+    <!-- ================= Button ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">Button</h2>
+            <p class="ds-body ds-muted">Exactly one primary button per screen. Everything else is secondary, tertiary, or destructive. All buttons are 44px tall; <span class="ds-strong">sm</span> is 36px and only for dense desktop rows.</p>
+        </div>
+
+        <div class="gallery-demo">
+            {% include "components/button.html" with label="Confirm payment" variant="primary" %}
+            {% include "components/button.html" with label="Print slip" variant="secondary" icon="printer" %}
+            {% include "components/button.html" with label="Dismiss" variant="tertiary" %}
+            {% include "components/button.html" with label="Cancel order" variant="destructive" icon="trash-2" %}
+        </div>
+        <div class="gallery-demo">
+            {% include "components/button.html" with label="Small" variant="secondary" size="sm" %}
+            {% include "components/button.html" with label="With icon after" variant="primary" icon_right="arrow-right" %}
+            {% include "components/button.html" with icon="refresh-cw" variant="secondary" aria_label="Refresh" %}
+            {% include "components/button.html" with icon="more-vertical" variant="tertiary" aria_label="More actions" %}
+        </div>
+        <div class="gallery-demo">
+            {% include "components/button.html" with label="Saving" variant="primary" loading=True %}
+            {% include "components/button.html" with label="Disabled" variant="primary" disabled=True %}
+            {% include "components/button.html" with label="Disabled" variant="secondary" disabled=True %}
+            {% include "components/button.html" with label="Link button" variant="secondary" href="#" %}
+        </div>
+        <p class="ds-caption ds-subtle">Press Tab to see the focus ring on any control — 2px, offset 2px, so it stays visible on white and on the orange fill alike.</p>
+        <pre class="gallery-snippet">{% verbatim %}{% include "components/button.html" with label="Confirm payment" variant="primary" %}
+{% include "components/button.html" with icon="refresh-cw" variant="secondary" aria_label="Refresh" %}
+{% include "components/button.html" with label="Saving" variant="primary" loading=True %}{% endverbatim %}</pre>
+    </section>
+
+    <!-- ================= Card ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">Card</h2>
+            <p class="ds-body ds-muted">A 1px border, no shadow. Use the open/close pair so any markup can sit inside.</p>
+        </div>
+        <div class="ds-grid">
+            {% include "components/card_open.html" with title="Today's orders" subtitle="Monday, 12 October" %}
+                <p class="ds-body ds-muted">32 orders taken · ₱4,180.00</p>
+            {% include "components/card_end.html" %}
+
+            {% include "components/card_open.html" with title="Queue" %}
+                <p class="ds-body ds-muted">4 slips waiting at the counter.</p>
+            {% include "components/card_end.html" %}
+        </div>
+        <pre class="gallery-snippet">{% verbatim %}{% include "components/card_open.html" with title="Today's orders" subtitle="Monday, 12 October" %}
+    &lt;p class="ds-body ds-muted"&gt;32 orders taken&lt;/p&gt;
+{% include "components/card_end.html" %}{% endverbatim %}</pre>
+    </section>
+
+    <!-- ================= Badge ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">Badge</h2>
+            <p class="ds-body ds-muted">Short, scannable state. Sentence case, one or two words.</p>
+        </div>
+        <div class="gallery-demo">
+            {% include "components/badge.html" with label="Ready" variant="success" %}
+            {% include "components/badge.html" with label="Waiting" variant="pending" %}
+            {% include "components/badge.html" with label="In kitchen" variant="info" %}
+            {% include "components/badge.html" with label="Late" variant="danger" %}
+            {% include "components/badge.html" with label="Delivery" variant="accent" %}
+            {% include "components/badge.html" with label="Draft" variant="neutral" %}
+            {% include "components/badge.html" with label="Open" variant="success" dot=True %}
+        </div>
+    </section>
+
+    <!-- ================= Status ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">Status indicator</h2>
+            <p class="ds-body ds-muted">For values that change on their own. <span class="ds-strong">live</span> adds a soft halo — the only movement in the system.</p>
+        </div>
+        <div class="ds-stack ds-stack--tight">
+            {% include "components/status_indicator.html" with label="Open" status="success" meta="closes 5:00 PM" live=True %}
+            {% include "components/status_indicator.html" with label="Waiting to start" status="pending" meta="1 order ahead" %}
+            {% include "components/status_indicator.html" with label="In the kitchen" status="info" meta="4 mins" %}
+            {% include "components/status_indicator.html" with label="Running late" status="danger" meta="12 mins over" %}
+            {% include "components/status_indicator.html" with label="Closed" status="danger" meta="opens 8:00 AM" %}
+            {% include "components/status_indicator.html" with label="No rider online" status="neutral" %}
+        </div>
+        <pre class="gallery-snippet">{% verbatim %}{% include "components/status_indicator.html" with label="Open" status="success" meta="closes 5:00 PM" live=True %}{% endverbatim %}</pre>
+    </section>
+
+    <!-- ================= Table ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">Table</h2>
+            <p class="ds-body ds-muted">Sticky header, hairline rows, hover highlight. Numbers are right aligned and tabular.</p>
+        </div>
+        {% include "components/table_open.html" %}
+            <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>Items</th>
+                    <th>Status</th>
+                    <th class="ds-table__num">Total</th>
+                    <th class="ds-table__actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in sample_orders %}
+                <tr>
+                    <td class="ds-strong">{{ order.code }}</td>
+                    <td class="ds-muted">{{ order.items }}</td>
+                    <td>{% include "components/badge.html" with label=order.status variant=order.status_variant %}</td>
+                    <td class="ds-table__num">{{ order.total }}</td>
+                    <td class="ds-table__actions">
+                        {% include "components/button.html" with label="Open" variant="secondary" size="sm" %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        {% include "components/table_close.html" %}
+
+        <p class="gallery-label">Loading — skeleton cells, never a spinner over the whole table</p>
+        {% include "components/table_open.html" %}
+            <tbody>
+                {% for i in "123" %}
+                <tr>
+                    <td><span class="ds-skeleton ds-skeleton--text"></span></td>
+                    <td><span class="ds-skeleton ds-skeleton--text"></span></td>
+                    <td><span class="ds-skeleton ds-skeleton--text"></span></td>
+                    <td class="ds-table__num"><span class="ds-skeleton ds-skeleton--text"></span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        {% include "components/table_close.html" %}
+
+        <pre class="gallery-snippet">{% verbatim %}{% include "components/table_open.html" %}
+    &lt;thead&gt;&lt;tr&gt;&lt;th&gt;Order&lt;/th&gt;&lt;th class="ds-table__num"&gt;Total&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+    &lt;tbody&gt;
+        &lt;tr&gt;&lt;td&gt;CE-1042&lt;/td&gt;&lt;td class="ds-table__num"&gt;₱180.00&lt;/td&gt;&lt;/tr&gt;
+    &lt;/tbody&gt;
+{% include "components/table_close.html" %}{% endverbatim %}</pre>
+    </section>
+
+    <!-- ================= Field ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">Field</h2>
+            <p class="ds-body ds-muted">Label, control, hint and error in one block. The error keeps its message under the control rather than replacing the hint.</p>
+        </div>
+        <div class="ds-grid">
+            <div class="ds-stack">
+                {% include "components/field.html" with name="q" label="Search menu" placeholder="Item name" icon="search" hint="Matches name and category." %}
+                {% include "components/field.html" with name="amount" label="Amount" type="number" value="180" %}
+                {% include "components/field.html" with name="reason" label="Closure reason" control="select" options=reason_options value=current_reason %}
+            </div>
+            <div class="ds-stack">
+                {% include "components/field.html" with name="note" label="Note for the kitchen" control="textarea" placeholder="No onions" %}
+                {% include "components/field.html" with name="pin" label="Admin PIN" type="password" required=True error="Incorrect PIN. You have 2 attempts left." %}
+                {% include "components/field.html" with name="locked" label="Staff ID" value="CE-0041" disabled=True hint="Set by the admin." %}
+            </div>
+        </div>
+        <pre class="gallery-snippet">{% verbatim %}{% include "components/field.html" with name="q" label="Search menu" placeholder="Item name" icon="search" %}
+{% include "components/field.html" with name="reason" label="Closure reason" control="select" options=reason_options value=current_reason %}
+{% include "components/field.html" with name="pin" label="Admin PIN" type="password" required=True error="Incorrect PIN." %}{% endverbatim %}</pre>
+    </section>
+
+    <!-- ================= Modal ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">Modal</h2>
+            <p class="ds-body ds-muted">For one decision that interrupts. Backdrop click and the close button both call the caller's Alpine action.</p>
+        </div>
+        <div x-data="{ open: false }">
+            <div class="gallery-demo">
+                {% include "components/button.html" with label="Open modal" variant="secondary" attrs='@click="open = true"' %}
+            </div>
+            {% include "components/modal_open.html" with show="open" title="Cancel order CE-1042" description="The queue slot is released immediately and the customer is told." close_action="open = false" %}
+                <p class="ds-body ds-muted">This cannot be undone. Loyalty points already credited are taken back and the stock is restored.</p>
+            {% include "components/modal_end.html" %}
+        </div>
+        <pre class="gallery-snippet">{% verbatim %}&lt;div x-data="{ open: false }"&gt;
+    {% include "components/button.html" with label="Open modal" variant="secondary" attrs='@click="open = true"' %}
+    {% include "components/modal_open.html" with show="open" title="Cancel order" close_action="open = false" %}
+        &lt;p class="ds-body ds-muted"&gt;This cannot be undone.&lt;/p&gt;
+    {% include "components/modal_end.html" %}
+&lt;/div&gt;{% endverbatim %}</pre>
+    </section>
+
+    <!-- ================= Toast ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">Toast</h2>
+            <p class="ds-body ds-muted">Confirmed results, always in the same place. In the app they sit in a <span class="ds-strong">ds-toast-stack</span>; shown inline here so the page stays readable.</p>
+        </div>
+        <div class="ds-stack">
+            {% include "components/toast.html" with title="Payment confirmed" message="Order CE-1042 is on the kitchen board." variant="success" icon="circle-check" %}
+            {% include "components/toast.html" with title="Order is waiting" message="Nothing has been started yet." variant="pending" icon="clock" %}
+            {% include "components/toast.html" with title="Rider assigned" message="Marco is on the way to the canteen." variant="info" icon="bike" %}
+            {% include "components/toast.html" with title="Order is late" message="12 minutes over the estimate." variant="danger" icon="alert-triangle" %}
+            {% include "components/toast.html" with title="Saved" variant="neutral" %}
+        </div>
+        <pre class="gallery-snippet">{% verbatim %}&lt;div class="ds-toast-stack"&gt;
+    {% include "components/toast.html" with title="Payment confirmed" message="Order CE-1042 is on the kitchen board." variant="success" icon="circle-check" %}
+&lt;/div&gt;{% endverbatim %}</pre>
+    </section>
+
+    <!-- ================= Header and empty state ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">Page header and empty state</h2>
+        </div>
+        <div class="ds-card">
+            <div class="ds-card__body">
+                {% include "components/page_header_open.html" with title="Kitchen board" description="Orders waiting to be cooked, oldest first." %}
+                    {% include "components/button.html" with label="Refresh" variant="secondary" icon="refresh-cw" %}
+                    {% include "components/button.html" with label="Mark all ready" variant="primary" %}
+                {% include "components/page_header_end.html" %}
+            </div>
+        </div>
+        <div class="ds-card">
+            <div class="ds-card__body">
+                {% include "components/empty_state.html" with title="No orders yet" description="Orders appear here the moment the counter confirms payment." icon="receipt" action_label="Open the counter" action_icon="scan-barcode" %}
+            </div>
+        </div>
+        <pre class="gallery-snippet">{% verbatim %}{% include "components/empty_state.html" with title="No orders yet" description="Orders appear here the moment the counter confirms payment." icon="receipt" action_label="Open the counter" %}{% endverbatim %}</pre>
+    </section>
+
+    <!-- ================= Rules ================= -->
+    <section class="gallery-section">
+        <div class="gallery-head">
+            <h2 class="ds-section-title">The rules this system encodes</h2>
+        </div>
+        <div class="ds-grid">
+            <div class="ds-stack ds-stack--tight">
+                <p class="ds-strong ds-body">One primary action</p>
+                <p class="ds-body ds-muted">Orange marks the single most important action on a screen and the active nav item. If two things compete, one of them is secondary.</p>
+            </div>
+            <div class="ds-stack ds-stack--tight">
+                <p class="ds-strong ds-body">Colour means something</p>
+                <p class="ds-body ds-muted">Green, amber, blue and red are status only. Nothing is tinted for decoration.</p>
+            </div>
+            <div class="ds-stack ds-stack--tight">
+                <p class="ds-strong ds-body">Borders, not shadows</p>
+                <p class="ds-body ds-muted">Depth comes from 1px hairlines and spacing. The one soft shadow is for modals and menus.</p>
+            </div>
+            <div class="ds-stack ds-stack--tight">
+                <p class="ds-strong ds-body">Thumb first</p>
+                <p class="ds-body ds-muted">Every control is at least 44px, and every icon is the same 20px at a 1.75 stroke.</p>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<script>
+    // Lucide swaps each <i data-lucide> for an inline svg. Re-run window.dsIcons()
+    // after injecting markup at runtime (Alpine templates, fetch'd partials).
+    window.dsIcons = function () { window.lucide && window.lucide.createIcons(); };
+    window.dsIcons();
+</script>
+
+</body>
+</html>

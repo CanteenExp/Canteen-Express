@@ -1,0 +1,33 @@
+{% comment %}
+Button — the one action element. Renders a <button>, or an <a> when `href`
+is passed. Every button is at least 44px tall.
+
+Params:
+  label        visible text. Omit for an icon-only button (then pass aria_label)
+  variant      primary | secondary (default) | tertiary | destructive
+  size         sm — 36px, for dense desktop table rows only, never the only
+               way to reach an action on touch
+  icon         Lucide name, placed before the label
+  icon_right   Lucide name, placed after the label
+  href         renders an <a> instead of a <button>
+  type         button (default) | submit
+  loading      True -> spinner, aria-busy, repeat clicks blocked
+  disabled     True
+  block        True -> full width
+  aria_label   accessible name for icon-only buttons
+  extra_class  extra classes for one-offs
+  attrs        raw attribute string, e.g. '@click="save()"'
+
+Usage:
+  {% include "components/button.html" with label="Save changes" variant="primary" %}
+  {% include "components/button.html" with label="Add item" variant="primary" icon="plus" %}
+  {% include "components/button.html" with icon="trash-2" variant="destructive" aria_label="Delete" %}
+{% endcomment %}{% if href %}<a href="{{ href }}" class="ds-btn ds-btn--{{ variant|default:'secondary' }}{% if size %} ds-btn--{{ size }}{% endif %}{% if block %} ds-btn--block{% endif %}{% if disabled %} is-disabled{% endif %}{% if extra_class %} {{ extra_class }}{% endif %}"{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}{% if disabled %} aria-disabled="true" tabindex="-1"{% endif %}{% if attrs %} {{ attrs|safe }}{% endif %}>
+    {% if icon %}{% include "components/icon.html" with name=icon %}{% endif %}
+    {% if label %}<span>{{ label }}</span>{% endif %}
+    {% if icon_right %}{% include "components/icon.html" with name=icon_right %}{% endif %}
+</a>{% else %}<button type="{{ type|default:'button' }}" class="ds-btn ds-btn--{{ variant|default:'secondary' }}{% if size %} ds-btn--{{ size }}{% endif %}{% if block %} ds-btn--block{% endif %}{% if extra_class %} {{ extra_class }}{% endif %}"{% if loading %} aria-busy="true"{% endif %}{% if disabled %} disabled{% endif %}{% if aria_label %} aria-label="{{ aria_label }}"{% endif %}{% if attrs %} {{ attrs|safe }}{% endif %}>
+    {% if loading %}<span class="ds-btn__spinner" aria-hidden="true"></span>{% elif icon %}{% include "components/icon.html" with name=icon %}{% endif %}
+    {% if label %}<span>{{ label }}</span>{% endif %}
+    {% if icon_right %}{% include "components/icon.html" with name=icon_right %}{% endif %}
+</button>{% endif %}

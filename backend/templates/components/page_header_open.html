@@ -1,0 +1,21 @@
+{% comment %}
+Page header — open/close pair. Title, optional description and meta, then an
+actions area that holds buttons on the right (stacked full width on mobile).
+
+Params (page_header_open):
+  title        required
+  description  optional supporting line
+  meta         optional caption line, e.g. "Updated 21:44"
+Params (page_header_end): none.
+
+Usage:
+  {% include "components/page_header_open.html" with title="Kitchen board" description="Orders waiting to be cooked" %}
+      {% include "components/button.html" with label="Refresh" icon="refresh-cw" %}
+  {% include "components/page_header_end.html" %}
+{% endcomment %}<div class="ds-page-header">
+    <div>
+        <h1 class="ds-title">{{ title }}</h1>
+        {% if description %}<p class="ds-body ds-muted ds-page-header__description">{{ description }}</p>{% endif %}
+        {% if meta %}<p class="ds-caption ds-subtle">{{ meta }}</p>{% endif %}
+    </div>
+    <div class="ds-page-header__actions">

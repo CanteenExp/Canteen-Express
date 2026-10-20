@@ -1,0 +1,25 @@
+{% comment %}
+Toast — a single notification. Wrap one or more in a `ds-toast-stack`
+container, which pins them to the top right and sets the z-layer.
+
+Params:
+  title      short bold line, e.g. "Payment confirmed"
+  message    optional supporting line
+  variant    neutral (default) | success | pending | info | danger
+  icon       Lucide name; defaults to a bell so it is never blank
+  show       Alpine expression that decides visibility, e.g. "show"
+  no_close   True -> no dismiss button (use for toasts that expire on their own)
+  attrs      raw attribute string, e.g. x-init="setTimeout(() => show = false, 5000)"
+
+Usage:
+  <div class="ds-toast-stack">
+      {% include "components/toast.html" with title="Payment confirmed" message="Order #1042 is on the kitchen board." variant="success" %}
+  </div>
+{% endcomment %}<div class="ds-toast ds-toast--{{ variant|default:'neutral' }}" role="status" aria-live="polite"{% if show %} x-show="{{ show }}"{% endif %}{% if attrs %} {{ attrs|safe }}{% endif %}>
+    <span class="ds-toast__icon">{% include "components/icon.html" with name=icon|default:'bell' %}</span>
+    <div class="ds-toast__content">
+        {% if title %}<p class="ds-toast__title">{{ title }}</p>{% endif %}
+        {% if message %}<p class="ds-toast__message">{{ message }}</p>{% endif %}
+    </div>
+    {% if not no_close %}<button type="button" class="ds-toast__close" onclick="this.closest('.ds-toast').remove()" aria-label="Dismiss">{% include "components/icon.html" with name="x" class="ds-icon--sm" %}</button>{% endif %}
+</div>
