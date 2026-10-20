@@ -7,19 +7,22 @@
 
 ## Essential Commands (Run inside `backend/`)
 - **Run dev server:** `python manage.py runserver`
-- **Run production server (Gunicorn):** `gunicorn --chdir backend config.wsgi:application` (or `gunicorn config.wsgi:application` when in `backend/`)
+- **Run production server (Gunicorn):** `gunicorn --chdir backend config.wsgi:application`
 - **Collect static files:** `python manage.py collectstatic --noinput`
 - **Apply database migrations:** `python manage.py migrate`
 - **Make new migrations:** `python manage.py makemigrations`
 - **Run tests:** `python manage.py test --keepdb` (ALWAYS use `--keepdb` to avoid slow/flaky Supabase PostgreSQL test DB recreation prompts).
 - **Run specific app test:** `python manage.py test deliveries customer_portal`
 - **Interactive shell:** `python manage.py shell`
-- **Reset orders (testing):** Run in `python manage.py shell`: `from customer_portal.models import Order, OrderItem; OrderItem.objects.all().delete(); Order.objects.all().delete()`
+- **Reset orders & feedback (testing):** `python manage.py reset_orders`
 - **Deployment Build Command (Render):** `pip install -r backend/requirements.txt && python backend/manage.py collectstatic --noinput && python backend/manage.py migrate`
 
 ## Operational Gotchas & Environment Setup
-- **Environment variables:** `.env` file must be located directly inside `backend/` alongside `manage.py`. Key keys: `SECRET_KEY`, `DEBUG`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.
-- **Database fallback:** Configured for Supabase PostgreSQL (`sslmode='require'`). Falls back to SQLite (`db.sqlite3`) if `.env` is absent or connection fails.
+- **Environment variables:** `.env` file must be located directly inside `backend/` alongside `manage.py`. Key keys: `SECRET_KEY`, `DEBUG`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `ENFORCE_GEOFENCE`, `ENFORCE_OPERATING_HOURS`, `USE_SQLITE`.
+- **Database Behavior & Tests:**
+  - Test suite automatically runs against in-memory SQLite (`:memory:`) for speed and reliability (set `TEST_USE_REMOTE_DB=True` to force remote Supabase).
+  - Production/Dev uses Supabase PostgreSQL with custom retry wrapper (`config.db_backends.postgresql`). Falls back to local SQLite (`backend/db.sqlite3`) if `USE_SQLITE=True` or `DB_HOST` is empty.
+- **Operating Hours:** `core_app` enforces Mon–Fri 8:00 AM – 5:00 PM for customers and riders when `ENFORCE_OPERATING_HOURS=True` (set to `False` to bypass during night/weekend testing; staff/admin portals operate 24/7).
 - **Media files:** `MEDIA_ROOT` points to `backend/media`. Media URL routes served conditionally when `DEBUG=True` via `config/urls.py`.
 - **Campus Geofence:** Official center `9.77778, 118.73333` (PSU Tiniguiban Heights), radius `0.8` km (`deliveries/utils.py`). Out-of-campus orders or missing destination coordinates reject checkout with HTTP `422`.
 - **Dark Maps:** Leaflet maps use free OSM tiles with CSS invert filter on `.leaflet-tile-pane` for dark mode (no API keys required).
@@ -32,6 +35,7 @@
 - `accounts`: User roles (`STUDENT`, `FACULTY`, `STAFF`, `DELIVERY`), faculty auth (@psu.palawan.edu.ph), staff & rider login portals.
 - `deliveries`: Delivery requests, rider assignment, real-time live GPS tracking (`watchPosition`), and live chat (`DeliveryMessage`).
 - `queuing`: Digital queue slip tracking models.
+- `core_app`: Operating hours schedule enforcement (`ENFORCE_OPERATING_HOURS`).
 - `admin_dashboard` & `analytics_reports`: Staff oversight, sales reporting, and analytics.
 
 ## Order Flow (canonical)

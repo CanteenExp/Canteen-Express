@@ -67,7 +67,7 @@ def kiosk_welcome(request):
 # 2. CUSTOMER SIDE - Main Menu Page
 def kiosk_menu(request):
     formatted_menu = _get_formatted_menu()
-    categories = Category.objects.all()
+    categories = Category.objects.all().order_by('-name')
     context = {
         'menu_data_json': json.dumps(formatted_menu),
         'categories': categories

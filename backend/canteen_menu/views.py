@@ -23,7 +23,7 @@ except ImportError:
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
 def staff_menu_list(request):
     items = MenuItem.objects.all().select_related('category').order_by('category__name', 'name')
-    categories = Category.objects.all().order_by('name')
+    categories = Category.objects.all().order_by('-name')
     return render(request, 'canteen_menu/menu_list.html', {'items': items, 'categories': categories})
 
 
@@ -167,7 +167,7 @@ def upload_to_supabase_storage(image_file):
         req.add_header('Content-Type', content_type)
         req.add_header('x-upsert', 'true')
         
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with urllib.request.urlopen(req, timeout=0.8) as response:
             if response.status in [200, 201]:
                 return f"https://{project_ref}.supabase.co/storage/v1/object/public/{bucket_name}/{urllib.parse.quote(filename)}"
     except Exception as e:
@@ -428,7 +428,7 @@ def staff_dashboard(request, token=None):
     
     recent_orders = Order.objects.exclude(status__in=['completed', 'unpaid', 'cancelled']).order_by('-created_at')[:5]
     menu_items = MenuItem.objects.all().select_related('category').order_by('category__name', 'name')
-    categories = Category.objects.all().order_by('name')
+    categories = Category.objects.all().order_by('-name')
     users_list = User.objects.exclude(role__in=['DELIVERY', 'RIDER']).order_by('-date_joined')[:30] if hasattr(User, 'date_joined') else User.objects.exclude(role__in=['DELIVERY', 'RIDER'])[:30]
     delivery_staff_list = User.objects.filter(role__in=['RIDER', 'DELIVERY'])
     

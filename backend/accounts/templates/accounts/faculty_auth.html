@@ -631,13 +631,14 @@
                 <div class="space-y-1 pt-1">
                     <div class="flex items-start gap-2">
                         <input type="checkbox" id="terms_check" x-model="agreedTerms" :disabled="!termsOpened" required
+                               @click="if (!termsOpened) { $event.preventDefault(); showTermsModal = true; termsOpened = true; }"
                                class="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/5 text-brand-orange focus:ring-brand-orange cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                        <label for="terms_check" class="text-xs text-white/80 font-medium select-none leading-snug">
+                        <label for="terms_check" @click.prevent="showTermsModal = true; termsOpened = true;" class="text-xs text-white/80 font-medium select-none leading-snug cursor-pointer">
                             I have read and agree to the 
-                            <button type="button" @click="showTermsModal = true; termsOpened = true;" class="text-brand-orange font-bold underline hover:text-orange-400 cursor-pointer">
+                            <span class="text-brand-orange font-bold underline hover:text-orange-400">
                                 Terms and Conditions
-                            </button>
-                            <span class="block text-[10px] text-center text-brand-orange font-bold" x-show="!termsOpened">*(Please open & read Terms and Conditions first)*</span>
+                            </span>
+                            <span class="block text-[10px] text-center text-brand-orange font-bold" x-show="!termsOpened">*(Click to open & read Terms and Conditions)*</span>
                         </label>
                     </div>
                 </div>
@@ -696,7 +697,7 @@
                 <p><strong>6. User Conduct:</strong> Any misuse of the platform, fraudulent ordering, or harassment of delivery riders and canteen staff will result in account restriction or ban.</p>
             </div>
             <div class="pt-2 border-t border-white/10 flex justify-end">
-                <button type="button" @click="showTermsModal = false; termsOpened = true;" class="px-4 py-2 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins">
+                <button type="button" @click="showTermsModal = false; termsOpened = true; agreedTerms = true;" class="px-4 py-2 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins">
                     I Understand & Agree
                 </button>
             </div>

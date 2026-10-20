@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ action_title }} - Staff Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script>
         tailwind.config = {
@@ -119,6 +120,28 @@
                 {% endif %}
             </div>
 
+            <!-- Nature's Spring & Bottled Water Size Prices (Optional) -->
+            <div class="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3" x-data="{ showSizes: false }">
+                <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input type="checkbox" x-model="showSizes" class="w-4 h-4 rounded accent-brand-orange">
+                    <span class="text-xs font-bold text-brand-orange">Configure Individual Size Prices (Nature's Spring / Bottled Water)</span>
+                </label>
+                <div class="grid grid-cols-3 gap-2 pt-1" x-show="showSizes" style="display: none;">
+                    <div>
+                        <label class="block text-[10px] text-brand-slate mb-1">350ml (₱)</label>
+                        <input type="number" step="0.01" id="size_350ml" placeholder="20.00" class="w-full bg-zinc-700/50 border border-white/10 text-white rounded-xl p-2 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-brand-slate mb-1">500ml (₱)</label>
+                        <input type="number" step="0.01" id="size_500ml" placeholder="25.00" class="w-full bg-zinc-700/50 border border-white/10 text-white rounded-xl p-2 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-brand-slate mb-1">1L (₱)</label>
+                        <input type="number" step="0.01" id="size_1l" placeholder="45.00" class="w-full bg-zinc-700/50 border border-white/10 text-white rounded-xl p-2 text-xs">
+                    </div>
+                </div>
+            </div>
+
             <!-- Badge -->
             {% if form.badge %}
             <div>
@@ -177,5 +200,26 @@
         </form>
 
     </div>
+
+    <script>
+        document.querySelector('form').addEventListener('submit', function() {
+            const s350 = document.getElementById('size_350ml')?.value;
+            const s500 = document.getElementById('size_500ml')?.value;
+            const s1l = document.getElementById('size_1l')?.value;
+            if (s350 || s500 || s1l) {
+                const descField = document.querySelector('textarea[name="description"]');
+                if (descField) {
+                    let desc = descField.value || '';
+                    desc = desc.replace(/350ml:\s*[\d.]+,?\s*500ml:\s*[\d.]+,?\s*1L:\s*[\d.]+/gi, '').trim();
+                    const sizeParts = [];
+                    if (s350) sizeParts.push(`350ml: ${s350}`);
+                    if (s500) sizeParts.push(`500ml: ${s500}`);
+                    if (s1l) sizeParts.push(`1L: ${s1l}`);
+                    const sizeStr = sizeParts.join(', ');
+                    descField.value = desc ? `${desc} (${sizeStr})` : sizeStr;
+                }
+            }
+        });
+    </script>
 </body>
 </html>
