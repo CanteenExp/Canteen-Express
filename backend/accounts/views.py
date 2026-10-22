@@ -59,9 +59,64 @@ def _otp_hash(code):
 def _otp_verify(entered, stored_hash):
     return bool(stored_hash) and hmac.compare_digest(_otp_hash(entered), stored_hash)
 
-def _send_otp_email(to_email, subject, message):
+def _send_via_resend(to_email, subject, message):
+    """Send through Resend's HTTPS API (port 443).
+
+    Tried FIRST in production because hosting platforms (Railway/Render free
+    tiers) block outbound SMTP ports 25/465/587, so an SMTP-first attempt spent
+    the whole EMAIL_TIMEOUT waiting for a connection that could never open
+    before falling back here. HTTPS is never blocked, so this path is both the
+    reliable one and the fast one. Returns True only on a 2xx response.
+    """
     import urllib.request
     import urllib.error
+
+    api_key = getattr(settings, 'EMAIL_HOST_PASSWORD', '') or os.getenv('EMAIL_HOST_PASSWORD', '')
+    if not api_key or not (api_key.startswith('re_') or 'resend' in str(getattr(settings, 'EMAIL_HOST', '')).lower()):
+        return False
+
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or os.getenv('DEFAULT_FROM_EMAIL', 'Canteen Express <onboarding@resend.dev>')
+    try:
+        payload = {
+            "from": from_email,
+            "to": [to_email],
+            "subject": subject,
+            "html": f"<div style='font-family:sans-serif;font-size:16px;line-height:1.5;color:#333;'><p>{message.replace(chr(10), '<br>')}</p></div>"
+        }
+        req = urllib.request.Request(
+            'https://api.resend.com/emails',
+            data=json.dumps(payload).encode('utf-8'),
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.status in (200, 201):
+                print(f"Resend HTTP API send OK -> {to_email}")
+                return True
+    except urllib.error.HTTPError as he:
+        err_body = he.read().decode('utf-8') if he.fp else ''
+        print(f"Resend HTTP API HTTPError {he.code}: {err_body}")
+    except Exception as resend_err:
+        print(f"Resend HTTP API send failed: {resend_err}")
+    return False
+
+
+def _send_otp_email(to_email, subject, message):
+    """Deliver an OTP email, fastest viable transport first.
+
+    Order matters for latency, not just reliability: platforms that block SMTP
+    make the SMTP attempt cost a full timeout (EMAIL_TIMEOUT, ~10s) before any
+    fallback runs, which is exactly what made OTP feel slow. Resend (HTTPS/443)
+    is therefore attempted first and SMTP is the fallback for environments that
+    do allow it (local dev, paid instances, self-hosted SMTP).
+    """
+    if _send_via_resend(to_email, subject, message):
+        return True
+
     try:
         send_mail(
             subject=subject,
@@ -73,40 +128,7 @@ def _send_otp_email(to_email, subject, message):
         return True
     except Exception as smtp_err:
         print(f"SMTP send failed: {smtp_err}")
-        
-    api_key = getattr(settings, 'EMAIL_HOST_PASSWORD', '') or os.getenv('EMAIL_HOST_PASSWORD', '')
-    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', '') or os.getenv('DEFAULT_FROM_EMAIL', 'Canteen Express <onboarding@resend.dev>')
-    
-    if api_key and (api_key.startswith('re_') or 'resend' in str(getattr(settings, 'EMAIL_HOST', '')).lower()):
-        try:
-            url = 'https://api.resend.com/emails'
-            payload = {
-                "from": from_email,
-                "to": [to_email],
-                "subject": subject,
-                "html": f"<div style='font-family:sans-serif;font-size:16px;line-height:1.5;color:#333;'><p>{message.replace(chr(10), '<br>')}</p></div>"
-            }
-            data = json.dumps(payload).encode('utf-8')
-            req = urllib.request.Request(
-                url,
-                data=data,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                },
-                method="POST"
-            )
-            with urllib.request.urlopen(req, timeout=10) as response:
-                if response.status in (200, 201):
-                    print(f"Resend HTTP API send OK -> {to_email}")
-                    return True
-        except urllib.error.HTTPError as he:
-            err_body = he.read().decode('utf-8') if he.fp else ''
-            print(f"Resend HTTP API HTTPError {he.code}: {err_body}")
-        except Exception as resend_err:
-            print(f"Resend HTTP API fallback failed: {resend_err}")
-            
+
     return False
 
 def _client_ip(request):
@@ -459,8 +481,10 @@ def delivery_login_view(request):
 
 
 # Role-specific Logout Views
+# `logout()` already flushes the session (clearing data AND deleting the row),
+# so calling session.flush() first -- as the faculty view used to -- did the
+# store delete twice and doubled the remote round trip for no benefit.
 def faculty_logout_view(request):
-    request.session.flush()
     logout(request)
     return redirect('accounts:faculty_auth')
 

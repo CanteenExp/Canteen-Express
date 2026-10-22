@@ -15,6 +15,12 @@ from customer_portal.models import Order
 from canteen_menu.models import MenuItem 
 from deliveries.models import DeliveryRequest
 
+# Menu-field parsing lives with the menu app so every create path (staff
+# dashboard, manage_menu, canteen_menu forms) shares one rule. Importing the
+# helpers instead of re-implementing them keeps "what counts as a valid price"
+# from drifting between the two dashboards.
+from canteen_menu.views import MenuInputError, _parse_price, _parse_stock
+
 User = get_user_model()
 
 @role_required(allowed_roles=['STAFF'])
@@ -142,16 +148,20 @@ def staff_dashboard(request):
         cache.set(cache_key, cached_data, timeout=30)
 
     if request.method == 'POST' and 'add_menu_item' in request.POST:
-        name = request.POST.get('name')
-        price = request.POST.get('price')
-        stock = request.POST.get('stock', 50)
-        nutritional_info = request.POST.get('nutritional_info', '')
-        
+        try:
+            name = (request.POST.get('name') or '').strip()[:150]
+            if not name:
+                raise MenuInputError('Menu item name is required.')
+            price = _parse_price(request.POST.get('price'))
+            stock = _parse_stock(request.POST.get('stock', 50))
+        except MenuInputError as exc:
+            return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+
         MenuItem.objects.create(
             name=name,
             price=price,
             stock=stock,
-            nutritional_info=nutritional_info,
+            nutritional_info=(request.POST.get('nutritional_info') or '')[:2000],
             is_available=True
         )
         return redirect('kitchen_display:dashboard')
@@ -412,18 +422,25 @@ def manage_menu(request):
     menu_items = MenuItem.objects.all().order_by('name')
     
     if request.method == 'POST':
-        name = request.POST.get('name')
-        price = request.POST.get('price')
-        stock = request.POST.get('stock', 0)
-        nutritional_info = request.POST.get('nutritional_info', '')
-        is_available = request.POST.get('is_available') == 'on'
-        
+        try:
+            name = (request.POST.get('name') or '').strip()[:150]
+            if not name:
+                raise MenuInputError('Menu item name is required.')
+            price = _parse_price(request.POST.get('price'))
+            stock = _parse_stock(request.POST.get('stock', 0), default=0)
+        except MenuInputError as exc:
+            menu_items = MenuItem.objects.all().order_by('name')
+            return render(request, 'staff_menu_management.html', {
+                'menu_items': menu_items,
+                'error': str(exc),
+            }, status=400)
+
         MenuItem.objects.create(
             name=name,
             price=price,
             stock=stock,
-            nutritional_info=nutritional_info,
-            is_available=is_available
+            nutritional_info=(request.POST.get('nutritional_info') or '')[:2000],
+            is_available=request.POST.get('is_available') == 'on'
         )
         return redirect('kitchen_display:manage_menu')
 

@@ -19,6 +19,56 @@ except ImportError:
     CategoryForm = None
 
 
+# ===== Shared input parsing for menu writes ================================
+# These three paths (`add_menu_item`, `manage_menu`, `staff_menu_edit_ajax`)
+# write price/stock/category straight from request.POST. Without parsing, a
+# non-numeric price or a non-numeric category id reached the ORM and raised an
+# unhandled ValueError -> raw HTTP 500. One helper keeps the rule identical
+# everywhere instead of each call site inventing its own.
+
+class MenuInputError(ValueError):
+    """A user-supplied menu field was missing or malformed."""
+
+
+def _parse_price(raw, *, required=True):
+    """Decimal-safe price: rejects blanks, non-numbers, and negatives."""
+    from decimal import Decimal, InvalidOperation
+
+    if raw is None or str(raw).strip() == '':
+        if required:
+            raise MenuInputError('Price is required.')
+        return None
+    try:
+        value = Decimal(str(raw).strip())
+    except (InvalidOperation, ValueError):
+        raise MenuInputError(f'"{raw}" is not a valid price.')
+    if value.is_nan() or value.is_infinite() or value < 0:
+        raise MenuInputError('Price must be a positive number.')
+    return value
+
+
+def _parse_stock(raw, *, default=50):
+    """Whole-number stock, floored at 0. Blank falls back to `default`."""
+    if raw is None or str(raw).strip() == '':
+        return default
+    try:
+        return max(0, int(str(raw).strip()))
+    except (TypeError, ValueError):
+        raise MenuInputError(f'"{raw}" is not a valid stock quantity.')
+
+
+def _resolve_category_or_400(raw):
+    """Category lookup that yields 404/400 instead of a ValueError 500 on
+    a non-numeric id (the ORM cast raises before get_object_or_404 can 404)."""
+    if raw in (None, ''):
+        return Category.objects.first()
+    try:
+        cat_id = int(raw)
+    except (TypeError, ValueError):
+        raise MenuInputError(f'"{raw}" is not a valid category.')
+    return get_object_or_404(Category, id=cat_id)
+
+
 # 1. STAFF SIDE - List all food items (READ) & Categories
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
 def staff_menu_list(request):
@@ -560,11 +610,17 @@ def staff_dashboard(request, token=None):
     }
 
     if request.method == 'POST' and 'add_menu_item' in request.POST:
-        name = request.POST.get('name')
-        price = request.POST.get('price')
-        stock = request.POST.get('stock', 50)
-        category_id = request.POST.get('category')
-        category = get_object_or_404(Category, id=category_id) if category_id else Category.objects.first()
+        try:
+            name = (request.POST.get('name') or '').strip()[:150]
+            if not name:
+                raise MenuInputError('Menu item name is required.')
+            price = _parse_price(request.POST.get('price'))
+            stock = _parse_stock(request.POST.get('stock', 50))
+            category = _resolve_category_or_400(request.POST.get('category'))
+        except MenuInputError as exc:
+            messages.error(request, str(exc))
+            return redirect('canteen_menu:staff_dashboard')
+
         image_url = request.POST.get('image_url', '')
         image = request.FILES.get('image')
         if image:
@@ -575,7 +631,7 @@ def staff_dashboard(request, token=None):
         description = request.POST.get('description', '')
         if not description:
             description = _generate_auto_desc(name)
-        
+
         item = MenuItem(
             name=name,
             category=category,
@@ -770,18 +826,19 @@ def staff_menu_edit_ajax(request):
                 'price': float(item.price),
                 'stock': item.stock,
             }
-            item.name = request.POST.get('name', item.name)
-            item.price = request.POST.get('price', item.price)
+            item.name = (request.POST.get('name') or item.name).strip()[:150] or item.name
+            if request.POST.get('price') is not None:
+                item.price = _parse_price(request.POST.get('price'), required=False) or item.price
             try:
                 stock_value = int(request.POST.get('stock', item.stock))
                 item.stock = max(0, stock_value)
             except (TypeError, ValueError):
                 item.stock = item.stock
             if request.POST.get('description') is not None:
-                item.description = request.POST.get('description')
+                item.description = (request.POST.get('description') or '')[:2000]
             category_id = request.POST.get('category')
             if category_id:
-                item.category = get_object_or_404(Category, pk=category_id)
+                item.category = _resolve_category_or_400(category_id)
             new_image_url = request.POST.get('image_url')
             if new_image_url is not None:
                 item.image_url = new_image_url

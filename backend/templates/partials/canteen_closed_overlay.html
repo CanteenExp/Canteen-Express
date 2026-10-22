@@ -30,15 +30,19 @@
                 <span class="text-zinc-400 font-medium flex items-center gap-1.5"><i class="fa-regular fa-clock text-brand-400"></i> Current Time:</span>
                 <span class="font-bold text-white">{{ CURRENT_TIME_FORMATTED }}</span>
             </div>
-            <div class="flex items-center justify-between pt-2 border-t border-zinc-700/50">
-                <span class="text-zinc-400 font-medium flex items-center gap-1.5"><i class="fa-solid fa-shield-halved text-emerald-400"></i> Staff / Admin:</span>
-                <span class="font-bold text-emerald-400">Open 24/7</span>
-            </div>
         </div>
 
-        <div class="pt-2">
-            <a href="{% url 'canteen_menu:staff_login' %}" class="block w-full py-3.5 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-extrabold text-xs uppercase tracking-wider transition shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-user-shield"></i> Staff / Admin Portal (24/7 Access)
+        <!-- Customer options only: staff/admin sign-in is deliberately NOT
+             offered here, because this screen is shown to walk-in customers
+             who have no staff credentials. The buttons below are the two
+             things a customer can actually act on: re-check the schedule, or
+             go look at the order they already placed. -->
+        <div class="pt-2 space-y-2.5">
+            <button type="button" onclick="window.location.reload()" class="w-full py-3.5 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-extrabold text-xs uppercase tracking-wider transition shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i> Check Again
+            </button>
+            <a href="{% url 'customer_portal:kiosk_welcome' %}" class="block w-full py-3.5 px-6 rounded-2xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-arrow-left"></i> Back to Kiosk Home
             </a>
         </div>
     </div>

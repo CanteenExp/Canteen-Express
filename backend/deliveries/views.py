@@ -448,7 +448,13 @@ def cancel_delivery(request, delivery_id):
     # Releasing an accepted delivery returns it to the shared pool as a fresh
     # proposal for every online rider (no pre-assignment to a specific rider).
     with transaction.atomic():
-        delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id, rider=request.user)
+        try:
+            delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id, rider=request.user)
+        except DeliveryRequest.DoesNotExist:
+            # Same shape as accept/reject/complete: a stale or foreign id is a
+            # user-facing "not found", never an unhandled DoesNotExist -> 500.
+            messages.error(request, 'Delivery not found or not assigned to you.')
+            return redirect('deliveries:dashboard')
         if delivery.status == DeliveryRequest.RequestStatus.ACCEPTED:
             delivery.status = DeliveryRequest.RequestStatus.SEARCHING
             delivery.rider = None

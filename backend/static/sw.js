@@ -1,4 +1,4 @@
-const CACHE_NAME = 'canex-pwa-v2';
+const CACHE_NAME = 'canex-pwa-v3';
 const STATIC_ASSETS = [
   '/static/logo.png',
   '/static/official_logo.png',
@@ -34,16 +34,22 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Network-First for HTML pages so data is never stale
+  // Network-First for HTML pages so data is never stale.
+  //
+  // The offline fallback deliberately does NOT serve a cached HTML page.
+  // Cached HTML is a *previous* build of the UI and, worse, a previous canteen
+  // state -- a dashboard cached while "closed" would keep showing the closed
+  // notice after staff reopened, and a stale sheet could show the old thin
+  // header banner long after the layout changed. A failed navigation now just
+  // fails, so the browser shows its own offline error instead of an
+  // authoritative-looking but wrong page.
   if (e.request.mode === 'navigate' || (e.request.headers.get('accept') && e.request.headers.get('accept').includes('text/html'))) {
-    e.respondWith(
-      fetch(e.request)
-        .catch(() => caches.match(e.request))
-    );
+    e.respondWith(fetch(e.request));
     return;
   }
 
-  // Cache-First for static assets
+  // Cache-First for static assets (CSS/JS/images are safe: they are addressed
+  // by path and refreshed whenever CACHE_NAME changes, unlike HTML).
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
       return cachedResponse || fetch(e.request).then((networkResponse) => {
