@@ -360,6 +360,11 @@
             updateSliderUI();
         }
 
+        function prevSlide() {
+            currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+            updateSliderUI();
+        }
+
         function goToSlide(index) {
             currentSlide = index;
             updateSliderUI();
@@ -371,6 +376,67 @@
         function resetAutoSlide() {
             clearInterval(slideInterval);
             slideInterval = setInterval(nextSlide, 4000);
+        }
+
+        // Clean & Reliable Touch & Mouse Swipe Support
+        let startX = 0;
+        let startY = 0;
+        let isSwiping = false;
+
+        if (sliderContainer) {
+            sliderContainer.addEventListener('touchstart', e => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                isSwiping = true;
+                clearInterval(slideInterval);
+            }, {passive: true});
+
+            sliderContainer.addEventListener('touchend', e => {
+                if (!isSwiping) return;
+                isSwiping = false;
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                const diffX = endX - startX;
+                const diffY = endY - startY;
+
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
+                    if (diffX < 0) {
+                        nextSlide();
+                    } else {
+                        prevSlide();
+                    }
+                    resetAutoSlide();
+                }
+            }, {passive: true});
+
+            sliderContainer.addEventListener('mousedown', e => {
+                startX = e.clientX;
+                startY = e.clientY;
+                isSwiping = true;
+                clearInterval(slideInterval);
+            });
+
+            sliderContainer.addEventListener('mouseup', e => {
+                if (!isSwiping) return;
+                isSwiping = false;
+                const endX = e.clientX;
+                const endY = e.clientY;
+                const diffX = endX - startX;
+                const diffY = endY - startY;
+
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
+                    if (diffX < 0) {
+                        nextSlide();
+                    } else {
+                        prevSlide();
+                    }
+                    resetAutoSlide();
+                }
+            });
+
+            sliderContainer.addEventListener('mouseleave', () => {
+                isSwiping = false;
+            });
         }
 
         function showLogoLoading(event, targetUrl) {
@@ -390,5 +456,6 @@
             }
         });
     </script>
+    <script src="{% static 'js/ui-loading.js' %}"></script>
 </body>
 </html>

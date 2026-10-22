@@ -389,24 +389,20 @@
 
         <div class="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <a href="{% url 'customer_portal:kiosk_welcome' %}" class="bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 font-extrabold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 transition active:scale-95 shrink-0" title="Exit Kiosk">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    <span class="hidden sm:inline font-black uppercase tracking-wider">Exit</span>
-                </a>
-                <div class="flex items-center gap-3">
-                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-8 w-auto object-contain shrink-0">
-                    <div id="brand-text-container" class="transition-all duration-300">
-                        <h1 class="text-xs sm:text-base font-black text-white leading-tight">Canteen Express</h1>
-                        <p class="text-[8px] sm:text-xs text-brand-orange font-bold uppercase tracking-wider flex items-center gap-1.5">
-                            <span id="dining-mode-badge" class="bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded-md border border-brand-orange/30">Dine-In</span>
-                        </p>
-                    </div>
+                <div class="w-10 h-10 rounded-xl bg-brand-orange/20 border border-brand-orange/30 p-1 flex items-center justify-center overflow-hidden shadow">
+                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="w-full h-full object-contain">
+                </div>
+                <div id="brand-text-container" class="transition-all duration-300">
+                    <h1 class="text-xs sm:text-base font-black text-white leading-tight">Welcome to Canteen Express!</h1>
+                    <p class="text-[8px] sm:text-xs text-brand-orange font-bold uppercase tracking-wider flex items-center gap-1.5">
+                        <span id="dining-mode-badge" class="bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded-md border border-brand-orange/30">Dine-In</span>
+                    </p>
                 </div>
             </div>
 
             <div class="flex items-center gap-2" id="search-container">
                 <!-- Expanding Search Wrapper (Expands Left) -->
-                <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10 shadow-lg">
+                <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10">
                     <button onclick="toggleSearch(event)" id="search-toggle-btn" type="button" class="w-10 h-10 shrink-0 flex items-center justify-center text-white transition active:scale-95">
                         <i class="fa-solid fa-magnifying-glass text-xs"></i>
                     </button>
@@ -428,6 +424,12 @@
                 <button onclick="toggleTheme()" id="theme-toggle-btn" class="w-10 h-10 shrink-0 rounded-xl bg-brand-card hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition active:scale-95" title="Toggle Light/Dark Mode">
                     <i class="fa-solid fa-sun text-xs" id="theme-icon"></i>
                 </button>
+
+                <!-- Exit Kiosk -->
+                <a href="{% url 'customer_portal:kiosk_welcome' %}" class="bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 font-extrabold px-3.5 h-10 rounded-xl text-xs flex items-center gap-2 transition active:scale-95 shrink-0" title="Exit Kiosk">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span class="hidden sm:inline font-black uppercase tracking-wider">Exit</span>
+                </a>
             </div>
         </div>
     </header>
@@ -444,7 +446,42 @@
 
             {% for cat in categories %}
             <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
-                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid {% if 'ulam' in cat.name|lower %}fa-drumstick-bite{% elif 'kakanin' in cat.name|lower %}fa-plate-wheat{% elif 'candy' in cat.name|lower %}fa-candy-cane{% elif 'add' in cat.name|lower or 'addon' in cat.name|lower or 'extra' in cat.name|lower %}fa-puzzle-piece{% elif 'rice' in cat.name|lower %}fa-bowl-rice{% elif 'biscuit' in cat.name|lower %}fa-cookie{% elif 'beverage' in cat.name|lower or 'drink' in cat.name|lower %}fa-bottle-water{% elif 'meryenda' in cat.name|lower %}fa-burger{% elif 'diet' in cat.name|lower %}fa-heart-pulse{% else %}fa-bowl-food{% endif %}"></i></span>
+                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl">
+                    {% if 'ulam' in cat.name|lower %}
+                        <i class="fa-solid fa-drumstick-bite"></i>
+                    {% elif 'pasta' in cat.name|lower or 'noodle' in cat.name|lower %}
+                        <svg class="w-6 h-6 text-current" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3.5 11h17a0.5 0.5 0 0 1 0.5 0.5 8 8 0 0 1-8 8h-3a8 8 0 0 1-8-8 0.5 0.5 0 0 1 0.5-0.5z"/>
+                            <rect x="9" y="5" width="1.5" height="6" rx="0.75"/>
+                            <rect x="12" y="4" width="1.5" height="7" rx="0.75"/>
+                            <rect x="15" y="6" width="1.5" height="5" rx="0.75"/>
+                            <line x1="6" y1="5" x2="20" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="6" y1="7" x2="19" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    {% elif 'instant' in cat.name|lower %}
+                        <i class="fa-solid fa-mug-hot"></i>
+                    {% elif 'pastry' in cat.name|lower or 'bakery' in cat.name|lower %}
+                        <i class="fa-solid fa-bread-slice"></i>
+                    {% elif 'kakanin' in cat.name|lower %}
+                        <i class="fa-solid fa-plate-wheat"></i>
+                    {% elif 'candies' in cat.name|lower %}
+                        <i class="fa-solid fa-candy-cane"></i>
+                    {% elif 'add' in cat.name|lower or 'addon' in cat.name|lower or 'extra' in cat.name|lower %}
+                        <i class="fa-solid fa-circle-plus"></i>
+                    {% elif 'rice' in cat.name|lower %}
+                        <i class="fa-solid fa-bowl-rice"></i>
+                    {% elif 'biscuit' in cat.name|lower %}
+                        <i class="fa-solid fa-cookie"></i>
+                    {% elif 'beverage' in cat.name|lower or 'drink' in cat.name|lower %}
+                        <i class="fa-solid fa-bottle-water"></i>
+                    {% elif 'meryenda' in cat.name|lower %}
+                        <i class="fa-solid fa-burger"></i>
+                    {% elif 'diet' in cat.name|lower %}
+                        <i class="fa-solid fa-heart-pulse"></i>
+                    {% else %}
+                        <i class="fa-solid fa-bowl-food"></i>
+                    {% endif %}
+                </span>
                 <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">{{ cat.name }}</span>
             </button>
             {% endfor %}
@@ -752,36 +789,24 @@
                             <!-- Populated dynamically -->
                         </select>
                     </div>
-
-                    <!-- Rice Counter (- / +) -->
-                    <div id="modal-rice-container" class="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
-                        <div>
-                            <span class="text-xs font-bold text-white block">Steamed Rice Portions</span>
-                            <span class="text-[10px] text-brand-orange font-bold">₱15.00 per serving</span>
-                        </div>
-                        <div class="flex items-center gap-3 bg-brand-dark px-3 py-1.5 rounded-xl border border-white/10">
-                            <button type="button" onclick="changeRiceQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition"><i class="fa-solid fa-minus text-xs"></i></button>
-                            <span id="modal-rice-count" class="text-xs font-black text-white w-4 text-center">0</span>
-                            <button type="button" onclick="changeRiceQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition"><i class="fa-solid fa-plus text-xs"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="space-y-1.5" id="modal-beverage-container">
-                        <label class="text-[11px] font-bold text-brand-slate uppercase tracking-wider block">Optional Beverage Pairing</label>
-                        <select id="modal-beverage-select" onchange="updateModalTotal()" class="w-full bg-brand-dark border border-white/10 text-white rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-brand-orange">
-                            <option value="">-- No Beverage --</option>
-                        </select>
-                    </div>
                 </div>
 
                 <div class="flex items-center justify-between pt-3 border-t border-white/10">
                     <div>
                         <span class="text-[10px] text-brand-slate uppercase font-bold block">Total Amount</span>
-                        <span id="modal-item-price" class="text-2xl font-black text-brand-orange">₱0.00</span>
+                        <span id="modal-item-price" class="text-xl sm:text-2xl font-black text-brand-orange">₱0.00</span>
                     </div>
-                    <button id="modal-add-btn" onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-6 py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95">
-                        <i class="fa-solid fa-cart-plus"></i> Add to Cart
-                    </button>
+                    <div class="flex items-center gap-3">
+                        <!-- Quantity Counter [ - qty + ] -->
+                        <div class="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-2xl border border-white/10 backdrop-blur-md">
+                            <button type="button" onclick="changeItemModalQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-minus text-xs"></i></button>
+                            <span id="modal-item-qty" class="text-sm font-black text-white w-5 text-center">1</span>
+                            <button type="button" onclick="changeItemModalQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-plus text-xs"></i></button>
+                        </div>
+                        <button id="modal-add-btn" onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-5 py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95 cursor-pointer">
+                            <i class="fa-solid fa-cart-plus"></i> Add
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -908,7 +933,10 @@ function renderMenu() {
                 </div>
                 <div class="pt-1.5 border-t border-white/5 flex items-center justify-between gap-2">
                     <span class="text-sm font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
-                    ${soldOut ? '<span class="text-[9px] font-black text-red-400 uppercase tracking-wider">Sold Out</span>' : ''}
+                    ${soldOut ? '<span class="text-[9px] font-black text-red-400 uppercase tracking-wider">Sold Out</span>' : `
+                    <button type="button" onclick="event.stopPropagation(); quickAddToCart(${item.id})" class="w-8 h-8 rounded-xl bg-brand-orange hover:bg-orange-600 text-white flex items-center justify-center transition active:scale-95 shadow cursor-pointer" title="Quick Add">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                    </button>`}
                 </div>
             </div>
         `;
@@ -968,6 +996,16 @@ function kioskToast(msg) {
     t.style.opacity = '1';
     clearTimeout(t._h);
     t._h = setTimeout(() => { t.style.opacity = '0'; }, 2200);
+}
+
+function quickAddToCart(itemId) {
+    const item = menuData.find(i => i.id === itemId);
+    if (!item) return;
+    if (item.stock === 0) {
+        kioskToast('This item is sold out.');
+        return;
+    }
+    addToCart(itemId);
 }
 
 function addToCart(itemId, customItem = null) {
@@ -1920,6 +1958,9 @@ function openItemModal(itemId) {
     if (!item) return;
     currentModalItem = item;
     modalRiceQty = 0; // default 0 rice for ulam
+    modalItemQty = 1;
+    const qtyEl = document.getElementById('modal-item-qty');
+    if (qtyEl) qtyEl.textContent = modalItemQty;
 
     document.getElementById('modal-item-img').src = item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';
     document.getElementById('modal-item-category').textContent = item.category || 'General';
@@ -1963,15 +2004,6 @@ function openItemModal(itemId) {
         }
     }
 
-    const bevContainer = document.getElementById('modal-beverage-container');
-    if (bevContainer) {
-        if (catL.includes('beverage')) {
-            bevContainer.style.display = 'none';
-        } else {
-            bevContainer.style.display = 'block';
-        }
-    }
-
     // Size / Volume selector for Nature's Spring & Bottled Water
     const sizeContainer = document.getElementById('modal-size-container');
     const sizeSelect = document.getElementById('modal-size-select');
@@ -1990,16 +2022,6 @@ function openItemModal(itemId) {
         }
     }
 
-    // Populate beverage options
-    const bevSelect = document.getElementById('modal-beverage-select');
-    if (bevSelect) {
-        bevSelect.innerHTML = '<option value="">-- No Beverage --</option>';
-        const beverages = menuData.filter(i => String(i.category).toLowerCase().includes('beverage') || i.name.toLowerCase().includes('coke') || i.name.toLowerCase().includes('sprite') || i.name.toLowerCase().includes('water') || i.name.toLowerCase().includes('juice'));
-        beverages.forEach(b => {
-            bevSelect.innerHTML += `<option value="${b.id}" data-price="${b.price}">${b.name} (+₱${b.price.toFixed(2)})</option>`;
-        });
-    }
-
     updateModalTotal();
 
     document.getElementById('item-details-modal').classList.remove('hidden');
@@ -2010,6 +2032,15 @@ function changeRiceQty(delta) {
     modalRiceQty = Math.max(0, modalRiceQty + delta);
     const riceCountEl = document.getElementById('modal-rice-count');
     if (riceCountEl) riceCountEl.textContent = modalRiceQty;
+    updateModalTotal();
+}
+
+let modalItemQty = 1;
+
+function changeItemModalQty(delta) {
+    modalItemQty = Math.max(1, modalItemQty + delta);
+    const qtyEl = document.getElementById('modal-item-qty');
+    if (qtyEl) qtyEl.textContent = modalItemQty;
     updateModalTotal();
 }
 
@@ -2031,13 +2062,7 @@ function updateModalTotal() {
         total += (modalRiceQty * 15.00);
     }
 
-    const bevSelect = document.getElementById('modal-beverage-select');
-    if (bevSelect) {
-        const selectedOpt = bevSelect.options[bevSelect.selectedIndex];
-        if (selectedOpt && selectedOpt.value) {
-            total += parseFloat(selectedOpt.getAttribute('data-price') || 0);
-        }
-    }
+    total = total * modalItemQty;
 
     document.getElementById('modal-item-price').textContent = '₱' + total.toFixed(2);
 }
@@ -2066,6 +2091,7 @@ function addCustomizedItemToCart() {
         ...currentModalItem,
         name: itemName,
         price: itemPrice,
+        qty: modalItemQty,
         cartKey: cartKey
     });
 
@@ -2079,12 +2105,6 @@ function addCustomizedItemToCart() {
         for (let i = 0; i < modalRiceQty; i++) {
             addToCart(riceItem ? riceItem.id : virtualRiceId);
         }
-    }
-
-    // Add selected beverage if any
-    const bevSelect = document.getElementById('modal-beverage-select');
-    if (bevSelect && bevSelect.value) {
-        addToCart(parseInt(bevSelect.value));
     }
 
     closeItemModal();
@@ -2187,8 +2207,80 @@ function nextCarouselSlide() {
     setCarouselSlide(currentCarouselSlide);
 }
 
+function prevCarouselSlide() {
+    currentCarouselSlide = (currentCarouselSlide - 1 + totalCarouselSlides) % totalCarouselSlides;
+    setCarouselSlide(currentCarouselSlide);
+}
+
 // Auto slide every 4.5 seconds
-setInterval(nextCarouselSlide, 4500);
+let carouselInterval = setInterval(nextCarouselSlide, 4500);
+
+function resetCarouselInterval() {
+    clearInterval(carouselInterval);
+    carouselInterval = setInterval(nextCarouselSlide, 4500);
+}
+
+// Clean & Reliable Touch & Mouse Swipe Support for Promo Carousel
+let promoStartX = 0;
+let promoStartY = 0;
+let promoIsSwiping = false;
+const promoCarouselEl = document.getElementById('promo-carousel');
+
+if (promoCarouselEl) {
+    promoCarouselEl.addEventListener('touchstart', e => {
+        promoStartX = e.touches[0].clientX;
+        promoStartY = e.touches[0].clientY;
+        promoIsSwiping = true;
+        clearInterval(carouselInterval);
+    }, {passive: true});
+
+    promoCarouselEl.addEventListener('touchend', e => {
+        if (!promoIsSwiping) return;
+        promoIsSwiping = false;
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        const diffX = endX - promoStartX;
+        const diffY = endY - promoStartY;
+
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
+            if (diffX < 0) {
+                nextCarouselSlide();
+            } else {
+                prevCarouselSlide();
+            }
+            resetCarouselInterval();
+        }
+    }, {passive: true});
+
+    promoCarouselEl.addEventListener('mousedown', e => {
+        promoStartX = e.clientX;
+        promoStartY = e.clientY;
+        promoIsSwiping = true;
+        clearInterval(carouselInterval);
+    });
+
+    promoCarouselEl.addEventListener('mouseup', e => {
+        if (!promoIsSwiping) return;
+        promoIsSwiping = false;
+        const endX = e.clientX;
+        const endY = e.clientY;
+        const diffX = endX - promoStartX;
+        const diffY = endY - promoStartY;
+
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
+            if (diffX < 0) {
+                nextCarouselSlide();
+            } else {
+                prevCarouselSlide();
+            }
+            resetCarouselInterval();
+        }
+    });
+
+    promoCarouselEl.addEventListener('mouseleave', () => {
+        promoIsSwiping = false;
+    });
+}
 
 // ================= EVENT LISTENERS & POLLING =================
 document.addEventListener('DOMContentLoaded', () => {
@@ -2252,5 +2344,6 @@ checkoutOrder = async function () {
 if (window.__systemClosed) { showClosedOverlay('{{ SYSTEM_CLOSED_MESSAGE|escapejs }}'); }
 setInterval(refreshSystemStatus, 15000);
     </script>
+    <script src="{% static 'js/ui-loading.js' %}"></script>
 </body>
 </html>

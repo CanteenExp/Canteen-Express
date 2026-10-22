@@ -16,3 +16,6 @@ srv.err
 *.log
 *.out
 *.err
+
+# Local dev tools (not part of the app)
+devtunnel.exe

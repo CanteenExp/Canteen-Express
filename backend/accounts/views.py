@@ -345,7 +345,7 @@ def faculty_dashboard_view(request, token=None):
     from canteen_menu.models import MenuItem, Category
     import json
     menu_items = MenuItem.objects.select_related('category').filter(is_available=True)
-    categories = Category.objects.all()
+    categories = Category.objects.all().order_by('-name')
     
     email = request.session.get('faculty_email', '') or getattr(request.user, 'email', '')
     if request.user.is_authenticated and (request.user.get_full_name() or request.user.first_name):
@@ -462,7 +462,7 @@ def delivery_login_view(request):
 def faculty_logout_view(request):
     request.session.flush()
     logout(request)
-    return redirect('accounts:landing')
+    return redirect('accounts:faculty_auth')
 
 def staff_logout_view(request):
     logout(request)
