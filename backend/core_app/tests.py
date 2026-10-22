@@ -128,19 +128,37 @@ class SystemGateMiddlewareTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse('core_app:system_closed'), response['Location'])
 
-    def test_kiosk_menu_still_loads_when_closed(self):
-        # A walk-in holding an unpaid queue slip must still be able to read it.
+    def test_kiosk_menu_redirects_to_the_notice_when_closed(self):
+        # Ordering surface is blocked outright now: no menu, no cart, no
+        # browsing. (Was: the menu still loaded as the only way to re-read an
+        # unpaid slip; that job moved to the order-tracking allowance below.)
         set_open(False)
-
-        self.assertEqual(self.client.get('/kiosk/menu/').status_code, 200)
-
-    def test_menu_renders_the_closed_overlay_when_closed(self):
-        set_open(False, message='Closed for cleaning')
 
         response = self.client.get('/kiosk/menu/')
 
-        self.assertContains(response, 'system-closed-overlay')
-        self.assertContains(response, 'Closed for cleaning')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('core_app:system_closed'), response['Location'])
+
+    def test_menu_api_is_refused_when_closed(self):
+        set_open(False, message='Maintenance')
+
+        response = self.client.get('/kiosk/api/menu/')
+
+        self.assertEqual(response.status_code, 423)
+        self.assertTrue(response.json()['system_closed'])
+
+    def test_order_status_still_reachable_when_closed(self):
+        """A customer with food already in flight must not be locked out.
+
+        Tracking is the one read-only kiosk endpoint deliberately left open, so
+        the closed page can still answer "where is my order?".
+        """
+        set_open(False)
+
+        response = self.client.get('/kiosk/api/order-status/CE-0001/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('exists', response.json())
 
     def test_checkout_is_refused_when_closed(self):
         set_open(False, message='Maintenance')
@@ -339,9 +357,12 @@ class SystemStatusContextTests(TestCase):
         invalidate()
 
     def test_context_exposes_the_closed_state(self):
+        # Asserted on the closed notice rather than /kiosk/menu/: the ordering
+        # surface redirects while closed now, and this test is about the context
+        # processor (which runs on every page), not about which page is gated.
         set_open(False, message='Closed for cleaning')
 
-        response = self.client.get('/kiosk/menu/')
+        response = self.client.get(reverse('core_app:system_closed'))
 
         self.assertFalse(response.context['SYSTEM_IS_OPEN'])
         self.assertEqual(response.context['SYSTEM_CLOSED_MESSAGE'], 'Closed for cleaning')

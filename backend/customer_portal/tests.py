@@ -2,12 +2,15 @@ import json
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import CustomUser
 from canteen_menu.models import Category, MenuItem
+from core_app.models import SystemStatus
+from core_app.system_status import invalidate
 from customer_portal.models import Order
 from customer_portal.views import expire_stale_unpaid_orders
 from deliveries.models import DeliveryRequest
@@ -405,6 +408,21 @@ class KioskStatusPollEndpointTests(TestCase):
 
 
 class OperatingHoursTestCase(TestCase):
+    def setUp(self):
+        # The timetable must be the ONLY thing deciding the outcome here. An
+        # override outranks the schedule by design, so a leftover FORCE_OPEN
+        # row (from a committed test or a stale cache) would turn "closed"
+        # into "open" and the gate would let the checkout through instead of
+        # refusing it with 423. Clear both cache levels and drop any override.
+        cache.clear()
+        invalidate()
+        SystemStatus.objects.all().delete()
+        invalidate()
+
+    def tearDown(self):
+        cache.clear()
+        invalidate()
+
     @patch('core_app.utils.is_operating_hours', return_value=False)
     def test_checkout_blocked_outside_operating_hours(self, mock_hours):
         # The timetable is folded into the status, so the gate middleware now

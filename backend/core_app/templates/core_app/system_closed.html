@@ -84,6 +84,27 @@
         .btn-primary:hover { filter: brightness(1.08); }
         .btn-ghost { background: rgba(255, 255, 255, 0.06); color: #e4e4e7; border-color: rgba(255, 255, 255, 0.12); }
         .btn-ghost:hover { background: rgba(255, 255, 255, 0.11); }
+        .track-panel {
+            margin-top: 14px; padding: 16px; border-radius: 18px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .track-row { display: flex; gap: 8px; }
+        .track-input {
+            flex: 1 1 auto; min-width: 0;
+            padding: 12px 14px; border-radius: 13px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #f4f4f5; font-size: 13.5px; font-weight: 600;
+            font-family: inherit; outline: none;
+        }
+        .track-input::placeholder { color: #71717a; font-weight: 500; }
+        .track-input:focus { border-color: rgba(249, 115, 22, 0.55); }
+        .track-go { flex: 0 0 auto; padding: 12px 18px; }
+        .track-result {
+            margin: 12px 0 0; font-size: 13px; font-weight: 700;
+            color: #fdba74; line-height: 1.5; text-align: left;
+        }
         .brand { margin-top: 26px; font-size: 11px; color: #52525b; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
         @media (max-width: 420px) { .card { padding: 32px 20px; border-radius: 24px; } }
     </style>
@@ -127,7 +148,24 @@
                 </svg>
                 Check Again
             </button>
-            <a class="btn btn-ghost" href="{% url 'accounts:landing' %}">Staff / Admin Login</a>
+            {# Tracking is deliberately reachable while closed: a customer whose
+               order is already paid / on the way must not be locked out of it. #}
+            <button type="button" class="btn btn-ghost" id="track-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                Track My Existing Order
+            </button>
+        </div>
+
+        <div class="track-panel" id="track-panel" hidden>
+            <div class="track-row">
+                <input type="text" id="track-input" class="track-input" autocomplete="off"
+                       inputmode="text" placeholder="Enter your slip / order number">
+                <button type="button" class="btn btn-primary track-go" id="track-go">Check</button>
+            </div>
+            <p class="track-result" id="track-result" hidden></p>
         </div>
 
         <p class="brand">Canteen Express</p>
@@ -139,6 +177,11 @@
         // staff reopen the canteen.
         (function () {
             var btn = document.getElementById('refresh-btn');
+            var trackBtn = document.getElementById('track-btn');
+            var trackPanel = document.getElementById('track-panel');
+            var trackGo = document.getElementById('track-go');
+            var trackInput = document.getElementById('track-input');
+            var trackResult = document.getElementById('track-result');
             var POLL_MS = 15000;
 
             function check(reloadWhenOpen) {
@@ -159,6 +202,49 @@
                     setTimeout(function () { btn.disabled = false; }, 1200);
                 });
             }
+
+            // Look up an order the customer already placed. Uses only the
+            // ungated status endpoint, so it works regardless of closure.
+            function lookup() {
+                var num = (trackInput.value || '').trim();
+                if (!num) { return; }
+                trackResult.hidden = false;
+                trackResult.textContent = 'Checking…';
+                fetch('/kiosk/api/order-status/' + encodeURIComponent(num) + '/',
+                      { headers: { 'Accept': 'application/json' } })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (data) {
+                        if (!data || !data.exists) {
+                            trackResult.textContent = 'No order found for that number.';
+                            return;
+                        }
+                        var labels = {
+                            unpaid: 'Waiting for payment at the counter',
+                            pending: 'Received — queued for the kitchen',
+                            preparing: 'Being prepared',
+                            ready: 'Ready for pickup',
+                            completed: 'Completed — thank you!',
+                            cancelled: 'Cancelled'
+                        };
+                        trackResult.textContent = (labels[data.status] || data.status);
+                    })
+                    .catch(function () { trackResult.textContent = 'Could not reach the server. Please try again.'; });
+            }
+
+            if (trackBtn) {
+                trackBtn.addEventListener('click', function () {
+                    var open = !trackPanel.hidden;
+                    trackPanel.hidden = open;
+                    if (!open) { trackInput.focus(); }
+                });
+            }
+            if (trackGo) { trackGo.addEventListener('click', lookup); }
+            if (trackInput) {
+                trackInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') { e.preventDefault(); lookup(); }
+                });
+            }
+
             setInterval(function () { check(true); }, POLL_MS);
         })();
     </script>

@@ -25,10 +25,12 @@
     var SPINNER = '<i class="fa-solid fa-spinner fa-spin"></i>';
     var DEFAULT_LABEL = 'Processing...';
     var LOGOUT_LABEL = 'Logging out...';
-    // Short delay so the browser paints the spinner before the next
-    // navigation freezes the page; long enough to be seen, short enough
-    // that the logout still feels instant.
-    var NAV_DELAY_MS = 180;
+    // No artificial hold. This used to stall the navigation 180ms just to let
+    // the spinner paint, which was a visible tax on every logout. Navigation is
+    // handed straight back to the browser instead: the spinner is still applied
+    // (markBusy runs first, and the click is not prevented), so the control
+    // reads as busy during the browser's own navigation gap -- we simply stop
+    // adding latency on top of it.
 
     function markBusy(el, label) {
         if (!el || el.dataset.uiBusy === '1') return;
@@ -81,13 +83,14 @@
             : (el.getAttribute('data-loading') || DEFAULT_LABEL);
         markBusy(el, label);
 
-        // Plain navigating anchors: hold the door long enough for the
-        // spinner to render, then follow the link like the browser would.
+        // Plain navigating anchors: let the browser follow the link right away.
+        // markBusy() above already swapped in the spinner, so the control still
+        // looks busy during the navigation gap without us delaying it.
         if (el.tagName === 'A') {
             var href = el.getAttribute('href');
             if (href && href !== '#') {
                 event.preventDefault();
-                setTimeout(function () { window.location.assign(href); }, NAV_DELAY_MS);
+                window.location.assign(href);
             }
         }
     }

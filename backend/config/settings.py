@@ -233,7 +233,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Session Persistence Settings (Prevent Auto-Logout)
 SESSION_COOKIE_AGE = 1209600  # 2 weeks
-SESSION_SAVE_EVERY_REQUEST = True
+# Do NOT save on every request. The default DB session backend writes a row to
+# the (remote, pooled) database whenever the session is marked modified, and
+# SESSION_SAVE_EVERY_REQUEST forced that write on literally every request --
+# including every static-ish page hit and every poll -- turning a ~50-60ms
+# Supabase round trip into a per-request tax. The session is still saved
+# whenever it actually changes (login, OTP state, tokens), so logins persist
+# for the full SESSION_COOKIE_AGE; only the redundant rewrites are gone.
+SESSION_SAVE_EVERY_REQUEST = False
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
 
@@ -322,21 +329,38 @@ WHITENOISE_USE_FINDERS = True
 
 # Cross-worker cache so menu edits invalidate everywhere (Redis when configured,
 # shared file-based cache otherwise so cache.delete() actually propagates).
-REDIS_URL = os.getenv('REDIS_URL', '')
-if REDIS_URL:
+#
+# The test suite gets its own in-process cache. Django does NOT swap the cache
+# when tests run (it only swaps the email backend), so without this the suite
+# reads the very same file-based/Redis cache the dev and production app use.
+# A stale "FORCE_OPEN" row left there by a real session then outranks the
+# timetable -- and since an override beats the schedule by design, every test
+# that expected "closed" silently got "open" and the gate let the request
+# through. An isolated LocMemCache makes the run hermetic: no state in, no
+# state out, and no chance of a test wiping the live cache to boot.
+if 'test' in sys.argv:
     CACHES = {
         'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': REDIS_URL,
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'canteen-express-tests',
         }
     }
 else:
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
-            'LOCATION': os.path.join(BASE_DIR, 'django_cache'),
+    REDIS_URL = os.getenv('REDIS_URL', '')
+    if REDIS_URL:
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+                'LOCATION': REDIS_URL,
+            }
         }
-    }
+    else:
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+                'LOCATION': os.path.join(BASE_DIR, 'django_cache'),
+            }
+        }
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

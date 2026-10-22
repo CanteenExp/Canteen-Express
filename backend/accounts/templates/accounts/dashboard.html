@@ -371,10 +371,25 @@
 </head>
 <body class="bg-brand-dark text-brand-light h-screen h-[100dvh] flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative" x-data="facultyPortal()">
 
-    <!-- MANUAL CLOSURE BANNER: shown when staff close the canteen -->
-    <div id="system-closed-banner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9998; background:rgba(127,29,29,0.96); color:#ffffff; padding:10px 16px; text-align:center; font-size:12.5px; font-weight:700; box-shadow:0 8px 24px rgba(0,0,0,0.35);">
-        <i class="fa-solid fa-store-slash"></i>
-        <span>Canteen is currently closed — ordering is temporarily unavailable.</span><span id="system-closed-banner-reason" style="display:none; color:#fecaca; font-weight:600;"></span>
+    <!-- MANUAL CLOSURE NOTICE: shown when staff close the canteen.
+         Deliberately a centered modal card with a dimmed backdrop rather than
+         the thin top banner it used to be -- a 10px strip at the top of a long
+         scrolling dashboard was easy to miss entirely, so customers kept
+         trying to order and hitting a wall. Centered + backdrop makes the
+         state impossible to overlook, while the Close button still lets staff
+         keep working (they need the dashboard to reopen the canteen). -->
+    <div id="system-closed-banner" style="display:none; position:fixed; inset:0; z-index:9998; background:rgba(6,6,7,0.72); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:24px;">
+        <div role="alertdialog" aria-modal="true" aria-labelledby="system-closed-title" style="max-width:440px; width:100%; text-align:center; background:linear-gradient(160deg, rgba(41,20,20,0.98), rgba(20,12,12,0.96)); border:1px solid rgba(239,68,68,0.4); border-radius:26px; padding:34px 28px; box-shadow:0 28px 70px rgba(0,0,0,0.6);">
+            <div style="width:72px; height:72px; margin:0 auto 18px; border-radius:22px; display:flex; align-items:center; justify-content:center; background:rgba(239,68,68,0.14); border:1px solid rgba(239,68,68,0.4); font-size:30px; color:#f87171;">
+                <i class="fa-solid fa-store-slash"></i>
+            </div>
+            <h2 id="system-closed-title" style="margin:0 0 10px; font-size:22px; font-weight:800; color:#ffffff; letter-spacing:-0.01em;">Canteen is Currently Closed</h2>
+            <p style="margin:0; font-size:14px; line-height:1.6; color:#d4d4d8; font-weight:500;">Ordering is temporarily unavailable. Please check back later.</p>
+            <p id="system-closed-banner-reason" style="display:none; margin:18px 0 0; padding:12px 14px; border-radius:14px; background:rgba(239,68,68,0.10); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; font-size:13px; font-weight:600; line-height:1.5;"></p>
+            <button type="button" onclick="dismissSystemClosedNotice()" style="margin-top:22px; width:100%; background:rgba(255,255,255,0.08); color:#e4e4e7; border:1px solid rgba(255,255,255,0.14); border-radius:16px; padding:14px; font-size:13px; font-weight:800; letter-spacing:0.02em; text-transform:uppercase; cursor:pointer; transition:background .15s ease;">
+                <i class="fa-solid fa-check" style="margin-right:6px;"></i>Got it
+            </button>
+        </div>
     </div>
 
     <!-- ================= HEADER ================= -->
@@ -3615,21 +3630,33 @@
     // staff dashboard appears here without the customer reloading the page.
     window.__systemClosed = !{{ SYSTEM_IS_OPEN|yesno:'true,false' }};
     window.__systemClosedMessage = '{{ SYSTEM_CLOSED_MESSAGE|escapejs }}';
+    // Dismissing the notice should silence it for this closure, not forever:
+    // if staff reopen and close again the reminder must come back.
+    window.__systemClosedDismissed = false;
 
     function renderSystemClosedBanner() {
         const banner = document.getElementById('system-closed-banner');
         if (!banner) return;
-        if (!window.__systemClosed) { banner.style.display = 'none'; return; }
+        // flex (not block) -- the card centers via align/justify-content.
+        if (!window.__systemClosed || window.__systemClosedDismissed) {
+            banner.style.display = 'none';
+            return;
+        }
         const reason = document.getElementById('system-closed-banner-reason');
         if (reason) {
             if (window.__systemClosedMessage) {
-                reason.textContent = ' ' + window.__systemClosedMessage;
-                reason.style.display = 'inline';
+                reason.textContent = window.__systemClosedMessage;
+                reason.style.display = 'block';
             } else {
                 reason.style.display = 'none';
             }
         }
-        banner.style.display = 'block';
+        banner.style.display = 'flex';
+    }
+
+    function dismissSystemClosedNotice() {
+        window.__systemClosedDismissed = true;
+        renderSystemClosedBanner();
     }
 
     function refreshSystemStatus() {
@@ -3637,8 +3664,17 @@
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (!data) return;
+                const wasClosed = window.__systemClosed;
                 window.__systemClosed = !data.is_open;
                 window.__systemClosedMessage = data.message || '';
+                // A fresh closure (was open, now closed) re-arms the notice so
+                // a previously dismissed reminder shows up again.
+                if (!wasClosed && window.__systemClosed) {
+                    window.__systemClosedDismissed = false;
+                }
+                if (!window.__systemClosed) {
+                    window.__systemClosedDismissed = false;
+                }
                 renderSystemClosedBanner();
             })
             .catch(() => { /* offline: leave the current state alone */ });
@@ -3649,7 +3685,9 @@
     const _originalProceedWithFacultyOrder = proceedWithFacultyOrder;
     proceedWithFacultyOrder = function () {
         if (window.__systemClosed) {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            // Re-show the reminder even if the user dismissed it earlier: this
+            // is the moment it actually matters, so never fail silently here.
+            window.__systemClosedDismissed = false;
             renderSystemClosedBanner();
             return;
         }

@@ -346,19 +346,29 @@ def restore_stock_for_order(order):
     """Return deducted stock to the menu when an order is cancelled before the
     food was made. Items are matched back by name so cancelled orders never
     leak inventory. Callers must only invoke this on a true cancel transition.
+
+    Each menu row is re-read under ``select_for_update()`` before the increment.
+    The helper is called from inside a caller's ``transaction.atomic()`` block,
+    and two orders cancelled at the same time can name the same item; a plain
+    read-modify-write would let the later save() clobber the earlier increment
+    and silently lose stock. Locking serialises them (no-op on SQLite).
     """
     if not order:
         return
     matched_ids = []
     for oi in order.items.all():
-        menu = MenuItem.objects.filter(name__iexact=oi.item_name).first()
         qty = oi.quantity or 0
-        if menu and qty:
-            menu.stock = (menu.stock or 0) + qty
-            if menu.stock > 0:
-                menu.is_available = True
-            menu.save(update_fields=['stock', 'is_available'])
-            matched_ids.append(menu.id)
+        if not qty:
+            continue
+        menu = MenuItem.objects.filter(name__iexact=oi.item_name).first()
+        if not menu:
+            continue
+        menu = MenuItem.objects.select_for_update().get(pk=menu.pk)
+        menu.stock = (menu.stock or 0) + qty
+        if menu.stock > 0:
+            menu.is_available = True
+        menu.save(update_fields=['stock', 'is_available'])
+        matched_ids.append(menu.id)
     if matched_ids:
         cache.delete('formatted_menu_active_kiosk')
 
