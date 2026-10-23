@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="{% static 'css/auth.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script src="{% static 'js/password-policy.js' %}"></script>
     
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; height: 100dvh; overflow: hidden; }
@@ -145,6 +146,27 @@
                     window.addEventListener('pageshow', () => {
                         this._resetSubmitFlags();
                     });
+                    // Never carry a previously typed new password back into the
+                    // reset modal: a shoulder-surfer (or the next person on the
+                    // kiosk) must not find the last attempt pre-filled, and the
+                    // browser must not cache it either.
+                    this.$watch('showForgotModal', (open) => {
+                        if (open) this.resetForgotSecrets();
+                    });
+                },
+                resetForgotSecrets() {
+                    this.forgotNewPassword = '';
+                    this.forgotConfirmPassword = '';
+                    this.forgotOtp = '';
+                    this.showForgotNewPass = false;
+                    this.showForgotConfirmPass = false;
+                    if (window.PasswordPolicy) {
+                        window.PasswordPolicy.reset(document.getElementById('forgot-new-password'));
+                    }
+                },
+                closeForgotModal() {
+                    this.resetForgotSecrets();
+                    this.showForgotModal = false;
                 },
                 handleLoginSubmit(form) {
                     if (this.loginSubmitting) return false;
@@ -164,6 +186,10 @@
                         form.reportValidity();
                         return false;
                     }
+                    if (!this.isPasswordStrong) {
+                        this.triggerToast('Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number and a special character.', 'error');
+                        return false;
+                    }
                     if (this.password !== this.confirmPassword) {
                         this.triggerToast('Passwords do not match.', 'error');
                         return false;
@@ -179,21 +205,21 @@
                 },
                 get passwordStrength() {
                     if (!this.password) return '';
-                    if (this.password.length >= 8) return 'Strong';
-                    if (this.password.length >= 6) return 'Medium';
-                    return 'Weak';
+                    return this._passwordResult(this.password).level;
                 },
                 get isPasswordStrong() {
-                    return this.password.length >= 6;
+                    return this._passwordResult(this.password).valid;
                 },
                 get forgotPasswordStrength() {
                     if (!this.forgotNewPassword) return '';
-                    if (this.forgotNewPassword.length >= 8) return 'Strong';
-                    if (this.forgotNewPassword.length >= 6) return 'Medium';
-                    return 'Weak';
+                    return this._passwordResult(this.forgotNewPassword).level;
                 },
                 get isForgotPassStrong() {
-                    return this.forgotNewPassword.length >= 6;
+                    return this._passwordResult(this.forgotNewPassword).valid;
+                },
+                _passwordResult(value) {
+                    if (window.PasswordPolicy) return window.PasswordPolicy.evaluate(value);
+                    return { level: '', valid: false };
                 },
                 getForgotOtp() {
                     if (this.forgotOtpCountdown > 0 || this.forgotSendingOtp) return;
@@ -250,6 +276,14 @@
                          this.triggerToast('Please complete all fields and enter OTP.', 'error');
                          return;
                      }
+                     if (!this.isForgotPassStrong) {
+                         this.triggerToast('Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number and a special character.', 'error');
+                         return;
+                     }
+                     if (this.forgotNewPassword !== this.forgotConfirmPassword) {
+                         this.triggerToast('Passwords do not match.', 'error');
+                         return;
+                     }
                      this.forgotSubmitting = true;
                      fetch('{% url "accounts:reset_password_confirm" %}', {
                          method: 'POST',
@@ -276,11 +310,9 @@
                          if (data.success) {
                              this.triggerToast('Password reset successful! Please sign in with your new password.', 'success');
                              this.showForgotModal = false;
+                             this.resetForgotSecrets();
                              this.mode = 'login';
                              this.forgotEmail = '';
-                             this.forgotNewPassword = '';
-                             this.forgotConfirmPassword = '';
-                             this.forgotOtp = '';
                              this.forgotOtpSent = false;
                              this.forgotFallbackOtp = '';
                          } else {
@@ -599,32 +631,20 @@
                 <div>
                     <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Password</label>
                     <div class="relative">
-                        <input :type="showSignupPass ? 'text' : 'password'" name="password" x-model="password" required placeholder="••••••••"
+                        <input id="signup-password" :type="showSignupPass ? 'text' : 'password'" name="password" x-model="password" required placeholder="••••••••" autocomplete="new-password" data-password-policy
                             class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30 backdrop-blur-md">
                         <button type="button" @click="showSignupPass = !showSignupPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-orange-400 hover:text-orange-300 cursor-pointer text-sm hover:scale-110 active:scale-90 transition">
                             <i :class="showSignupPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
-                    </div>
-                    <!-- Password Strength Indicator -->
-                    <div class="flex items-center justify-between mt-1.5 px-1" x-show="password">
-                        <span class="text-[10px] text-white/60 font-bold">Password Strength:</span>
-                        <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider"
-                              :class="{
-                                  'bg-red-500/20 text-red-400 border border-red-500/30': passwordStrength === 'Weak',
-                                  'bg-amber-500/20 text-amber-400 border border-amber-500/30': passwordStrength === 'Medium',
-                                  'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30': passwordStrength === 'Strong'
-                              }"
-                              x-text="passwordStrength"></span>
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-extrabold text-white/80 uppercase tracking-wider mb-1">Confirm Password</label>
                     <div class="relative">
-                        <input :type="showSignupPass ? 'text' : 'password'" name="confirm_password" x-model="confirmPassword" required placeholder="••••••••"
+                        <input :type="showSignupPass ? 'text' : 'password'" name="confirm_password" x-model="confirmPassword" required placeholder="••••••••" autocomplete="new-password" data-password-confirm="signup-password"
                             class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-2xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30 backdrop-blur-md">
                     </div>
-                    <p class="text-[10px] text-red-400 font-bold mt-1" x-show="confirmPassword && password !== confirmPassword">Passwords do not match</p>
                 </div>
 
                 <!-- Terms and Conditions Agreement -->
@@ -706,7 +726,7 @@
 
     <!-- Forgot Password Modal -->
     <div x-show="showForgotModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4" style="display: none;">
-        <div @click.away="showForgotModal = false" class="bg-[#141416] border border-white/25 w-full max-w-sm rounded-[32px] p-6 text-center space-y-4 shadow-2xl text-white">
+        <div @click.away="closeForgotModal()" class="bg-[#141416] border border-white/25 w-full max-w-sm rounded-[32px] p-6 text-center space-y-4 shadow-2xl text-white">
             <div class="w-14 h-14 bg-brand-orange/20 border border-brand-orange/40 text-brand-orange rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg shadow-brand-orange/20">
                 <i class="fa-solid fa-key"></i>
             </div>
@@ -725,39 +745,28 @@
                 <div>
                     <label class="block text-[11px] font-extrabold text-white/80 uppercase tracking-wider mb-1">New Strong Password</label>
                     <div class="relative">
-                        <input :type="showForgotNewPass ? 'text' : 'password'" x-model="forgotNewPassword" placeholder="••••••••"
+                        <input id="forgot-new-password" :type="showForgotNewPass ? 'text' : 'password'" x-model="forgotNewPassword" placeholder="••••••••" autocomplete="new-password" data-password-policy
                                class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30">
                         <button type="button" @click="showForgotNewPass = !showForgotNewPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-orange-400 hover:text-orange-300 cursor-pointer text-sm hover:scale-110 active:scale-90 transition">
                             <i :class="showForgotNewPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
-                    </div>
-                    <div class="flex items-center justify-between mt-1 px-0.5" x-show="forgotNewPassword">
-                        <span class="text-[10px] text-white/60 font-bold">Strength:</span>
-                        <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider"
-                              :class="{
-                                  'bg-red-500/20 text-red-400 border border-red-500/30': forgotPasswordStrength === 'Weak',
-                                  'bg-amber-500/20 text-amber-400 border border-amber-500/30': forgotPasswordStrength === 'Medium',
-                                  'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30': forgotPasswordStrength === 'Strong'
-                              }"
-                              x-text="forgotPasswordStrength"></span>
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-[11px] font-extrabold text-white/80 uppercase tracking-wider mb-1">Confirm New Password</label>
                     <div class="relative">
-                        <input :type="showForgotConfirmPass ? 'text' : 'password'" x-model="forgotConfirmPassword" placeholder="••••••••"
+                        <input :type="showForgotConfirmPass ? 'text' : 'password'" x-model="forgotConfirmPassword" placeholder="••••••••" autocomplete="new-password" data-password-confirm="forgot-new-password"
                                class="w-full px-3.5 py-2.5 pr-11 bg-white/5 border border-white/15 rounded-xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold placeholder-white/30">
                         <button type="button" @click="showForgotConfirmPass = !showForgotConfirmPass" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-orange-400 hover:text-orange-300 cursor-pointer text-sm hover:scale-110 active:scale-90 transition">
                             <i :class="showForgotConfirmPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
                     </div>
-                    <p class="text-[10px] text-red-400 font-bold mt-1" x-show="forgotConfirmPassword && forgotNewPassword !== forgotConfirmPassword">Passwords do not match</p>
                 </div>
 
                 <div x-show="forgotOtpSent">
                     <label class="block text-[11px] font-extrabold text-white/80 uppercase tracking-wider mb-1">Enter 6-Digit OTP</label>
-                    <input type="text" x-model="forgotOtp" placeholder="######" maxlength="6"
+                    <input type="text" x-model="forgotOtp" placeholder="######" maxlength="6" autocomplete="one-time-code" inputmode="numeric"
                            class="w-full px-3.5 py-2.5 bg-white/5 border border-white/15 rounded-xl focus:ring-2 focus:ring-brand-orange focus:outline-none text-xs text-white font-bold text-center tracking-widest text-lg placeholder-white/30">
                 </div>
             </div>
@@ -777,7 +786,7 @@
                     <span x-show="forgotSubmitting">Resetting Password...</span>
                 </button>
 
-                <button type="button" @click="showForgotModal = false"
+                <button type="button" @click="closeForgotModal()"
                         class="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer border border-white/10 font-poppins">
                     Cancel
                 </button>

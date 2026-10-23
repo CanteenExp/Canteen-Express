@@ -1,8 +1,12 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.core.management import call_command
+from django.core.exceptions import ValidationError
 import json
+import time
 from accounts.models import CustomUser
+from accounts.validators import MixedCharacterPasswordValidator
+from accounts.views import _otp_hash
 from customer_portal.models import Order
 from activity_log.models import ActivityLog
 
@@ -205,3 +209,161 @@ class FacultyProfileUpdateTestCase(TestCase):
         self.assertEqual(res.json()['display_name'], 'Faculty One')
         self.faculty.refresh_from_db()
         self.assertEqual(self.faculty.get_full_name(), 'Faculty One')
+
+class PasswordPolicyTestCase(TestCase):
+    """Mixed-character policy is enforced in the app and covered by tests."""
+
+    def test_accepts_a_mixed_character_password(self):
+        # Should not raise.
+        MixedCharacterPasswordValidator().validate('Str0ng!Pass')
+
+    def test_rejects_each_missing_character_class(self):
+        cases = {
+            'lowercaseonly1!': 'uppercase letter',
+            'UPPERCASEONLY1!': 'lowercase letter',
+            'NoNumbersHere!': 'a number',
+            'NoSpecial12345': 'a special character',
+        }
+        for password, expected in cases.items():
+            with self.subTest(password=password):
+                with self.assertRaises(ValidationError) as ctx:
+                    MixedCharacterPasswordValidator().validate(password)
+                self.assertIn(expected, str(ctx.exception))
+
+    def test_validate_password_uses_the_project_policy(self):
+        from django.contrib.auth.password_validation import validate_password
+        with self.assertRaises(ValidationError):
+            validate_password('lowercaseonly1!')
+        with self.assertRaises(ValidationError):
+            validate_password('Sh0rt!')
+        # A fully mixed password must pass the whole configured stack.
+        validate_password('Str0ng!Pass')
+
+
+class PasswordResetPolicyTestCase(TestCase):
+    def setUp(self):
+        self.user = CustomUser.objects.create_user(
+            username='reset_user',
+            email='reset_user@psu.palawan.edu.ph',
+            password='OldPass1!',
+            role='FACULTY',
+            is_email_verified=True,
+        )
+        self.url = reverse('accounts:reset_password_confirm')
+
+    def _arm_reset_session(self, otp='123456'):
+        session = self.client.session
+        session['reset_otp'] = _otp_hash(otp)
+        session['reset_email'] = self.user.email
+        session['reset_otp_verified'] = False
+        session['reset_otp_created_at'] = int(time.time())
+        session['reset_otp_attempts'] = 0
+        session.save()
+
+    def _post(self, new_password, otp='123456'):
+        return self.client.post(
+            self.url,
+            data=json.dumps({
+                'email': self.user.email,
+                'otp': otp,
+                'new_password': new_password,
+            }),
+            content_type='application/json',
+        )
+
+    def test_weak_password_is_rejected_and_not_saved(self):
+        self._arm_reset_session()
+        res = self._post('lowercaseonly1!')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('uppercase', res.json()['error'])
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('OldPass1!'))
+
+    def test_mixed_password_resets_and_clears_reset_state(self):
+        self._arm_reset_session()
+        res = self._post('FreshPass2@')
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.json()['success'])
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('FreshPass2@'))
+        for key in ('reset_otp', 'reset_email', 'reset_otp_verified',
+                    'reset_otp_created_at', 'reset_otp_attempts'):
+            self.assertNotIn(key, self.client.session)
+
+    def test_cannot_reuse_the_current_password(self):
+        self._arm_reset_session()
+        res = self._post('OldPass1!')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('different', res.json()['error'])
+
+
+class ChangePasswordPolicyTestCase(TestCase):
+    def setUp(self):
+        self.user = CustomUser.objects.create_user(
+            username='change_user',
+            email='change_user@psu.palawan.edu.ph',
+            password='OldPass1!',
+            role='STAFF',
+        )
+        self.client.force_login(self.user)
+        self.url = reverse('accounts:change_password')
+
+    def _post(self, new_password, confirm=None, current='OldPass1!'):
+        return self.client.post(
+            self.url,
+            data=json.dumps({
+                'current_password': current,
+                'new_password': new_password,
+                'confirm_password': confirm if confirm is not None else new_password,
+            }),
+            content_type='application/json',
+        )
+
+    def test_weak_password_is_rejected(self):
+        res = self._post('alllowercase1!')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('uppercase', res.json()['error'])
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('OldPass1!'))
+
+    def test_mixed_password_is_accepted(self):
+        res = self._post('FreshPass2@')
+        self.assertEqual(res.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('FreshPass2@'))
+
+    def test_cannot_reuse_the_current_password(self):
+        res = self._post('OldPass1!')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('different', res.json()['error'])
+
+class FacultySignupPasswordPolicyTestCase(TestCase):
+    """Faculty signup is one of the password-setting paths under the policy."""
+
+    def setUp(self):
+        self.url = reverse('accounts:faculty_auth')
+        self.email = 'newprof@psu.palawan.edu.ph'
+
+    def _post(self, password):
+        session = self.client.session
+        session['otp_verified'] = True
+        session['signup_email'] = self.email
+        session.save()
+        return self.client.post(self.url, {
+            'action': 'signup',
+            'email': self.email,
+            'name': 'New Prof',
+            'password': password,
+            'confirm_password': password,
+        })
+
+    def test_weak_password_shows_policy_error_without_creating_account(self):
+        res = self._post('lowercaseonly1!')
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'uppercase')
+        self.assertFalse(CustomUser.objects.filter(email=self.email).exists())
+
+    def test_mixed_password_creates_the_account(self):
+        res = self._post('Str0ng!Pass')
+        self.assertEqual(res.status_code, 302)
+        self.assertTrue(CustomUser.objects.filter(email=self.email).exists())

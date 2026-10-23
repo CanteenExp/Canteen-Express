@@ -2662,6 +2662,8 @@
                             id="new-staff-password"
                             name="password"
                             required
+                            autocomplete="new-password"
+                            data-password-policy
                             class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
 
                         <button type="button" onclick="togglePassword('new-staff-password', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
@@ -2901,7 +2903,7 @@
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Current Password</label>
                     <div class="relative">
-                        <input type="password" id="cp-current" x-model="currentPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs text-dark-900 font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <input type="password" id="cp-current" x-model="currentPassword" required placeholder="••••••••" autocomplete="current-password" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs text-dark-900 font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
                         <button type="button" onclick="togglePassword('cp-current', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
                             <i class="fa-solid fa-eye"></i>
                         </button>
@@ -2910,7 +2912,7 @@
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">New Password</label>
                     <div class="relative">
-                        <input type="password" id="cp-new" x-model="newPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs text-dark-900 font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <input type="password" id="cp-new" x-model="newPassword" required placeholder="••••••••" autocomplete="new-password" data-password-policy style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs text-dark-900 font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
                         <button type="button" onclick="togglePassword('cp-new', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
                             <i class="fa-solid fa-eye"></i>
                         </button>
@@ -2919,7 +2921,7 @@
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Confirm New Password</label>
                     <div class="relative">
-                        <input type="password" id="cp-confirm" x-model="confirmPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs text-dark-900 font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <input type="password" id="cp-confirm" x-model="confirmPassword" required placeholder="••••••••" autocomplete="new-password" data-password-confirm="cp-new" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 border rounded-xl text-xs text-dark-900 font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none">
                         <button type="button" onclick="togglePassword('cp-confirm', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
                             <i class="fa-solid fa-eye"></i>
                         </button>

@@ -38,13 +38,26 @@
         if (el.dataset.idleHtml === undefined) {
             el.dataset.idleHtml = el.innerHTML;
         }
+        // Icon-only controls (e.g. the 40x40 logout button on the delivery
+        // dashboard) have no room for text, so a spinner alone marks them busy
+        // instead of squeezing "Logging out..." into the icon box.
+        var iconOnly = el.getAttribute('data-loading-style') === 'icon'
+            || !el.textContent.trim();
         el.setAttribute('aria-busy', 'true');
         el.style.pointerEvents = 'none';
         el.style.opacity = '0.75';
         if (el.tagName === 'BUTTON') {
             el.disabled = true;
         }
-        el.innerHTML = SPINNER + ' <span>' + (label || DEFAULT_LABEL) + '</span>';
+        if (iconOnly) {
+            if (el.dataset.idleAriaLabel === undefined) {
+                el.dataset.idleAriaLabel = el.getAttribute('aria-label') || '';
+            }
+            el.setAttribute('aria-label', label || DEFAULT_LABEL);
+            el.innerHTML = SPINNER;
+        } else {
+            el.innerHTML = SPINNER + ' <span>' + (label || DEFAULT_LABEL) + '</span>';
+        }
     }
 
     function markIdle(el) {
@@ -55,6 +68,14 @@
         el.style.opacity = '';
         if (el.tagName === 'BUTTON') {
             el.disabled = false;
+        }
+        if (el.dataset.idleAriaLabel !== undefined) {
+            if (el.dataset.idleAriaLabel) {
+                el.setAttribute('aria-label', el.dataset.idleAriaLabel);
+            } else {
+                el.removeAttribute('aria-label');
+            }
+            delete el.dataset.idleAriaLabel;
         }
         if (el.dataset.idleHtml !== undefined) {
             el.innerHTML = el.dataset.idleHtml;

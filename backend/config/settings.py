@@ -251,12 +251,18 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 8},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+    # Local rule: upper + lower + digit + special. Mirrored in
+    # static/js/password-policy.js so the meter and the server agree.
+    {
+        'NAME': 'accounts.validators.MixedCharacterPasswordValidator',
     },
 ]
 

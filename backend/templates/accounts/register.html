@@ -93,7 +93,7 @@
             <div>
                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Password</label>
                 <div class="relative">
-                    <input type="password" id="register-password1" name="password1" required placeholder="••••••••"
+                    <input type="password" id="register-password1" name="password1" required placeholder="••••••••" autocomplete="new-password" data-password-policy
                            class="w-full px-4 py-2.5 pr-12 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 text-sm font-medium outline-none">
                     <button type="button" onclick="togglePassword('register-password1', this)" title="Show/Hide password" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
                         <i class="fa-solid fa-eye"></i>
@@ -108,7 +108,7 @@
             <div>
                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Confirm Password</label>
                 <div class="relative">
-                    <input type="password" id="register-password2" name="password2" required placeholder="••••••••"
+                    <input type="password" id="register-password2" name="password2" required placeholder="••••••••" autocomplete="new-password" data-password-confirm="register-password1"
                            class="w-full px-4 py-2.5 pr-12 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 text-sm font-medium outline-none">
                     <button type="button" onclick="togglePassword('register-password2', this)" title="Show/Hide password" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 cursor-pointer text-base p-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg active:scale-90 transition">
                         <i class="fa-solid fa-eye"></i>

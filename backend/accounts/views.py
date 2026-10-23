@@ -256,6 +256,9 @@ def faculty_auth_view(request):
             elif not any(c.isalpha() for c in local_part):
                 error = "Email username before @psu.palawan.edu.ph must contain letters (cannot be numbers only)."
                 mode = 'signup'
+            elif not password:
+                error = "Please enter a password. It must include uppercase, lowercase, a number and a special character."
+                mode = 'signup'
             elif password != confirm_password:
                 error = "Passwords do not match."
                 mode = 'signup'
@@ -751,18 +754,28 @@ def verify_and_reset_password(request):
             if not user:
                 return JsonResponse({'success': False, 'error': 'User not found.'}, status=400)
 
+            if not new_password:
+                return JsonResponse(
+                    {'success': False, 'error': 'Please enter a new password.'},
+                    status=400)
+
             try:
                 validate_password(new_password, user=user)
             except ValidationError as e:
                 return JsonResponse({'success': False, 'error': ' '.join(e.messages)}, status=400)
 
+            if user.check_password(new_password):
+                return JsonResponse(
+                    {'success': False, 'error': 'Your new password must be different from your current password.'},
+                    status=400)
+
             user.set_password(new_password)
             user.save()
 
             request.session.cycle_key()
-            request.session.pop('reset_otp', None)
-            request.session.pop('reset_email', None)
-            request.session.pop('reset_otp_verified', None)
+            for _key in ('reset_otp', 'reset_email', 'reset_otp_verified',
+                         'reset_otp_created_at', 'reset_otp_attempts'):
+                request.session.pop(_key, None)
             
             return JsonResponse({'success': True, 'message': 'Password successfully reset.'})
         except Exception as e:
@@ -800,6 +813,11 @@ def change_password_view(request):
                 validate_password(new_password, user=user)
             except ValidationError as e:
                 return JsonResponse({'success': False, 'error': ' '.join(e.messages)}, status=400)
+
+            if user.check_password(new_password):
+                return JsonResponse(
+                    {'success': False, 'error': 'Your new password must be different from your current password.'},
+                    status=400)
 
             user.set_password(new_password)
             user.save()

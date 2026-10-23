@@ -126,7 +126,7 @@
                     <button @click="showChangePasswordModal = true" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 w-10 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center" title="Change Password">
                         <i class="fa-solid fa-key"></i>
                     </button>
-                    <a href="{% url 'accounts:delivery_logout' %}" class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 backdrop-blur-md w-10 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center" title="Logout">
+                    <a href="{% url 'accounts:delivery_logout' %}" class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 backdrop-blur-md w-10 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center" title="Log out" aria-label="Log out" data-loading-style="icon">
                         <i class="fa-solid fa-right-from-bracket"></i>
                     </a>
                 </div>
@@ -1383,7 +1383,7 @@
                 <div>
                     <label class="block text-xs font-bold text-zinc-400 mb-1">Current Password</label>
                     <div class="relative">
-                        <input type="password" id="rider-cp-current" x-model="currentPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <input type="password" id="rider-cp-current" x-model="currentPassword" required placeholder="••••••••" autocomplete="current-password" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none">
                         <button type="button" onclick="togglePassword('rider-cp-current', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-800 cursor-pointer text-base p-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-lg active:scale-90 transition">
                             <i class="fa-solid fa-eye"></i>
                         </button>
@@ -1392,7 +1392,7 @@
                 <div>
                     <label class="block text-xs font-bold text-zinc-400 mb-1">New Password</label>
                     <div class="relative">
-                        <input type="password" id="rider-cp-new" x-model="newPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <input type="password" id="rider-cp-new" x-model="newPassword" required placeholder="••••••••" autocomplete="new-password" data-password-policy style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none">
                         <button type="button" onclick="togglePassword('rider-cp-new', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-800 cursor-pointer text-base p-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-lg active:scale-90 transition">
                             <i class="fa-solid fa-eye"></i>
                         </button>
@@ -1401,7 +1401,7 @@
                 <div>
                     <label class="block text-xs font-bold text-zinc-400 mb-1">Confirm New Password</label>
                     <div class="relative">
-                        <input type="password" id="rider-cp-confirm" x-model="confirmPassword" required placeholder="••••••••" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <input type="password" id="rider-cp-confirm" x-model="confirmPassword" required placeholder="••••••••" autocomplete="new-password" data-password-confirm="rider-cp-new" style="color: #111827 !important; background-color: #ffffff !important;" class="w-full px-3.5 py-2.5 pr-11 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none">
                         <button type="button" onclick="togglePassword('rider-cp-confirm', this)" title="Show/Hide password" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-800 cursor-pointer text-base p-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-lg active:scale-90 transition">
                             <i class="fa-solid fa-eye"></i>
                         </button>
@@ -1428,6 +1428,7 @@
             </form>
         </div>
     </div>
+    <script src="{% static 'js/password-policy.js' %}"></script>
     <script src="{% static 'js/ui-loading.js' %}"></script>
 </body>
 </html>

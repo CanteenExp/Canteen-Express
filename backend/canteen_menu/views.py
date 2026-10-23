@@ -4,6 +4,8 @@ from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib import messages
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
 from accounts.decorators import role_required
@@ -892,37 +894,43 @@ def create_delivery_staff_view(request):
             messages.error(request, f"Username '{username}' already exists.")
         elif email and User.objects.filter(email=email).exists():
             messages.error(request, f"Email '{email}' already exists.")
-        elif len(password) < 6:
-            messages.error(request, "Password must be at least 6 characters long.")
         else:
             final_email = email if email else f"{username.lower()}@canteen.express"
+            # Same policy as every other password-setting path (faculty signup,
+            # OTP reset, in-app change). Validators are not applied by
+            # create_user(), so staff-created delivery accounts need this call.
             try:
-                created = User.objects.create_user(
-                    username=username,
-                    email=final_email,
-                    password=password,
-                    first_name=request.POST.get('first_name', 'Rider'),
-                    role='DELIVERY',
-                    phone=phone,
-                    vehicle_plate=vehicle_plate,
-                    account_status='active',
-                    is_active=True
-                )
-                messages.success(request, f"Delivery Personnel '{username}' created successfully!")
-                log_activity(
-                    request,
-                    action=f"Created Delivery Personnel account: {username}",
-                    category=ActivityLog.Category.USER,
-                    level=ActivityLog.Level.SUCCESS,
-                    target=username,
-                    metadata={
-                        'user_id': created.pk,
-                        'role': 'DELIVERY',
-                        'vehicle_plate': vehicle_plate or None,
-                    },
-                )
-            except Exception as e:
-                messages.error(request, f"Error creating account: {str(e)}")
+                validate_password(password, user=User(username=username, email=final_email))
+            except ValidationError as exc:
+                messages.error(request, ' '.join(exc.messages))
+            else:
+                try:
+                    created = User.objects.create_user(
+                        username=username,
+                        email=final_email,
+                        password=password,
+                        first_name=request.POST.get('first_name', 'Rider'),
+                        role='DELIVERY',
+                        phone=phone,
+                        vehicle_plate=vehicle_plate,
+                        account_status='active',
+                        is_active=True
+                    )
+                    messages.success(request, f"Delivery Personnel '{username}' created successfully!")
+                    log_activity(
+                        request,
+                        action=f"Created Delivery Personnel account: {username}",
+                        category=ActivityLog.Category.USER,
+                        level=ActivityLog.Level.SUCCESS,
+                        target=username,
+                        metadata={
+                            'user_id': created.pk,
+                            'role': 'DELIVERY',
+                            'vehicle_plate': vehicle_plate or None,
+                        },
+                    )
+                except Exception as e:
+                    messages.error(request, f"Error creating account: {str(e)}")
     return redirect(reverse('canteen_menu:staff_dashboard') + '?tab=deliveries')
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
