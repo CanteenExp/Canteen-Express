@@ -4,11 +4,11 @@ from customer_portal.models import Order
 
 class DeliveryRequest(models.Model):
     class RequestStatus(models.TextChoices):
-        SEARCHING = 'SEARCHING', 'Searching for Rider'
-        ACCEPTED = 'ACCEPTED', 'Rider Accepted'
+        SEARCHING = 'SEARCHING', 'Searching for Delivery Personnel'
+        ACCEPTED = 'ACCEPTED', 'Delivery Personnel Accepted'
         DELIVERED = 'DELIVERED', 'Delivered'
         REJECTED = 'REJECTED', 'Rejected'
-        TIMEOUT = 'TIMEOUT', 'No Rider Available (5-Min Timeout)'
+        TIMEOUT = 'TIMEOUT', 'No Delivery Personnel Available (5-Min Timeout)'
 
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='delivery_info')
     rider = models.ForeignKey(

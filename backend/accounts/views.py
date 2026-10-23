@@ -397,16 +397,94 @@ def faculty_dashboard_view(request, token=None):
 
     ongoing_data = [serialize_delivery(d) for d in ongoing_deliveries]
 
+    # Profile card details always come from the authenticated DB account. Nothing
+    # is hard-coded: an account with no saved name falls back to its username and
+    # an unverified/non-faculty login never gets the verified badge.
+    role_labels = dict(getattr(User, 'ROLE_CHOICES', ()))
+    faculty_role_label = role_labels.get(user_role, '')
+    if request.user.is_superuser:
+        faculty_role_label = 'Administrator'
+    elif not faculty_role_label or user_role == 'STUDENT':
+        faculty_role_label = 'Canteen Staff' if request.user.is_staff else ''
+    psu_email = (request.user.email or '').lower()
+    faculty_is_verified = bool(
+        request.user.is_email_verified
+        or request.user.is_staff
+        or request.user.is_superuser
+    ) and (psu_email.endswith('@psu.palawan.edu.ph') or request.user.is_staff or request.user.is_superuser)
+
     context = {
         'menu_items': menu_items,
         'categories': categories,
         'menu_data_json': json.dumps(formatted_menu),
         'faculty_display_name': faculty_display_name,
+        'faculty_role_label': faculty_role_label,
+        'faculty_is_verified': faculty_is_verified,
+        'faculty_department': getattr(request.user, 'college_department', '') or '',
+        'faculty_phone': getattr(request.user, 'phone', '') or '',
         'ongoing_deliveries_json': json.dumps(ongoing_data),
         'user_points': float(request.user.loyalty_points) if request.user.is_authenticated else 0.0,
         'enforce_geofence': getattr(settings, 'ENFORCE_GEOFENCE', True),
     }
     return render(request, 'accounts/dashboard.html', context)
+
+
+# Faculty/Staff profile editor. The account is always resolved from the signed-in
+# session (never from a client-supplied id) and is limited to active faculty/staff
+# logins so the dashboard can only ever show a real, verified account.
+_NAME_RE = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ.'\- ]{1,80}$")
+_PHONE_RE = re.compile(r"^[0-9+()\- ]{6,20}$")
+
+
+@csrf_protect
+def faculty_profile_update(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed.'}, status=405)
+
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Please sign in again.'}, status=401)
+
+    user_role = getattr(user, 'role', '')
+    if user_role not in ('FACULTY', 'STAFF', 'ADMIN') and not user.is_staff and not user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'This account is not a faculty/staff account.'}, status=403)
+    if getattr(user, 'account_status', 'active') != 'active' or not user.is_active:
+        return JsonResponse({'success': False, 'error': 'This account is not active. Contact the canteen admin.'}, status=403)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+    name = ' '.join(str(payload.get('name', '')).split())
+    department = ' '.join(str(payload.get('college_department', '')).split())
+    phone = ' '.join(str(payload.get('phone', '')).split())
+
+    if not name:
+        return JsonResponse({'success': False, 'error': 'Please enter your account name.'}, status=400)
+    if not _NAME_RE.match(name):
+        return JsonResponse({'success': False, 'error': 'Names may only contain letters, spaces, periods, apostrophes and hyphens.'}, status=400)
+    if len(department) > 120:
+        return JsonResponse({'success': False, 'error': 'College / department must be 120 characters or fewer.'}, status=400)
+    if phone and not _PHONE_RE.match(phone):
+        return JsonResponse({'success': False, 'error': 'Please enter a valid contact number.'}, status=400)
+
+    # Signup stores the full display name in first_name with an empty last_name,
+    # so the editor keeps that single-field convention to avoid duplicating it via
+    # get_full_name().
+    user.first_name = name
+    user.last_name = ''
+    user.college_department = department
+    user.phone = phone
+    user.save(update_fields=['first_name', 'last_name', 'college_department', 'phone'])
+
+    return JsonResponse({
+        'success': True,
+        'display_name': user.get_full_name() or user.first_name or user.username,
+        'name': user.first_name,
+        'college_department': user.college_department,
+        'phone': user.phone or '',
+    })
 
 
 # Separate Staff Login View

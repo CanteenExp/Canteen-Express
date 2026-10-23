@@ -36,7 +36,7 @@ Canteen Express provides custom standalone PWA experiences tailored for each sta
 | **Faculty / Staff Portal** | `/accounts/dashboard/` | Glass Dashboard / Dual Mode | Institutional authentication (`@psu.palawan.edu.ph`), office delivery dispatch, loyalty points & rewards. |
 | **Canteen Staff Counter POS** | `/canteen/staff/` | Counter POS & Board | Barcode & queue slip scanning (`/canteen/api/process-barcode/`), cash confirmation, menu management. |
 | **Kitchen Display Board** | `/kitchen/` | Real-Time Kanban Board | Live 3-column order workflow (`pending ➜ preparing ➜ ready ➜ completed`), stock & points automation. |
-| **Delivery Rider Hub** | `/deliveries/dashboard/` | Rider Portal & Map | Order dispatch stream, real-time GPS tracking (`watchPosition`), turn-by-turn routing, live chat. |
+| **Delivery Personnel Hub** | `/deliveries/dashboard/` | Delivery Personnel Portal & Map | Order dispatch stream, real-time GPS tracking (`watchPosition`), turn-by-turn routing, live chat. |
 
 ---
 
@@ -48,7 +48,7 @@ Canteen Express provides custom standalone PWA experiences tailored for each sta
 - **Behavior:** Out-of-campus delivery destinations or missing coordinates are strictly blocked at checkout with HTTP `422 Unprocessable Entity`.
 
 ### 2. 🕒 Operating Hours Schedule (`core_app`)
-- **Schedule:** Enforces Monday to Friday, 8:00 AM – 5:00 PM for student/faculty ordering and rider dispatch.
+- **Schedule:** Enforces Monday to Friday, 8:00 AM – 5:00 PM for student/faculty ordering and delivery personnel dispatch.
 - **Exemptions:** Canteen staff and admin portals operate **24/7**.
 - **Testing Override:** Set `ENFORCE_OPERATING_HOURS=False` in `.env` to bypass time restrictions during night or weekend testing.
 

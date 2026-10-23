@@ -201,7 +201,7 @@
             {% include "components/status_indicator.html" with label="In the kitchen" status="info" meta="4 mins" %}
             {% include "components/status_indicator.html" with label="Running late" status="danger" meta="12 mins over" %}
             {% include "components/status_indicator.html" with label="Closed" status="danger" meta="opens 8:00 AM" %}
-            {% include "components/status_indicator.html" with label="No rider online" status="neutral" %}
+            {% include "components/status_indicator.html" with label="No delivery personnel online" status="neutral" %}
         </div>
         <pre class="gallery-snippet">{% verbatim %}{% include "components/status_indicator.html" with label="Open" status="success" meta="closes 5:00 PM" live=True %}{% endverbatim %}</pre>
     </section>
@@ -313,7 +313,7 @@
         <div class="ds-stack">
             {% include "components/toast.html" with title="Payment confirmed" message="Order CE-1042 is on the kitchen board." variant="success" icon="circle-check" %}
             {% include "components/toast.html" with title="Order is waiting" message="Nothing has been started yet." variant="pending" icon="clock" %}
-            {% include "components/toast.html" with title="Rider assigned" message="Marco is on the way to the canteen." variant="info" icon="bike" %}
+            {% include "components/toast.html" with title="Delivery Personnel assigned" message="Marco is on the way to the canteen." variant="info" icon="bike" %}
             {% include "components/toast.html" with title="Order is late" message="12 minutes over the estimate." variant="danger" icon="alert-triangle" %}
             {% include "components/toast.html" with title="Saved" variant="neutral" %}
         </div>

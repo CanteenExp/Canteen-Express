@@ -328,7 +328,7 @@ def accept_delivery(request, delivery_id):
             messages.success(request, f'Delivery {delivery.order.order_number} accepted!')
             log_activity(
                 request,
-                action=f"Rider {request.user.get_username()} accepted delivery {order.order_number}",
+                action=f"Delivery Personnel {request.user.get_username()} accepted delivery {order.order_number}",
                 category=ActivityLog.Category.DELIVERY,
                 level=ActivityLog.Level.INFO,
                 target=order.order_number,
@@ -1291,7 +1291,7 @@ def api_convert_to_pickup(request, delivery_id):
             if delivery.status == DeliveryRequest.RequestStatus.ACCEPTED:
                 return JsonResponse({
                     'success': False,
-                    'error': 'A rider has already accepted this delivery. Release it first, then convert.'
+                    'error': 'Delivery personnel have already accepted this delivery. Release it first, then convert.'
                 }, status=400)
 
             already_converted = (

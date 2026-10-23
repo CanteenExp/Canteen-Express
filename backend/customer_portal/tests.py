@@ -58,6 +58,28 @@ class CheckoutTestCase(TestCase):
         self.assertEqual(float(data['delivery_fee']), 15.0)
         self.assertEqual(float(data['total_payment']), 90.0)
 
+    def test_faculty_delivery_requires_a_delivery_address(self):
+        self.client.login(username='faculty_test', password='password123')
+        payload = {
+            'cart': [
+                {'id': self.item.id, 'name': 'Pork Adobo', 'price': 75.00, 'qty': 1}
+            ],
+            'total_amount': 90.00,
+            'is_delivery': True,
+            'delivery_location': '   ',
+            'payment_method': 'COD',
+            'dest_lat': 9.77725,
+            'dest_lng': 118.73480
+        }
+        response = self.client.post(
+            self.checkout_url,
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()['success'])
+        self.assertEqual(Order.objects.filter(customer=self.user).count(), 0)
+
     def test_delivery_checkout_uses_server_subtotal_not_client_total(self):
         # Client tries to sneak a smaller total_amount; server must ignore it
         # and recompute fee from the actual cart prices.

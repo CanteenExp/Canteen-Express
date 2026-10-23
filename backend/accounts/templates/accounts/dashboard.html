@@ -433,7 +433,7 @@
                     <!-- Slide 3 -->
                     <div class="w-1/3 h-full shrink-0 bg-gradient-to-r from-blue-600/30 via-brand-dark to-black p-4 sm:p-6 md:p-8 flex items-center justify-between relative overflow-hidden">
                         <div class="space-y-1 max-w-xl z-10 flex items-center gap-4 sm:gap-6">
-                            <img src="{% static 'Rider.png' %}" alt="Rider" class="h-24 sm:h-32 md:h-40 w-auto object-contain shrink-0 drop-shadow-lg -mb-4 sm:-mb-6 md:-mb-8">
+                            <img src="{% static 'Rider.png' %}" alt="Delivery Personnel" class="h-24 sm:h-32 md:h-40 w-auto object-contain shrink-0 drop-shadow-lg -mb-4 sm:-mb-6 md:-mb-8">
                             <div class="space-y-1">
                                 <span class="bg-blue-500 text-white text-[10px] sm:text-xs font-black uppercase px-2.5 py-1 rounded-md tracking-wider">Join Our Team</span>
                                 <h2 class="text-base sm:text-xl md:text-3xl font-black text-white leading-tight">Looking for a part-time inside campus?</h2>
@@ -454,30 +454,14 @@
                     <button onclick="setCarouselSlide(2)" id="carousel-dot-2" class="w-2 h-2 rounded-full bg-white/40 transition-all shadow-md"></button>
                 </div>
             </div>
-
-            <!-- Info Bar (GPS Location & Pts / Logout) -->
-            <div id="info-bar" class="flex items-center justify-between glass-panel border border-white/10 px-4 py-2.5 rounded-xl text-xs backdrop-blur-md">
-                <div onclick="openMapModal()" class="flex items-center gap-2 cursor-pointer hover:bg-white/10 px-2 py-1 rounded-lg transition active:scale-95" title="Click to view real-time location on map">
-                    <span class="w-6 h-6 rounded-lg bg-brand-orange text-white flex items-center justify-center text-[10px]">
-                        <i class="fa-solid fa-location-dot"></i>
-                    </span>
-                    <span id="gps-location-text" class="font-bold text-white">Acquiring GPS...</span>
-                    <i class="fa-solid fa-chevron-right text-[10px] text-white/50 ml-1"></i>
-                </div>
-                <div class="flex items-center gap-3">
-                    <!-- Rewards / Points Badge -->
-                    <span id="points-badge-btn" onclick="openPointsModal()" class="cursor-pointer bg-brand-card hover:bg-white/10 border border-white/10 px-3 py-2 rounded-xl text-amber-400 font-black text-xs flex items-center gap-1.5 transition active:scale-95 shadow">
-                        <i class="fa-solid fa-coins"></i> <span x-text="userPoints.toFixed(1)">{{ user_points|default:0.0 }}</span> Pts
-                    </span>
-                </div>
-            </div>
         </div>
 
         <div class="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-brand-orange/20 border border-brand-orange/30 p-1 flex items-center justify-center overflow-hidden shadow">
-                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="w-full h-full object-contain">
-                </div>
+                <button type="button" id="faculty-header-avatar" onclick="openAccountModal()" title="My Account" aria-label="My Account"
+                        class="w-10 h-10 rounded-xl bg-brand-orange/20 border border-brand-orange/30 flex items-center justify-center text-brand-orange hover:bg-brand-orange/30 hover:text-white transition active:scale-95 shadow">
+                    <i class="fa-solid fa-user text-sm"></i>
+                </button>
                 <div id="greeting-container" class="transition-all duration-300">
                     <h1 class="text-xs sm:text-base font-black text-white leading-tight">Hello, {{ faculty_display_name }}!</h1>
                 </div>
@@ -494,8 +478,13 @@
                         id="search-input" 
                         oninput="renderMenu()" 
                         placeholder="Search menu..." 
-                        class="w-full bg-transparent border-0 pl-1 pr-3 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
+                        class="w-full min-w-0 bg-transparent border-0 pl-1 pr-1 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
                     >
+                    <button type="button" id="search-clear-btn" onclick="clearSearchInput(event)" aria-label="Clear search" title="Clear search"
+                            style="display: none;"
+                            class="w-6 h-6 shrink-0 mr-1.5 rounded-full bg-white/10 hover:bg-white/20 text-brand-slate hover:text-white items-center justify-center transition active:scale-95">
+                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                    </button>
                 </div>
 
                 <!-- Cart Button (only shows when items are in cart) -->
@@ -545,10 +534,10 @@
                     <!-- Hamburger Dropdown Menu -->
                     <div id="hamburger-dropdown" class="absolute right-0 mt-2 w-56 bg-brand-card border border-white/10 rounded-2xl shadow-2xl z-50 hidden p-2 space-y-1 animate-fade-in text-xs">
                         <button onclick="openOngoingOrdersModal(); closeHamburgerDropdown();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 text-white font-bold flex items-center gap-2.5 transition">
-                            <i class="fa-solid fa-clock-rotate-left text-brand-orange"></i> Recent Orders History
+                            <i class="fa-solid fa-clock-rotate-left text-brand-orange"></i> Order History
                         </button>
                         <button onclick="toggleTheme(); closeHamburgerDropdown();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 text-white font-bold flex items-center gap-2.5 transition">
-                            <i class="fa-solid fa-sun text-amber-400" id="theme-icon"></i> Toggle Light/Dark
+                            <i class="fa-solid fa-moon text-amber-400" id="theme-icon"></i> <span id="theme-toggle-text">Theme</span>
                         </button>
                         <a href="{% url 'accounts:faculty_logout' %}" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/10 text-red-400 font-bold flex items-center gap-2.5 transition border-t border-white/5 mt-1 pt-2">
                             <i class="fa-solid fa-right-from-bracket"></i> Logout
@@ -561,90 +550,99 @@
 
 
     <!-- ================= MAIN LAYOUT ================= -->
-    <div class="flex-1 max-w-7xl w-full mx-auto flex overflow-hidden min-h-0 p-2 sm:p-3 gap-3">
+    <div class="flex-1 max-w-7xl w-full mx-auto flex flex-col min-h-0 overflow-visible p-2 sm:p-3 gap-2">
 
-        <!-- Left: Category Sidebar (vertical kiosk-style, glass + plain FA icons) -->
-        <aside class="w-20 sm:w-28 flex-shrink-0 flex flex-col gap-2 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
-            <button onclick="selectCategory('all', this)" class="category-btn active-cat cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
-                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-utensils"></i></span>
-                <span class="pod-label text-[10px] font-black leading-tight mt-1.5">All</span>
-            </button>
-            {% for cat in categories %}
-            <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
-                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl">
-                    {% if 'ulam' in cat.name|lower %}
-                        <i class="fa-solid fa-drumstick-bite"></i>
-                    {% elif 'pasta' in cat.name|lower or 'noodle' in cat.name|lower %}
-                        <svg class="w-6 h-6 text-current" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M3.5 11h17a0.5 0.5 0 0 1 0.5 0.5 8 8 0 0 1-8 8h-3a8 8 0 0 1-8-8 0.5 0.5 0 0 1 0.5-0.5z"/>
-                            <rect x="9" y="5" width="1.5" height="6" rx="0.75"/>
-                            <rect x="12" y="4" width="1.5" height="7" rx="0.75"/>
-                            <rect x="15" y="6" width="1.5" height="5" rx="0.75"/>
-                            <line x1="6" y1="5" x2="20" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <line x1="6" y1="7" x2="19" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    {% elif 'instant' in cat.name|lower %}
-                        <i class="fa-solid fa-mug-hot"></i>
-                    {% elif 'pastry' in cat.name|lower or 'bakery' in cat.name|lower %}
-                        <i class="fa-solid fa-bread-slice"></i>
-                    {% elif 'kakanin' in cat.name|lower %}
-                        <i class="fa-solid fa-plate-wheat"></i>
-                    {% elif 'candies' in cat.name|lower %}
-                        <i class="fa-solid fa-candy-cane"></i>
-                    {% elif 'add' in cat.name|lower or 'addon' in cat.name|lower or 'extra' in cat.name|lower %}
-                        <i class="fa-solid fa-plus-circle"></i>
-                    {% elif 'rice' in cat.name|lower %}
-                        <i class="fa-solid fa-bowl-rice"></i>
-                    {% elif 'biscuit' in cat.name|lower %}
-                        <i class="fa-solid fa-cookie"></i>
-                    {% elif 'beverage' in cat.name|lower or 'drink' in cat.name|lower %}
-                        <i class="fa-solid fa-bottle-water"></i>
-                    {% elif 'pastry' in cat.name|lower %}
-                        <i class="fa-solid fa-burger"></i>
-                    {% elif 'diet' in cat.name|lower %}
-                        <i class="fa-solid fa-heart-pulse"></i>
-                    {% else %}
-                        <i class="fa-solid fa-bowl-food"></i>
-                    {% endif %}
+        <!-- Live Rider Location Strip (visible while a rider is on the way) -->
+        <div id="live-rider-strip" class="hidden shrink-0 glass-chip rounded-xl px-3.5 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 transition animate-fade-in">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="relative w-2.5 h-2.5 rounded-full bg-emerald-500 live-pulse-dot shrink-0"></span>
+                <div class="min-w-0">
+                    <p class="text-[11px] font-black text-white leading-tight truncate">
+                        <span class="text-brand-orange" id="live-order-no">--</span>
+                        <span class="text-emerald-400 ml-1.5">● Live</span>
+                    </p>
+                    <p class="text-[10px] text-brand-slate truncate" id="live-rider-name">Delivery Personnel en route...</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 ml-auto min-w-0">
+                <span class="text-[10px] text-brand-slate font-medium hidden sm:flex items-center gap-1.5">
+                    <i class="fa-solid fa-motorcycle text-brand-orange"></i>
+                    <span class="font-bold text-emerald-400" id="live-eta-text">--</span> to destination
                 </span>
-                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">{{ cat.name }}</span>
-            </button>
-            {% endfor %}
-        </aside>
+                <span class="text-[10px] text-brand-slate">Updated <strong class="text-white" id="live-updated-at">--</strong></span>
+                <button onclick="openViewOrderModal()" class="bg-brand-orange hover:bg-orange-600 text-white text-[10px] font-black px-3 py-1.5 rounded-lg transition active:scale-95 flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-map-location-dot"></i> Open Live Map
+                </button>
+            </div>
+        </div>
+
+        <div class="shrink-0 flex items-center justify-between gap-3">
+            <div class="relative" id="faculty-category-inline-wrapper">
+                <button onclick="toggleFacultyCategoryMenu()" id="faculty-category-toggle-btn" class="group flex items-center gap-2 px-3 h-9 rounded-xl bg-gradient-to-r from-brand-orange to-orange-600 border border-orange-400/70 shadow-[0_12px_34px_-14px_rgba(249,115,22,0.95)] hover:brightness-110 active:scale-95 transition-all duration-150 ease-out shrink-0">
+                    <span class="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-bars text-white text-[10px]"></i>
+                    </span>
+                    <span id="faculty-active-category-display" class="text-white font-bold text-[10px] uppercase tracking-[0.14em] max-w-[160px] truncate">Categories</span>
+                    <i class="fa-solid fa-chevron-down text-white text-[7px] ml-1 transition-transform duration-150" id="faculty-category-chevron"></i>
+                </button>
+                <div id="faculty-category-expand-panel" class="absolute top-full left-0 mt-1 flex flex-col gap-0.5 p-1 rounded-xl bg-black/80 backdrop-blur-xl border border-white/12 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.95)] opacity-0 -translate-y-2 pointer-events-none transition-all duration-200 ease-out origin-top-left w-[190px] max-h-[60vh] overflow-y-auto no-scrollbar z-50">
+                    <button onclick="selectFacultyCategory('all', this, true)" class="faculty-category-float-btn flex items-center gap-2 px-2 h-9 rounded-lg transition-all duration-150 active:scale-[0.98] w-full text-left bg-transparent">
+                        <span class="cat-icon w-6 h-6 rounded-md bg-white/10 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-utensils text-white/90 text-[10px]"></i>
+                        </span>
+                        <span class="text-white/90 font-medium text-[10px] leading-none truncate">All Items</span>
+                    </button>
+                    <div class="h-px bg-white/10 my-0.5 mx-1"></div>
+                    {% for cat in categories %}
+                    <button onclick="selectFacultyCategory('{{ cat.name|escapejs }}', this, true)" class="faculty-category-float-btn flex items-center gap-2 px-2 h-9 rounded-lg transition-all duration-150 active:scale-[0.98] w-full text-left bg-transparent">
+                        <span class="cat-icon w-6 h-6 rounded-md bg-white/10 flex items-center justify-center shrink-0">
+                            {% if 'ulam' in cat.name|lower %}
+                                <i class="fa-solid fa-drumstick-bite text-white/90 text-[10px]"></i>
+                            {% elif 'pasta' in cat.name|lower or 'noodle' in cat.name|lower %}
+                                <svg class="w-3 h-3 text-white/90" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M3.5 11h17a0.5 0.5 0 0 1 0.5 0.5 8 8 0 0 1-8 8h-3a8 8 0 0 1-8-8 0.5 0.5 0 0 1 0.5-0.5z"/>
+                                    <rect x="9" y="5" width="1.5" height="6" rx="0.75"/>
+                                    <rect x="12" y="4" width="1.5" height="7" rx="0.75"/>
+                                    <rect x="15" y="6" width="1.5" height="5" rx="0.75"/>
+                                    <line x1="6" y1="5" x2="20" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <line x1="6" y1="7" x2="19" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            {% elif 'instant' in cat.name|lower %}
+                                <i class="fa-solid fa-mug-hot text-white/90 text-[10px]"></i>
+                            {% elif 'pastry' in cat.name|lower or 'bakery' in cat.name|lower %}
+                                <i class="fa-solid fa-bread-slice text-white/90 text-[10px]"></i>
+                            {% elif 'kakanin' in cat.name|lower %}
+                                <i class="fa-solid fa-plate-wheat text-white/90 text-[10px]"></i>
+                            {% elif 'candies' in cat.name|lower %}
+                                <i class="fa-solid fa-candy-cane text-white/90 text-[10px]"></i>
+                            {% elif 'add' in cat.name|lower or 'addon' in cat.name|lower or 'extra' in cat.name|lower %}
+                                <i class="fa-solid fa-circle-plus text-white/90 text-[10px]"></i>
+                            {% elif 'rice' in cat.name|lower %}
+                                <i class="fa-solid fa-bowl-rice text-white/90 text-[10px]"></i>
+                            {% elif 'biscuit' in cat.name|lower %}
+                                <i class="fa-solid fa-cookie text-white/90 text-[10px]"></i>
+                            {% elif 'beverage' in cat.name|lower or 'drink' in cat.name|lower %}
+                                <i class="fa-solid fa-bottle-water text-white/90 text-[10px]"></i>
+                            {% elif 'meryenda' in cat.name|lower %}
+                                <i class="fa-solid fa-burger text-white/90 text-[10px]"></i>
+                            {% elif 'diet' in cat.name|lower %}
+                                <i class="fa-solid fa-heart-pulse text-white/90 text-[10px]"></i>
+                            {% else %}
+                                <i class="fa-solid fa-bowl-food text-white/90 text-[10px]"></i>
+                            {% endif %}
+                        </span>
+                        <span class="text-white/90 font-medium text-[10px] leading-none truncate">{{ cat.name }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            <span id="items-count-indicator" class="text-[11px] text-brand-slate font-semibold bg-white/5 border border-white/10 rounded-full px-3 py-1">Showing items</span>
+        </div>
 
         <!-- Center: Menu Grid -->
-        <main class="flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar space-y-3 pr-1">
+        <main class="flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar">
 
-            <!-- Live Rider Location Strip (visible while a rider is on the way) -->
-            <div id="live-rider-strip" class="hidden glass-chip rounded-xl px-3.5 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 transition animate-fade-in">
-                <div class="flex items-center gap-2 min-w-0">
-                    <span class="relative w-2.5 h-2.5 rounded-full bg-emerald-500 live-pulse-dot shrink-0"></span>
-                    <div class="min-w-0">
-                        <p class="text-[11px] font-black text-white leading-tight truncate">
-                            <span class="text-brand-orange" id="live-order-no">--</span>
-                            <span class="text-emerald-400 ml-1.5">● Live</span>
-                        </p>
-                        <p class="text-[10px] text-brand-slate truncate" id="live-rider-name">Rider en route...</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3 ml-auto min-w-0">
-                    <span class="text-[10px] text-brand-slate font-medium hidden sm:flex items-center gap-1.5">
-                        <i class="fa-solid fa-motorcycle text-brand-orange"></i>
-                        <span class="font-bold text-emerald-400" id="live-eta-text">--</span> to destination
-                    </span>
-                    <span class="text-[10px] text-brand-slate">Updated <strong class="text-white" id="live-updated-at">--</strong></span>
-                    <button onclick="openViewOrderModal()" class="bg-brand-orange hover:bg-orange-600 text-white text-[10px] font-black px-3 py-1.5 rounded-lg transition active:scale-95 flex items-center gap-1.5 shadow">
-                        <i class="fa-solid fa-map-location-dot"></i> Open Live Map
-                    </button>
-                </div>
-            </div>
-
-            <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
-                <h2 id="category-heading" class="text-sm sm:text-lg font-black text-white uppercase tracking-wider">All Items</h2>
-                <span id="items-count-indicator" class="text-xs text-brand-slate font-bold">Showing items</span>
-            </div>
-
-            <section id="menu-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3 pb-12">
+            <section id="menu-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-2.5 pb-2 flex-1 content-start">
             </section>
         </main>
 
@@ -829,9 +827,16 @@
                 <!-- Delivery location -->
                 <div id="delivery-details-section" class="space-y-2.5">
                     <div class="space-y-1.5">
-                        <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate">Deliver To</label>
-                        <input type="text" id="delivery-location-input" value="Faculty Office Bldg, Room 204" placeholder="e.g., Faculty Office Bldg, Room 204"
-                            class="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:ring-2 focus:ring-brand-orange outline-none backdrop-blur-md">
+                        <label for="delivery-location-input" class="text-[10px] font-black uppercase tracking-widest text-brand-slate">
+                            Deliver To <span class="text-brand-orange">*</span>
+                        </label>
+                        <input type="text" id="delivery-location-input" value="" placeholder="e.g., Faculty Office Bldg, Room 204"
+                            required aria-required="true" autocomplete="street-address"
+                            oninput="clearDeliveryAddressError()"
+                            class="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-brand-slate focus:ring-2 focus:ring-brand-orange outline-none backdrop-blur-md transition">
+                        <p id="delivery-location-error" class="hidden text-[10px] font-semibold text-red-400">
+                            Please enter where we should deliver your order.
+                        </p>
                     </div>
 
                     <div class="space-y-1.5">
@@ -960,6 +965,83 @@
     </div>
 
 
+    <!-- ================= FACULTY / STAFF ACCOUNT MODAL ================= -->
+    <div id="account-modal" class="fixed inset-0 z-[96] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="modal-pop glass-panel glass-panel-accent rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeAccountModal()" class="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-brand-slate hover:text-white flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="flex items-center gap-3 pr-8">
+                <div class="w-12 h-12 shrink-0 rounded-2xl bg-brand-orange/20 border border-brand-orange/30 text-brand-orange flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-white text-base">My Account</h3>
+                    <p class="text-[11px] text-brand-slate font-medium">Details below come from your signed-in account.</p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                {% if faculty_is_verified %}
+                <span class="inline-flex items-center gap-1.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-md">
+                    <i class="fa-solid fa-circle-check"></i> Verified
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1.5 bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-md">
+                    <i class="fa-solid fa-circle-exclamation"></i> Not verified
+                </span>
+                {% endif %}
+                {% if faculty_role_label %}
+                <span class="inline-flex items-center gap-1.5 bg-white/5 text-brand-slate border border-white/10 text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-md">
+                    <i class="fa-solid fa-id-badge"></i> {{ faculty_role_label }}
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-wider text-brand-slate mb-1.5">PSU Email</label>
+                    <input type="email" value="{{ request.user.email }}" disabled
+                           class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-brand-slate cursor-not-allowed">
+                </div>
+                <div>
+                    <label for="profile-name-input" class="block text-[10px] font-black uppercase tracking-wider text-brand-slate mb-1.5">Account Name</label>
+                    <input type="text" id="profile-name-input" maxlength="80" value="{{ request.user.get_full_name|default:request.user.first_name }}" placeholder="Your full name"
+                           class="w-full bg-brand-card border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-brand-slate focus:outline-none focus:border-brand-orange/60 focus:ring-1 focus:ring-brand-orange/40">
+                </div>
+                <div>
+                    <label for="profile-department-input" class="block text-[10px] font-black uppercase tracking-wider text-brand-slate mb-1.5">
+                        College / Department <span class="text-brand-slate/60 normal-case tracking-normal font-medium">(optional)</span>
+                    </label>
+                    <input type="text" id="profile-department-input" maxlength="120" value="{{ faculty_department }}" placeholder="e.g., College of Sciences"
+                           class="w-full bg-brand-card border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-brand-slate focus:outline-none focus:border-brand-orange/60 focus:ring-1 focus:ring-brand-orange/40">
+                </div>
+                <div>
+                    <label for="profile-phone-input" class="block text-[10px] font-black uppercase tracking-wider text-brand-slate mb-1.5">
+                        Contact Number <span class="text-brand-slate/60 normal-case tracking-normal font-medium">(optional)</span>
+                    </label>
+                    <input type="tel" id="profile-phone-input" maxlength="20" value="{{ faculty_phone }}" placeholder="e.g., 0917 000 0000"
+                           class="w-full bg-brand-card border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-brand-slate focus:outline-none focus:border-brand-orange/60 focus:ring-1 focus:ring-brand-orange/40">
+                </div>
+            </div>
+
+            <p id="profile-error" class="hidden text-[11px] font-semibold text-red-400 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2"></p>
+
+            <div class="flex gap-2">
+                <button type="button" onclick="closeAccountModal()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-brand-slate hover:text-white font-extrabold py-3 rounded-xl uppercase tracking-wider text-xs transition active:scale-95">
+                    Cancel
+                </button>
+                <button type="button" id="profile-save-btn" onclick="saveFacultyProfile()" class="flex-1 bg-brand-orange hover:bg-orange-600 text-white font-extrabold py-3 rounded-xl uppercase tracking-wider text-xs transition active:scale-95 shadow-lg shadow-brand-orange/25">
+                    Save Changes
+                </button>
+            </div>
+            <p class="text-[10px] text-brand-slate/70 leading-relaxed">
+                Only this signed-in faculty/staff account can be edited. Your PSU email stays locked.
+            </p>
+        </div>
+    </div>
+
+
     <!-- ================= ACTIVE ORDER ALERT MODAL (mirrors student kiosk) ================= -->
     <div id="active-order-alert-modal" class="fixed inset-0 z-[95] glass-backdrop hidden flex items-center justify-center p-4">
         <div class="modal-pop glass-panel glass-panel-accent rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl relative">
@@ -973,7 +1055,8 @@
                 <h3 class="font-black text-white text-base">Order in Progress</h3>
                 <p class="text-[11px] text-brand-slate font-medium mt-1.5 leading-relaxed">
                     You have an active order (<b id="active-order-alert-number" class="text-brand-orange">#CE-0000</b>).
-                    Complete payment or cancel it before placing a new one.
+                    You can keep adding items to your cart, but a new order can only be placed once
+                    this one is completed or cancelled.
                 </p>
             </div>
             <div class="space-y-2">
@@ -1039,7 +1122,7 @@
                         <div class="flex justify-between"><span class="text-black">Order No:</span><strong id="fac-rec-order-no" class="text-black">#CE-0000</strong></div>
                         <div class="flex justify-between"><span class="text-black">Customer:</span><strong id="fac-rec-customer" class="text-black">--</strong></div>
                         <div class="flex justify-between"><span class="text-black">Location:</span><strong id="fac-rec-location" class="text-black text-right truncate max-w-[180px]">--</strong></div>
-                        <div class="flex justify-between"><span class="text-black">Rider:</span><strong id="fac-rec-rider" class="text-black">--</strong></div>
+                        <div class="flex justify-between"><span class="text-black">Delivery Personnel:</span><strong id="fac-rec-rider" class="text-black">--</strong></div>
                         <div class="flex justify-between"><span class="text-black">Status:</span><strong class="text-emerald-600">DELIVERED</strong></div>
                         <div class="flex justify-between"><span class="text-black">Delivered At:</span><strong id="fac-rec-time" class="text-black">--</strong></div>
                     </div>
@@ -1079,7 +1162,7 @@
             <div class="p-4 border-b border-white/10 flex justify-between items-center glass-panel-head">
                 <div>
                     <h3 id="chat-order-title" class="font-black text-white text-sm">Chat - Order</h3>
-                    <p id="chat-rider-subtitle" class="text-[10px] text-brand-orange font-bold">Rider info</p>
+                    <p id="chat-rider-subtitle" class="text-[10px] text-brand-orange font-bold">Delivery Personnel info</p>
                 </div>
                 <button onclick="closeRiderChatModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
@@ -1093,7 +1176,7 @@
                 <button onclick="sendQuickMsg('Thank you so much! 🙏')" class="px-2.5 py-1 bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange/40 text-white/80 hover:text-white rounded-full text-[10px] font-bold transition">🙏 Thank you</button>
             </div>
             <div class="p-3 border-t border-white/10 glass-panel-head flex items-center gap-2">
-                <input type="text" id="chat-input-msg" placeholder="Type message to rider..." onkeyup="if(event.key==='Enter') sendRiderMessage()"
+                <input type="text" id="chat-input-msg" placeholder="Type message to delivery personnel..." onkeyup="if(event.key==='Enter') sendRiderMessage()"
                     class="flex-1 px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-brand-slate focus:outline-none focus:border-brand-orange backdrop-blur-md">
                 <button onclick="sendRiderMessage()" class="bg-brand-orange hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow">
                     <i class="fa-solid fa-paper-plane"></i>
@@ -1150,7 +1233,7 @@
                         <span id="view-order-location" class="font-bold text-white">--</span>
                     </div>
                     <div class="flex justify-between text-brand-slate">
-                        <span>Assigned Rider</span>
+                        <span>Assigned Delivery Personnel</span>
                         <span id="view-order-rider" class="font-bold text-white">--</span>
                     </div>
                     <div class="flex justify-between text-brand-slate pt-2 border-t border-white/10">
@@ -1158,7 +1241,7 @@
                         <span id="view-order-subtotal" class="font-bold text-white">₱0.00</span>
                     </div>
                     <div class="flex justify-between text-brand-slate">
-                        <span>Delivery Fee (Rider)</span>
+                        <span>Delivery Fee (Delivery Personnel)</span>
                         <span id="view-order-fee" class="font-bold text-brand-orange">₱0.00</span>
                     </div>
                     <div class="flex justify-between text-white font-black pt-2 border-t border-white/10 items-center">
@@ -1169,7 +1252,7 @@
 
                 <!-- Live Map Container -->
                 <div class="space-y-2">
-                    <h4 class="text-xs font-black text-brand-slate uppercase tracking-wider">Live Rider Tracking Map</h4>
+                    <h4 class="text-xs font-black text-brand-slate uppercase tracking-wider">Live Delivery Personnel Tracking Map</h4>
                     <div id="view-order-map" class="w-full h-48 rounded-2xl border border-white/10 overflow-hidden bg-zinc-800"></div>
                 </div>
 
@@ -1221,7 +1304,7 @@
 
             <div class="p-4 glass-panel-foot border-t border-white/10 flex justify-between items-center text-xs">
                 <button id="view-order-chat-btn" onclick="closeViewOrderModal(); openActiveRiderChat()" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
-                    <i class="fa-solid fa-comments"></i> Chat with Rider
+                    <i class="fa-solid fa-comments"></i> Chat with Delivery Personnel
                 </button>
                 <div class="flex items-center gap-2">
                     <button id="view-order-rate-btn" onclick="openFacultyFeedbackModal()" class="bg-amber-500 hover:bg-amber-600 text-black font-extrabold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow">
@@ -1281,7 +1364,7 @@
                     <span id="place-order-location" class="font-bold text-white text-right max-w-[55%]">--</span>
                 </div>
                 <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
-                    <span><i class="fa-solid fa-motorcycle text-brand-orange mr-1"></i>Delivery Fee (Rider)</span>
+                    <span><i class="fa-solid fa-motorcycle text-brand-orange mr-1"></i>Delivery Fee (Delivery Personnel)</span>
                     <span id="place-order-fee" class="font-bold text-brand-orange">₱0.00</span>
                 </div>
                 <div class="flex justify-between gap-3 text-brand-slate border-t border-white/10 pt-1.5">
@@ -1295,7 +1378,7 @@
             </div>
 
             <p class="text-[10px] text-brand-slate leading-relaxed">
-                A rider will be assigned shortly. Track your rider's live location below.
+                Delivery personnel will be assigned shortly. Track their live location below.
             </p>
 
             <div class="grid grid-cols-2 gap-2">
@@ -1361,7 +1444,7 @@
 
     <!-- ================= FLOATING MESSAGE ICON ================= -->
     <div id="floating-msg-btn" class="fixed bottom-20 right-4 z-30" style="display: none;">
-        <button onclick="openActiveRiderChat()" class="w-12 h-12 rounded-full bg-brand-orange text-white flex items-center justify-center shadow-2xl hover:scale-105 transition border-2 border-white/20" title="Chat with Rider">
+        <button onclick="openActiveRiderChat()" class="w-12 h-12 rounded-full bg-brand-orange text-white flex items-center justify-center shadow-2xl hover:scale-105 transition border-2 border-white/20" title="Chat with Delivery Personnel">
             <i class="fa-solid fa-comments text-lg"></i>
         </button>
     </div>
@@ -1410,16 +1493,16 @@
     // rider accepts, show that the rider is now out for delivery.
     function deliveryStatusLabel(d) {
         if (d.raw_status === 'ACCEPTED') {
-            const rider = (d.rider_name && d.rider_name !== 'Searching for Rider...') ? d.rider_name : 'Rider';
+            const rider = (d.rider_name && d.rider_name !== 'Searching for Delivery Personnel...') ? d.rider_name : 'Delivery Personnel';
             return rider + ' accepted • Out for delivery';
         }
         if (d.raw_status === 'SEARCHING') {
-            if (d.assigned_rider_name) return 'Rider assigned to ' + d.assigned_rider_name;
-            return 'Processing (Finding rider)';
+            if (d.assigned_rider_name) return 'Delivery Personnel assigned to ' + d.assigned_rider_name;
+            return 'Processing (Finding delivery personnel)';
         }
         if (d.raw_status === 'DELIVERED') return 'Delivered ✓';
         if (d.raw_status === 'REJECTED') return 'Rejected';
-        if (d.raw_status === 'TIMEOUT') return 'No rider available';
+        if (d.raw_status === 'TIMEOUT') return 'No delivery personnel available';
         return d.status || 'Processing';
     }
 
@@ -1680,7 +1763,7 @@
         }
 
         strip.querySelector('#live-order-no').innerText = delivery.order_number || '--';
-        strip.querySelector('#live-rider-name').innerText = `Rider: ${delivery.rider_name || 'en route...'}`;
+        strip.querySelector('#live-rider-name').innerText = `Delivery Personnel: ${delivery.rider_name || 'en route...'}`;
         strip.querySelector('#live-updated-at').innerText = delivery.location_updated_at || '--';
 
         let etaText = '--';
@@ -1766,7 +1849,7 @@
                         </span>
                     </div>
                     <div class="text-[11px] text-brand-slate flex justify-between items-center">
-                        <span>Rider: <strong class="text-white">${d.rider_name}</strong></span>
+                        <span>Delivery Personnel: <strong class="text-white">${d.rider_name}</strong></span>
                         <span class="text-brand-orange font-bold">₱${(d.total_payment || d.total_amount || 0).toFixed(2)}</span>
                     </div>
                     ${d.proof_photo ? `
@@ -1881,7 +1964,7 @@
 
     function openRiderChat(deliveryId, orderNum, riderName) {
         activeChatDeliveryId = deliveryId;
-        document.getElementById('chat-rider-subtitle').innerText = `${orderNum} • Rider: ${riderName}`;
+        document.getElementById('chat-rider-subtitle').innerText = `${orderNum} • Delivery Personnel: ${riderName}`;
         document.getElementById('ongoing-orders-modal').classList.add('hidden');
         document.getElementById('rider-chat-modal').classList.remove('hidden');
         loadRiderMessages();
@@ -1900,7 +1983,7 @@
 
     function makeChatBubble(m) {
         const isMe = m.is_me === true;
-        const who = isMe ? 'You' : (m.sender_name || m.sender || 'Rider');
+        const who = isMe ? 'You' : (m.sender_name || m.sender || 'Delivery Personnel');
         const initial = (who.charAt(0) || 'R').toUpperCase();
         const wrap = document.createElement('div');
         wrap.className = 'flex justify-' + (isMe ? 'end' : 'start');
@@ -1908,7 +1991,7 @@
             <div class="flex items-end gap-1.5 max-w-[82%] ${isMe ? 'flex-row-reverse' : ''}">
                 <div class="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black text-white shrink-0 ${isMe ? 'bg-gradient-to-br from-orange-500 to-orange-600' : 'bg-gradient-to-br from-emerald-500 to-emerald-600'}">${escapeHTML(initial)}</div>
                 <div class="px-3.5 py-2 rounded-2xl text-xs text-white shadow-md ${isMe ? 'bg-gradient-to-br from-orange-500 to-orange-600 rounded-br-none' : 'bg-zinc-800 border border-white/10 rounded-bl-none'}">
-                    <p class="font-bold text-[9px] mb-0.5 ${isMe ? 'text-orange-200' : 'text-emerald-400'}">${escapeHTML(who)}${isMe ? '' : ' • Rider'} <span class="opacity-60 font-semibold">${escapeHTML(m.time)}</span></p>
+                    <p class="font-bold text-[9px] mb-0.5 ${isMe ? 'text-orange-200' : 'text-emerald-400'}">${escapeHTML(who)}${isMe ? '' : ' • Delivery Personnel'} <span class="opacity-60 font-semibold">${escapeHTML(m.time)}</span></p>
                     <p class="whitespace-pre-wrap break-words">${escapeHTML(m.message)}</p>
                 </div>
             </div>
@@ -1925,7 +2008,7 @@
                 const list = document.getElementById('chat-messages-list');
                 list.innerHTML = '';
                 if (data.messages.length === 0) {
-                    list.innerHTML = `<div class="text-center py-10 text-brand-slate text-[11px]">No messages yet. Say hello to your rider!</div>`;
+                    list.innerHTML = `<div class="text-center py-10 text-brand-slate text-[11px]">No messages yet. Say hello to your delivery personnel!</div>`;
                     return;
                 }
                 data.messages.forEach(m => list.appendChild(makeChatBubble(m)));
@@ -2026,21 +2109,67 @@
     }
 
     // Search Toggle
+    let facultySearchOpen = false;
+
+    function facultySearchWidth() {
+        return window.innerWidth < 640 ? '190px' : '230px';
+    }
+
     function toggleSearch(e) {
-        e.stopPropagation();
+        if (e) e.stopPropagation();
+        facultySearchOpen = !facultySearchOpen;
         const wrapper = document.getElementById('search-wrapper');
         const input = document.getElementById('search-input');
         const greeting = document.getElementById('greeting-container');
-        if (wrapper.style.width === '200px' || wrapper.style.width === '100%') {
-            wrapper.style.width = '40px';
-            input.value = '';
-            if (greeting) greeting.classList.remove('hidden');
-            renderMenu();
-        } else {
-            wrapper.style.width = window.innerWidth < 640 ? '160px' : '200px';
+        if (facultySearchOpen) {
+            if (wrapper) wrapper.style.width = facultySearchWidth();
             if (greeting) greeting.classList.add('hidden');
-            input.focus();
+            setTimeout(() => { if (input) input.focus(); }, 120);
+        } else {
+            if (wrapper) wrapper.style.width = '40px';
+            if (input) input.value = '';
+            if (greeting) greeting.classList.remove('hidden');
+            updateSearchClearButton();
+            renderMenu();
         }
+    }
+
+    // The little "x" inside the search field clears whatever was typed and
+    // keeps the field focused so the user can type a new query immediately.
+    function clearSearchInput(e) {
+        if (e) e.stopPropagation();
+        const input = document.getElementById('search-input');
+        if (!input) return;
+        input.value = '';
+        input.focus();
+        updateSearchClearButton();
+        renderMenu();
+    }
+
+    function updateSearchClearButton() {
+        const input = document.getElementById('search-input');
+        const btn = document.getElementById('search-clear-btn');
+        if (!input || !btn) return;
+        btn.style.display = input.value.length ? 'flex' : 'none';
+    }
+
+    // Normalised, token-based matching: case/accent/extra-space insensitive and
+    // order independent, so "chicken  adobo" finds "Chicken Adobo" and multi-word
+    // queries match as long as every word appears somewhere in the item.
+    function normalizeSearchText(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function matchesSearchQuery(item, query) {
+        if (!query) return true;
+        const haystack = normalizeSearchText(
+            `${item.name || ''} ${item.desc || ''} ${item.category || ''}`);
+        return query.split(' ').every(token => haystack.includes(token));
     }
 
     document.addEventListener('click', (e) => {
@@ -2048,11 +2177,23 @@
         if (wrapper && !wrapper.contains(e.target)) {
             const input = document.getElementById('search-input');
             const greeting = document.getElementById('greeting-container');
-            if (input && !input.value.trim()) {
+            if (input && !input.value.trim() && facultySearchOpen) {
+                facultySearchOpen = false;
                 wrapper.style.width = '40px';
                 if (greeting) greeting.classList.remove('hidden');
+                updateSearchClearButton();
+                renderMenu();
             }
         }
+
+        const catWrapper = document.getElementById('faculty-category-inline-wrapper');
+        if (catWrapper && !catWrapper.contains(e.target)) {
+            closeFacultyCategoryMenu();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeFacultyCategoryMenu();
     });
 
     // Render Menu
@@ -2061,29 +2202,29 @@
         if (!grid) return;
         
         const searchInput = document.getElementById('search-input');
-        const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const searchQuery = normalizeSearchText(searchInput ? searchInput.value : '');
         const greeting = document.getElementById('greeting-container');
         if (greeting) {
             if (searchQuery) {
                 greeting.classList.add('hidden');
-            } else {
-                const wrapper = document.getElementById('search-wrapper');
-                if (!wrapper || wrapper.style.width === '40px' || wrapper.style.width === '') {
-                    greeting.classList.remove('hidden');
-                }
+            } else if (!facultySearchOpen) {
+                greeting.classList.remove('hidden');
             }
         }
+        updateSearchClearButton();
         grid.innerHTML = '';
 
         const filtered = menuData.filter(item => {
-            const itemCat = String(item.category || '').toLowerCase();
-            const activeCat = String(activeCategory).toLowerCase();
-            const itemName = String(item.name || '').toLowerCase();
-            const itemDesc = String(item.desc || '').toLowerCase();
-            
-            let matchesCat = (activeCat === 'all' || itemCat === activeCat || itemCat.includes(activeCat) || activeCat.includes(itemCat));
-            const matchesSearch = itemName.includes(searchQuery) || itemDesc.includes(searchQuery);
-            return matchesCat && matchesSearch;
+            const matchesSearch = matchesSearchQuery(item, searchQuery);
+            // While searching, look across the whole menu instead of only the
+            // selected category - otherwise a perfectly valid match elsewhere is
+            // reported as "no items found".
+            if (searchQuery) return matchesSearch;
+            const itemCat = normalizeSearchText(item.category);
+            const activeCat = normalizeSearchText(activeCategory);
+            const matchesCat = (activeCat === 'all' || activeCat === 'all items'
+                || itemCat === activeCat || itemCat.includes(activeCat) || activeCat.includes(itemCat));
+            return matchesCat;
         });
 
         document.getElementById('items-count-indicator').innerText = `Showing ${filtered.length} items`;
@@ -2092,7 +2233,7 @@
             grid.innerHTML = `
                 <div class="col-span-full text-center py-16 text-brand-slate">
                     <i class="fa-solid fa-utensils text-4xl mb-2 opacity-40"></i>
-                    <p class="text-xs font-bold">No items found in this category.</p>
+                    <p class="text-xs font-bold">${searchQuery ? 'No items match your search.' : 'No items found in this category.'}</p>
                 </div>`;
             return;
         }
@@ -2126,15 +2267,48 @@
         });
     }
 
-    function selectCategory(category, element) {
-        activeCategory = category;
-        document.getElementById('category-heading').innerText = category === 'all' ? 'All Items' : category;
+    function toggleFacultyCategoryMenu() {
+        const panel = document.getElementById('faculty-category-expand-panel');
+        const chevron = document.getElementById('faculty-category-chevron');
+        if (!panel) return;
+        if (panel.classList.contains('pointer-events-none')) {
+            panel.classList.remove('opacity-0', '-translate-y-2', 'pointer-events-none');
+            panel.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+            if (chevron) chevron.style.transform = 'rotate(180deg)';
+        } else {
+            panel.classList.add('opacity-0', '-translate-y-2', 'pointer-events-none');
+            panel.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+            if (chevron) chevron.style.transform = 'rotate(0deg)';
+        }
+    }
 
-        document.querySelectorAll('#category-sidebar .category-btn').forEach(btn => {
-            btn.classList.remove('active-cat');
+    function closeFacultyCategoryMenu() {
+        const panel = document.getElementById('faculty-category-expand-panel');
+        const chevron = document.getElementById('faculty-category-chevron');
+        if (!panel) return;
+        panel.classList.add('opacity-0', '-translate-y-2', 'pointer-events-none');
+        panel.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+
+    function selectFacultyCategory(category, element, autoClose = false) {
+        activeCategory = category;
+        document.querySelectorAll('.faculty-category-float-btn').forEach(btn => {
+            btn.classList.remove('active-cat-float', 'bg-brand-orange/90');
+            btn.classList.add('bg-transparent');
         });
-        element.classList.add('active-cat');
+        if (element) {
+            element.classList.remove('bg-transparent');
+            element.classList.add('active-cat-float', 'bg-brand-orange/90');
+        }
+        const display = document.getElementById('faculty-active-category-display');
+        if (display) display.innerText = category === 'all' ? 'All Items' : category;
         renderMenu();
+        if (autoClose) closeFacultyCategoryMenu();
+    }
+
+    function selectCategory(category, element) {
+        selectFacultyCategory(category, element, false);
     }
 
     function parseSizePrices(desc, basePrice) {
@@ -2161,11 +2335,8 @@
     }
 
     function quickAddToCart(itemId) {
-        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
-        if (activeOrder) {
-            showActiveOrderAlert(activeOrder);
-            return;
-        }
+        // Adding to the cart stays open even while an order is in progress;
+        // only placing the next order waits for the current one to finish.
         const item = menuData.find(i => i.id === itemId);
         if (!item) return;
         if (item.stock === 0) {
@@ -2193,11 +2364,6 @@
 
     // Item Details Modal
     function openItemModal(itemId) {
-        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
-        if (activeOrder) {
-            showActiveOrderAlert(activeOrder);
-            return;
-        }
         const item = menuData.find(i => i.id === itemId);
         if (!item) return;
         selectedItemForModal = item;
@@ -2302,11 +2468,6 @@
 
     function addCustomizedItemToCart() {
         if (!selectedItemForModal) return;
-        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
-        if (activeOrder) {
-            showActiveOrderAlert(activeOrder);
-            return;
-        }
         let basePrice = selectedItemForModal.price;
         let displayName = selectedItemForModal.name;
         let cartKeyBase = String(selectedItemForModal.id);
@@ -2539,7 +2700,7 @@
                     processStep = "Already Delivered";
                     badgeColor = "bg-emerald-500/20 text-emerald-400";
                 } else if (d.raw_status === 'SEARCHING') {
-                    processStep = "Processing (Searching for Rider)";
+                    processStep = "Processing (Searching for Delivery Personnel)";
                 }
 
                 const item = document.createElement('div');
@@ -2551,7 +2712,7 @@
                     </div>
                     <p class="text-[11px] text-white font-medium truncate"><i class="fa-solid fa-location-dot text-brand-orange mr-1"></i> ${d.location}</p>
                     <div class="text-[10px] text-brand-slate flex justify-between items-center pt-1 border-t border-white/5">
-                        <span>Rider: <strong class="text-white">${d.rider_name}</strong></span>
+                        <span>Delivery Personnel: <strong class="text-white">${d.rider_name}</strong></span>
                         <span>${d.created_at}</span>
                     </div>
                 `;
@@ -2563,7 +2724,7 @@
     function openActiveRiderChat() {
         const activeD = ongoingDeliveriesData.find(hasAssignedRider);
         if (!activeD) {
-            showToast('Wala pang rider na nakapag-accept ng delivery para sa chat.');
+            showToast('Wala pang delivery personnel na nakapag-accept ng delivery para sa chat.');
             return;
         }
         openRiderChat(activeD.id, activeD.order_number, activeD.rider_name);
@@ -2711,7 +2872,7 @@
                         html: '<div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center text-lg shadow-xl border-2 border-white/30"><i class="fa-solid fa-motorcycle"></i></div>',
                         iconSize: [40, 40], iconAnchor: [20, 20]
                     })
-                }).addTo(viewOrderMap).bindPopup('<b>Rider Live Location</b>').openPopup();
+                }).addTo(viewOrderMap).bindPopup('<b>Delivery Personnel Live Location</b>').openPopup();
             }
             if (hasDest) {
                 viewOrderDestMarker = L.marker([d.dest_lat, d.dest_lng], {
@@ -2973,6 +3134,31 @@
         document.getElementById('summary-total').innerText = `₱${Math.max(0, finalPayable).toFixed(2)}`;
     }
 
+    // The Deliver To field is mandatory for faculty delivery orders: block the
+    // submit until it has a real address instead of silently using a default.
+    function validateFacultyDeliveryAddress() {
+        const input = document.getElementById('delivery-location-input');
+        const error = document.getElementById('delivery-location-error');
+        if (!input) return true;
+        if ((input.value || '').trim()) {
+            input.classList.remove('border-red-500/70', 'focus:ring-red-500');
+            if (error) error.classList.add('hidden');
+            return true;
+        }
+        input.classList.add('border-red-500/70');
+        if (error) error.classList.remove('hidden');
+        input.focus();
+        return false;
+    }
+
+    function clearDeliveryAddressError() {
+        const input = document.getElementById('delivery-location-input');
+        const error = document.getElementById('delivery-location-error');
+        if (!input || !(input.value || '').trim()) return;
+        input.classList.remove('border-red-500/70', 'focus:ring-red-500');
+        if (error) error.classList.add('hidden');
+    }
+
     function submitFacultyOrder() {
         const isDelivery = fulfillmentMode === 'delivery';
 
@@ -2987,6 +3173,12 @@
         }
 
         const submitBtn = document.getElementById('checkout-submit-btn');
+
+        if (isDelivery && !validateFacultyDeliveryAddress()) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<i class="fa-solid fa-check-circle text-[10px]"></i> Place Order`;
+            return;
+        }
 
         if (isDelivery) {
             if (!navigator.geolocation) {
@@ -3093,10 +3285,10 @@
                     ongoingDeliveriesData.unshift({
                         id: data.order_id || 1,
                         order_number: data.order_number,
-                        status: 'Searching for Rider',
+                        status: 'Searching for Delivery Personnel',
                         raw_status: 'SEARCHING',
                         location: deliveryLoc,
-                        rider_name: 'Searching for Rider...',
+                        rider_name: 'Searching for Delivery Personnel...',
                         total_amount: data.total_payment - data.delivery_fee,
                         total_payment: data.total_payment,
                         created_at: 'Just now'
@@ -3150,6 +3342,72 @@
 
     function closeCheckoutErrorModal() {
         document.getElementById('checkout-error-modal').classList.add('hidden');
+    }
+
+    // ---------- Faculty / Staff account editor ----------
+    function openAccountModal() {
+        const err = document.getElementById('profile-error');
+        if (err) err.classList.add('hidden');
+        document.getElementById('account-modal').classList.remove('hidden');
+    }
+
+    function closeAccountModal() {
+        document.getElementById('account-modal').classList.add('hidden');
+    }
+
+    function showProfileError(message) {
+        const err = document.getElementById('profile-error');
+        if (!err) return;
+        err.innerText = message;
+        err.classList.remove('hidden');
+    }
+
+    function saveFacultyProfile() {
+        const nameInput = document.getElementById('profile-name-input');
+        const deptInput = document.getElementById('profile-department-input');
+        const phoneInput = document.getElementById('profile-phone-input');
+        const btn = document.getElementById('profile-save-btn');
+        const name = (nameInput.value || '').trim();
+        const department = (deptInput.value || '').trim();
+        const phone = (phoneInput.value || '').trim();
+
+        document.getElementById('profile-error').classList.add('hidden');
+        if (!name) {
+            showProfileError('Please enter your account name.');
+            nameInput.focus();
+            return;
+        }
+
+        const originalLabel = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Saving...';
+
+        fetch("{% url 'accounts:faculty_profile_update' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+            body: JSON.stringify({ name: name, college_department: department, phone: phone })
+        })
+            .then(res => res.json().catch(() => ({})).then(data => ({ ok: res.ok, data: data })))
+            .then(({ ok, data }) => {
+                if (!ok || !data.success) {
+                    showProfileError(data.error || 'Could not save your profile. Please try again.');
+                    return;
+                }
+                const heading = document.querySelector('#greeting-container h1');
+                if (heading && data.display_name) {
+                    heading.innerText = 'Hello, ' + data.display_name + '!';
+                }
+                nameInput.value = data.name || name;
+                deptInput.value = data.college_department || '';
+                phoneInput.value = data.phone || '';
+                closeAccountModal();
+                showToast('Profile updated.', 'success');
+            })
+            .catch(() => showProfileError('Network error. Please try again.'))
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalLabel;
+            });
     }
 
     // Promo Carousel Logic
@@ -3366,13 +3624,20 @@
         const isLight = document.body.classList.contains('light-mode');
         localStorage.setItem('canex_faculty_theme', isLight ? 'light' : 'dark');
         const icon = document.getElementById('theme-icon');
+        const text = document.getElementById('theme-toggle-text');
         if (icon) icon.className = isLight ? 'fa-solid fa-moon text-xs text-amber-400' : 'fa-solid fa-sun text-xs text-amber-400';
+        if (text) text.textContent = isLight ? 'Dark' : 'Light';
     }
 
     if (localStorage.getItem('canex_faculty_theme') === 'light') {
         document.body.classList.add('light-mode');
         const icon = document.getElementById('theme-icon');
+        const text = document.getElementById('theme-toggle-text');
         if (icon) icon.className = 'fa-solid fa-moon text-xs text-amber-400';
+        if (text) text.textContent = 'Dark';
+    } else {
+        const text = document.getElementById('theme-toggle-text');
+        if (text) text.textContent = 'Light';
     }
 
     document.addEventListener('click', (e) => {
@@ -3704,9 +3969,9 @@
             <div class="w-14 h-14 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg">
                 <i class="fa-solid fa-clock"></i>
             </div>
-            <h3 class="text-lg font-black font-poppins text-white">No Rider Available Yet</h3>
+            <h3 class="text-lg font-black font-poppins text-white">No Delivery Personnel Available Yet</h3>
             <p class="text-xs text-zinc-200 leading-relaxed font-medium">
-                It's been 2 minutes and no rider has accepted your delivery request yet. What would you like to do?
+                It's been 2 minutes and no delivery personnel has accepted your delivery request yet. What would you like to do?
             </p>
 
             <div id="cancel-reason-container" class="hidden space-y-3 text-left pt-2">
@@ -3717,7 +3982,7 @@
                         <select id="cancel-reason-select" onchange="toggleFacultyOtherReason()"
                                 class="w-full appearance-none pl-9 pr-9 py-3 bg-white/5 border border-white/15 rounded-xl text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-brand-orange transition cursor-pointer">
                             <option value="Waiting for too long" class="bg-zinc-900 text-white">Waiting for too long</option>
-                            <option value="No riders available" class="bg-zinc-900 text-white">No riders available</option>
+                            <option value="No delivery personnel available" class="bg-zinc-900 text-white">No delivery personnel available</option>
                             <option value="Change of plans" class="bg-zinc-900 text-white">Change of plans</option>
                             <option value="Wrong order details" class="bg-zinc-900 text-white">Wrong order details</option>
                             <option value="Other reason" class="bg-zinc-900 text-white">Other reason</option>

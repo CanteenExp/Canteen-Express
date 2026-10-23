@@ -79,7 +79,7 @@ def serialize_delivery(d):
         'status': d.get_status_display(),
         'raw_status': d.status,
         'location': d.delivery_location,
-        'rider_name': d.rider.get_full_name() or d.rider.username if d.rider else 'Searching for Rider...',
+        'rider_name': d.rider.get_full_name() or d.rider.username if d.rider else 'Searching for Delivery Personnel...',
         'assigned_rider_name': (d.assigned_to.get_full_name() or d.assigned_to.username
                                 if d.assigned_to else None),
         'total_amount': float(d.order.total_amount),

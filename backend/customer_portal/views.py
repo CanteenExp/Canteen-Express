@@ -105,12 +105,24 @@ def process_checkout(request):
         data = json.loads(request.body)
         cart_items = data.get('cart', [])
         is_delivery = data.get('is_delivery', False)
-        delivery_location = data.get('delivery_location', 'Faculty Office Building')
 
         if not cart_items:
             return JsonResponse({'success': False, 'message': 'Cart is empty.'}, status=400)
 
         user = request.user if request.user.is_authenticated else None
+
+        # Faculty/staff delivery orders must carry a real drop-off address; the
+        # client blocks the submit, and this keeps the rule true even if the
+        # request is sent directly. The kiosk's blank-address fallback stays.
+        raw_location = (data.get('delivery_location') or '').strip()
+        is_faculty_delivery = bool(is_delivery and user and (
+            getattr(user, 'role', '') in ('FACULTY', 'STAFF', 'ADMIN') or user.is_staff))
+        if is_faculty_delivery and not raw_location:
+            return JsonResponse({
+                'success': False,
+                'message': 'Please enter where we should deliver your order.',
+            }, status=400)
+        delivery_location = raw_location or 'Faculty Office Bldg'
 
         # ===== Server-authoritative cart =====================================
         # Every line is validated against the LIVE database: real item id,
@@ -507,9 +519,9 @@ def _feedback_gate(order):
         return True, ''
 
     if delivery.status != DeliveryRequest.RequestStatus.DELIVERED:
-        return False, 'Rating opens once the rider marks this delivery as delivered.'
+        return False, 'Rating opens once delivery personnel marks this delivery as delivered.'
     if not delivery.proof_photo:
-        return False, 'Rating opens once the rider attaches the proof-of-delivery photo.'
+        return False, 'Rating opens once delivery personnel attaches the proof-of-delivery photo.'
     return True, ''
 
 

@@ -37,6 +37,16 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+        /* Respect user motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
         /* --- Glassy helpers (match the delivery order detail modal) --- */
         .glass-backdrop {
             background: rgba(8, 8, 12, 0.55) !important;
@@ -114,40 +124,89 @@
             backdrop-filter: blur(10px);
         }
 
-        /* ===== 3D Glassmorphic Category Pods (matches faculty sidebar) ===== */
-        .cat-pod {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+        /* ===== Modern Collapsible Floating Category Menu ===== */
+        .category-float-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             -webkit-backdrop-filter: blur(12px) saturate(140%);
             backdrop-filter: blur(12px) saturate(140%);
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.10);
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
         }
-        .cat-pod:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.28); }
-        .cat-pod .pod-icon {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            color: #94a3b8;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        .category-float-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
         }
-        .cat-pod:hover .pod-icon { transform: scale(1.06); border-color: rgba(255, 255, 255, 0.28); }
-        .cat-pod.active-cat {
-            background: rgba(255, 85, 0, 0.25);
-            border-color: rgba(255, 116, 38, 0.55);
-            box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.25), 0 0 28px rgba(249, 115, 22, 0.22), 0 12px 30px rgba(0, 0, 0, 0.4);
+        .category-float-btn.active-cat-float {
+            background: linear-gradient(90deg, rgba(249, 115, 22, 0.9) 0%, rgba(234, 88, 12, 0.9) 100%);
+            border-color: rgba(251, 146, 60, 0.7);
+            box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.25);
         }
-        .cat-pod.active-cat .pod-icon {
-            background: linear-gradient(180deg, #ff7a2d, #f97316);
-            border-color: #ff9d5c;
-            color: #fff;
-            box-shadow: 0 8px 20px rgba(249, 115, 22, 0.45);
+        .category-float-btn.active-cat-float span {
+            color: white !important;
+            font-weight: 600;
         }
-        .cat-pod.active-cat .pod-label { color: #ffffff; }
-        .cat-pod .pod-label { color: #94a3b8; }
-        body.light-mode .cat-pod { background: rgba(255, 255, 255, 0.65); border-color: rgba(148, 163, 184, 0.35); }
-        body.light-mode .cat-pod .pod-label { color: #475569; }
-        body.light-mode .cat-pod.active-cat .pod-label { color: #0f172a; }
+        .category-float-btn.active-cat-float .cat-icon {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        #category-expand-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        #category-expand-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #category-expand-panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        body.light-mode #category-toggle-btn {
+            background: linear-gradient(90deg, #f97316 0%, #ea580c 100%) !important;
+            border-color: rgba(251, 146, 60, 0.8) !important;
+            box-shadow: 0 10px 30px -12px rgba(249, 115, 22, 0.9) !important;
+        }
+        body.light-mode #category-toggle-btn * {
+            color: white !important;
+        }
+        body.light-mode #category-toggle-btn span:first-child {
+            background: rgba(255, 255, 255, 0.22) !important;
+        }
+        body.light-mode #category-expand-panel {
+            background: rgba(255, 255, 255, 0.98) !important;
+            border-color: rgba(203, 213, 225, 0.8) !important;
+            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12) !important;
+        }
+        body.light-mode .category-float-btn {
+            background: transparent !important;
+            border-color: transparent !important;
+        }
+        body.light-mode .category-float-btn:hover {
+            background: rgba(241, 245, 249, 0.9) !important;
+        }
+        body.light-mode .category-float-btn span {
+            color: #334155 !important;
+        }
+        body.light-mode .category-float-btn .cat-icon {
+            background: rgba(148, 163, 184, 0.12) !important;
+        }
+        body.light-mode .category-float-btn .cat-icon i,
+        body.light-mode .category-float-btn .cat-icon svg {
+            color: #475569 !important;
+        }
+        body.light-mode .category-float-btn.active-cat-float {
+            background: rgba(249, 115, 22, 0.12) !important;
+            border-color: rgba(249, 115, 22, 0.3) !important;
+        }
+        body.light-mode .category-float-btn.active-cat-float span {
+            color: #c2410c !important;
+            font-weight: 600 !important;
+        }
+        body.light-mode .category-float-btn.active-cat-float .cat-icon {
+            background: rgba(249, 115, 22, 0.18) !important;
+        }
+        body.light-mode .category-float-btn.active-cat-float .cat-icon i,
+        body.light-mode .category-float-btn.active-cat-float .cat-icon svg {
+            color: #ea580c !important;
+        }
         body.light-mode .glass-panel {
             background: linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 249, 0.86));
             border-color: rgba(148, 163, 184, 0.35);
@@ -194,20 +253,6 @@
         body.light-mode .text-brand-slate {
             color: #64748b !important;
         }
-        body.light-mode aside button {
-            background-color: #ffffff !important;
-            color: #334155 !important;
-            border-color: #e2e8f0 !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04) !important;
-        }
-        body.light-mode aside button.active-cat {
-            background-color: #f97316 !important;
-            color: #ffffff !important;
-            border-color: #f97316 !important;
-        }
-        body.light-mode aside button.active-cat * {
-            color: #ffffff !important;
-        }
         body.light-mode input,
         body.light-mode select {
             background-color: #f1f5f9 !important;
@@ -219,19 +264,12 @@
         }
         body.light-mode #search-wrapper,
         body.light-mode #theme-toggle-btn,
-        body.light-mode #search-toggle-btn,
-        body.light-mode .category-btn:not(.active-cat) {
+        body.light-mode #search-toggle-btn {
             background-color: #ffffff !important;
             border-color: #cbd5e1 !important;
             color: #0f172a !important;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
         }
-        body.light-mode .cat-pod.active-cat {
-            background: rgba(255, 85, 0, 0.10) !important;
-            border-color: rgba(249, 115, 22, 0.45) !important;
-            box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.2), 0 4px 18px rgba(249, 115, 22, 0.15) !important;
-        }
-        body.light-mode .cat-pod.active-cat .pod-label { color: #b45309 !important; }
         body.light-mode #cart-drawer-backdrop > div,
         body.light-mode #item-details-modal > div {
             background-color: #ffffff !important;
@@ -293,8 +331,8 @@
     </div>
 
     <!-- ================= 1. DINE-IN / TAKE-OUT SELECTION POPUP MODAL ================= -->
-    <div id="dining-option-modal" class="fixed inset-0 z-50 glass-backdrop flex items-center justify-center p-4">
-        <div class="glass-panel glass-panel-accent rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-6 modal-pop relative">
+    <div id="dining-option-modal" class="fixed inset-0 z-50 glass-backdrop flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-panel glass-panel-accent rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-6 modal-pop relative overflow-hidden scale-95 opacity-0 transition-all duration-300">
             <a href="{% url 'customer_portal:kiosk_welcome' %}" class="absolute right-5 top-5 w-9 h-9 rounded-full bg-white/5 hover:bg-red-500/20 text-brand-slate hover:text-red-400 border border-white/10 flex items-center justify-center transition active:scale-95" title="Exit Kiosk">
                 <i class="fa-solid fa-xmark text-sm font-black"></i>
             </a>
@@ -312,11 +350,11 @@
                     <span class="font-black text-sm sm:text-base text-white group-hover:text-brand-orange transition uppercase tracking-wider">Dine-In</span>
                 </button>
 
-                <button onclick="setDiningOption('Take-Out')" class="group p-5 rounded-2xl bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange transition active:scale-95 flex flex-col items-center justify-center gap-3">
-                    <div class="w-16 h-16 rounded-2xl bg-brand-orange/10 text-brand-orange flex items-center justify-center text-3xl group-hover:bg-brand-orange group-hover:text-white transition">
+                <button onclick="setDiningOption('Take-Out')" class="group p-5 rounded-2xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500 transition active:scale-95 flex flex-col items-center justify-center gap-3">
+                    <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-3xl group-hover:bg-emerald-500 group-hover:text-white transition">
                         <i class="fa-solid fa-bag-shopping"></i>
                     </div>
-                    <span class="font-black text-sm sm:text-base text-white group-hover:text-brand-orange transition uppercase tracking-wider">Take-Out</span>
+                    <span class="font-black text-sm sm:text-base text-white group-hover:text-emerald-400 transition uppercase tracking-wider">Take-Out</span>
                 </button>
             </div>
         </div>
@@ -364,7 +402,7 @@
                     <!-- Slide 3 -->
                     <div class="w-1/3 h-full shrink-0 bg-gradient-to-r from-blue-600/30 via-brand-dark to-black p-4 sm:p-6 md:p-8 flex items-center justify-between relative overflow-hidden">
                         <div class="space-y-1 max-w-xl z-10 flex items-center gap-4 sm:gap-6">
-                            <img src="{% static 'Rider.png' %}" alt="Rider" class="h-24 sm:h-32 md:h-40 w-auto object-contain shrink-0 drop-shadow-lg -mb-4 sm:-mb-6 md:-mb-8">
+                            <img src="{% static 'Rider.png' %}" alt="Delivery Personnel" class="h-24 sm:h-32 md:h-40 w-auto object-contain shrink-0 drop-shadow-lg -mb-4 sm:-mb-6 md:-mb-8">
                             <div class="space-y-1">
                                 <span class="bg-blue-500 text-white text-[10px] sm:text-xs font-black uppercase px-2.5 py-1 rounded-md tracking-wider">Join Our Team</span>
                                 <h2 class="text-base sm:text-xl md:text-3xl font-black text-white leading-tight">Looking for a part-time inside campus?</h2>
@@ -394,9 +432,10 @@
                 </div>
                 <div id="brand-text-container" class="transition-all duration-300">
                     <h1 class="text-xs sm:text-base font-black text-white leading-tight">Welcome to Canteen Express!</h1>
-                    <p class="text-[8px] sm:text-xs text-brand-orange font-bold uppercase tracking-wider flex items-center gap-1.5">
-                        <span id="dining-mode-badge" class="bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded-md border border-brand-orange/30">Dine-In</span>
-                    </p>
+                    <button type="button" onclick="toggleDiningOption()" class="mt-0 flex items-center gap-1.5 group" title="Switch dining option">
+                        <span id="dining-mode-badge" class="px-2 py-0.5 rounded-md border text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all duration-150">Dine-In</span>
+                        <i class="fa-solid fa-repeat text-[8px] transition-colors duration-150"></i>
+                    </button>
                 </div>
             </div>
 
@@ -411,8 +450,13 @@
                         id="search-input" 
                         oninput="filterItems()" 
                         placeholder="Search menu..." 
-                        class="w-full bg-transparent border-0 pl-1 pr-3 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
+                        class="w-full min-w-0 bg-transparent border-0 pl-1 pr-1 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
                     >
+                    <button type="button" id="search-clear-btn" onclick="clearSearchInput(event)" aria-label="Clear search" title="Clear search"
+                            style="display: none;"
+                            class="w-6 h-6 shrink-0 mr-1.5 rounded-full bg-white/10 hover:bg-white/20 text-brand-slate hover:text-white items-center justify-center transition active:scale-95">
+                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                    </button>
                 </div>
 
                 <!-- Order History / Activity Log -->
@@ -436,77 +480,100 @@
 
 
     <!-- ================= MAIN LAYOUT ================= -->
-    <div class="flex-1 max-w-7xl w-full mx-auto flex overflow-hidden min-h-0 p-2 sm:p-3 gap-3">
+    <div class="flex-1 max-w-7xl w-full mx-auto flex flex-col min-h-0 overflow-visible p-2 sm:p-3 gap-2">
 
-        <aside class="w-20 sm:w-28 flex-shrink-0 flex flex-col gap-2 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
-            <button onclick="selectCategory('all', this)" class="category-btn active-cat cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
-                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-utensils"></i></span>
-                <span class="pod-label text-[10px] font-black leading-tight mt-1.5">All Items</span>
-            </button>
-
-            {% for cat in categories %}
-            <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
-                <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl">
-                    {% if 'ulam' in cat.name|lower %}
-                        <i class="fa-solid fa-drumstick-bite"></i>
-                    {% elif 'pasta' in cat.name|lower or 'noodle' in cat.name|lower %}
-                        <svg class="w-6 h-6 text-current" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M3.5 11h17a0.5 0.5 0 0 1 0.5 0.5 8 8 0 0 1-8 8h-3a8 8 0 0 1-8-8 0.5 0.5 0 0 1 0.5-0.5z"/>
-                            <rect x="9" y="5" width="1.5" height="6" rx="0.75"/>
-                            <rect x="12" y="4" width="1.5" height="7" rx="0.75"/>
-                            <rect x="15" y="6" width="1.5" height="5" rx="0.75"/>
-                            <line x1="6" y1="5" x2="20" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <line x1="6" y1="7" x2="19" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    {% elif 'instant' in cat.name|lower %}
-                        <i class="fa-solid fa-mug-hot"></i>
-                    {% elif 'pastry' in cat.name|lower or 'bakery' in cat.name|lower %}
-                        <i class="fa-solid fa-bread-slice"></i>
-                    {% elif 'kakanin' in cat.name|lower %}
-                        <i class="fa-solid fa-plate-wheat"></i>
-                    {% elif 'candies' in cat.name|lower %}
-                        <i class="fa-solid fa-candy-cane"></i>
-                    {% elif 'add' in cat.name|lower or 'addon' in cat.name|lower or 'extra' in cat.name|lower %}
-                        <i class="fa-solid fa-circle-plus"></i>
-                    {% elif 'rice' in cat.name|lower %}
-                        <i class="fa-solid fa-bowl-rice"></i>
-                    {% elif 'biscuit' in cat.name|lower %}
-                        <i class="fa-solid fa-cookie"></i>
-                    {% elif 'beverage' in cat.name|lower or 'drink' in cat.name|lower %}
-                        <i class="fa-solid fa-bottle-water"></i>
-                    {% elif 'meryenda' in cat.name|lower %}
-                        <i class="fa-solid fa-burger"></i>
-                    {% elif 'diet' in cat.name|lower %}
-                        <i class="fa-solid fa-heart-pulse"></i>
-                    {% else %}
-                        <i class="fa-solid fa-bowl-food"></i>
-                    {% endif %}
-                </span>
-                <span class="pod-label text-[10px] font-bold leading-tight mt-1.5 line-clamp-1">{{ cat.name }}</span>
-            </button>
-            {% endfor %}
-
-        </aside>
-
-        <main class="flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar space-y-3 pr-1">
-            <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
-                <h2 id="category-heading" class="text-sm sm:text-lg font-black text-white uppercase tracking-wider">All Items</h2>
-                <span id="items-count-indicator" class="text-xs text-brand-slate font-bold">Showing items</span>
+        <div class="shrink-0 flex items-center justify-between gap-3">
+            <div class="relative" id="category-inline-wrapper">
+                <button onclick="toggleCategoryMenu()" id="category-toggle-btn" class="group flex items-center gap-2 px-3 h-9 rounded-xl bg-gradient-to-r from-brand-orange to-orange-600 border border-orange-400/70 shadow-[0_12px_34px_-14px_rgba(249,115,22,0.95)] hover:brightness-110 active:scale-95 transition-all duration-150 ease-out shrink-0">
+                    <span class="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-bars text-white text-[10px]"></i>
+                    </span>
+                    <span id="active-category-display" class="text-white font-bold text-[10px] uppercase tracking-[0.14em] max-w-[160px] truncate">Categories</span>
+                    <i class="fa-solid fa-chevron-down text-white text-[7px] ml-1 transition-transform duration-150" id="category-chevron"></i>
+                </button>
+                <div id="category-expand-panel" class="absolute top-full left-0 mt-1 flex flex-col gap-0.5 p-1 rounded-xl bg-black/80 backdrop-blur-xl border border-white/12 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.95)] opacity-0 -translate-y-2 pointer-events-none transition-all duration-200 ease-out origin-top-left w-[190px] max-h-[60vh] overflow-y-auto no-scrollbar z-50">
+                    <button onclick="selectCategory('all', this, true)" class="category-float-btn flex items-center gap-2 px-2 h-9 rounded-lg transition-all duration-150 active:scale-[0.98] w-full text-left">
+                        <span class="cat-icon w-6 h-6 rounded-md bg-white/10 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-utensils text-white/90 text-[10px]"></i>
+                        </span>
+                        <span class="text-white/90 font-medium text-[10px] leading-none truncate">All Items</span>
+                    </button>
+                    <div class="h-px bg-white/10 my-0.5 mx-1"></div>
+                    {% for cat in categories %}
+                    <button onclick="selectCategory('{{ cat.name|escapejs }}', this, true)" class="category-float-btn flex items-center gap-2 px-2 h-9 rounded-lg transition-all duration-150 active:scale-[0.98] w-full text-left">
+                        <span class="cat-icon w-6 h-6 rounded-md bg-white/10 flex items-center justify-center shrink-0">
+                            {% if 'ulam' in cat.name|lower %}
+                                <i class="fa-solid fa-drumstick-bite text-white/90 text-[10px]"></i>
+                            {% elif 'pasta' in cat.name|lower or 'noodle' in cat.name|lower %}
+                                <svg class="w-3 h-3 text-white/90" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M3.5 11h17a0.5 0.5 0 0 1 0.5 0.5 8 8 0 0 1-8 8h-3a8 8 0 0 1-8-8 0.5 0.5 0 0 1 0.5-0.5z"/>
+                                    <rect x="9" y="5" width="1.5" height="6" rx="0.75"/>
+                                    <rect x="12" y="4" width="1.5" height="7" rx="0.75"/>
+                                    <rect x="15" y="6" width="1.5" height="5" rx="0.75"/>
+                                    <line x1="6" y1="5" x2="20" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <line x1="6" y1="7" x2="19" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            {% elif 'instant' in cat.name|lower %}
+                                <i class="fa-solid fa-mug-hot text-white/90 text-[10px]"></i>
+                            {% elif 'pastry' in cat.name|lower or 'bakery' in cat.name|lower %}
+                                <i class="fa-solid fa-bread-slice text-white/90 text-[10px]"></i>
+                            {% elif 'kakanin' in cat.name|lower %}
+                                <i class="fa-solid fa-plate-wheat text-white/90 text-[10px]"></i>
+                            {% elif 'candies' in cat.name|lower %}
+                                <i class="fa-solid fa-candy-cane text-white/90 text-[10px]"></i>
+                            {% elif 'add' in cat.name|lower or 'addon' in cat.name|lower or 'extra' in cat.name|lower %}
+                                <i class="fa-solid fa-circle-plus text-white/90 text-[10px]"></i>
+                            {% elif 'rice' in cat.name|lower %}
+                                <i class="fa-solid fa-bowl-rice text-white/90 text-[10px]"></i>
+                            {% elif 'biscuit' in cat.name|lower %}
+                                <i class="fa-solid fa-cookie text-white/90 text-[10px]"></i>
+                            {% elif 'beverage' in cat.name|lower or 'drink' in cat.name|lower %}
+                                <i class="fa-solid fa-bottle-water text-white/90 text-[10px]"></i>
+                            {% elif 'meryenda' in cat.name|lower %}
+                                <i class="fa-solid fa-burger text-white/90 text-[10px]"></i>
+                            {% elif 'diet' in cat.name|lower %}
+                                <i class="fa-solid fa-heart-pulse text-white/90 text-[10px]"></i>
+                            {% else %}
+                                <i class="fa-solid fa-bowl-food text-white/90 text-[10px]"></i>
+                            {% endif %}
+                        </span>
+                        <span class="text-white/90 font-medium text-[10px] leading-none truncate">{{ cat.name }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
             </div>
+            <span id="items-count-indicator" class="text-[11px] text-brand-slate font-semibold bg-white/5 border border-white/10 rounded-full px-3 py-1">Showing items</span>
+        </div>
 
-            <section id="menu-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3 pb-12">
+        <main class="flex-1 flex flex-col min-w-0 overflow-y-auto no-scrollbar">
+            <section id="menu-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-2.5 pb-2 flex-1 content-start">
             </section>
         </main>
 
     </div>
+
+    <!-- Click outside to close category menu -->
+    <script>
+        document.addEventListener('click', function(e) {
+            const container = document.getElementById('category-inline-wrapper');
+            if (container && !container.contains(e.target)) {
+                closeCategoryMenu();
+            }
+        });
+
+        // Close on Escape for keyboard users.
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeCategoryMenu();
+        });
+    </script>
 
 
     <!-- ================= FOOTER BAR ================= -->
     <footer class="shrink-0 glass-panel glass-panel-accent border-t border-white/10 p-3 sm:p-4 pb-[max(env(safe-area-inset-bottom),12px)] shadow-2xl z-20">
         <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
-            <div class="text-left">
-                <span class="text-[10px] sm:text-xs text-brand-slate uppercase font-bold block">Total Amount</span>
+            <div class="text-left transition-all duration-200" id="cart-total-wrapper">
+                <span class="text-[10px] sm:text-xs text-brand-slate uppercase font-bold block">TOTAL AMOUNT</span>
                 <span id="cart-total" class="text-xl sm:text-3xl font-black text-brand-orange">₱0.00</span>
             </div>
 
@@ -842,9 +909,58 @@ let pendingBannerTimer = null;
 // ================= DINING OPTION CONTROLLER =================
 function setDiningOption(option) {
     diningOption = option;
-    document.getElementById('dining-mode-badge').innerText = option;
-    document.getElementById('drawer-dining-mode').innerText = option;
-    document.getElementById('dining-option-modal').classList.add('hidden');
+    const badge = document.getElementById('dining-mode-badge');
+    const repeatIcon = document.querySelector('#brand-text-container button i');
+    if (badge) {
+        badge.innerText = option;
+        if (option === 'Take-Out') {
+            badge.className = 'px-2 py-0.5 rounded-md border text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all duration-150 bg-emerald-500/20 text-emerald-400 border-emerald-500/40 group-hover:bg-emerald-500/30 group-hover:border-emerald-500/60';
+            if (repeatIcon) {
+                repeatIcon.className = 'fa-solid fa-repeat text-[8px] text-emerald-400/70 group-hover:text-emerald-400 transition-colors duration-150';
+            }
+        } else {
+            badge.className = 'px-2 py-0.5 rounded-md border text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all duration-150 bg-brand-orange/20 text-brand-orange border-brand-orange/30 group-hover:bg-brand-orange/30 group-hover:border-brand-orange/50';
+            if (repeatIcon) {
+                repeatIcon.className = 'fa-solid fa-repeat text-[8px] text-brand-orange/70 group-hover:text-brand-orange transition-colors duration-150';
+            }
+        }
+    }
+    const drawerBadge = document.getElementById('drawer-dining-mode');
+    if (drawerBadge) drawerBadge.innerText = option;
+    closeDiningOptionModal();
+}
+
+function openDiningOptionModal() {
+    const modal = document.getElementById('dining-option-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+    const card = modal.querySelector('.modal-pop');
+    if (card) {
+        card.classList.remove('scale-95', 'opacity-0');
+        card.classList.add('scale-100', 'opacity-100');
+    }
+    modal.classList.add('opacity-100');
+}
+
+function closeDiningOptionModal() {
+    const modal = document.getElementById('dining-option-modal');
+    if (!modal) return;
+    const card = modal.querySelector('.modal-pop');
+    if (card) {
+        card.classList.remove('scale-100', 'opacity-100');
+        card.classList.add('scale-95', 'opacity-0');
+    }
+    modal.classList.remove('opacity-100');
+    modal.classList.add('opacity-0', 'pointer-events-none');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function toggleDiningOption() {
+    const current = diningOption || 'Dine-In';
+    const next = current === 'Dine-In' ? 'Take-Out' : 'Dine-In';
+    setDiningOption(next);
 }
 
 // ================= LIVE MENU SYNC & RENDERING =================
@@ -863,88 +979,209 @@ async function fetchLatestMenu() {
                 stock: (item.stock === null || item.stock === undefined) ? -1 : parseInt(item.stock, 10),
                 img: item.img || item.image || item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
             }));
-            renderMenu();
+            renderMenu(true);
         }
     } catch (err) {
         console.error("Error fetching live menu updates:", err);
     }
 }
 
-function renderMenu() {
+function renderMenu(skipAnimation = false) {
     const grid = document.getElementById('menu-grid');
     if (!grid) return;
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     
     const searchInput = document.getElementById('search-input');
-    const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
-    grid.innerHTML = '';
+    const searchQuery = normalizeSearchText(searchInput ? searchInput.value : '');
+    updateSearchClearButton();
 
-    const filteredItems = menuData.filter(item => {
-        const itemCat = String(item.category || '').toLowerCase();
-        const activeCat = String(activeCategory).toLowerCase();
-        
-        const matchesCategory = (activeCat === 'all' || itemCat.includes(activeCat) || activeCat.includes(itemCat) || !itemCat);
-        const matchesSearch = item.name.toLowerCase().includes(searchQuery) || item.desc.toLowerCase().includes(searchQuery);
-        return matchesCategory && matchesSearch;
-    });
+    if (skipAnimation || prefersReducedMotion) {
+        grid.style.transition = 'none';
+        grid.innerHTML = '';
 
-    document.getElementById('items-count-indicator').innerText = `Showing ${filteredItems.length} items`;
+        const filteredItems = getFilteredMenuItems();
 
-    if (filteredItems.length === 0) {
-        grid.innerHTML = `
-            <div class="col-span-full text-center py-12 text-brand-slate">
-                <i class="fa-solid fa-utensils text-4xl mb-2 opacity-40"></i>
-                <p class="text-sm font-semibold">No food items found in this category.</p>
-            </div>`;
+        document.getElementById('items-count-indicator').innerText = `Showing ${filteredItems.length} items`;
+
+        if (filteredItems.length === 0) {
+            grid.innerHTML = `
+                <div class="col-span-full text-center py-12 text-brand-slate">
+                    <i class="fa-solid fa-utensils text-4xl mb-2 opacity-40"></i>
+                    <p class="text-sm font-semibold">${searchQuery ? 'No items match your search.' : 'No food items found in this category.'}</p>
+                </div>`;
+            grid.style.opacity = '1';
+            grid.style.transform = 'translateY(0)';
+            return;
+        }
+
+        filteredItems.forEach((item) => {
+            const badgeHTML = item.badge 
+                ? `<span class="absolute top-2 right-2 bg-brand-dark/90 backdrop-blur-md border border-white/10 text-brand-amber text-[9px] font-black uppercase px-2 py-0.5 rounded-md">${item.badge}</span>` 
+                : '';
+
+            const soldOut = item.stock === 0;
+            const lowStock = item.stock !== -1 && item.stock > 0 && item.stock <= 5;
+            const stockBadgeHTML = soldOut
+                ? `<span class="absolute top-2 left-2 bg-red-500/95 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md">Sold Out</span>`
+                : (lowStock ? `<span class="absolute top-2 left-2 bg-amber-500/95 text-black text-[9px] font-black uppercase px-2 py-0.5 rounded-md">${item.stock} left</span>` : '');
+
+            const card = document.createElement('div');
+            card.className = "bg-brand-card rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group cursor-pointer shadow-lg" + (soldOut ? " opacity-60" : "");
+            card.onclick = () => {
+                if (soldOut) {
+                    kioskToast('This item is sold out.');
+                    return;
+                }
+                openItemModal(item.id);
+            };
+            card.innerHTML = `
+                <div class="relative h-36 w-full overflow-hidden bg-white/5 flex items-center justify-center p-3">
+                    <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-300">
+                    ${badgeHTML}
+                    ${stockBadgeHTML}
+                    <span class="absolute bottom-2 right-2 w-7 h-7 rounded-xl bg-white/5 group-hover:bg-brand-orange/25 group-hover:text-brand-orange text-brand-slate flex items-center justify-center transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg></span>
+                </div>
+                <div class="p-3 flex-1 flex flex-col justify-between gap-1.5">
+                    <div>
+                        <span class="text-[9px] font-extrabold text-brand-orange uppercase tracking-wider">${item.category}</span>
+                        <h3 class="text-xs sm:text-sm font-black text-white group-hover:text-brand-orange transition line-clamp-1 mt-0.5">${item.name}</h3>
+                        <p class="text-[10px] text-brand-slate line-clamp-1 mt-0.5">${item.desc || 'Freshly prepared daily.'}</p>
+                    </div>
+                    <div class="pt-1.5 border-t border-white/5 flex items-center justify-between gap-2">
+                        <span class="text-sm font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
+                        ${soldOut ? '<span class="text-[9px] font-black text-red-400 uppercase tracking-wider">Sold Out</span>' : `
+                        <button type="button" onclick="event.stopPropagation(); quickAddToCart(${item.id})" class="w-8 h-8 rounded-xl bg-brand-orange hover:bg-orange-600 text-white flex items-center justify-center transition active:scale-95 shadow cursor-pointer" title="Quick Add">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                        </button>`}
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+
+        grid.style.opacity = '1';
+        grid.style.transform = 'translateY(0)';
         return;
     }
+    
+    // Animate out
+    grid.style.transition = 'opacity 140ms ease, transform 140ms ease';
+    grid.style.opacity = '0';
+    grid.style.transform = 'translateY(6px)';
 
-    filteredItems.forEach(item => {
-        const badgeHTML = item.badge 
-            ? `<span class="absolute top-2 right-2 bg-brand-dark/90 backdrop-blur-md border border-white/10 text-brand-amber text-[9px] font-black uppercase px-2 py-0.5 rounded-md">${item.badge}</span>` 
-            : '';
+    setTimeout(() => {
+        grid.innerHTML = '';
 
-        const soldOut = item.stock === 0;
-        const lowStock = item.stock !== -1 && item.stock > 0 && item.stock <= 5;
-        const stockBadgeHTML = soldOut
-            ? `<span class="absolute top-2 left-2 bg-red-500/95 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md">Sold Out</span>`
-            : (lowStock ? `<span class="absolute top-2 left-2 bg-amber-500/95 text-black text-[9px] font-black uppercase px-2 py-0.5 rounded-md">${item.stock} left</span>` : '');
+        const filteredItems = getFilteredMenuItems();
 
-        const card = document.createElement('div');
-        card.className = "bg-brand-card rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group cursor-pointer shadow-lg" + (soldOut ? " opacity-60" : "");
-        card.onclick = () => {
-            if (soldOut) {
-                kioskToast('This item is sold out.');
-                return;
-            }
-            openItemModal(item.id);
-        };
-        card.innerHTML = `
-            <div class="relative h-36 w-full overflow-hidden bg-white/5 flex items-center justify-center p-3">
-                <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-300">
-                ${badgeHTML}
-                ${stockBadgeHTML}
-                <span class="absolute bottom-2 right-2 w-7 h-7 rounded-xl bg-white/5 group-hover:bg-brand-orange/25 group-hover:text-brand-orange text-brand-slate flex items-center justify-center transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg></span>
-            </div>
-            <div class="p-3 flex-1 flex flex-col justify-between gap-1.5">
-                <div>
-                    <span class="text-[9px] font-extrabold text-brand-orange uppercase tracking-wider">${item.category}</span>
-                    <h3 class="text-xs sm:text-sm font-black text-white group-hover:text-brand-orange transition line-clamp-1 mt-0.5">${item.name}</h3>
-                    <p class="text-[10px] text-brand-slate line-clamp-1 mt-0.5">${item.desc || 'Freshly prepared daily.'}</p>
+        document.getElementById('items-count-indicator').innerText = `Showing ${filteredItems.length} items`;
+
+        if (filteredItems.length === 0) {
+            grid.innerHTML = `
+                <div class="col-span-full text-center py-12 text-brand-slate">
+                    <i class="fa-solid fa-utensils text-4xl mb-2 opacity-40"></i>
+                    <p class="text-sm font-semibold">${searchQuery ? 'No items match your search.' : 'No food items found in this category.'}</p>
+                </div>`;
+            grid.style.opacity = '1';
+            grid.style.transform = 'translateY(0)';
+            return;
+        }
+
+        filteredItems.forEach((item, idx) => {
+            const badgeHTML = item.badge 
+                ? `<span class="absolute top-2 right-2 bg-brand-dark/90 backdrop-blur-md border border-white/10 text-brand-amber text-[9px] font-black uppercase px-2 py-0.5 rounded-md">${item.badge}</span>` 
+                : '';
+
+            const soldOut = item.stock === 0;
+            const lowStock = item.stock !== -1 && item.stock > 0 && item.stock <= 5;
+            const stockBadgeHTML = soldOut
+                ? `<span class="absolute top-2 left-2 bg-red-500/95 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md">Sold Out</span>`
+                : (lowStock ? `<span class="absolute top-2 left-2 bg-amber-500/95 text-black text-[9px] font-black uppercase px-2 py-0.5 rounded-md">${item.stock} left</span>` : '');
+
+            const card = document.createElement('div');
+            card.className = "bg-brand-card rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-brand-orange/50 transition group cursor-pointer shadow-lg" + (soldOut ? " opacity-60" : "");
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(10px)';
+            card.style.transition = `opacity 200ms ease ${idx * 20}ms, transform 200ms ease ${idx * 20}ms`;
+            card.onclick = () => {
+                if (soldOut) {
+                    kioskToast('This item is sold out.');
+                    return;
+                }
+                openItemModal(item.id);
+            };
+            card.innerHTML = `
+                <div class="relative h-36 w-full overflow-hidden bg-white/5 flex items-center justify-center p-3">
+                    <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'}" alt="${item.name}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="max-h-full max-w-full object-contain group-hover:scale-105 transition duration-300">
+                    ${badgeHTML}
+                    ${stockBadgeHTML}
+                    <span class="absolute bottom-2 right-2 w-7 h-7 rounded-xl bg-white/5 group-hover:bg-brand-orange/25 group-hover:text-brand-orange text-brand-slate flex items-center justify-center transition"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg></span>
                 </div>
-                <div class="pt-1.5 border-t border-white/5 flex items-center justify-between gap-2">
-                    <span class="text-sm font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
-                    ${soldOut ? '<span class="text-[9px] font-black text-red-400 uppercase tracking-wider">Sold Out</span>' : `
-                    <button type="button" onclick="event.stopPropagation(); quickAddToCart(${item.id})" class="w-8 h-8 rounded-xl bg-brand-orange hover:bg-orange-600 text-white flex items-center justify-center transition active:scale-95 shadow cursor-pointer" title="Quick Add">
-                        <i class="fa-solid fa-plus text-xs"></i>
-                    </button>`}
+                <div class="p-3 flex-1 flex flex-col justify-between gap-1.5">
+                    <div>
+                        <span class="text-[9px] font-extrabold text-brand-orange uppercase tracking-wider">${item.category}</span>
+                        <h3 class="text-xs sm:text-sm font-black text-white group-hover:text-brand-orange transition line-clamp-1 mt-0.5">${item.name}</h3>
+                        <p class="text-[10px] text-brand-slate line-clamp-1 mt-0.5">${item.desc || 'Freshly prepared daily.'}</p>
+                    </div>
+                    <div class="pt-1.5 border-t border-white/5 flex items-center justify-between gap-2">
+                        <span class="text-sm font-black text-brand-orange">₱${item.price.toFixed(2)}</span>
+                        ${soldOut ? '<span class="text-[9px] font-black text-red-400 uppercase tracking-wider">Sold Out</span>' : `
+                        <button type="button" onclick="event.stopPropagation(); quickAddToCart(${item.id})" class="w-8 h-8 rounded-xl bg-brand-orange hover:bg-orange-600 text-white flex items-center justify-center transition active:scale-95 shadow cursor-pointer" title="Quick Add">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                        </button>`}
+                    </div>
                 </div>
-            </div>
-        `;
-        grid.appendChild(card);
-    });
+            `;
+            grid.appendChild(card);
+            requestAnimationFrame(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            });
+        });
+
+        grid.style.opacity = '1';
+        grid.style.transform = 'translateY(0)';
+    }, 140);
 }
 
-function selectCategory(category, element) {
+let isCategoryMenuOpen = false;
+
+function openCategoryMenu() {
+    const panel = document.getElementById('category-expand-panel');
+    if (!panel || isCategoryMenuOpen) return;
+
+    panel.classList.remove('opacity-0', '-translate-y-2', 'pointer-events-none');
+    panel.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+    const chevron = document.getElementById('category-chevron');
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+    isCategoryMenuOpen = true;
+}
+
+function closeCategoryMenu() {
+    const panel = document.getElementById('category-expand-panel');
+    if (!panel || !isCategoryMenuOpen) return;
+
+    panel.classList.add('opacity-0', '-translate-y-2', 'pointer-events-none');
+    panel.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+    const chevron = document.getElementById('category-chevron');
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+    isCategoryMenuOpen = false;
+}
+
+function toggleCategoryMenu() {
+    if (isCategoryMenuOpen) {
+        closeCategoryMenu();
+    } else {
+        openCategoryMenu();
+    }
+    const chevron = document.getElementById('category-chevron');
+    if (chevron) {
+        chevron.style.transform = isCategoryMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+}
+
+function selectCategory(category, element, autoCollapse = false) {
     activeCategory = category;
     
     const titleMap = {
@@ -956,18 +1193,84 @@ function selectCategory(category, element) {
         'dietary': 'Dietary',
         'candies': 'Candies'
     };
-    document.getElementById('category-heading').innerText = titleMap[category] || 'Menu Items';
+    
+    const displayName = category === 'all' ? 'All Items' : (titleMap[category] || category);
 
-    document.querySelectorAll('#category-sidebar .category-btn').forEach(btn => {
-        btn.classList.remove('active-cat');
+    // Button shows menu icon + selected category name.
+    const activeDisplay = document.getElementById('active-category-display');
+    if (activeDisplay) {
+        activeDisplay.innerText = displayName;
+        activeDisplay.title = displayName;
+    }
+
+    // Update floating menu buttons
+    document.querySelectorAll('.category-float-btn').forEach(btn => {
+        btn.classList.remove('active-cat-float');
     });
-    element.classList.add('active-cat');
+    if (element && element.classList.contains('category-float-btn')) {
+        element.classList.add('active-cat-float');
+    }
 
     renderMenu();
+    
+    // Auto-collapse after selecting a category.
+    if (autoCollapse && isCategoryMenuOpen) {
+        setTimeout(closeCategoryMenu, 150);
+    }
 }
 
 function filterItems() {
-    renderMenu();
+    renderMenu(true);
+}
+
+// Search helpers shared by the kiosk and the faculty dashboard: normalise the
+// query, match every typed word anywhere in the item, and keep the inline "x"
+// clear button in sync with the field.
+function normalizeSearchText(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function matchesSearchQuery(item, query) {
+    if (!query) return true;
+    const haystack = normalizeSearchText(
+        `${item.name || ''} ${item.desc || ''} ${item.category || ''}`);
+    return query.split(' ').every(token => haystack.includes(token));
+}
+
+function getFilteredMenuItems() {
+    const searchInput = document.getElementById('search-input');
+    const query = normalizeSearchText(searchInput ? searchInput.value : '');
+    const activeCat = normalizeSearchText(activeCategory);
+    return menuData.filter(item => {
+        // A search query looks across the whole menu; the category filter only
+        // applies while browsing.
+        if (query) return matchesSearchQuery(item, query);
+        const itemCat = normalizeSearchText(item.category);
+        return (activeCat === 'all' || activeCat === 'all items' || !itemCat
+            || itemCat.includes(activeCat) || activeCat.includes(itemCat));
+    });
+}
+
+function updateSearchClearButton() {
+    const input = document.getElementById('search-input');
+    const btn = document.getElementById('search-clear-btn');
+    if (!input || !btn) return;
+    btn.style.display = input.value.length ? 'flex' : 'none';
+}
+
+function clearSearchInput(e) {
+    if (e) e.stopPropagation();
+    const input = document.getElementById('search-input');
+    if (!input) return;
+    input.value = '';
+    input.focus();
+    updateSearchClearButton();
+    filterItems();
 }
 
 // ================= CART DRAWER MANAGEMENT =================
@@ -1076,6 +1379,13 @@ function updateCartUI() {
             </div>`;
         if (nextBtn) nextBtn.disabled = true;
         closeCartDrawer();
+        const cartTotal = document.getElementById('cart-total');
+        if (cartTotal) cartTotal.innerText = '₱0.00';
+        const totalWrapper = document.getElementById('cart-total-wrapper');
+        if (totalWrapper) {
+            totalWrapper.classList.add('opacity-0', 'pointer-events-none');
+        }
+        return;
     } else {
         if (nextBtn) nextBtn.disabled = false;
 
@@ -1295,6 +1605,7 @@ function editPendingOrder() {
     cart = { ...currentPendingOrder.cart };
     diningOption = currentPendingOrder.dining_option;
     setDiningOption(diningOption);
+    closeDiningOptionModal();
 
     updateCartUI();
     closeQueueSlipModal();
@@ -1911,7 +2222,7 @@ function checkPendingOrderOnLoad() {
                     } else {
                         localStorage.removeItem('canteen_pending_order');
                         currentPendingOrder = null;
-                        document.getElementById('dining-option-modal').classList.remove('hidden');
+                        openDiningOptionModal();
                     }
                 })
                 .catch(() => {
@@ -1920,10 +2231,10 @@ function checkPendingOrderOnLoad() {
                 });
         } catch (e) {
             localStorage.removeItem('canteen_pending_order');
-            document.getElementById('dining-option-modal').classList.remove('hidden');
+            openDiningOptionModal();
         }
     } else {
-        document.getElementById('dining-option-modal').classList.remove('hidden');
+        openDiningOptionModal();
     }
 }
 

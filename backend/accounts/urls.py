@@ -21,6 +21,7 @@ urlpatterns = [
     path('logout/delivery/', views.delivery_logout_view, name='delivery_logout'),
     
     path('faculty/location/', views.faculty_location_view, name='faculty_location'),
+    path('faculty/profile/update/', views.faculty_profile_update, name='faculty_profile_update'),
     path('faculty/auth/', views.faculty_auth_view, name='faculty_auth'),
     path('faculty/dashboard/', views.faculty_dashboard_view, name='dashboard'),
     path('faculty/<str:token>/dashboard/', views.faculty_dashboard_view, name='dashboard_hashed'),

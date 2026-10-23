@@ -908,10 +908,10 @@ def create_delivery_staff_view(request):
                     account_status='active',
                     is_active=True
                 )
-                messages.success(request, f"Delivery staff '{username}' created successfully!")
+                messages.success(request, f"Delivery Personnel '{username}' created successfully!")
                 log_activity(
                     request,
-                    action=f"Created rider account: {username}",
+                    action=f"Created Delivery Personnel account: {username}",
                     category=ActivityLog.Category.USER,
                     level=ActivityLog.Level.SUCCESS,
                     target=username,
@@ -938,17 +938,17 @@ def update_delivery_staff_status_view(request, pk):
             rider.account_status = 'held'
             rider.is_active = False
             rider.status_reason = reason or "Put on hold by canteen staff"
-            messages.success(request, f"Rider {rider.username} account held.")
+            messages.success(request, f"Delivery Personnel {rider.username} account held.")
         elif action == 'penalize':
             rider.account_status = 'penalized'
             rider.status_reason = reason or "Penalized by canteen staff"
-            messages.success(request, f"Rider {rider.username} penalized.")
+            messages.success(request, f"Delivery Personnel {rider.username} penalized.")
         elif action == 'toggle_active':
             rider.is_active = not rider.is_active
             rider.account_status = 'active' if rider.is_active else 'inactive'
             if rider.is_active:
                 rider.status_reason = ''
-            messages.success(request, f"Rider {rider.username} status toggled.")
+            messages.success(request, f"Delivery Personnel {rider.username} status toggled.")
         rider.save()
         if action in ('hold', 'penalize', 'toggle_active'):
             verb = {
@@ -958,7 +958,7 @@ def update_delivery_staff_status_view(request, pk):
             }[action]
             log_activity(
                 request,
-                action=f"{verb} rider account: {rider.username}",
+                action=f"{verb} Delivery Personnel account: {rider.username}",
                 category=ActivityLog.Category.USER,
                 level=ActivityLog.Level.DANGER if action in ('hold', 'penalize') else ActivityLog.Level.WARNING,
                 target=rider.username,

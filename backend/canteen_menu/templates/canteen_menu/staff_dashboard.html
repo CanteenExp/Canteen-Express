@@ -293,7 +293,7 @@
                     class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition text-left">
 
                     <i class="fa-solid fa-motorcycle w-5 text-center text-base"></i>
-                    <span>Delivery Staff</span>
+                    <span>Delivery Personnel</span>
                 </button>
 
                 <button
@@ -1223,7 +1223,7 @@
 
 
         <!-- ========================================= -->
-        <!-- 4. DELIVERY STAFF MANAGEMENT -->
+        <!-- 4. DELIVERY PERSONNEL MANAGEMENT -->
         <!-- ========================================= -->
         <div x-show="activeTab === 'deliveries'" class="space-y-6" style="display: none;">
 
@@ -1232,7 +1232,7 @@
                 <div>
 
                     <h2 class="text-xl font-black text-dark-900">
-                        Delivery Staff & Campus Dispatch
+                        Delivery Personnel & Campus Dispatch
                     </h2>
 
                     <p class="text-xs text-gray-500 mt-0.5">
@@ -1246,18 +1246,18 @@
                     class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-5 py-2.5 rounded-2xl text-xs shadow-lg shadow-brand-500/25 transition flex items-center gap-2">
 
                     <i class="fa-solid fa-motorcycle text-sm"></i>
-                    Add Delivery Staff
+                    Add Delivery Personnel
 
                 </button>
 
             </div>
 
 
-            <!-- Delivery Staff Accounts List -->
+            <!-- Delivery Personnel Accounts List -->
             <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 space-y-4">
 
                 <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">
-                    Registered Riders / Delivery Personnel
+                    Registered Delivery Personnel
                 </h3>
 
                 <div class="overflow-x-auto">
@@ -1290,7 +1290,7 @@
                                 </td>
 
                                 <td class="py-3.5 px-3 text-gray-800">
-                                    {{ rider.get_full_name|default:"Rider" }}
+                                    {{ rider.get_full_name|default:"Delivery Personnel" }}
                                 </td>
 
                                 <td class="py-3.5 px-3 text-gray-600">
@@ -1407,7 +1407,7 @@
                             <tr>
 
                                 <td colspan="6" class="py-8 text-center text-gray-400">
-                                    No delivery staff accounts created yet.
+                                    No delivery personnel accounts created yet.
                                 </td>
 
                             </tr>
@@ -1441,7 +1441,7 @@
                                 <th class="py-3 px-3">Delivery ID</th>
                                 <th class="py-3 px-3">Order Number</th>
                                 <th class="py-3 px-3">Location</th>
-                                <th class="py-3 px-3">Assigned Rider</th>
+                                <th class="py-3 px-3">Assigned Delivery Personnel</th>
                                 <th class="py-3 px-3">Proof Photo</th>
                                 <th class="py-3 px-3 text-right">Status</th>
 
@@ -1530,10 +1530,10 @@
 
                 <div>
                     <h2 class="text-xl font-black text-dark-900">
-                        Sales Reports, Analytics & Rider Rankings
+                        Sales Reports, Analytics & Delivery Personnel Rankings
                     </h2>
                     <p class="text-xs text-gray-500 mt-0.5">
-                        Overall and role-separated earnings breakdown (Kiosk, Faculty/Staff, Delivery) & Rider rankings.
+                        Overall and role-separated earnings breakdown (Kiosk, Faculty/Staff, Delivery) & Delivery Personnel rankings.
                     </p>
                 </div>
 
@@ -1544,7 +1544,7 @@
                         <option value="kiosk">Kiosk Sales</option>
                         <option value="faculty">Faculty / Staff Sales</option>
                         <option value="delivery">Delivery Sales</option>
-                        <option value="rankings">Rider Rankings & Leaderboard</option>
+                        <option value="rankings">Delivery Personnel Rankings & Leaderboard</option>
                     </select>
 
                     <div class="relative" x-data="{ exportOpen: false }">
@@ -1645,10 +1645,10 @@
                             <thead class="bg-gray-50 text-gray-500 uppercase font-bold tracking-wider border-b border-gray-200">
                                 <tr>
                                     <th class="p-3">Rank</th>
-                                    <th class="p-3">Rider Name</th>
+                                    <th class="p-3">Delivery Personnel Name</th>
                                     <th class="p-3">Username</th>
                                     <th class="p-3 text-center">Completed Deliveries</th>
-                                    <th class="p-3 text-right">Total Rider Earnings</th>
+                                    <th class="p-3 text-right">Total Delivery Personnel Earnings</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
@@ -2568,7 +2568,7 @@
     </div>
 
 
-    <!-- ADD DELIVERY STAFF MODAL -->
+    <!-- ADD DELIVERY PERSONNEL MODAL -->
     <div
         x-show="showRiderModal"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
@@ -2581,7 +2581,7 @@
             <div class="flex justify-between items-center">
 
                 <h3 class="text-lg font-black text-dark-900">
-                    Create Delivery Staff Account
+                    Create Delivery Personnel Account
                 </h3>
 
                 <button
@@ -2627,7 +2627,7 @@
                         <input
                             type="text"
                             name="first_name"
-                            placeholder="Rider Name"
+                            placeholder="Delivery Personnel Name"
                             class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
 
                     </div>

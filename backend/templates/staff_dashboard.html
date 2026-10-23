@@ -65,7 +65,7 @@
                     :class="activeTab === 'deliveries' ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/25' : 'text-gray-400 hover:text-white hover:bg-white/5'"
                     class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition text-left">
                     <i class="fa-solid fa-motorcycle w-5 text-center text-base"></i>
-                    <span>Delivery Staff</span>
+                    <span>Delivery Personnel</span>
                 </button>
 
                 <button @click="activeTab = 'feedback'" 
@@ -525,21 +525,21 @@
             </div>
         </div>
 
-        <!-- 4. TAB: DELIVERY STAFF MANAGEMENT -->
+        <!-- 4. TAB: DELIVERY PERSONNEL MANAGEMENT -->
         <div x-show="activeTab === 'deliveries'" class="space-y-6" style="display: none;">
             <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 class="text-xl font-black text-dark-900">Delivery Staff & Campus Dispatch</h2>
+                    <h2 class="text-xl font-black text-dark-900">Delivery Personnel & Campus Dispatch</h2>
                     <p class="text-xs text-gray-500 mt-0.5">Manage delivery personnel accounts and monitor live campus dispatches.</p>
                 </div>
                 <button @click="showRiderModal = true" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-5 py-2.5 rounded-2xl text-xs shadow-lg shadow-brand-500/25 transition flex items-center gap-2">
-                    <i class="fa-solid fa-motorcycle text-sm"></i> Add Delivery Staff
+                    <i class="fa-solid fa-motorcycle text-sm"></i> Add Delivery Personnel
                 </button>
             </div>
 
-            <!-- Delivery Staff Accounts List -->
+            <!-- Delivery Personnel Accounts List -->
             <div class="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 space-y-4">
-                <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Registered Riders / Delivery Personnel</h3>
+                <h3 class="text-sm font-black text-dark-900 uppercase tracking-wider">Registered Delivery Personnel</h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead>
@@ -556,7 +556,7 @@
                             {% for rider in delivery_staff_list %}
                             <tr class="hover:bg-gray-50 transition" data-rider-id="{{ rider.id }}">
                                 <td class="py-3.5 px-3 font-black text-dark-900">{{ rider.username }}</td>
-                                <td class="py-3.5 px-3 text-gray-800">{{ rider.get_full_name|default:"Rider" }}</td>
+                                <td class="py-3.5 px-3 text-gray-800">{{ rider.get_full_name|default:"Delivery Personnel" }}</td>
                                 <td class="py-3.5 px-3 text-gray-600">{{ rider.phone|default:"N/A" }}</td>
                                 <td class="py-3.5 px-3 text-gray-600">{{ rider.vehicle_plate|default:"N/A" }}</td>
                                 <td class="py-3.5 px-3">
@@ -592,7 +592,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="6" class="py-8 text-center text-gray-400">No delivery staff accounts created yet.</td>
+                                <td colspan="6" class="py-8 text-center text-gray-400">No delivery personnel accounts created yet.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -610,7 +610,7 @@
                                 <th class="py-3 px-3">Delivery ID</th>
                                 <th class="py-3 px-3">Order Number</th>
                                 <th class="py-3 px-3">Location</th>
-                                <th class="py-3 px-3">Assigned Rider</th>
+                                <th class="py-3 px-3">Assigned Delivery Personnel</th>
                                 <th class="py-3 px-3">Proof Photo</th>
                                 <th class="py-3 px-3 text-right">Status</th>
                             </tr>
@@ -656,7 +656,7 @@
             <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div>
                     <h2 class="text-xl font-black text-dark-900">Sales Reports & Analytics</h2>
-                    <p class="text-xs text-gray-500 mt-0.5">Overall and role-separated earnings breakdown (Kiosk, Faculty/Staff, Delivery) & Rider rankings.</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Overall and role-separated earnings breakdown (Kiosk, Faculty/Staff, Delivery) & Delivery Personnel rankings.</p>
                 </div>
                 <!-- Role Filter Dropdown -->
                 <div class="flex flex-wrap items-center gap-3">
@@ -665,7 +665,7 @@
                         <option value="kiosk">Kiosk Sales</option>
                         <option value="faculty">Faculty / Staff Sales</option>
                         <option value="delivery">Delivery Sales</option>
-                        <option value="rankings">Rider Rankings & Leaderboard</option>
+                        <option value="rankings">Delivery Personnel Rankings & Leaderboard</option>
                     </select>
 
                     <div class="flex justify-end">
@@ -760,10 +760,10 @@
                             <thead class="bg-gray-50 text-gray-500 uppercase font-bold tracking-wider border-b border-gray-200">
                                 <tr>
                                     <th class="p-3">Rank</th>
-                                    <th class="p-3">Rider Name</th>
+                                    <th class="p-3">Delivery Personnel Name</th>
                                     <th class="p-3">Username</th>
                                     <th class="p-3 text-center">Completed Deliveries</th>
-                                    <th class="p-3 text-right">Total Rider Earnings</th>
+                                    <th class="p-3 text-right">Total Delivery Personnel Earnings</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
@@ -1161,11 +1161,11 @@
         </div>
     </div>
 
-    <!-- 3. ADD DELIVERY STAFF MODAL -->
+    <!-- 3. ADD DELIVERY PERSONNEL MODAL -->
     <div x-show="showRiderModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" style="display: none;">
         <div @click.away="showRiderModal = false" class="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl border border-gray-100">
             <div class="flex justify-between items-center">
-                <h3 class="text-lg font-black text-dark-900">Create Delivery Staff Account</h3>
+                <h3 class="text-lg font-black text-dark-900">Create Delivery Personnel Account</h3>
                 <button @click="showRiderModal = false" class="text-gray-400 hover:text-gray-600 text-lg font-bold">&times;</button>
             </div>
             <form method="POST" action="{% url 'canteen_menu:create_delivery_staff' %}" class="space-y-4">
@@ -1177,7 +1177,7 @@
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 mb-1">Full Name</label>
-                        <input type="text" name="first_name" placeholder="Rider Name" class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <input type="text" name="first_name" placeholder="Delivery Personnel Name" class="w-full px-3.5 py-2.5 border rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
                     </div>
                 </div>
                 <div>

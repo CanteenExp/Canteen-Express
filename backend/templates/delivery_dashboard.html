@@ -14,7 +14,7 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delivery Rider Hub - Canteen Express</title>
+    <title>Delivery Personnel Hub - Canteen Express</title>
     <link rel="stylesheet" href="{% static 'css/rider.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -112,7 +112,7 @@
                         <i class="fa-solid fa-motorcycle"></i>
                     </div>
                     <div class="min-w-0">
-                        <h1 class="text-sm sm:text-lg font-black text-white leading-tight truncate">Delivery Rider Hub</h1>
+                        <h1 class="text-sm sm:text-lg font-black text-white leading-tight truncate">Delivery Personnel Hub</h1>
                         <p class="text-[11px] font-bold uppercase tracking-wider mt-0.5"
                            :class="isAvailable ? 'text-green-400' : 'text-zinc-500'">
                             <span x-text="isAvailable ? 'Online & Ready' : 'Offline'"></span>
@@ -307,7 +307,7 @@
                                     <span class="font-bold text-zinc-300">₱{{ d.order.total_amount }}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
-                                    <span>Delivery Fee (Rider)</span>
+                                    <span>Delivery Fee (Delivery Personnel)</span>
                                     <span class="font-black text-orange-400">₱{{ d.order.delivery_fee }}</span>
                                 </div>
                                 <div class="flex justify-between items-center pt-1 border-t border-white/5">
@@ -327,7 +327,7 @@
                                     <a href="{% url 'deliveries:track_order' d.id %}" class="bg-zinc-800/60 hover:bg-zinc-700/80 text-white font-bold px-2 py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 border border-white/10 active:scale-95">
                                         <i class="fa-solid fa-location-crosshairs text-orange-400"></i> Track
                                     </a>
-                                    <button @click="confirmAction('{% url 'deliveries:cancel_delivery' d.id %}', 'Release this delivery?', 'It will be returned to the pool for another rider.', 'release')"
+                                    <button @click="confirmAction('{% url 'deliveries:cancel_delivery' d.id %}', 'Release this delivery?', 'It will be returned to the pool for other delivery personnel.', 'release')"
                                             class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-2 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 flex items-center justify-center gap-1.5" title="Release back to pool">
                                         <i class="fa-solid fa-rotate-left"></i> Release
                                     </button>
@@ -380,7 +380,7 @@
                                     <span class="font-bold text-zinc-300">₱{{ d.order.total_amount }}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
-                                    <span>Delivery Fee (Rider)</span>
+                                    <span>Delivery Fee (Delivery Personnel)</span>
                                     <span class="font-black text-orange-400">₱{{ d.order.delivery_fee }}</span>
                                 </div>
                                 <div class="flex justify-between items-center pt-1 border-t border-white/5">
@@ -473,7 +473,7 @@
                     <div class="flex items-center justify-between text-xs">
                         <span class="text-zinc-400 font-bold flex items-center gap-1.5">
                             <i class="fa-solid fa-motorcycle text-orange-400"></i> Delivery Fee
-                            <span class="text-[8px] text-orange-400/70 uppercase tracking-widest font-black">(Rider earning)</span>
+                            <span class="text-[8px] text-orange-400/70 uppercase tracking-widest font-black">(Delivery Personnel earning)</span>
                         </span>
                         <span class="text-orange-400 font-black" x-text="'₱' + detailData.delivery_fee"></span>
                     </div>
@@ -909,13 +909,13 @@
             // with whatever the SSE stream pushes last.
             liveStatus(id) {
                 const raw = this.statusMap[id];
-                if (!raw) return 'Rider Accepted';
+                if (!raw) return 'Delivery Personnel Accepted';
                 const labels = {
-                    'SEARCHING': 'Searching for Rider',
-                    'ACCEPTED': 'Rider Accepted',
+                    'SEARCHING': 'Searching for Delivery Personnel',
+                    'ACCEPTED': 'Delivery Personnel Accepted',
                     'DELIVERED': 'Delivered',
                     'REJECTED': 'Rejected',
-                    'TIMEOUT': 'No Rider Available',
+                    'TIMEOUT': 'No Delivery Personnel Available',
                 };
                 return labels[raw] || raw;
             },
@@ -947,7 +947,7 @@
             senderRoleLabel(role) {
                 const labels = {
                     'FACULTY': 'Faculty', 'STUDENT': 'Student', 'STAFF': 'Staff',
-                    'RIDER': 'Rider', 'DELIVERY': 'Rider', 'ADMIN': 'Admin',
+                    'RIDER': 'Delivery Personnel', 'DELIVERY': 'Delivery Personnel', 'ADMIN': 'Admin',
                 };
                 return labels[role] || 'Customer';
             },
@@ -1086,7 +1086,7 @@
     function startPhotoStream() {
         stopPhotoStream();
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            showCaptureError('This browser does not support direct camera access. Please open the rider dashboard on a mobile device or a browser with camera permissions.');
+            showCaptureError('This browser does not support direct camera access. Please open the delivery personnel dashboard on a mobile device or a browser with camera permissions.');
             return;
         }
         navigator.mediaDevices.getUserMedia({

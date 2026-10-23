@@ -68,7 +68,7 @@ then render as plain links to the matching dashboard tab.
         </a>
         <a href="{% url 'canteen_menu:staff_dashboard' %}?tab=deliveries" class="ds-nav-item{% if not sidebar_alpine and side_active == 'deliveries' %} ds-nav-item--active{% endif %}"{% if sidebar_alpine %} @click.prevent="setTab('deliveries')" :class="activeTab === 'deliveries' ? 'ds-nav-item--active' : ''"{% endif %}>
             <i data-lucide="bike" class="ds-icon"></i>
-            <span class="ds-nav-item__label">Delivery staff</span>
+            <span class="ds-nav-item__label">Delivery Personnel</span>
         </a>
 
         <p class="ds-nav-group">Insights</p>

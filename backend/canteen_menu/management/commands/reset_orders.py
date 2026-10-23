@@ -36,7 +36,7 @@ class Command(BaseCommand):
             f' - {fb_count} Feedback/Ratings\n'
             f' - {del_count} Delivery Requests\n'
             f' - {msg_count} Delivery Messages\n'
-            f' - {loc_count} Rider Location Points\n'
+            f' - {loc_count} Delivery Personnel Location Points\n'
             f' - {log_count} Activity Log Entries\n'
             f' - Reset loyalty points to 0.00 for {users_count} users\n'
             f'Accounts and Menu Management were preserved.'

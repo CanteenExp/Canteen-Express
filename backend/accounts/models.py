@@ -18,6 +18,9 @@ class CustomUser(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='STUDENT')
     is_email_verified = models.BooleanField(default=False)
     phone = models.CharField(max_length=20, blank=True, null=True)
+    # Optional profile detail for faculty/staff accounts. Left blank by default
+    # so nothing is invented for a user who has not set it yet.
+    college_department = models.CharField(max_length=120, blank=True, default='')
     vehicle_plate = models.CharField(max_length=50, blank=True, null=True)
     loyalty_points = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
 
