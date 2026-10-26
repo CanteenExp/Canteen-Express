@@ -258,6 +258,19 @@
         body.light-mode #promo-carousel p {
             color: #cbd5e1 !important;
         }
+
+        /* Take-Out dining option: green identity, including hover */
+        .dining-takeout-btn { border-color: rgba(255, 255, 255, 0.10); }
+        .dining-takeout-btn:hover { background: rgba(16, 185, 129, 0.16); border-color: rgba(16, 185, 129, 0.55); }
+        .dining-takeout-btn .dining-takeout-icon { background: rgba(16, 185, 129, 0.16); color: #34d399; }
+        .dining-takeout-btn:hover .dining-takeout-icon { background: #059669; color: #ffffff; }
+        .dining-takeout-btn .dining-takeout-label { color: #ffffff; }
+        .dining-takeout-btn:hover .dining-takeout-label { color: #34d399; }
+
+        /* Editable quantity in the item details modal */
+        #modal-item-qty::-webkit-outer-spin-button,
+        #modal-item-qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        #modal-item-qty { -moz-appearance: textfield; appearance: textfield; }
     </style>
 </head>
 <body class="bg-brand-dark text-brand-light h-screen h-[100dvh] flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative">
@@ -294,29 +307,29 @@
 
     <!-- ================= 1. DINE-IN / TAKE-OUT SELECTION POPUP MODAL ================= -->
     <div id="dining-option-modal" class="fixed inset-0 z-50 glass-backdrop flex items-center justify-center p-4">
-        <div class="glass-panel glass-panel-accent rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center space-y-6 modal-pop relative">
-            <a href="{% url 'customer_portal:kiosk_welcome' %}" class="absolute right-5 top-5 w-9 h-9 rounded-full bg-white/5 hover:bg-red-500/20 text-brand-slate hover:text-red-400 border border-white/10 flex items-center justify-center transition active:scale-95" title="Exit Kiosk">
-                <i class="fa-solid fa-xmark text-sm font-black"></i>
+        <div class="glass-panel glass-panel-accent rounded-3xl p-5 sm:p-6 max-w-md w-full text-center space-y-4 modal-pop relative overflow-hidden">
+            <a href="{% url 'customer_portal:kiosk_welcome' %}" class="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 text-brand-slate hover:text-red-400 border border-white/10 flex items-center justify-center transition active:scale-95" title="Exit Kiosk">
+                <i class="fa-solid fa-xmark text-xs font-black"></i>
             </a>
-            <div class="space-y-2">
-                <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-12 w-auto mx-auto mb-2 object-contain">
-                <h2 class="text-2xl sm:text-3xl font-black text-white">How will you be eating today?</h2>
-                <p class="text-xs sm:text-sm text-brand-slate">Please select your dining option to start ordering</p>
+            <div class="space-y-1.5">
+                <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Logo" class="h-10 w-auto mx-auto mb-1 object-contain">
+                <h2 class="text-xl sm:text-2xl font-black text-white">How will you be eating today?</h2>
+                <p class="text-[11px] sm:text-xs text-brand-slate">Please select your dining option to start ordering</p>
             </div>
 
-            <div class="grid grid-cols-2 gap-4 pt-2">
-                <button onclick="setDiningOption('Dine-In')" class="group p-5 rounded-2xl bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange transition active:scale-95 flex flex-col items-center justify-center gap-3">
-                    <div class="w-16 h-16 rounded-2xl bg-brand-orange/10 text-brand-orange flex items-center justify-center text-3xl group-hover:bg-brand-orange group-hover:text-white transition">
+            <div class="grid grid-cols-2 gap-3 pt-1">
+                <button onclick="setDiningOption('Dine-In')" class="group p-4 rounded-2xl bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange transition active:scale-95 flex flex-col items-center justify-center gap-2.5">
+                    <div class="w-12 h-12 rounded-xl bg-brand-orange/10 text-brand-orange flex items-center justify-center text-2xl group-hover:bg-brand-orange group-hover:text-white transition">
                         <i class="fa-solid fa-utensils"></i>
                     </div>
-                    <span class="font-black text-sm sm:text-base text-white group-hover:text-brand-orange transition uppercase tracking-wider">Dine-In</span>
+                    <span class="font-black text-xs sm:text-sm text-white group-hover:text-brand-orange transition uppercase tracking-wider">Dine-In</span>
                 </button>
 
-                <button onclick="setDiningOption('Take-Out')" class="group p-5 rounded-2xl bg-white/5 hover:bg-brand-orange/20 border border-white/10 hover:border-brand-orange transition active:scale-95 flex flex-col items-center justify-center gap-3">
-                    <div class="w-16 h-16 rounded-2xl bg-brand-orange/10 text-brand-orange flex items-center justify-center text-3xl group-hover:bg-brand-orange group-hover:text-white transition">
+                <button onclick="setDiningOption('Take-Out')" class="dining-takeout-btn group p-4 rounded-2xl bg-white/5 border border-white/10 transition active:scale-95 flex flex-col items-center justify-center gap-2.5">
+                    <div class="dining-takeout-icon w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition">
                         <i class="fa-solid fa-bag-shopping"></i>
                     </div>
-                    <span class="font-black text-sm sm:text-base text-white group-hover:text-brand-orange transition uppercase tracking-wider">Take-Out</span>
+                    <span class="dining-takeout-label font-black text-xs sm:text-sm transition uppercase tracking-wider">Take-Out</span>
                 </button>
             </div>
         </div>
@@ -395,24 +408,28 @@
                 <div id="brand-text-container" class="transition-all duration-300">
                     <h1 class="text-xs sm:text-base font-black text-white leading-tight">Welcome to Canteen Express!</h1>
                     <p class="text-[8px] sm:text-xs text-brand-orange font-bold uppercase tracking-wider flex items-center gap-1.5">
-                        <span id="dining-mode-badge" class="bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded-md border border-brand-orange/30">Dine-In</span>
+                        <span id="dining-mode-badge" onclick="toggleDiningOption()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDiningOption();}" role="button" tabindex="0" title="Switch between Dine-In and Take-Out" aria-label="Dining option: Dine-In. Activate to switch." class="cursor-pointer inline-flex items-center gap-1 px-2 py-0.5 rounded-md border transition active:scale-95 bg-brand-orange/20 text-brand-orange border-brand-orange/30"><span id="dining-mode-label">Dine-In</span><i class="fa-solid fa-right-left text-[8px] opacity-80" aria-hidden="true"></i></span>
                     </p>
                 </div>
             </div>
 
             <div class="flex items-center gap-2" id="search-container">
                 <!-- Expanding Search Wrapper (Expands Left) -->
+                <!-- Expanding Search Wrapper (Expands Left) -->
                 <div id="search-wrapper" class="flex items-center overflow-hidden w-10 transition-all duration-300 rounded-xl bg-brand-card border border-white/10">
-                    <button onclick="toggleSearch(event)" id="search-toggle-btn" type="button" class="w-10 h-10 shrink-0 flex items-center justify-center text-white transition active:scale-95">
+                    <button onclick="toggleSearch(event)" id="search-toggle-btn" type="button" class="w-10 h-10 shrink-0 flex items-center justify-center text-white transition active:scale-95" title="Search Menu">
                         <i class="fa-solid fa-magnifying-glass text-xs"></i>
                     </button>
                     <input 
                         type="text" 
                         id="search-input" 
                         oninput="filterItems()" 
-                        placeholder="Search menu..." 
-                        class="w-full bg-transparent border-0 pl-1 pr-3 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
+                        placeholder="Search menu or price..." 
+                        class="flex-1 min-w-0 bg-transparent border-0 px-1 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
                     >
+                    <button type="button" onclick="clearSearchInput(event)" id="search-clear-btn" style="display: none;" class="w-6 h-6 shrink-0 items-center justify-center bg-white/15 hover:bg-white/30 text-white rounded-full transition mr-2 cursor-pointer" title="Clear search">
+                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                    </button>
                 </div>
 
                 <!-- Order History / Activity Log -->
@@ -502,7 +519,7 @@
 
 
     <!-- ================= FOOTER BAR ================= -->
-    <footer class="shrink-0 glass-panel glass-panel-accent border-t border-white/10 p-3 sm:p-4 pb-[max(env(safe-area-inset-bottom),12px)] shadow-2xl z-20">
+    <footer id="kiosk-footer" class="hidden shrink-0 glass-panel glass-panel-accent border-t border-white/10 p-3 sm:p-4 pb-[max(env(safe-area-inset-bottom),12px)] shadow-2xl z-20">
         <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
             <div class="text-left">
@@ -587,8 +604,29 @@
             <div id="order-history-container" class="p-5 overflow-y-auto space-y-3 flex-1 glass-scroll">
                 <!-- Populated dynamically -->
             </div>
-            <div class="p-4 glass-panel-foot border-t border-white/10 text-center text-xs text-brand-slate">
-                <span>Palawan State University Canteen Express</span>
+            <div class="p-4 glass-panel-foot border-t border-white/10 flex items-center justify-between gap-3">
+                <span class="text-[10px] sm:text-xs text-brand-slate">Palawan State University Canteen Express</span>
+                <button onclick="clearOrderHistory()" id="clear-history-btn" title="Clear finished orders" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-brand-slate hover:text-red-400 hover:bg-white/10 font-bold text-[10px] sm:text-xs transition active:scale-95">
+                    <i class="fa-solid fa-trash-can text-[10px]"></i>
+                    <span>Clear finished</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= CLEAR HISTORY CONFIRM ================= -->
+    <div id="clear-history-confirm" class="fixed inset-0 z-[80] glass-backdrop hidden flex items-center justify-center p-4">
+        <div class="glass-panel glass-panel-accent rounded-3xl p-5 max-w-xs w-full text-center space-y-4 modal-pop relative overflow-hidden">
+            <div class="w-12 h-12 rounded-2xl bg-white/5 text-red-400 border border-white/10 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <div class="space-y-1">
+                <h3 class="text-white font-black text-sm">Clear finished orders?</h3>
+                <p class="text-[11px] text-brand-slate leading-relaxed">Only completed, delivered, and cancelled orders will be removed. Active orders stay on this kiosk.</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="closeClearHistoryConfirm()" class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-[11px] uppercase tracking-wider border border-white/10 transition active:scale-95">Cancel</button>
+                <button onclick="confirmClearHistory()" class="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold text-[11px] uppercase tracking-wider transition active:scale-95">Clear</button>
             </div>
         </div>
     </div>
@@ -706,7 +744,31 @@
         </div>
     </div>
 
-    <!-- ================= CANCEL QUEUE SLIP CONFIRMATION MODAL ================= -->
+    <!-- ================= USER ACCOUNT MODAL ================= -->
+    <div id="user-account-modal" class="fixed inset-0 z-[80] hidden flex items-center justify-center p-4" style="background: rgba(8, 8, 12, 0.65); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);">
+        <div class="bg-brand-card rounded-3xl p-6 max-w-sm w-full border border-white/10 shadow-2xl relative">
+            <button onclick="toggleUserModal()" class="absolute top-4 right-4 text-brand-slate hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="text-white font-black text-lg mb-4">Account Details</h2>
+            <div class="space-y-4">
+                <div class="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
+                    <div class="w-10 h-10 rounded-full bg-brand-orange/20 flex items-center justify-center"><i class="fa-solid fa-user text-brand-orange"></i></div>
+                    <div>
+                        <p class="text-white text-sm font-bold">{{ user.first_name }} {{ user.last_name }}</p>
+                        <p class="text-brand-slate text-xs">{{ user.username }}</p>
+                    </div>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <p class="text-brand-slate font-bold uppercase tracking-wider">Email</p>
+                    <p class="text-white bg-white/5 p-2 rounded-lg border border-white/5">{{ user.email }}</p>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <p class="text-brand-slate font-bold uppercase tracking-wider">Role</p>
+                    <p class="text-white bg-white/5 p-2 rounded-lg border border-white/5">{{ user.get_role_display }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="queue-cancel-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4" style="background: rgba(8, 8, 12, 0.35); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);">
         <div class="glass-panel glass-panel-accent rounded-3xl p-6 sm:p-7 max-w-xs w-full text-center space-y-5 modal-pop relative">
             <div class="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-400 flex items-center justify-center mx-auto text-3xl shadow-lg shadow-red-500/10 animate-bounce">
@@ -800,7 +862,9 @@
                         <!-- Quantity Counter [ - qty + ] -->
                         <div class="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-2xl border border-white/10 backdrop-blur-md">
                             <button type="button" onclick="changeItemModalQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-minus text-xs"></i></button>
-                            <span id="modal-item-qty" class="text-sm font-black text-white w-5 text-center">1</span>
+                            <input id="modal-item-qty" type="number" min="1" step="1" inputmode="numeric" value="1" aria-label="Quantity"
+                                oninput="onModalQtyInput(this)" onchange="onModalQtyCommit(this)" onblur="onModalQtyCommit(this)"
+                                class="w-10 bg-transparent text-sm font-black text-white text-center focus:outline-none focus:ring-0">
                             <button type="button" onclick="changeItemModalQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-plus text-xs"></i></button>
                         </div>
                         <button id="modal-add-btn" onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-5 py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95 cursor-pointer">
@@ -840,10 +904,45 @@ let currentPendingOrder = null;
 let pendingBannerTimer = null;
 
 // ================= DINING OPTION CONTROLLER =================
+const DINING_BADGE_BASE = 'cursor-pointer inline-flex items-center gap-1 px-2 py-0.5 rounded-md border transition active:scale-95';
+const DINING_BADGE_DINE_IN = 'bg-brand-orange/20 text-brand-orange border-brand-orange/30';
+const DINING_BADGE_TAKE_OUT = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+
+function toggleDiningOption() {
+    setDiningOption(diningOption === 'Take-Out' ? 'Dine-In' : 'Take-Out');
+    kioskToast(`Dining option: ${diningOption}`);
+}
+
 function setDiningOption(option) {
     diningOption = option;
-    document.getElementById('dining-mode-badge').innerText = option;
-    document.getElementById('drawer-dining-mode').innerText = option;
+    const isTakeOut = option === 'Take-Out';
+    const nextOption = isTakeOut ? 'Dine-In' : 'Take-Out';
+
+    const badge = document.getElementById('dining-mode-badge');
+    if (badge) {
+        const label = document.getElementById('dining-mode-label');
+        if (label) {
+            label.innerText = option;
+        } else {
+            badge.innerText = option;
+        }
+        badge.className = `${DINING_BADGE_BASE} ${isTakeOut ? DINING_BADGE_TAKE_OUT : DINING_BADGE_DINE_IN}`;
+        badge.title = `Switch to ${nextOption}`;
+        badge.setAttribute('aria-label', `Dining option: ${option}. Activate to switch to ${nextOption}.`);
+    }
+
+    const drawerMode = document.getElementById('drawer-dining-mode');
+    if (drawerMode) {
+        drawerMode.innerText = option;
+        drawerMode.className = `font-bold ${isTakeOut ? 'text-emerald-400' : 'text-white'}`;
+    }
+
+    const slipMode = document.getElementById('slip-dining-mode');
+    if (slipMode) {
+        slipMode.innerText = isTakeOut ? 'TAKE-OUT' : 'DINE-IN';
+        slipMode.className = `inline-block ${isTakeOut ? 'bg-emerald-600' : 'bg-orange-600'} text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider`;
+    }
+
     document.getElementById('dining-option-modal').classList.add('hidden');
 }
 
@@ -875,15 +974,41 @@ function renderMenu() {
     if (!grid) return;
     
     const searchInput = document.getElementById('search-input');
-    const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const rawSearchQuery = searchInput ? searchInput.value : '';
+    const searchQuery = rawSearchQuery.toLowerCase().trim();
+    // Treat the query as a price only when it contains digits and no letters,
+    // so "50", "P50" or "PHP50" match prices while "burger 50" stays a text search.
+    const cleanSearchQuery = searchQuery.replace(/[^0-9.]/g, '');
+    const isNumericSearch = /^[0-9]+(?:\.[0-9]+)?$/.test(cleanSearchQuery) && !/[a-z]/.test(searchQuery.replace(/p(hp)?/g, ''));
+    const clearBtn = document.getElementById('search-clear-btn');
+    if (clearBtn) {
+        if (rawSearchQuery.length > 0) {
+            clearBtn.style.display = 'flex';
+        } else {
+            clearBtn.style.display = 'none';
+        }
+    }
     grid.innerHTML = '';
+
+    const numSearch = isNumericSearch ? parseFloat(cleanSearchQuery) : NaN;
 
     const filteredItems = menuData.filter(item => {
         const itemCat = String(item.category || '').toLowerCase();
         const activeCat = String(activeCategory).toLowerCase();
-        
-        const matchesCategory = (activeCat === 'all' || itemCat.includes(activeCat) || activeCat.includes(itemCat) || !itemCat);
-        const matchesSearch = item.name.toLowerCase().includes(searchQuery) || item.desc.toLowerCase().includes(searchQuery);
+
+        // Search across all items when user types a search query
+        const matchesCategory = (searchQuery !== '') ? true : (activeCat === 'all' || itemCat.includes(activeCat) || activeCat.includes(itemCat) || !itemCat);
+
+        // Ensure price is treated as a number for comparison
+        const itemPrice = parseFloat(item.price);
+        const priceText = isNaN(itemPrice) ? String(item.price || '') : itemPrice.toFixed(2);
+        const matchesNameOrDesc = String(item.name || '').toLowerCase().includes(searchQuery) || String(item.desc || '').toLowerCase().includes(searchQuery);
+        const matchesPrice = isNumericSearch && !isNaN(itemPrice) && (
+            itemPrice === numSearch ||
+            priceText.includes(cleanSearchQuery) ||
+            String(itemPrice).includes(cleanSearchQuery)
+        );
+        const matchesSearch = searchQuery === '' || matchesNameOrDesc || matchesPrice;
         return matchesCategory && matchesSearch;
     });
 
@@ -893,7 +1018,7 @@ function renderMenu() {
         grid.innerHTML = `
             <div class="col-span-full text-center py-12 text-brand-slate">
                 <i class="fa-solid fa-utensils text-4xl mb-2 opacity-40"></i>
-                <p class="text-sm font-semibold">No food items found in this category.</p>
+                <p class="text-sm font-semibold">No items found.</p>
             </div>`;
         return;
     }
@@ -1066,6 +1191,10 @@ function updateCartUI() {
     let total = 0;
     const cartKeys = Object.keys(cart);
     const nextBtn = document.getElementById('next-btn');
+
+    // The bottom bar (Total / Clear / Next) only makes sense once the cart has items.
+    const kioskFooter = document.getElementById('kiosk-footer');
+    if (kioskFooter) kioskFooter.classList.toggle('hidden', cartKeys.length === 0);
 
     if (cartKeys.length === 0) {
         drawerList.innerHTML = `
@@ -1666,6 +1795,56 @@ function closeOrderHistory() {
     document.getElementById('order-history-modal').classList.add('hidden');
 }
 
+const HISTORY_ACTIVE_STATUSES = ['unpaid', 'pending', 'preparing', 'ready'];
+
+async function clearOrderHistory() {
+    const list = getOrderHistory();
+    if (list.length === 0) {
+        kioskToast('Order history is already empty.');
+        return;
+    }
+
+    document.getElementById('clear-history-confirm').classList.remove('hidden');
+}
+
+function closeClearHistoryConfirm() {
+    document.getElementById('clear-history-confirm').classList.add('hidden');
+}
+
+async function confirmClearHistory() {
+    closeClearHistoryConfirm();
+
+    const list = getOrderHistory();
+    if (list.length === 0) {
+        kioskToast('Order history is already empty.');
+        return;
+    }
+
+    const results = await Promise.all(list.map(async (rec) => {
+        try {
+            const res = await fetch(`/kiosk/api/order-status/${encodeURIComponent(rec.order_number)}/`);
+            const data = await res.json();
+            if (!data.exists) return { rec, keep: false };
+            return { rec, keep: HISTORY_ACTIVE_STATUSES.includes(data.status) };
+        } catch (e) {
+            // If the status can't be checked, keep the record rather than deleting it blindly.
+            return { rec, keep: true };
+        }
+    }));
+
+    const kept = results.filter(r => r.keep).map(r => r.rec);
+    const removedCount = list.length - kept.length;
+
+    saveOrderHistory(kept);
+    renderOrderHistory();
+
+    if (removedCount > 0) {
+        kioskToast(`Cleared ${removedCount} finished order${removedCount === 1 ? '' : 's'}.`);
+    } else {
+        kioskToast('No finished orders to clear — active orders were kept.');
+    }
+}
+
 function historyId(num) {
     return String(num || 'x').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
 }
@@ -1960,7 +2139,14 @@ function openItemModal(itemId) {
     modalRiceQty = 0; // default 0 rice for ulam
     modalItemQty = 1;
     const qtyEl = document.getElementById('modal-item-qty');
-    if (qtyEl) qtyEl.textContent = modalItemQty;
+    if (qtyEl) {
+        qtyEl.value = modalItemQty;
+        if (item.stock > 0) {
+            qtyEl.max = item.stock;
+        } else {
+            qtyEl.removeAttribute('max');
+        }
+    }
 
     document.getElementById('modal-item-img').src = item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';
     document.getElementById('modal-item-category').textContent = item.category || 'General';
@@ -2037,11 +2223,41 @@ function changeRiceQty(delta) {
 
 let modalItemQty = 1;
 
-function changeItemModalQty(delta) {
-    modalItemQty = Math.max(1, modalItemQty + delta);
+function maxModalItemQty() {
+    const stock = currentModalItem && currentModalItem.stock !== undefined ? currentModalItem.stock : -1;
+    return stock > 0 ? stock : Infinity;
+}
+
+function applyModalItemQty(value) {
+    const parsed = parseInt(value, 10);
+    const maxQty = maxModalItemQty();
+    modalItemQty = isNaN(parsed) ? 1 : Math.min(Math.max(parsed, 1), maxQty);
     const qtyEl = document.getElementById('modal-item-qty');
-    if (qtyEl) qtyEl.textContent = modalItemQty;
+    if (qtyEl) qtyEl.value = modalItemQty;
     updateModalTotal();
+}
+
+function changeItemModalQty(delta) {
+    applyModalItemQty(modalItemQty + delta);
+}
+
+// Accept digits as they are typed, clamping right away if the stock cap is exceeded.
+function onModalQtyInput(input) {
+    const parsed = parseInt(input.value, 10);
+    if (isNaN(parsed)) return; // let the field stay empty while typing
+    const maxQty = maxModalItemQty();
+    if (parsed > maxQty) {
+        input.value = maxQty;
+        modalItemQty = maxQty;
+    } else if (parsed >= 1) {
+        modalItemQty = parsed;
+    }
+    updateModalTotal();
+}
+
+// Normalize on blur / Enter so an empty or invalid field falls back to a valid quantity.
+function onModalQtyCommit(input) {
+    applyModalItemQty(input.value);
 }
 
 function updateModalTotal() {
@@ -2128,7 +2344,7 @@ function toggleSearch(e) {
 
     if (isSearchOpen) {
         wrapper.classList.remove('w-10');
-        wrapper.classList.add('w-48', 'sm:w-64');
+        wrapper.classList.add('w-56', 'sm:w-72');
         if (brandText) brandText.classList.add('hidden');
         setTimeout(() => input.focus(), 150);
     } else {
@@ -2136,18 +2352,36 @@ function toggleSearch(e) {
     }
 }
 
+function clearSearchInput(e) {
+    if (e) e.stopPropagation();
+    const input = document.getElementById('search-input');
+    const clearBtn = document.getElementById('search-clear-btn');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+    if (clearBtn) {
+        clearBtn.style.display = 'none';
+    }
+    filterItems();
+}
+
 function closeSearch() {
     isSearchOpen = false;
     const wrapper = document.getElementById('search-wrapper');
     const input = document.getElementById('search-input');
+    const clearBtn = document.getElementById('search-clear-btn');
     const brandText = document.getElementById('brand-text-container');
 
     if (wrapper) {
-        wrapper.classList.remove('w-48', 'sm:w-64');
+        wrapper.classList.remove('w-56', 'sm:w-72', 'w-48');
         wrapper.classList.add('w-10');
     }
     if (brandText) {
         brandText.classList.remove('hidden');
+    }
+    if (clearBtn) {
+        clearBtn.style.display = 'none';
     }
     if (input) {
         input.value = '';
@@ -2176,6 +2410,12 @@ function toggleTheme() {
         body.classList.add('light-mode');
         themeIcon.className = "fa-solid fa-moon text-xs text-brand-orange";
     }
+}
+
+// ================= USER ACCOUNT MODAL =================
+function toggleUserModal() {
+    const modal = document.getElementById('user-account-modal');
+    if (modal) modal.classList.toggle('hidden');
 }
 
 // ================= CAROUSEL SCRIPT =================

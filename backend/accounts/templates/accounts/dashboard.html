@@ -478,7 +478,7 @@
                         type="text" 
                         id="search-input" 
                         oninput="renderMenu()" 
-                        placeholder="Search menu..." 
+                        placeholder="Search menu or price..." 
                         class="w-full bg-transparent border-0 pl-1 pr-3 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
                     >
                 </div>
@@ -2046,7 +2046,13 @@
         if (!grid) return;
         
         const searchInput = document.getElementById('search-input');
-        const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const rawSearchQuery = searchInput ? searchInput.value : '';
+        const searchQuery = rawSearchQuery.toLowerCase().trim();
+        // Treat the query as a price only when it contains digits and no letters,
+        // so "50", "P50" or "PHP50" match prices while "burger 50" stays a text search.
+        const cleanSearchQuery = searchQuery.replace(/[^0-9.]/g, '');
+        const isNumericSearch = /^[0-9]+(?:\.[0-9]+)?$/.test(cleanSearchQuery) && !/[a-z]/.test(searchQuery.replace(/p(hp)?/g, ''));
+        const numSearch = isNumericSearch ? parseFloat(cleanSearchQuery) : NaN;
         const greeting = document.getElementById('greeting-container');
         if (greeting) {
             if (searchQuery) {
@@ -2065,9 +2071,19 @@
             const activeCat = String(activeCategory).toLowerCase();
             const itemName = String(item.name || '').toLowerCase();
             const itemDesc = String(item.desc || '').toLowerCase();
-            
-            let matchesCat = (activeCat === 'all' || itemCat === activeCat || itemCat.includes(activeCat) || activeCat.includes(itemCat));
-            const matchesSearch = itemName.includes(searchQuery) || itemDesc.includes(searchQuery);
+
+            // Search across all items when the user types a search query.
+            const matchesCat = searchQuery !== '' ? true : (activeCat === 'all' || itemCat === activeCat || itemCat.includes(activeCat) || activeCat.includes(itemCat));
+
+            const itemPrice = parseFloat(item.price);
+            const priceText = isNaN(itemPrice) ? String(item.price || '') : itemPrice.toFixed(2);
+            const matchesText = itemName.includes(searchQuery) || itemDesc.includes(searchQuery);
+            const matchesPrice = isNumericSearch && !isNaN(itemPrice) && (
+                itemPrice === numSearch ||
+                priceText.includes(cleanSearchQuery) ||
+                String(itemPrice).includes(cleanSearchQuery)
+            );
+            const matchesSearch = searchQuery === '' || matchesText || matchesPrice;
             return matchesCat && matchesSearch;
         });
 
@@ -2077,7 +2093,7 @@
             grid.innerHTML = `
                 <div class="col-span-full text-center py-16 text-brand-slate">
                     <i class="fa-solid fa-utensils text-4xl mb-2 opacity-40"></i>
-                    <p class="text-xs font-bold">No items found in this category.</p>
+                    <p class="text-xs font-bold">No items found.</p>
                 </div>`;
             return;
         }

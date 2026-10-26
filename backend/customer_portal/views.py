@@ -68,9 +68,11 @@ def kiosk_welcome(request):
 def kiosk_menu(request):
     formatted_menu = _get_formatted_menu()
     categories = Category.objects.all().order_by('-name')
+    # Add user context to kiosk
     context = {
         'menu_data_json': json.dumps(formatted_menu),
-        'categories': categories
+        'categories': categories,
+        'user': request.user
     }
     return render(request, 'customer_portal/kiosk_menu.html', context)
 
