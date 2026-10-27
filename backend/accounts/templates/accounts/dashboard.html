@@ -690,6 +690,10 @@
                         <span><i class="fa-solid fa-cart-shopping text-brand-orange mr-1.5"></i>Items Subtotal</span>
                         <span id="drawer-subtotal" class="font-bold text-white">₱0.00</span>
                     </div>
+                    <div class="flex justify-between gap-4 text-brand-slate pt-2 border-t border-white/5">
+                        <span><i class="fa-solid fa-ticket text-brand-orange mr-1.5"></i>Convenient Fee</span>
+                        <span id="drawer-convenience-fee" class="font-bold text-white">₱15.00</span>
+                    </div>
                 </div>
 
                 <div class="flex justify-between items-center text-white font-black text-base pt-1">
@@ -2454,16 +2458,21 @@
         const countBadge = document.getElementById('drawer-item-count');
         const countSub = document.getElementById('drawer-item-subtitle');
         if (countBadge) countBadge.innerText = count;
-        if (countSub) countSub.innerText = keys.length === 0 ? 'Ready to order' : `${count} item${count === 1 ? '' : 's'} • ₱${subtotal.toFixed(2)}`;
+        if (countSub) countSub.innerText = keys.length === 0 ? 'Ready to order' : `${count} item${count === 1 ? '' : 's'}`;
 
         const headerCartWrap = document.getElementById('header-cart-wrap');
         const headerCartBadge = document.getElementById('header-cart-badge');
         if (headerCartWrap) headerCartWrap.style.display = keys.length > 0 ? 'block' : 'none';
         if (headerCartBadge) headerCartBadge.innerText = count;
 
-        document.getElementById('cart-total').innerText = `₱${subtotal.toFixed(2)}`;
+        const convenienceFee = keys.length === 0 ? 0 : getConvenienceFee(subtotal);
+        const grandTotal = subtotal + convenienceFee;
+
+        document.getElementById('cart-total').innerText = `₱${grandTotal.toFixed(2)}`;
         document.getElementById('drawer-subtotal').innerText = `₱${subtotal.toFixed(2)}`;
-        document.getElementById('drawer-total-amount').innerText = `₱${subtotal.toFixed(2)}`;
+        const feeEl = document.getElementById('drawer-convenience-fee');
+        if (feeEl) feeEl.innerText = `₱${convenienceFee.toFixed(2)}`;
+        document.getElementById('drawer-total-amount').innerText = `₱${grandTotal.toFixed(2)}`;
 
         refreshCartButtonState(count);
     }
