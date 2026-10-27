@@ -2169,11 +2169,6 @@
     }
 
     function quickAddToCart(itemId) {
-        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
-        if (activeOrder) {
-            showActiveOrderAlert(activeOrder);
-            return;
-        }
         const item = menuData.find(i => i.id === itemId);
         if (!item) return;
         if (item.stock === 0) {
@@ -2201,11 +2196,6 @@
 
     // Item Details Modal
     function openItemModal(itemId) {
-        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
-        if (activeOrder) {
-            showActiveOrderAlert(activeOrder);
-            return;
-        }
         const item = menuData.find(i => i.id === itemId);
         if (!item) return;
         selectedItemForModal = item;
@@ -2310,11 +2300,6 @@
 
     function addCustomizedItemToCart() {
         if (!selectedItemForModal) return;
-        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
-        if (activeOrder) {
-            showActiveOrderAlert(activeOrder);
-            return;
-        }
         let basePrice = selectedItemForModal.price;
         let displayName = selectedItemForModal.name;
         let cartKeyBase = String(selectedItemForModal.id);
