@@ -15,6 +15,7 @@
 - **Run specific app test:** `python manage.py test deliveries customer_portal`
 - **Interactive shell:** `python manage.py shell`
 - **Reset orders & feedback (testing):** `python manage.py reset_orders`
+- **Tailwind CSS build:** `npm run build:css` (root directory)
 - **Deployment Build Command (Render):** `pip install -r backend/requirements.txt && python backend/manage.py collectstatic --noinput && python backend/manage.py migrate`
 
 ## Operational Gotchas & Environment Setup

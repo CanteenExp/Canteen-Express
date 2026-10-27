@@ -149,12 +149,11 @@ def upload_to_supabase_storage(image_file):
     if not image_file:
         return None
     try:
-        project_ref = getattr(settings, 'SUPABASE_PROJECT_REF', 'hchqdkuijbpihraagetz')
+        project_ref = getattr(settings, 'SUPABASE_PROJECT_REF', '')
         bucket_name = "menu-images"
-        anon_key = getattr(
-            settings, 'SUPABASE_ANON_KEY',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjaHFka3VpamJwaWhyYWFnZXR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4MzU1MDMsImV4cCI6MjEwNDQxMTUwM30.FevR0wpG7Kk7YgNO30Hi8Jvz-Z8rXiWNPBVoM4LbqUA'
-        )
+        anon_key = getattr(settings, 'SUPABASE_ANON_KEY', '')
+        if not project_ref or not anon_key:
+            return None
         
         filename = image_file.name.replace(' ', '_')
         url = f"https://{project_ref}.supabase.co/storage/v1/object/{bucket_name}/{filename}"
@@ -877,12 +876,7 @@ def update_delivery_staff_status_view(request, pk):
         action = request.POST.get('action')
         reason = request.POST.get('reason', '').strip()
         before_status = rider.account_status
-        if action == 'hold':
-            rider.account_status = 'held'
-            rider.is_active = False
-            rider.status_reason = reason or "Put on hold by canteen staff"
-            messages.success(request, f"Rider {rider.username} account held.")
-        elif action == 'penalize':
+        if action == 'penalize':
             rider.account_status = 'penalized'
             rider.status_reason = reason or "Penalized by canteen staff"
             messages.success(request, f"Rider {rider.username} penalized.")
@@ -893,9 +887,8 @@ def update_delivery_staff_status_view(request, pk):
                 rider.status_reason = ''
             messages.success(request, f"Rider {rider.username} status toggled.")
         rider.save()
-        if action in ('hold', 'penalize', 'toggle_active'):
+        if action in ('penalize', 'toggle_active'):
             verb = {
-                'hold': 'Put on hold',
                 'penalize': 'Penalized',
                 'toggle_active': ('Reactivated' if rider.is_active else 'Deactivated'),
             }[action]
@@ -903,7 +896,7 @@ def update_delivery_staff_status_view(request, pk):
                 request,
                 action=f"{verb} rider account: {rider.username}",
                 category=ActivityLog.Category.USER,
-                level=ActivityLog.Level.DANGER if action in ('hold', 'penalize') else ActivityLog.Level.WARNING,
+                level=ActivityLog.Level.DANGER if action == 'penalize' else ActivityLog.Level.WARNING,
                 target=rider.username,
                 metadata={
                     'user_id': rider.pk,
@@ -1011,7 +1004,7 @@ def process_barcode_api(request):
                     'already_paid': True,
                     'message': f'Order already paid ({order.get_status_display()}). Receipt re-issued.',
                 })
-            order.status = 'pending'
+            order.status = 'ready'
             order.save()
             log_activity(
                 request,
@@ -1029,7 +1022,7 @@ def process_barcode_api(request):
             )
             return JsonResponse({
                 'status': 'success',
-                'message': f'Order {order.order_number} verified and moved to kitchen board.'
+                'message': f'Order {order.order_number} verified and moved directly to Orders Ready.'
             })
 
         # Fetch order details
@@ -1061,4 +1054,21 @@ def process_barcode_api(request):
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
 def counter_pos_view(request):
-    return render(request, 'canteen_menu/counter_pos.html')
+    from customer_portal.models import Order
+    from deliveries.models import DeliveryRequest
+    from django.utils import timezone
+    
+    ready_orders = Order.objects.filter(status='ready').order_by('-created_at')
+    
+    accepted_delivery_order_ids = DeliveryRequest.objects.filter(status=DeliveryRequest.RequestStatus.ACCEPTED).values_list('order_id', flat=True)
+    delivery_orders = Order.objects.filter(status__in=['pending', 'preparing'], id__in=accepted_delivery_order_ids).order_by('-created_at')
+    
+    today = timezone.now().date()
+    done_today_count = Order.objects.filter(status='completed', created_at__date=today).count()
+    
+    context = {
+        'ready_orders': ready_orders,
+        'delivery_orders': delivery_orders,
+        'done_today_count': done_today_count,
+    }
+    return render(request, 'canteen_menu/counter_pos.html', context)

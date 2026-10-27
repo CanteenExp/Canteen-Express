@@ -349,6 +349,8 @@ def update_order_status(request, order_id):
         with transaction.atomic():
             order = Order.objects.select_for_update().get(id=order_id)
             old_status = order.status
+            if old_status == new_status:
+                return JsonResponse({'success': True})
             if new_status not in ALLOWED_MOVES.get(old_status, set()):
                 return JsonResponse({
                     'success': False,

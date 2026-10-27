@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Canteen Staff Unified Dashboard - Canteen Express{% endblock %}
 
@@ -30,8 +31,8 @@
     <aside class="hidden md:flex w-64 bg-dark-900 text-white p-6 flex-col justify-between shrink-0 space-y-6">
         <div class="space-y-6">
             <div class="flex items-center gap-3 px-2">
-                <div class="w-10 h-10 rounded-2xl bg-brand-500 flex items-center justify-center text-white text-lg font-black shadow-lg shadow-brand-500/30">
-                    <i class="fa-solid fa-utensils"></i>
+                <div class="w-10 h-10 rounded-2xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-center p-1.5 shadow-lg shadow-brand-500/20">
+                    <img src="{% static 'customer_portal/images/canteen-express-logo.png' %}" alt="Canteen Express" class="w-full h-full object-contain">
                 </div>
                 <div>
                     <h2 class="font-black text-sm tracking-tight text-white">Staff Portal</h2>
@@ -86,11 +87,8 @@
 
         <!-- Quick Links Footer -->
         <div class="pt-4 border-t border-white/10 space-y-2">
-            <a href="{% url 'kitchen_display:kitchen_board' %}" target="_blank" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2">
-                <i class="fa-solid fa-fire"></i> Kitchen Board ↗
-            </a>
-            <a href="{% url 'canteen_menu:counter_pos' %}" target="_blank" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2">
-                <i class="fa-solid fa-barcode"></i> Counter POS ↗
+            <a href="{% url 'canteen_menu:counter_pos' %}" target="_blank" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-brand-500/25">
+                <i class="fa-solid fa-cash-register"></i> POS & Kitchen Board ↗
             </a>
             <button @click="showChangePasswordModal = true" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2">
                 <i class="fa-solid fa-key"></i> Change Password
@@ -111,8 +109,7 @@
                 <h2 class="font-black text-sm text-white">Staff Portal</h2>
             </div>
             <div class="flex items-center gap-2">
-                <a href="{% url 'kitchen_display:kitchen_board' %}" target="_blank" class="bg-white/10 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold">Kitchen ↗</a>
-                <a href="{% url 'canteen_menu:counter_pos' %}" target="_blank" class="bg-white/10 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold">POS ↗</a>
+                <a href="{% url 'canteen_menu:counter_pos' %}" target="_blank" class="bg-brand-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-sm">POS & Kitchen ↗</a>
                 <button @click="showChangePasswordModal = true" class="bg-white/10 hover:bg-white/20 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1">
                     <i class="fa-solid fa-key"></i> Password
                 </button>
@@ -156,8 +153,8 @@
                     <p class="text-gray-400 text-xs sm:text-sm">Manage orders, stock, and canteen staff from a single unified screen.</p>
                 </div>
                 <div class="z-10 flex items-center gap-3">
-                    <a href="{% url 'kitchen_display:kitchen_board' %}" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-brand-500/30 transition flex items-center gap-2">
-                        <i class="fa-solid fa-fire-burner"></i> Open Kitchen Board
+                    <a href="{% url 'canteen_menu:counter_pos' %}" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-brand-500/30 transition flex items-center gap-2">
+                        <i class="fa-solid fa-cash-register"></i> Open POS & Kitchen Board
                     </a>
                 </div>
                 <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-brand-500/10 rounded-full blur-2xl"></div>
@@ -571,23 +568,18 @@
                                     {% endif %}
                                 </td>
                                 <td class="py-3.5 px-3 text-right space-x-1">
-                                    <form method="POST" action="{% url 'canteen_menu:update_delivery_staff_status' rider.id %}" class="inline">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="toggle_active">
-                                        <button type="submit" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-2.5 py-1.5 rounded-xl transition">
-                                            {% if rider.is_active %}Deactivate{% else %}Activate{% endif %}
-                                        </button>
-                                    </form>
-                                    <form method="POST" action="{% url 'canteen_menu:update_delivery_staff_status' rider.id %}" class="inline">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="hold">
-                                        <button type="submit" class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2.5 py-1.5 rounded-xl transition">Hold</button>
-                                    </form>
-                                    <form method="POST" action="{% url 'canteen_menu:update_delivery_staff_status' rider.id %}" class="inline">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="penalize">
-                                        <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">Penalize</button>
-                                    </form>
+                                     <form method="POST" action="{% url 'canteen_menu:update_delivery_staff_status' rider.id %}" class="inline">
+                                         {% csrf_token %}
+                                         <input type="hidden" name="action" value="toggle_active">
+                                         <button type="submit" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-2.5 py-1.5 rounded-xl transition">
+                                             {% if rider.is_active %}Deactivate{% else %}Activate{% endif %}
+                                         </button>
+                                     </form>
+                                     <form method="POST" action="{% url 'canteen_menu:update_delivery_staff_status' rider.id %}" class="inline">
+                                         {% csrf_token %}
+                                         <input type="hidden" name="action" value="penalize">
+                                         <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded-xl transition">Penalize</button>
+                                     </form>
                                 </td>
                             </tr>
                             {% empty %}
