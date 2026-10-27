@@ -2467,23 +2467,23 @@
             count = keys.reduce((s, k) => s + (cart[k].qty || 0), 0);
         }
 
+        if (footerBar) footerBar.style.display = 'block';
+
         if (activeD) {
-            // Hide the bottom footer bar completely while an order is ongoing.
-            if (footerBar) footerBar.style.display = 'none';
             if (chatD && floatingMsg) floatingMsg.style.display = 'block';
+            nextBtn.disabled = false;
+            nextBtn.onclick = openViewOrderModal;
+            nextText.innerHTML = `<i class="fa-solid fa-box-open mr-1.5"></i> VIEW ORDER (${activeD.order_number})`;
+        } else if (keys.length > 0) {
+            if (chatD && floatingMsg) floatingMsg.style.display = 'block';
+            nextBtn.disabled = false;
+            nextBtn.onclick = openCartDrawer;
+            nextText.innerText = `View Cart (${count})`;
         } else {
-            if (footerBar) footerBar.style.display = 'block';
-            if (keys.length > 0) {
-                if (chatD && floatingMsg) floatingMsg.style.display = 'block';
-                nextBtn.disabled = false;
-                nextBtn.onclick = openCartDrawer;
-                nextText.innerText = `View Cart (${count})`;
-            } else {
-                if (floatingMsg) floatingMsg.style.display = 'none';
-                nextBtn.disabled = true;
-                nextBtn.onclick = null;
-                nextText.innerText = `View Cart (0)`;
-            }
+            if (floatingMsg) floatingMsg.style.display = 'none';
+            nextBtn.disabled = true;
+            nextBtn.onclick = null;
+            nextText.innerText = `View Cart (0)`;
         }
     }
 
