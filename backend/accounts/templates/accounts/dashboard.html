@@ -637,14 +637,21 @@
 
 
     <!-- ================= FOOTER BAR ================= -->
-    <footer id="main-footer-bar" class="shrink-0 bg-brand-card border-t border-white/10 p-3 sm:p-4 pb-[max(env(safe-area-inset-bottom),12px)] shadow-2xl z-20">
-        <div class="max-w-7xl mx-auto flex items-center justify-center gap-4">
-            <div class="w-full">
-                <button onclick="openCartDrawer()" id="next-btn" disabled class="w-full bg-brand-orange disabled:opacity-40 disabled:cursor-not-allowed hover:bg-orange-600 active:scale-95 text-white font-extrabold text-xs sm:text-sm py-3.5 rounded-2xl shadow-lg shadow-brand-orange/25 uppercase tracking-wider transition flex items-center justify-center gap-2">
+    <footer class="shrink-0 bg-brand-card border-t border-white/10 p-3 sm:p-4 pb-[max(env(safe-area-inset-bottom),12px)] shadow-2xl z-20">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            
+            <div class="text-left">
+                <span class="text-[10px] sm:text-xs text-brand-slate uppercase font-bold block">Total Amount</span>
+                <span id="cart-total" class="text-xl sm:text-3xl font-black text-brand-orange">₱0.00</span>
+            </div>
+
+            <div class="flex items-center gap-2.5">
+                <button onclick="openCartDrawer()" id="next-btn" disabled class="bg-brand-orange disabled:opacity-40 disabled:cursor-not-allowed hover:bg-orange-600 active:scale-95 text-white font-extrabold text-xs sm:text-sm px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl shadow-lg shadow-brand-orange/25 uppercase tracking-wider transition flex items-center gap-2">
                     <span id="next-btn-text">View Cart (0)</span>
                     <i class="fa-solid fa-arrow-right"></i>
                 </button>
             </div>
+
         </div>
     </footer>
 
@@ -1382,7 +1389,9 @@
     // A delivery still blocks a new faculty order while it is offered/accepted.
     // Once it is DELIVERED (or REJECTED/TIMEOUT) the faculty can order again.
     function isOngoingDelivery(d) {
-        return d.raw_status === 'SEARCHING' || d.raw_status === 'ACCEPTED';
+        if (!d) return false;
+        const s = String(d.raw_status || '').toUpperCase();
+        return !['DELIVERED', 'COMPLETED', 'REJECTED', 'TIMEOUT', 'CANCELLED'].includes(s);
     }
     // Chat only makes sense once a rider has actually accepted the delivery.
     function hasAssignedRider(d) {
@@ -2458,7 +2467,6 @@
     function refreshCartButtonState(count) {
         const nextBtn = document.getElementById('next-btn');
         const nextText = document.getElementById('next-btn-text');
-        const footerBar = document.getElementById('main-footer-bar');
         const activeD = ongoingDeliveriesData.find(isOngoingDelivery);
         const chatD = ongoingDeliveriesData.find(hasAssignedRider);
         const floatingMsg = document.getElementById('floating-msg-btn');
@@ -2467,13 +2475,11 @@
             count = keys.reduce((s, k) => s + (cart[k].qty || 0), 0);
         }
 
-        if (footerBar) footerBar.style.display = 'block';
-
         if (activeD) {
             if (chatD && floatingMsg) floatingMsg.style.display = 'block';
             nextBtn.disabled = false;
-            nextBtn.onclick = openViewOrderModal;
-            nextText.innerHTML = `<i class="fa-solid fa-box-open mr-1.5"></i> VIEW ORDER (${activeD.order_number})`;
+            nextBtn.onclick = () => openViewOrderModal(activeD.id);
+            nextText.innerHTML = `<i class="fa-solid fa-box-open mr-1.5"></i> View Order (${activeD.order_number})`;
         } else if (keys.length > 0) {
             if (chatD && floatingMsg) floatingMsg.style.display = 'block';
             nextBtn.disabled = false;
@@ -2792,8 +2798,9 @@
     }
 
     function openViewOrderModal(deliveryId) {
-        const activeD = deliveryId 
-            ? ongoingDeliveriesData.find(d => d.id === deliveryId)
+        const targetId = (typeof deliveryId === 'number') ? deliveryId : null;
+        const activeD = targetId 
+            ? ongoingDeliveriesData.find(d => d.id === targetId)
             : (ongoingDeliveriesData.find(isOngoingDelivery)
                || [...ongoingDeliveriesData].reverse().find(d => d.raw_status === 'DELIVERED'));
         if (!activeD) {
