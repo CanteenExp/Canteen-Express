@@ -17,5 +17,7 @@ srv.err
 *.out
 *.err
 
-# Local dev tools (not part of the app)
+# Local dev tools & cache
 devtunnel.exe
+*.djcache
+*.exe

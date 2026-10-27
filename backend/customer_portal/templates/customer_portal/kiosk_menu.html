@@ -271,6 +271,67 @@
         #modal-item-qty::-webkit-outer-spin-button,
         #modal-item-qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         #modal-item-qty { -moz-appearance: textfield; appearance: textfield; }
+
+        /* ===== Context-aware on-screen keyboard ===== */
+        #kiosk-keyboard {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 120;
+            padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+            background: rgba(13, 13, 18, 0.97);
+            -webkit-backdrop-filter: blur(22px) saturate(140%);
+            backdrop-filter: blur(22px) saturate(140%);
+            border-top: 1px solid rgba(249, 115, 22, 0.35);
+            box-shadow: 0 -20px 45px rgba(0, 0, 0, 0.5);
+            transform: translateY(112%);
+            visibility: hidden;
+            transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.24s;
+        }
+        #kiosk-keyboard.kb-visible { transform: translateY(0); visibility: visible; }
+        .kb-top { max-width: 760px; margin: 0 auto 6px; display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
+        .kb-label { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8; }
+        .kb-hide { width: 28px; height: 22px; border-radius: 7px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; font-size: 10px; display: flex; align-items: center; justify-content: center; }
+        .kb-hide:active { background: rgba(249,115,22,0.8); color: #fff; }
+        .kb-rows, .kb-grid { max-width: 760px; margin: 0 auto; }
+        .kb-row { display: flex; gap: 6px; margin-bottom: 6px; }
+        .kb-row:last-child { margin-bottom: 0; }
+        .kb-key {
+            flex: 1 1 0; min-width: 0; height: 44px; border-radius: 10px;
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.13);
+            color: #fff; font-family: inherit; font-weight: 800; font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; user-select: none; -webkit-user-select: none;
+            touch-action: manipulation; transition: background 0.1s, border-color 0.1s, transform 0.08s;
+        }
+        .kb-key:active, .kb-key.kb-key--pressed { background: rgba(249,115,22,0.9); border-color: #fb923c; transform: scale(0.95); }
+        .kb-key--wide { flex: 2.2 1 0; font-size: 11px; }
+        .kb-key--space { flex: 5.5 1 0; font-size: 11px; }
+        .kb-key--accent { background: #f97316; border-color: #fb923c; }
+        .kb-key--shift.kb-key--on { background: #f97316; border-color: #fb923c; }
+        .kb-key--icon { font-size: 15px; }
+        .kb-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 46px; gap: 6px; max-width: 460px; }
+        .kb-grid .kb-key { height: 100%; }
+        .kb-key--tall { grid-column: 4; grid-row: 1 / span 4; font-size: 11px; }
+        body.light-mode #kiosk-keyboard { background: rgba(248, 250, 252, 0.98); border-top-color: rgba(249, 115, 22, 0.45); box-shadow: 0 -20px 45px rgba(15, 23, 42, 0.18); }
+        body.light-mode .kb-label { color: #64748b; }
+        body.light-mode .kb-key { background: #ffffff; border-color: #e2e8f0; color: #0f172a; }
+        body.light-mode .kb-key--accent, body.light-mode .kb-key:active { background: #f97316; border-color: #fb923c; color: #fff; }
+        body.light-mode .kb-hide { background: #f1f5f9; border-color: #e2e8f0; color: #475569; }
+        body.kb-open .kb-layer { padding-bottom: calc(var(--kb-height, 0px) + 10px); }
+        body.kb-open .kb-layer > * { max-height: calc(100dvh - var(--kb-height, 0px) - 34px) !important; }
+
+        /* Hide spinner arrows on drawer quantity input */
+        #drawer-cart-list input[type=number]::-webkit-outer-spin-button,
+        #drawer-cart-list input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        #drawer-cart-list input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+        @media (max-width: 480px) {
+            .kb-key { height: 40px; font-size: 12px; }
+            .kb-row { gap: 4px; margin-bottom: 4px; }
+            .kb-grid { grid-auto-rows: 42px; gap: 4px; }
+        }
     </style>
 </head>
 <body class="bg-brand-dark text-brand-light h-screen h-[100dvh] flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative">
@@ -423,6 +484,7 @@
                     <input 
                         type="text" 
                         id="search-input" 
+                        data-kb="text"
                         oninput="filterItems()" 
                         placeholder="Search menu or price..." 
                         class="flex-1 min-w-0 bg-transparent border-0 px-1 py-2 text-xs text-white placeholder-brand-slate focus:outline-none focus:ring-0"
@@ -606,9 +668,9 @@
             </div>
             <div class="p-4 glass-panel-foot border-t border-white/10 flex items-center justify-between gap-3">
                 <span class="text-[10px] sm:text-xs text-brand-slate">Palawan State University Canteen Express</span>
-                <button onclick="clearOrderHistory()" id="clear-history-btn" title="Clear finished orders" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-brand-slate hover:text-red-400 hover:bg-white/10 font-bold text-[10px] sm:text-xs transition active:scale-95">
+                <button onclick="clearOrderHistory()" id="clear-history-btn" title="Clear orders" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-brand-slate hover:text-red-400 hover:bg-white/10 font-bold text-[10px] sm:text-xs transition active:scale-95">
                     <i class="fa-solid fa-trash-can text-[10px]"></i>
-                    <span>Clear finished</span>
+                    <span>Clear</span>
                 </button>
             </div>
         </div>
@@ -621,8 +683,8 @@
                 <i class="fa-solid fa-trash-can"></i>
             </div>
             <div class="space-y-1">
-                <h3 class="text-white font-black text-sm">Clear finished orders?</h3>
-                <p class="text-[11px] text-brand-slate leading-relaxed">Only completed, delivered, and cancelled orders will be removed. Active orders stay on this kiosk.</p>
+                <h3 class="text-white font-black text-sm">Clear orders?</h3>
+                <p class="text-[11px] text-brand-slate leading-relaxed">Completed, delivered, or cancelled orders will be removed. <span class="text-white">Unpaid</span> orders stay on this kiosk.</p>
             </div>
             <div class="flex gap-2">
                 <button onclick="closeClearHistoryConfirm()" class="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-[11px] uppercase tracking-wider border border-white/10 transition active:scale-95">Cancel</button>
@@ -733,7 +795,7 @@
 
             <p class="text-[10px] text-gray-400 text-center font-semibold">Tap your rating and optionally leave a comment.</p>
 
-            <textarea id="feedback-comment-input" placeholder="Write feedback or comment (optional)..." class="w-full bg-white/5 border border-white/10 text-white placeholder:text-gray-500 rounded-xl p-3 text-xs focus:outline-none focus:border-brand-orange resize-none h-20"></textarea>
+            <textarea id="feedback-comment-input" data-kb="text" placeholder="Write feedback or comment (optional)..." class="w-full bg-white/5 border border-white/10 text-white placeholder:text-gray-500 rounded-xl p-3 text-xs focus:outline-none focus:border-brand-orange resize-none h-20"></textarea>
 
             <p id="feedback-note" class="hidden text-[10px] font-bold text-amber-400 text-center leading-relaxed"></p>
 
@@ -862,7 +924,7 @@
                         <!-- Quantity Counter [ - qty + ] -->
                         <div class="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-2xl border border-white/10 backdrop-blur-md">
                             <button type="button" onclick="changeItemModalQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-minus text-xs"></i></button>
-                            <input id="modal-item-qty" type="number" min="1" step="1" inputmode="numeric" value="1" aria-label="Quantity"
+                            <input id="modal-item-qty" type="number" min="1" step="1" inputmode="numeric" value="1" aria-label="Quantity" data-kb="numeric"
                                 oninput="onModalQtyInput(this)" onchange="onModalQtyCommit(this)" onblur="onModalQtyCommit(this)"
                                 class="w-10 bg-transparent text-sm font-black text-white text-center focus:outline-none focus:ring-0">
                             <button type="button" onclick="changeItemModalQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-plus text-xs"></i></button>
@@ -876,6 +938,18 @@
         </div>
     </div>
 
+
+    <!-- ================= CONTEXT-AWARE ON-SCREEN KEYBOARD ================= -->
+    <div id="kiosk-keyboard" role="group" aria-label="On-screen keyboard" aria-hidden="true">
+        <div class="kb-top">
+            <span class="kb-label" id="kb-label">Text keyboard</span>
+            <button type="button" id="kb-hide" class="kb-hide" aria-label="Hide keyboard" onclick="hideKioskKeyboard()">
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
+        </div>
+        <div id="kb-rows" class="kb-rows"></div>
+        <div id="kb-grid" class="kb-grid" hidden></div>
+    </div>
 
     <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
@@ -1177,6 +1251,24 @@ function updateQuantity(cartKey, change) {
     updateCartUI();
 }
 
+function updateQuantityFromInput(cartKey, input) {
+    if (!cart[cartKey]) { updateCartUI(); return; }
+    const stock = cart[cartKey].stock === undefined ? -1 : cart[cartKey].stock;
+    const parsed = parseInt(input.value, 10);
+    if (isNaN(parsed) || parsed < 1) {
+        cart[cartKey].qty = 1;
+        updateCartUI();
+        return;
+    }
+    if (stock !== -1 && parsed > stock) {
+        cart[cartKey].qty = stock;
+        kioskToast(`Only ${stock} left in stock.`);
+    } else {
+        cart[cartKey].qty = parsed;
+    }
+    updateCartUI();
+}
+
 function clearCart() {
     cart = {};
     updateCartUI();
@@ -1225,11 +1317,11 @@ function updateCartUI() {
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                     <div class="flex items-center gap-2 bg-black/40 rounded-xl px-2 py-1 border border-white/10">
-                        <button onclick="updateQuantity('${item.id}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-6 h-6 flex items-center justify-center">-</button>
-                        <span class="text-sm font-black text-white px-1">${item.qty}</span>
-                        <button onclick="updateQuantity('${item.id}', 1)" class="text-brand-slate hover:text-white font-black text-xs w-6 h-6 flex items-center justify-center">+</button>
+                        <button onclick="updateQuantity('${key}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-6 h-6 flex items-center justify-center">-</button>
+                        <input type="number" min="1" inputmode="numeric" value="${item.qty}" onchange="updateQuantityFromInput('${key}', this)" onblur="updateQuantityFromInput('${key}', this)" class="w-10 bg-transparent text-sm font-black text-white text-center focus:outline-none focus:ring-0">
+                        <button onclick="updateQuantity('${key}', 1)" class="text-brand-slate hover:text-white font-black text-xs w-6 h-6 flex items-center justify-center">+</button>
                     </div>
-                    <button onclick="updateQuantity('${item.id}', -${item.qty})" class="text-brand-slate hover:text-red-400 p-1.5 text-xs transition">
+                    <button onclick="updateQuantity('${key}', -${item.qty})" class="text-brand-slate hover:text-red-400 p-1.5 text-xs transition">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
                 </div>
@@ -1357,9 +1449,13 @@ function renderQueueSlipUI(order) {
         row.className = "py-2 border-b border-gray-100/80 last:border-0";
         row.style.cssText = "display: block; clear: both; line-height: 1.5; overflow: visible;";
         row.innerHTML = `
-            <span style="float: left; font-weight: 600; color: #374151; font-size: 13px;">${item.qty}x ${item.name}</span>
-            <span style="float: right; font-weight: 700; color: #111827; font-size: 13px;">₱${(item.price * item.qty).toFixed(2)}</span>
-            <div style="clear: both;"></div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;">
+                <div style="min-width: 0;">
+                    <div style="font-weight: 600; color: #374151; font-size: 13px;">${item.qty}x ${item.name}</div>
+                    <div style="font-size: 10px; color: #6b7280;">₱${Number(item.price).toFixed(2)} each</div>
+                </div>
+                <div style="font-weight: 700; color: #111827; font-size: 13px; white-space: nowrap;">₱${(Number(item.price) * Number(item.qty)).toFixed(2)}</div>
+            </div>
         `;
         itemsContainer.appendChild(row);
     });
@@ -1795,7 +1891,7 @@ function closeOrderHistory() {
     document.getElementById('order-history-modal').classList.add('hidden');
 }
 
-const HISTORY_ACTIVE_STATUSES = ['unpaid', 'pending', 'preparing', 'ready'];
+const HISTORY_ACTIVE_STATUSES = ['unpaid']; // Keep only unpaid; allow clearing pending/preparing/ready/cancelled/completed/delivered
 
 async function clearOrderHistory() {
     const list = getOrderHistory();
@@ -1825,7 +1921,8 @@ async function confirmClearHistory() {
             const res = await fetch(`/kiosk/api/order-status/${encodeURIComponent(rec.order_number)}/`);
             const data = await res.json();
             if (!data.exists) return { rec, keep: false };
-            return { rec, keep: HISTORY_ACTIVE_STATUSES.includes(data.status) };
+            // Keep only unpaid pending slips; clear everything else (pending/preparing/ready/completed/delivered/cancelled)
+            return { rec, keep: data.status === 'unpaid' };
         } catch (e) {
             // If the status can't be checked, keep the record rather than deleting it blindly.
             return { rec, keep: true };
@@ -1839,9 +1936,9 @@ async function confirmClearHistory() {
     renderOrderHistory();
 
     if (removedCount > 0) {
-        kioskToast(`Cleared ${removedCount} finished order${removedCount === 1 ? '' : 's'}.`);
+        kioskToast(`Cleared ${removedCount} order${removedCount === 1 ? '' : 's'}.`);
     } else {
-        kioskToast('No finished orders to clear — active orders were kept.');
+        kioskToast('Only unpaid orders remain — nothing to clear.');
     }
 }
 
@@ -1999,7 +2096,7 @@ function openHistoryRating(orderNumber, btn) {
             <button type="button" onclick="setHistoryRating('${orderNumber}', 4)" class="star-btn text-gray-400" data-val="4"><i class="fa-solid fa-star"></i></button>
             <button type="button" onclick="setHistoryRating('${orderNumber}', 5)" class="star-btn text-gray-400" data-val="5"><i class="fa-solid fa-star"></i></button>
         </div>
-        <textarea id="comment-${historyId(orderNumber)}" placeholder="Write feedback or comment..." class="w-full bg-brand-dark/70 border border-white/10 text-white rounded-xl p-2 text-xs placeholder-brand-slate focus:outline-none focus:border-brand-orange resize-none h-12"></textarea>
+        <textarea id="comment-${historyId(orderNumber)}" data-kb="text" placeholder="Write feedback or comment..." class="w-full bg-brand-dark/70 border border-white/10 text-white rounded-xl p-2 text-xs placeholder-brand-slate focus:outline-none focus:border-brand-orange resize-none h-12"></textarea>
         <button onclick="submitHistoryRating('${orderNumber}')" class="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-2 rounded-xl text-xs uppercase tracking-wider transition">Submit Feedback</button>
     `;
     card.appendChild(slot);
@@ -2285,6 +2382,10 @@ function updateModalTotal() {
 
 function addCustomizedItemToCart() {
     if (!currentModalItem) return;
+    const qtyInput = document.getElementById('modal-item-qty');
+    if (qtyInput) {
+        onModalQtyCommit(qtyInput);
+    }
     
     let itemName = currentModalItem.name;
     let itemPrice = currentModalItem.price;
@@ -2583,6 +2684,314 @@ checkoutOrder = async function () {
 
 if (window.__systemClosed) { showClosedOverlay('{{ SYSTEM_CLOSED_MESSAGE|escapejs }}'); }
 setInterval(refreshSystemStatus, 15000);
+
+// ================= CONTEXT-AWARE ON-SCREEN KEYBOARD =================
+(function initKioskKeyboard() {
+    const root = document.getElementById('kiosk-keyboard');
+    if (!root) return;
+
+    const rowsEl = document.getElementById('kb-rows');
+    const gridEl = document.getElementById('kb-grid');
+    const labelEl = document.getElementById('kb-label');
+    const docEl = document.documentElement;
+
+    let target = null;
+    let layoutName = 'text';
+    let shift = false;
+    let paddedLayer = null;
+    let pointerTs = 0;
+
+    function charKey(value, opts) { return Object.assign({ type: 'char', value: value }, opts || {}); }
+    function actionKey(action, label, opts) { return Object.assign({ type: 'action', action: action, label: label }, opts || {}); }
+
+    const layouts = {
+        text: {
+            label: 'Text keyboard',
+            rows: [
+                'qwertyuiop'.split(''),
+                'asdfghjkl'.split(''),
+                [actionKey('shift', 'Shift', { wide: true, shift: true })]
+                    .concat('zxcvbnm'.split(''))
+                    .concat([actionKey('backspace', '', { wide: true, icon: 'fa-delete-left' })]),
+                [charKey('.'), charKey(','), charKey('?'), actionKey('space', 'Space', { space: true }), actionKey('done', 'Done', { wide: true, accent: true })]
+            ]
+        },
+        email: {
+            label: 'Email keyboard',
+            rows: [
+                'qwertyuiop'.split(''),
+                'asdfghjkl'.split(''),
+                [actionKey('shift', 'Shift', { wide: true, shift: true })]
+                    .concat('zxcvbnm'.split(''))
+                    .concat([actionKey('backspace', '', { wide: true, icon: 'fa-delete-left' })]),
+                [charKey('.'), charKey('@'), charKey('_'), charKey('-'), actionKey('space', 'Space', { space: true }), actionKey('done', 'Done', { wide: true, accent: true })]
+            ]
+        },
+        numeric: {
+            label: 'Numeric keypad',
+            grid: true,
+            keys: [
+                actionKey('done', 'Done', { tall: true, accent: true }),
+                charKey('1'), charKey('2'), charKey('3'),
+                charKey('4'), charKey('5'), charKey('6'),
+                charKey('7'), charKey('8'), charKey('9'),
+                actionKey('clear', 'C'),
+                charKey('0'),
+                actionKey('backspace', '', { icon: 'fa-delete-left' })
+            ]
+        }
+    };
+
+    function makeKey(desc) {
+        const key = document.createElement('button');
+        key.type = 'button';
+        key.className = 'kb-key';
+        if (desc.wide) key.classList.add('kb-key--wide');
+        if (desc.space) key.classList.add('kb-key--space');
+        if (desc.accent) key.classList.add('kb-key--accent');
+        if (desc.tall) key.classList.add('kb-key--tall');
+        if (desc.shift) key.classList.add('kb-key--shift');
+        if (desc.type === 'char') {
+            key.dataset.kbChar = desc.value;
+            key.textContent = desc.value;
+            key.setAttribute('aria-label', desc.value);
+        } else {
+            key.dataset.kbAction = desc.action;
+            if (desc.icon) {
+                key.innerHTML = '<i class="fa-solid ' + desc.icon + '"></i>';
+                key.classList.add('kb-key--icon');
+                key.setAttribute('aria-label', desc.action);
+            } else {
+                key.textContent = desc.label;
+                key.setAttribute('aria-label', desc.label);
+            }
+        }
+        return key;
+    }
+
+    function renderLayout() {
+        const layout = layouts[layoutName] || layouts.text;
+        labelEl.textContent = layout.label;
+        rowsEl.innerHTML = '';
+        gridEl.innerHTML = '';
+        rowsEl.hidden = !!layout.grid;
+        gridEl.hidden = !layout.grid;
+
+        if (layout.grid) {
+            layout.keys.forEach(function (desc) { gridEl.appendChild(makeKey(desc)); });
+        } else {
+            layout.rows.forEach(function (row) {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'kb-row';
+                row.forEach(function (desc) {
+                    rowEl.appendChild(makeKey(typeof desc === 'string' ? charKey(desc) : desc));
+                });
+                rowsEl.appendChild(rowEl);
+            });
+        }
+
+        shift = false;
+        updateShift();
+    }
+
+    function updateShift() {
+        const shiftKey = root.querySelector('[data-kb-action="shift"]');
+        if (shiftKey) shiftKey.classList.toggle('kb-key--on', shift);
+        root.querySelectorAll('[data-kb-char]').forEach(function (el) {
+            const ch = el.dataset.kbChar;
+            if (/^[a-z]$/.test(ch)) el.textContent = shift ? ch.toUpperCase() : ch;
+        });
+    }
+
+    function readSelection(el) {
+        try {
+            if (typeof el.selectionStart === 'number' && typeof el.selectionEnd === 'number') {
+                return [el.selectionStart, el.selectionEnd];
+            }
+        } catch (e) { /* number inputs do not expose a selection */ }
+        const len = (el.value || '').length;
+        return [len, len];
+    }
+
+    function dispatchInput(el) {
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function insertText(text) {
+        if (!target) return;
+        const el = target;
+        const value = el.value == null ? '' : String(el.value);
+        const sel = readSelection(el);
+        let start = sel[0];
+        const end = sel[1];
+        const max = typeof el.maxLength === 'number' && el.maxLength > 0 ? el.maxLength : Infinity;
+
+        let insert = text;
+        if (shift && /^[a-z]$/.test(text)) {
+            insert = text.toUpperCase();
+            shift = false;
+            updateShift();
+        }
+
+        let next = value.slice(0, start) + insert + value.slice(end);
+        if (next.length > max) next = next.slice(0, max);
+
+        el.value = next;
+        try { el.setSelectionRange(Math.min(start + insert.length, next.length), Math.min(start + insert.length, next.length)); } catch (e) { /* number input */ }
+        dispatchInput(el);
+    }
+
+    function backspace() {
+        if (!target) return;
+        const el = target;
+        const value = el.value == null ? '' : String(el.value);
+        const sel = readSelection(el);
+        let start = sel[0];
+        const end = sel[1];
+        if (start === end) {
+            if (start === 0) return;
+            start -= 1;
+        }
+        const next = value.slice(0, start) + value.slice(end);
+        el.value = next;
+        try { el.setSelectionRange(start, start); } catch (e) { /* number input */ }
+        dispatchInput(el);
+    }
+
+    function clearValue() {
+        if (!target) return;
+        target.value = '';
+        dispatchInput(target);
+    }
+
+    function press(key) {
+        if (key.dataset.kbChar != null) { insertText(key.dataset.kbChar); return; }
+        switch (key.dataset.kbAction) {
+            case 'shift':
+                shift = !shift;
+                updateShift();
+                break;
+            case 'backspace':
+                backspace();
+                break;
+            case 'clear':
+                clearValue();
+                break;
+            case 'space':
+                insertText(' ');
+                break;
+            case 'done': {
+                const el = target;
+                hide();
+                if (el) el.blur();
+                break;
+            }
+        }
+    }
+
+    function padLayer(el) {
+        unpadLayer();
+        const layer = el.closest ? el.closest('.fixed') : null;
+        if (!layer) return;
+        layer.classList.add('kb-layer');
+        paddedLayer = layer;
+    }
+
+    function unpadLayer() {
+        if (paddedLayer) paddedLayer.classList.remove('kb-layer');
+        paddedLayer = null;
+    }
+
+    function show(el) {
+        target = el;
+        const requested = (el.dataset.kb || (el.type === 'number' ? 'numeric' : el.type === 'email' ? 'email' : 'text')).toLowerCase();
+        layoutName = layouts[requested] ? requested : 'text';
+
+        if (!el.dataset.kbInputmodeSet) {
+            el.dataset.kbInputmodeSet = '1';
+            el.dataset.kbOriginalInputmode = el.getAttribute('inputmode') || '';
+            el.setAttribute('inputmode', 'none');
+        }
+
+        renderLayout();
+        root.classList.add('kb-visible');
+        root.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('kb-open');
+        docEl.style.setProperty('--kb-height', root.offsetHeight + 'px');
+        padLayer(el);
+
+        setTimeout(function () {
+            if (target === el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }, 80);
+    }
+
+    function hide() {
+        if (!root.classList.contains('kb-visible')) return;
+        root.classList.remove('kb-visible');
+        root.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('kb-open');
+        unpadLayer();
+        docEl.style.removeProperty('--kb-height');
+        target = null;
+        shift = false;
+    }
+
+    window.hideKioskKeyboard = hide;
+
+    // Do not let the OS keyboard cover the kiosk keyboard on touch devices.
+    document.querySelectorAll('[data-kb]').forEach(function (el) {
+        if (!el.dataset.kbInputmodeSet) {
+            el.dataset.kbInputmodeSet = '1';
+            el.dataset.kbOriginalInputmode = el.getAttribute('inputmode') || '';
+            el.setAttribute('inputmode', 'none');
+        }
+    });
+
+    document.addEventListener('focusin', function (e) {
+        const el = e.target;
+        if (!el || !el.matches || !el.matches('[data-kb]')) return;
+        show(el);
+    });
+
+    root.addEventListener('pointerdown', function (e) {
+        const key = e.target.closest('.kb-key');
+        if (!key) return;
+        e.preventDefault();
+        pointerTs = Date.now();
+        press(key);
+    });
+
+    root.addEventListener('click', function (e) {
+        const key = e.target.closest('.kb-key');
+        if (!key) return;
+        // Pointer taps already ran on pointerdown; this keeps keyboard activation working.
+        if (Date.now() - pointerTs < 700) return;
+        press(key);
+    });
+
+    document.addEventListener('pointerdown', function (e) {
+        if (!root.classList.contains('kb-visible')) return;
+        if (root.contains(e.target)) return;
+        if (e.target.closest && e.target.closest('[data-kb]')) return;
+        hide();
+    }, true);
+
+    document.addEventListener('focusout', function () {
+        if (!target) return;
+        setTimeout(function () {
+            if (!target) return;
+            const active = document.activeElement;
+            if (active === target) return;
+            if (active && active.matches && active.matches('[data-kb]')) return;
+            if (root.contains(active)) return;
+            hide();
+        }, 120);
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && root.classList.contains('kb-visible')) hide();
+    });
+})();
     </script>
     <script src="{% static 'js/ui-loading.js' %}"></script>
 </body>
