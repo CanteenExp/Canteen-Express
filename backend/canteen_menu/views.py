@@ -1037,7 +1037,12 @@ def process_barcode_api(request):
                     'already_paid': True,
                     'message': f'Order already paid ({order.get_status_display()}). Receipt re-issued.',
                 })
-            order.status = 'pending'
+            from deliveries.models import DeliveryRequest
+            is_delivery = DeliveryRequest.objects.filter(order=order).exists() or hasattr(order, 'delivery_info')
+            if is_delivery:
+                order.status = 'pending'
+            else:
+                order.status = 'ready'
             order.save()
             log_activity(
                 request,
@@ -1087,4 +1092,19 @@ def process_barcode_api(request):
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])
 def counter_pos_view(request):
-    return render(request, 'canteen_menu/counter_pos.html')
+    from customer_portal.models import Order
+    from deliveries.models import DeliveryRequest
+    from django.db.models import Q
+    
+    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled', 'unpaid']).order_by('-created_at')
+    ready_orders = Order.objects.filter(Q(status='ready') | Q(delivery_info__isnull=True, status='pending')).exclude(status__in=['completed', 'cancelled', 'unpaid']).order_by('-created_at')
+    
+    for o in list(delivery_orders) + list(ready_orders):
+        o.is_delivery = DeliveryRequest.objects.filter(order=o).exists()
+        
+    context = {
+        'delivery_orders': delivery_orders,
+        'ready_orders': ready_orders,
+        'staff_name': request.user.first_name or request.user.username,
+    }
+    return render(request, 'canteen_menu/counter_pos_board.html', context)

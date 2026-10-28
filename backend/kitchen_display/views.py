@@ -190,24 +190,20 @@ def staff_dashboard(request):
 
 @role_required(allowed_roles=['STAFF'])
 def kitchen_display(request):
-    """Kanban-style Order Board for real-time order processing."""
-    # A cancelled order is NOT active work: once cancel is pressed the card must
-    # vanish from every column immediately, or staff keep tapping a dead order
-    # and hit "Cannot move order from 'cancelled'..." errors.
-    kiosk_orders = Order.objects.filter(delivery_info__isnull=True).exclude(status__in=['completed', 'ready', 'unpaid', 'cancelled']).order_by('created_at')
-    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled']).order_by('created_at')
-    ready_orders = Order.objects.filter(status='ready').order_by('created_at')
+    """Combined POS & Kitchen Board terminal."""
+    from django.db.models import Q
+    delivery_orders = Order.objects.filter(delivery_info__isnull=False).exclude(status__in=['completed', 'ready', 'cancelled', 'unpaid']).order_by('-created_at')
+    ready_orders = Order.objects.filter(Q(status='ready') | Q(delivery_info__isnull=True, status='pending')).exclude(status__in=['completed', 'cancelled', 'unpaid']).order_by('-created_at')
 
-    for o in list(kiosk_orders) + list(delivery_orders) + list(ready_orders):
+    for o in list(delivery_orders) + list(ready_orders):
         o.is_delivery = DeliveryRequest.objects.filter(order=o).exists()
 
     context = {
-        'kiosk_orders': kiosk_orders,
         'delivery_orders': delivery_orders,
         'ready_orders': ready_orders,
         'staff_name': request.user.first_name or request.user.username,
     }
-    return render(request, 'kitchen_dashboard.html', context)
+    return render(request, 'canteen_menu/counter_pos_board.html', context)
 
 
 @role_required(allowed_roles=['STAFF'])

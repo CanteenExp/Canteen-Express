@@ -1,12 +1,12 @@
-# backend/kitchen_display/urls.py
 from django.urls import path
 from . import views
+from canteen_menu.views import counter_pos_view
 
 app_name = 'kitchen_display'
 
 urlpatterns = [
     path('dashboard/', views.staff_dashboard, name='dashboard'),
-    path('kitchen-board/', views.kitchen_display, name='kitchen_board'),
+    path('kitchen-board/', counter_pos_view, name='kitchen_board'),
     path('kitchen-live-stream/', views.kitchen_live_stream, name='kitchen_live_stream'),
     path('api/orders/', views.kitchen_orders_json_api, name='kitchen_orders_json_api'),
     path('order/<int:order_id>/update-status/', views.update_order_status, name='update_status'),

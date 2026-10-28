@@ -341,21 +341,12 @@
         <div class="pt-4 border-t border-white/10 space-y-2">
 
             <a
-                href="{% url 'kitchen_display:kitchen_board' %}"
-                target="_blank"
-                class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2">
-
-                <i class="fa-solid fa-fire"></i>
-                Kitchen Board ↗
-            </a>
-
-            <a
                 href="{% url 'canteen_menu:counter_pos' %}"
                 target="_blank"
-                class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md shadow-orange-500/20">
 
-                <i class="fa-solid fa-barcode"></i>
-                Counter POS ↗
+                <i class="fa-solid fa-cash-register"></i>
+                POS & Kitchen Board ↗
             </a>
 
             <button
@@ -399,17 +390,10 @@
             <div class="flex items-center gap-2">
 
                 <a
-                    href="{% url 'kitchen_display:kitchen_board' %}"
-                    target="_blank"
-                    class="bg-white/10 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold">
-                    Kitchen ↗
-                </a>
-
-                <a
                     href="{% url 'canteen_menu:counter_pos' %}"
                     target="_blank"
-                    class="bg-white/10 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold">
-                    POS ↗
+                    class="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold">
+                    POS & Kitchen ↗
                 </a>
 
             </div>
@@ -532,7 +516,7 @@
 
                     <h1 class="text-2xl md:text-3xl font-black tracking-tight">
                         Welcome,
-                        <span class="text-brand-500">{{ staff_name }}</span>! 👋
+                        <span class="text-brand-500">{{ staff_name }}</span>! <i class="fa-solid fa-hand text-brand-500"></i>
                     </h1>
 
                     <p class="text-gray-400 text-xs sm:text-sm">
@@ -544,11 +528,11 @@
                 <div class="z-10 flex items-center gap-3">
 
                     <a
-                        href="{% url 'kitchen_display:kitchen_board' %}"
+                        href="{% url 'canteen_menu:counter_pos' %}"
                         class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-brand-500/30 transition flex items-center gap-2">
 
-                        <i class="fa-solid fa-fire-burner"></i>
-                        Open Kitchen Board
+                        <i class="fa-solid fa-cash-register"></i>
+                        Open POS & Kitchen Board
                     </a>
 
                 </div>

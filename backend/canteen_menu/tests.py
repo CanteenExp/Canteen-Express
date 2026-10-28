@@ -54,11 +54,11 @@ class ProcessBarcodeAPITestCase(TestCase):
         data = response.json()
         self.assertEqual(data["status"], "success")
         self.order.refresh_from_db()
-        self.assertEqual(self.order.status, "pending")
+        self.assertEqual(self.order.status, "ready")
 
     def test_confirm_payment_already_paid_reissues_receipt(self):
         # The counter scanned and paid this slip once already.
-        self.order.status = "pending"
+        self.order.status = "ready"
         self.order.save()
         # Scanning and confirming it again must NOT warn "no longer payable":
         # the customer already cleared payment, so the cashier simply gets the
@@ -74,7 +74,7 @@ class ProcessBarcodeAPITestCase(TestCase):
         self.assertTrue(data.get("already_paid"))
         self.assertNotIn("no longer payable", data.get("message", ""))
         self.order.refresh_from_db()
-        self.assertEqual(self.order.status, "pending")
+        self.assertEqual(self.order.status, "ready")
 
     def test_confirm_payment_cancelled_slip_rejected(self):
         self.order.status = "cancelled"
