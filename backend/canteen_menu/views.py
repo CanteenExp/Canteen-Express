@@ -425,7 +425,7 @@ def staff_dashboard(request, token=None):
     preparing_count = Order.objects.filter(status='preparing').count()
     ready_count = Order.objects.filter(status='ready').count()
     
-    recent_orders = Order.objects.exclude(status__in=['completed', 'unpaid', 'cancelled']).order_by('-created_at')[:5]
+    recent_orders = Order.objects.exclude(status__in=['completed', 'unpaid', 'cancelled']).select_related('customer', 'delivery_info', 'delivery_info__rider').order_by('-created_at')[:5]
     menu_items = MenuItem.objects.all().select_related('category').order_by('category__name', 'name')
     categories = Category.objects.all().order_by('-name')
     users_list = User.objects.exclude(role__in=['DELIVERY', 'RIDER']).order_by('-date_joined')[:30] if hasattr(User, 'date_joined') else User.objects.exclude(role__in=['DELIVERY', 'RIDER'])[:30]
@@ -1058,10 +1058,10 @@ def counter_pos_view(request):
     from deliveries.models import DeliveryRequest
     from django.utils import timezone
     
-    ready_orders = Order.objects.filter(status='ready').order_by('-created_at')
+    ready_orders = Order.objects.filter(status='ready').prefetch_related('items').order_by('-created_at')
     
     accepted_delivery_order_ids = DeliveryRequest.objects.filter(status=DeliveryRequest.RequestStatus.ACCEPTED).values_list('order_id', flat=True)
-    delivery_orders = Order.objects.filter(status__in=['pending', 'preparing'], id__in=accepted_delivery_order_ids).order_by('-created_at')
+    delivery_orders = Order.objects.filter(status__in=['pending', 'preparing'], id__in=accepted_delivery_order_ids).prefetch_related('items').order_by('-created_at')
     
     today = timezone.now().date()
     done_today_count = Order.objects.filter(status='completed', created_at__date=today).count()
@@ -1072,3 +1072,60 @@ def counter_pos_view(request):
         'done_today_count': done_today_count,
     }
     return render(request, 'canteen_menu/counter_pos.html', context)
+
+
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
+def staff_dashboard_stats_api(request):
+    from customer_portal.models import Order
+    from deliveries.models import DeliveryRequest
+    from django.utils import timezone
+    from django.utils.timesince import timesince
+    
+    today = timezone.now().date()
+    day_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end = day_start + timezone.timedelta(days=1)
+    
+    today_orders = Order.objects.filter(
+        created_at__gte=day_start, created_at__lt=day_end
+    ).exclude(status='unpaid')
+    
+    total_orders_today = today_orders.count()
+    pending_count = Order.objects.filter(status='pending').count()
+    preparing_count = Order.objects.filter(status='preparing').count()
+    ready_count = Order.objects.filter(status='ready').count()
+    
+    recent_qs = Order.objects.exclude(status__in=['completed', 'unpaid', 'cancelled']).select_related('customer', 'delivery_info', 'delivery_info__rider').order_by('-created_at')[:5]
+    
+    orders_data = []
+    for o in recent_qs:
+        cust_name = "Walk-in Guest"
+        if o.customer:
+            cust_name = o.customer.get_full_name() or o.customer.username
+        
+        del_info = getattr(o, 'delivery_info', None)
+        del_status = del_info.status if del_info else None
+        
+        status_display = o.status
+        if del_status == 'ACCEPTED':
+            status_display = 'Rider Accepted'
+        elif del_status == 'SEARCHING':
+            status_display = 'Finding Rider'
+            
+        orders_data.append({
+            'order_number': o.order_number,
+            'customer_name': cust_name,
+            'total_amount': f"{o.total_amount:.2f}",
+            'status': status_display,
+            'raw_status': o.status,
+            'delivery_status': del_status,
+            'time_ago': timesince(o.created_at) + " ago",
+        })
+        
+    return JsonResponse({
+        'success': True,
+        'total_orders_today': total_orders_today,
+        'pending_count': pending_count,
+        'preparing_count': preparing_count,
+        'ready_count': ready_count,
+        'recent_orders': orders_data,
+    })

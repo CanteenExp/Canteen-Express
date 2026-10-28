@@ -19,6 +19,7 @@ class CustomUser(AbstractUser):
     is_email_verified = models.BooleanField(default=False)
     phone = models.CharField(max_length=20, blank=True, null=True)
     department = models.CharField(max_length=100, blank=True, null=True)
+    college_department = models.CharField(max_length=100, blank=True, null=True, default='')
     vehicle_plate = models.CharField(max_length=50, blank=True, null=True)
     loyalty_points = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
 

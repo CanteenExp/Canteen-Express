@@ -269,8 +269,10 @@
 
         /* Editable quantity in the item details modal */
         #modal-item-qty::-webkit-outer-spin-button,
-        #modal-item-qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        #modal-item-qty { -moz-appearance: textfield; appearance: textfield; }
+        #modal-item-qty::-webkit-inner-spin-button,
+        .cart-item-qty::-webkit-outer-spin-button,
+        .cart-item-qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        #modal-item-qty, .cart-item-qty { -moz-appearance: textfield; appearance: textfield; }
     </style>
 </head>
 <body class="bg-brand-dark text-brand-light h-screen h-[100dvh] flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative">
@@ -862,7 +864,7 @@
                         <!-- Quantity Counter [ - qty + ] -->
                         <div class="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-2xl border border-white/10 backdrop-blur-md">
                             <button type="button" onclick="changeItemModalQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-minus text-xs"></i></button>
-                            <input id="modal-item-qty" type="number" min="1" step="1" inputmode="numeric" value="1" aria-label="Quantity"
+                            <input id="modal-item-qty" type="text" inputmode="numeric" value="1" aria-label="Quantity"
                                 oninput="onModalQtyInput(this)" onchange="onModalQtyCommit(this)" onblur="onModalQtyCommit(this)"
                                 class="w-10 bg-transparent text-sm font-black text-white text-center focus:outline-none focus:ring-0">
                             <button type="button" onclick="changeItemModalQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-plus text-xs"></i></button>
@@ -1144,6 +1146,7 @@ function addToCart(itemId, customItem = null) {
 
     const baseItem = customItem || item;
     const cartKey = customItem && customItem.cartKey ? customItem.cartKey : itemId;
+    const addQty = customItem && customItem.qty !== undefined ? customItem.qty : 1;
 
     if (baseItem.stock === 0) {
         kioskToast('This item is sold out.');
@@ -1151,13 +1154,13 @@ function addToCart(itemId, customItem = null) {
     }
 
     if (cart[cartKey]) {
-        if (baseItem.stock !== -1 && cart[cartKey].qty >= baseItem.stock) {
+        if (baseItem.stock !== -1 && cart[cartKey].qty + addQty > baseItem.stock) {
             kioskToast(`Only ${baseItem.stock} left in stock.`);
             return;
         }
-        cart[cartKey].qty += 1;
+        cart[cartKey].qty += addQty;
     } else {
-        cart[cartKey] = { ...baseItem, id: itemId, qty: 1 };
+        cart[cartKey] = { ...baseItem, id: itemId, qty: addQty };
     }
     updateCartUI();
 }
@@ -1174,6 +1177,24 @@ function updateQuantity(cartKey, change) {
             delete cart[cartKey];
         }
     }
+    updateCartUI();
+}
+
+function setCartItemQty(cartKey, newQtyVal) {
+    if (!cart[cartKey]) return;
+    let qty = parseInt(newQtyVal, 10);
+    if (isNaN(qty) || qty <= 0) {
+        delete cart[cartKey];
+        updateCartUI();
+        return;
+    }
+    const stock = cart[cartKey].stock === undefined ? -1 : cart[cartKey].stock;
+    if (stock !== -1 && qty > stock) {
+        kioskToast(`Only ${stock} left in stock.`);
+        qty = stock;
+    }
+    if (qty > 99) qty = 99;
+    cart[cartKey].qty = qty;
     updateCartUI();
 }
 
@@ -1226,7 +1247,7 @@ function updateCartUI() {
                 <div class="flex items-center gap-2 shrink-0">
                     <div class="flex items-center gap-2 bg-black/40 rounded-xl px-2 py-1 border border-white/10">
                         <button onclick="updateQuantity('${item.id}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-6 h-6 flex items-center justify-center">-</button>
-                        <span class="text-sm font-black text-white px-1">${item.qty}</span>
+                        <input type="text" inputmode="numeric" value="${item.qty}" aria-label="Quantity" onchange="setCartItemQty('${item.id}', this.value)" oninput="setCartItemQty('${item.id}', this.value)" class="cart-item-qty w-10 bg-transparent text-sm font-black text-white text-center focus:outline-none focus:ring-0">
                         <button onclick="updateQuantity('${item.id}', 1)" class="text-brand-slate hover:text-white font-black text-xs w-6 h-6 flex items-center justify-center">+</button>
                     </div>
                     <button onclick="updateQuantity('${item.id}', -${item.qty})" class="text-brand-slate hover:text-red-400 p-1.5 text-xs transition">

@@ -330,9 +330,15 @@
                                 </td>
                                 <td class="py-3.5 px-3 font-black text-dark-900">₱{{ order.total_payment }}</td>
                                 <td class="py-3.5 px-3">
-                                    <span class="px-2.5 py-1 rounded-full font-bold text-[10px] uppercase {% if order.status == 'pending' %}bg-brand-50 text-brand-600 border border-brand-200{% elif order.status == 'preparing' %}bg-blue-50 text-blue-600 border border-blue-200{% else %}bg-emerald-50 text-emerald-600 border border-emerald-200{% endif %}">
-                                        {{ order.status }}
-                                    </span>
+                                     <span class="px-2.5 py-1 rounded-full font-bold text-[10px] uppercase {% if order.delivery_info and order.delivery_info.status == 'ACCEPTED' %}bg-sky-50 text-sky-700 border border-sky-200{% elif order.status == 'pending' %}bg-brand-50 text-brand-600 border border-brand-200{% elif order.status == 'preparing' %}bg-blue-50 text-blue-600 border border-blue-200{% else %}bg-emerald-50 text-emerald-600 border border-emerald-200{% endif %}">
+                                         {% if order.delivery_info and order.delivery_info.status == 'ACCEPTED' %}
+                                             Rider Accepted
+                                         {% elif order.delivery_info and order.delivery_info.status == 'SEARCHING' %}
+                                             Finding Rider
+                                         {% else %}
+                                             {{ order.status }}
+                                         {% endif %}
+                                     </span>
                                 </td>
                                 <td class="py-3.5 px-3 text-right text-gray-400">{{ order.created_at|timesince }} ago</td>
                             </tr>

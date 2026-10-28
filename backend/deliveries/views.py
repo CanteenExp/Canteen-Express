@@ -966,7 +966,7 @@ def track_order(request, delivery_id):
     return render(request, 'delivery_tracking.html', context)
 
 
-@role_required(allowed_roles=['STUDENT', 'FACULTY'])
+@role_required(allowed_roles=['STUDENT', 'FACULTY', 'STAFF'])
 def faculty_delivery_status(request):
     """Polling endpoint for the faculty/student dashboard to live-sync delivery statuses."""
     from .utils import serialize_delivery, prefetch_delivery_relations
@@ -1105,7 +1105,7 @@ def last__count_for(d, user):
     return d.messages.filter(is_read=False).exclude(sender=user).count()
 
 
-@role_required(allowed_roles=['STUDENT', 'FACULTY'])
+@role_required(allowed_roles=['STUDENT', 'FACULTY', 'STAFF'])
 def faculty_delivery_stream(request):
     """
     Real-time Server-Sent Events (SSE) stream for the faculty/student dashboard.

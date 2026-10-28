@@ -294,7 +294,7 @@
                     class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition text-left">
 
                     <i class="fa-solid fa-motorcycle w-5 text-center text-base"></i>
-                    <span>Delivery Staff</span>
+                    <span>Delivery Personnel</span>
                 </button>
 
                 <button
@@ -651,7 +651,7 @@
                             Orders Today
                         </p>
 
-                        <h3 class="text-2xl font-black text-dark-900 mt-0.5">
+                        <h3 class="text-2xl font-black text-dark-900 mt-0.5" id="stat-total-orders">
                             {{ total_orders_today }}
                         </h3>
                     </div>
@@ -670,7 +670,7 @@
                             Pending Orders
                         </p>
 
-                        <h3 class="text-2xl font-black text-brand-500 mt-0.5">
+                        <h3 class="text-2xl font-black text-brand-500 mt-0.5" id="stat-pending-orders">
                             {{ pending_count }}
                         </h3>
                     </div>
@@ -689,7 +689,7 @@
                             In Kitchen
                         </p>
 
-                        <h3 class="text-2xl font-black text-blue-600 mt-0.5">
+                        <h3 class="text-2xl font-black text-blue-600 mt-0.5" id="stat-preparing-orders">
                             {{ preparing_count }}
                         </h3>
                     </div>
@@ -708,7 +708,7 @@
                             Ready for Pickup
                         </p>
 
-                        <h3 class="text-2xl font-black text-emerald-600 mt-0.5">
+                        <h3 class="text-2xl font-black text-emerald-600 mt-0.5" id="stat-ready-orders">
                             {{ ready_count }}
                         </h3>
                     </div>
@@ -755,7 +755,7 @@
                             </tr>
                         </thead>
 
-                        <tbody class="divide-y divide-gray-100 font-medium">
+                        <tbody class="divide-y divide-gray-100 font-medium" id="active-orders-tbody">
 
                             {% for order in recent_orders %}
 
@@ -775,18 +775,26 @@
 
                                 <td class="py-3.5 px-3">
 
-                                    <span class="px-2.5 py-1 rounded-full font-bold text-[10px] uppercase
-                                        {% if order.status == 'pending' %}
-                                            bg-brand-50 text-brand-600 border border-brand-200
-                                        {% elif order.status == 'preparing' %}
-                                            bg-blue-50 text-blue-600 border border-blue-200
-                                        {% else %}
-                                            bg-emerald-50 text-emerald-600 border border-emerald-200
-                                        {% endif %}">
+                                     <span class="px-2.5 py-1 rounded-full font-bold text-[10px] uppercase
+                                         {% if order.delivery_info and order.delivery_info.status == 'ACCEPTED' %}
+                                             bg-sky-50 text-sky-700 border border-sky-200
+                                         {% elif order.status == 'pending' %}
+                                             bg-brand-50 text-brand-600 border border-brand-200
+                                         {% elif order.status == 'preparing' %}
+                                             bg-blue-50 text-blue-600 border border-blue-200
+                                         {% else %}
+                                             bg-emerald-50 text-emerald-600 border border-emerald-200
+                                         {% endif %}">
 
-                                        {{ order.status }}
+                                         {% if order.delivery_info and order.delivery_info.status == 'ACCEPTED' %}
+                                             Rider Accepted
+                                         {% elif order.delivery_info and order.delivery_info.status == 'SEARCHING' %}
+                                             Finding Rider
+                                         {% else %}
+                                             {{ order.status }}
+                                         {% endif %}
 
-                                    </span>
+                                     </span>
 
                                 </td>
 
@@ -2937,5 +2945,64 @@
     </div>
 
 </div>
+
+    <script>
+        const STATS_API_URL = "{% url 'canteen_menu:dashboard_stats_api' %}";
+        async function pollDashboardStats() {
+            try {
+                const res = await fetch(STATS_API_URL, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data.success) return;
+
+                // Update cards
+                const elTotal = document.getElementById('stat-total-orders');
+                const elPending = document.getElementById('stat-pending-orders');
+                const elKitchen = document.getElementById('stat-preparing-orders');
+                const elReady = document.getElementById('stat-ready-orders');
+                if (elTotal) elTotal.textContent = data.total_orders_today;
+                if (elPending) elPending.textContent = data.pending_count;
+                if (elKitchen) elKitchen.textContent = data.preparing_count;
+                if (elReady) elReady.textContent = data.ready_count;
+
+                // Update Active Orders Queue table
+                const tbody = document.getElementById('active-orders-tbody');
+                if (tbody && data.recent_orders) {
+                    if (data.recent_orders.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-gray-400">No active orders right now.</td></tr>`;
+                    } else {
+                        let html = '';
+                        data.recent_orders.forEach(o => {
+                            let badgeClass = 'bg-brand-50 text-brand-600 border border-brand-200';
+                            if (o.delivery_status === 'ACCEPTED') {
+                                badgeClass = 'bg-sky-50 text-sky-700 border border-sky-200';
+                            } else if (o.status === 'preparing') {
+                                badgeClass = 'bg-blue-50 text-blue-600 border border-blue-200';
+                            } else if (o.status === 'ready') {
+                                badgeClass = 'bg-emerald-50 text-emerald-600 border border-emerald-200';
+                            }
+                            html += `
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="py-3.5 px-3 font-black text-dark-900">${o.order_number}</td>
+                                    <td class="py-3.5 px-3 text-gray-800">${o.customer_name}</td>
+                                    <td class="py-3.5 px-3 font-bold text-gray-900">₱${o.total_amount}</td>
+                                    <td class="py-3.5 px-3">
+                                        <span class="px-2.5 py-1 rounded-full font-bold text-[10px] uppercase ${badgeClass}">
+                                            ${o.status}
+                                        </span>
+                                    </td>
+                                    <td class="py-3.5 px-3 text-right text-gray-400">${o.time_ago}</td>
+                                </tr>
+                            `;
+                        });
+                        tbody.innerHTML = html;
+                    }
+                }
+            } catch (err) {
+                console.error("Dashboard poll error:", err);
+            }
+        }
+        setInterval(pollDashboardStats, 4000);
+    </script>
 
 {% endblock %}
