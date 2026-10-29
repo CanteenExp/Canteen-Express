@@ -1252,20 +1252,7 @@ function updateQuantity(cartKey, change) {
 }
 
 function updateQuantityFromInput(cartKey, input) {
-    if (!cart[cartKey]) { updateCartUI(); return; }
-    const stock = cart[cartKey].stock === undefined ? -1 : cart[cartKey].stock;
-    const parsed = parseInt(input.value, 10);
-    if (isNaN(parsed) || parsed < 1) {
-        cart[cartKey].qty = 1;
-        updateCartUI();
-        return;
-    }
-    if (stock !== -1 && parsed > stock) {
-        cart[cartKey].qty = stock;
-        kioskToast(`Only ${stock} left in stock.`);
-    } else {
-        cart[cartKey].qty = parsed;
-    }
+    // Typing removed - use + / - buttons only
     updateCartUI();
 }
 
@@ -1318,10 +1305,10 @@ function updateCartUI() {
                 <div class="flex items-center gap-2 shrink-0">
                     <div class="flex items-center gap-2 bg-black/40 rounded-xl px-2 py-1 border border-white/10">
                         <button onclick="updateQuantity('${key}', -1)" class="text-brand-slate hover:text-white font-black text-xs w-6 h-6 flex items-center justify-center">-</button>
-                        <input type="number" min="1" inputmode="numeric" value="${item.qty}" onchange="updateQuantityFromInput('${key}', this)" onblur="updateQuantityFromInput('${key}', this)" class="w-10 bg-transparent text-sm font-black text-white text-center focus:outline-none focus:ring-0">
+                        <span class="w-10 text-sm font-black text-white text-center">${item.qty}</span>
                         <button onclick="updateQuantity('${key}', 1)" class="text-brand-slate hover:text-white font-black text-xs w-6 h-6 flex items-center justify-center">+</button>
                     </div>
-                    <button onclick="updateQuantity('${key}', -${item.qty})" class="text-brand-slate hover:text-red-400 p-1.5 text-xs transition">
+                    <button onclick="updateQuantity('${key}', -${item.qty})" class="w-6 h-6 rounded-lg bg-red-500/10 hover:bg-red-500/25 text-red-400 flex items-center justify-center text-[10px] transition" title="Remove">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
                 </div>

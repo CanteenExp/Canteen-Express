@@ -9,6 +9,11 @@ class CustomUser(AbstractUser):
     # (SSE stream) reported a heartbeat within this window.
     RIDER_ONLINE_TIMEOUT = timedelta(seconds=90)
 
+    # Fallback written whenever a signup/API/admin path omits the college
+    # department. Kept as a single source of truth so the model, forms and
+    # views never drift apart.
+    DEFAULT_COLLEGE_DEPARTMENT = 'Not Specified'
+
     ROLE_CHOICES = (
         ('STUDENT', 'Student'),
         ('FACULTY', 'Faculty'),
@@ -19,6 +24,18 @@ class CustomUser(AbstractUser):
     is_email_verified = models.BooleanField(default=False)
     phone = models.CharField(max_length=20, blank=True, null=True)
     department = models.CharField(max_length=100, blank=True, null=True)
+    college_department = models.CharField(
+        max_length=120,
+        # ``default`` fills the value in Python (ORM), while ``db_default``
+        # writes a real ``DEFAULT 'Not Specified'`` on the column so even
+        # inserts that bypass the ORM can never violate the NOT NULL
+        # constraint. ``blank=True`` means signup/admin forms do not require
+        # the user to type it. ``null=False`` keeps NULLs out entirely.
+        default='Not Specified',
+        db_default='Not Specified',
+        blank=True,
+        null=False,
+    )
     vehicle_plate = models.CharField(max_length=50, blank=True, null=True)
     loyalty_points = models.DecimalField(max_digits=8, decimal_places=2, default=0.00)
 
@@ -41,6 +58,18 @@ class CustomUser(AbstractUser):
         default='active'
     )
     status_reason = models.CharField(max_length=255, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        """Final safety net for the ``college_department`` NOT NULL column.
+
+        Every write path (faculty signup, rider creation, admin, shell,
+        ``bulk_create`` callers that call ``full_clean``, etc.) funnels
+        through here, so an omitted/blank value becomes the documented
+        default instead of raising a database integrity error.
+        """
+        if not str(self.college_department or '').strip():
+            self.college_department = self.DEFAULT_COLLEGE_DEPARTMENT
+        super().save(*args, **kwargs)
 
     @property
     def is_really_online(self):

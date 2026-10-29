@@ -258,14 +258,29 @@ def faculty_auth_view(request):
                     if User.objects.filter(username=username).exists():
                         username = f"{username}_{User.objects.count()}"
                     
+                    # The signup form intentionally does not ask for a college
+                    # department. Accept it if a future form posts one, else
+                    # persist the model default so the NOT NULL column is
+                    # never handed a NULL/blank value.
+                    college_department = (
+                        request.POST.get('college_department') or ''
+                    ).strip() or User.DEFAULT_COLLEGE_DEPARTMENT
+
                     user = User.objects.create_user(
                         username=username,
                         email=email,
                         password=password,
                         first_name=name,
                         role='FACULTY',
-                        is_email_verified=True
+                        is_email_verified=True,
+                        college_department=college_department,
                     )
+                    # Defensive second pass for deployments whose DB predates
+                    # the model default (e.g. a NOT NULL column with no
+                    # DEFAULT clause). No-op in the normal case.
+                    if not str(user.college_department or '').strip():
+                        user.college_department = User.DEFAULT_COLLEGE_DEPARTMENT
+                        user.save(update_fields=['college_department'])
                     logout(request)
                     login(request, user)
                     request.session['faculty_email'] = email

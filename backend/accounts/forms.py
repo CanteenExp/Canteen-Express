@@ -36,6 +36,18 @@ class FacultyStaffRegisterForm(forms.ModelForm):
             'last_name': forms.TextInput(attrs={'class': 'mt-1 w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none'}),
         }
 
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        # Signup does not ask for a college department, so fall back to the
+        # model's documented default instead of inserting NULL / ''.
+        if not str(getattr(user, 'college_department', '') or '').strip():
+            user.college_department = User.DEFAULT_COLLEGE_DEPARTMENT
+        if not str(getattr(user, 'department', '') or '').strip():
+            user.department = User.DEFAULT_COLLEGE_DEPARTMENT
+        if commit:
+            user.save()
+        return user
+
     def clean_email(self):
         email = self.cleaned_data.get('email', '').strip().lower()
         return email
