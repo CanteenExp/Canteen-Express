@@ -9,13 +9,14 @@ django.setup()
 from django.core.serializers import deserialize
 from django.db import transaction
 
-print("Reading backup_data.json...")
-with open('backup_data.json', encoding='utf-16', errors='ignore') as f:
+
+print("Reading fresh_backup.json...")
+with open('fresh_backup.json', encoding='utf-16', errors='ignore') as f:
     content = f.read()
 
 # Find all blocks starting with {"model"
 matches = re.findall(r'(\{\s*"model"\s*:\s*".*?\})', content, re.DOTALL)
-print(f"Found {len(matches)} serialized model blocks in backup_data.json.")
+print(f"Found {len(matches)} serialized model blocks in fresh_backup.json.")
 
 success = 0
 skipped = 0
