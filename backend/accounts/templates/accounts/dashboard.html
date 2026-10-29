@@ -999,7 +999,12 @@
                 <h3 class="font-black text-white text-sm flex items-center gap-2">
                     <i class="fa-solid fa-bell text-brand-orange"></i> Recent Orders History & Live Tracking
                 </h3>
-                <button onclick="closeOngoingOrdersModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+                <div class="flex items-center gap-2">
+                    <button onclick="clearFacultyOrderHistory()" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-red-500/20 text-brand-slate hover:text-red-400 text-[10px] font-black uppercase tracking-wider border border-white/10 transition flex items-center gap-1.5" title="Clear finished orders">
+                        <i class="fa-solid fa-trash-can"></i> Clear
+                    </button>
+                    <button onclick="closeOngoingOrdersModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
             </div>
             <div id="ongoing-orders-container" class="p-5 overflow-y-auto space-y-4 flex-1 glass-scroll">
                 <!-- Populated dynamically -->
@@ -1729,18 +1734,66 @@
         document.getElementById('ongoing-orders-modal').classList.remove('hidden');
     }
 
+    // Order history can be pruned the same way the kiosk prunes its local
+    // history: only finished deliveries are hidden, active ones always stay.
+    // The hidden ids are persisted so the next SSE/poll refresh cannot bring
+    // the cleared rows back.
+    const FACULTY_CLEARED_HISTORY_KEY = 'faculty_cleared_order_history';
+
+    function getClearedFacultyHistoryIds() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(FACULTY_CLEARED_HISTORY_KEY) || '[]');
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function saveClearedFacultyHistoryIds(ids) {
+        try {
+            localStorage.setItem(FACULTY_CLEARED_HISTORY_KEY, JSON.stringify(ids.slice(-200)));
+        } catch (e) { /* storage full or disabled: clearing just won't persist */ }
+    }
+
+    function visibleFacultyHistory() {
+        const cleared = new Set(getClearedFacultyHistoryIds());
+        return ongoingDeliveriesData.filter(d => !cleared.has(d.id));
+    }
+
+    function clearFacultyOrderHistory() {
+        const finished = visibleFacultyHistory().filter(d => !isOngoingDelivery(d));
+        if (finished.length === 0) {
+            showToast('No finished orders to clear — active orders were kept.', 'info');
+            return;
+        }
+        showFacultyConfirm({
+            title: 'Clear order history?',
+            subtitle: 'Only finished orders are removed',
+            message: `This will remove ${finished.length} finished order${finished.length === 1 ? '' : 's'} from your history. Ongoing orders stay visible.`,
+            confirmLabel: 'Clear',
+            onConfirm: () => {
+                const ids = getClearedFacultyHistoryIds();
+                finished.forEach(d => { if (!ids.includes(d.id)) ids.push(d.id); });
+                saveClearedFacultyHistoryIds(ids);
+                renderOngoingOrdersList();
+                showToast(`Cleared ${finished.length} finished order${finished.length === 1 ? '' : 's'}.`, 'success');
+            }
+        });
+    }
+
     function renderOngoingOrdersList() {
         const container = document.getElementById('ongoing-orders-container');
         container.innerHTML = '';
 
-        if (ongoingDeliveriesData.length === 0) {
+        const history = visibleFacultyHistory();
+        if (history.length === 0) {
             container.innerHTML = `
                 <div class="text-center py-16 text-brand-slate space-y-2">
                     <i class="fa-solid fa-box-open text-4xl opacity-40"></i>
                     <p class="text-xs font-bold">No ongoing delivery orders at the moment.</p>
                 </div>`;
         } else {
-            ongoingDeliveriesData.forEach(d => {
+            history.forEach(d => {
                 const stColor = d.raw_status === 'ACCEPTED'
                     ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
                     : (d.raw_status === 'DELIVERED'
@@ -3811,7 +3864,7 @@
                 <button onclick="closeFacultyConfirm()" class="py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-wider transition">
                     Not Now
                 </button>
-                <button id="faculty-confirm-ok" onclick="runFacultyConfirm()" class="py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-1.5">
+                <button id="faculty-confirm-ok" onclick="runFacultyConfirm()" class="py-3 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider border border-brand-orange/30 shadow-lg shadow-brand-orange/30 transition flex items-center justify-center gap-1.5">
                     <i class="fa-solid fa-check"></i> Confirm
                 </button>
             </div>
