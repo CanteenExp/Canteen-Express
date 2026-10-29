@@ -87,3 +87,18 @@ class DeliveryMessage(models.Model):
 
     def __str__(self):
         return f"{self.sender.username}: {self.message[:30]}"
+
+
+class DeliveryRejection(models.Model):
+    """Track which riders have rejected a delivery request so it doesn't
+    keep reappearing for that same rider while remaining available to others."""
+    delivery = models.ForeignKey(DeliveryRequest, on_delete=models.CASCADE, related_name='rejections')
+    rider = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='delivery_rejections')
+    rejected_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('delivery', 'rider')
+        ordering = ['-rejected_at']
+
+    def __str__(self):
+        return f"{self.rider} rejected {self.delivery_id}"

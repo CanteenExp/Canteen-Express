@@ -8,15 +8,14 @@ from .models import DeliveryRequest
 
 def pending_pool_for_rider(user):
     """SEARCHING deliveries visible to a rider -- every proposal in the shared
-    pool. There is no pre-assigned rider until one accepts: whoever taps Accept
-    first claims the order (atomic guard in accept_delivery).
+    pool except those this rider has already rejected. There is no pre-assigned
+    rider until one accepts: whoever taps Accept first claims the order."""
+    from .models import DeliveryRejection
 
-    Ordered FIFO by how long each order has been waiting so the queue stays
-    fair: the longest-waiting delivery is the one riders see first. pool_rank
-    still surfaces any legacy assigned_to offer to that rider first without
-    hiding the rest of the pool."""
+    rejected_ids = DeliveryRejection.objects.filter(rider=user).values('delivery_id')
     return (DeliveryRequest.objects
             .filter(status=DeliveryRequest.RequestStatus.SEARCHING)
+            .exclude(id__in=rejected_ids)
             .annotate(
                 pool_rank=Case(
                     When(assigned_to=user, then=Value(0)),

@@ -347,10 +347,11 @@ def accept_delivery(request, delivery_id):
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN'])
 def reject_delivery(request, delivery_id):
     from django.db import transaction
+    from .models import DeliveryRejection
 
-    # Under the proposal-only model nothing is pre-assigned; rejecting just
-    # drops any stale "offered" rider so the order stays visible to everyone
-    # in the shared pool. Staff can always dismiss a proposal.
+    # Under the proposal-only model nothing is pre-assigned; rejecting records
+    # this rider so the request no longer appears for them but stays visible
+    # to other available riders in the shared pool.
     with transaction.atomic():
         try:
             delivery = DeliveryRequest.objects.select_for_update().get(id=delivery_id)
@@ -358,6 +359,7 @@ def reject_delivery(request, delivery_id):
             messages.error(request, 'Delivery request not found.')
             return redirect('deliveries:dashboard')
         if delivery.status == DeliveryRequest.RequestStatus.SEARCHING:
+            DeliveryRejection.objects.get_or_create(delivery=delivery, rider=request.user)
             delivery.assigned_to = None
             delivery.assigned_at = None
             delivery.save(update_fields=['assigned_to', 'assigned_at'])

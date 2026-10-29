@@ -126,8 +126,9 @@
                     <button @click="showChangePasswordModal = true" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 w-10 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center" title="Change Password">
                         <i class="fa-solid fa-key"></i>
                     </button>
-                    <a href="{% url 'accounts:delivery_logout' %}" class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 backdrop-blur-md w-10 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center" title="Logout">
+                    <a href="{% url 'accounts:delivery_logout' %}" class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 backdrop-blur-md px-3 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5" title="Logout">
                         <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Logout</span>
                     </a>
                 </div>
             </div>
@@ -490,21 +491,27 @@
 
     <!-- ============ CONFIRMATION MODAL (glass) ============ -->
     <div x-show="confirmOpen" x-cloak class="fixed inset-0 z-[60] glass-backdrop flex items-center justify-center p-4">
-        <div class="glass-strong rounded-3xl max-w-sm w-full p-6 shadow-glass text-center space-y-4">
-            <div class="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-xl"
-                 :class="confirmData.type === 'release' ? 'bg-red-500/15 text-red-400' : (confirmData.type === 'reject' ? 'bg-zinc-800 text-zinc-400' : 'bg-orange-500/15 text-orange-400')">
-                <i :class="confirmData.type === 'release' ? 'fa-solid fa-rotate-left' : (confirmData.type === 'reject' ? 'fa-solid fa-xmark' : 'fa-solid fa-triangle-exclamation')"></i>
-            </div>
-            <div>
-                <h3 class="font-black text-white text-base" x-text="confirmData.title"></h3>
-                <p class="text-xs text-zinc-400 mt-1" x-text="confirmData.desc"></p>
-            </div>
-            <div class="flex items-center gap-2">
-                <button @click="closeConfirm()" class="flex-1 bg-zinc-800/60 hover:bg-zinc-700/80 text-zinc-300 border border-white/10 font-bold py-2.5 rounded-xl text-xs transition active:scale-95">Cancel</button>
-                <button @click="doConfirm()" class="flex-1 btn-shine font-black py-2.5 rounded-xl text-xs transition active:scale-95 text-white"
-                        :class="confirmData.type === 'release' ? 'bg-gradient-to-r from-red-500 to-red-600' : (confirmData.type === 'reject' ? 'bg-gradient-to-r from-zinc-600 to-zinc-700' : 'bg-gradient-to-r from-orange-500 to-orange-600')">
-                    <span x-text="confirmData.type === 'release' ? 'Release' : (confirmData.type === 'reject' ? 'Reject' : 'Confirm')"></span>
-                </button>
+        <div class="glass-strong rounded-3xl max-w-sm w-full overflow-hidden shadow-glass text-center border border-white/10">
+            <div class="h-1 w-full bg-gradient-to-r from-orange-500/60 via-amber-400/60 to-orange-500/60"></div>
+            <div class="p-6 space-y-4">
+                <div class="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-xl ring-1 ring-inset"
+                     :class="confirmData.type === 'reject' ? 'bg-red-500/15 text-red-400 ring-red-500/30' : (confirmData.type === 'release' ? 'bg-red-500/15 text-red-400 ring-red-500/30' : 'bg-orange-500/15 text-orange-400 ring-orange-500/30')">
+                    <i :class="confirmData.type === 'reject' ? 'fa-solid fa-rotate-left' : (confirmData.type === 'release' ? 'fa-solid fa-rotate-left' : 'fa-solid fa-triangle-exclamation')"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-white text-base" x-text="confirmData.title"></h3>
+                    <p class="text-xs text-zinc-400 mt-1 leading-relaxed" x-text="confirmData.desc"></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button @click="closeConfirm()" :disabled="confirmData.loading" class="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-2.5 rounded-xl text-xs transition active:scale-95 border border-white/10 disabled:opacity-60 disabled:cursor-not-allowed">Cancel</button>
+                    <button @click="doConfirm()" :disabled="confirmData.loading" class="flex-1 font-black py-2.5 rounded-xl text-xs transition active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed border"
+                            :class="confirmData.type === 'reject' ? 'bg-red-500 hover:bg-red-600 text-white border-red-400/40' : (confirmData.type === 'release' ? 'bg-red-500 hover:bg-red-600 text-white border-red-400/40' : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white border-orange-400/40 btn-shine')">
+                        <span x-show="!confirmData.loading" class="inline-flex items-center justify-center">
+                            <span x-text="confirmData.type === 'release' ? 'Release' : (confirmData.type === 'reject' ? 'Reject' : 'Confirm')"></span>
+                        </span>
+                        <span x-show="confirmData.loading" class="inline-flex items-center justify-center gap-1.5"><i class="fa-solid fa-spinner fa-spin"></i> Processing...</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -737,7 +744,7 @@
 
             // Confirmation modal
             confirmOpen: false,
-            confirmData: { title: '', desc: '', url: '', type: 'reject' },
+            confirmData: { title: '', desc: '', url: '', type: 'reject', loading: false },
 
             addToast(type, title, desc) {
                 const id = Date.now() + Math.random();
@@ -889,7 +896,25 @@
                             const wrapper = document.createElement('div');
                             wrapper.innerHTML = html.trim();
                             const fresh = wrapper.querySelector('#pending-grid');
-                            if (fresh) grid.outerHTML = fresh.outerHTML;
+                            if (fresh && grid.parentNode) {
+                                grid.parentNode.replaceChild(fresh, grid);
+                                if (window.Alpine) {
+                                    try {
+                                        Alpine.initTree(document.getElementById('pending-grid'));
+                                    } catch (e) {
+                                        try {
+                                            if (Alpine.destroyTree) Alpine.destroyTree(document.getElementById('pending-grid'));
+                                        } catch (e2) {}
+                                    }
+                                }
+                            } else if (fresh && grid) {
+                                grid.outerHTML = fresh.outerHTML;
+                                if (window.Alpine) {
+                                    try {
+                                        Alpine.initTree(document.getElementById('pending-grid'));
+                                    } catch (e) {}
+                                }
+                            }
                         }
                     })
                     .catch(() => { /* next SSE/poll tick will retry */ })
@@ -921,11 +946,13 @@
             },
 
             confirmAction(url, title, desc, type) {
-                this.confirmData = { url, title, desc, type };
+                this.confirmData = { url, title, desc, type, loading: false };
                 this.confirmOpen = true;
             },
-            closeConfirm() { this.confirmOpen = false; },
+            closeConfirm() { if (this.confirmData?.loading) return; this.confirmOpen = false; },
             doConfirm() {
+                if (!this.confirmData || !this.confirmData.url || this.confirmData.loading) return;
+                this.confirmData.loading = true;
                 window.location.href = this.confirmData.url;
             },
 
