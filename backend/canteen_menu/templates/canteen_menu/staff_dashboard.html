@@ -1661,18 +1661,9 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-                    <div class="space-y-2">
-                        <span class="text-xs font-bold text-gray-500 uppercase">Sales Revenue (Bar Chart)</span>
-                        <div class="h-64 w-full relative">
-                            <canvas id="salesChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <span class="text-xs font-bold text-gray-500 uppercase">Order Volume Trend (Line Chart)</span>
-                        <div class="h-64 w-full relative">
-                            <canvas id="lineChart"></canvas>
-                        </div>
+                <div class="space-y-2">
+                    <div class="h-80 w-full relative">
+                        <canvas id="salesChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -2030,17 +2021,14 @@
         {{ daily_chart_data|json_script:"daily-data-json" }}
         {{ weekly_chart_data|json_script:"weekly-data-json" }}
         {{ monthly_chart_data|json_script:"monthly-data-json" }}
-        {{ line_chart_data_json|json_script:"line-data-json" }}
         {{ pie_chart_data_json|json_script:"pie-data-json" }}
         <script>
             let salesChart = null;
-            let lineChart = null;
             let pieChart = null;
 
             const dailyData = JSON.parse(document.getElementById('daily-data-json').textContent);
             const weeklyData = JSON.parse(document.getElementById('weekly-data-json').textContent);
             const monthlyData = JSON.parse(document.getElementById('monthly-data-json').textContent);
-            const lineData = JSON.parse(document.getElementById('line-data-json').textContent);
             const pieData = JSON.parse(document.getElementById('pie-data-json').textContent);
 
             function switchChart(mode) {
@@ -2087,35 +2075,6 @@
             document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     switchChart('daily');
-
-                    // Line Chart
-                    const lineCtx = document.getElementById('lineChart');
-                    if (lineCtx) {
-                        lineChart = new Chart(lineCtx, {
-                            type: 'line',
-                            data: {
-                                labels: lineData.labels,
-                                datasets: [{
-                                    label: 'Orders Count',
-                                    data: lineData.data,
-                                    borderColor: '#FF6117',
-                                    backgroundColor: 'rgba(255,97,23,0.1)',
-                                    borderWidth: 3,
-                                    fill: true,
-                                    tension: 0.3
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: { legend: { display: false } },
-                                scales: {
-                                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-                                    x: { grid: { display: false } }
-                                }
-                            }
-                        });
-                    }
 
                     // Pie Chart
                     const pieCtx = document.getElementById('pieChart');

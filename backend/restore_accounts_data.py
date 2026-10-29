@@ -7,8 +7,9 @@ django.setup()
 
 from django.core.serializers import deserialize
 
-print("Restoring backup_data.json object by object...")
-with open('backup_data.json', encoding='utf-16', errors='ignore') as f:
+
+print("Restoring fresh_backup.json object by object...")
+with open('fresh_backup.json', encoding='utf-16', errors='ignore') as f:
     content = f.read()
 
 idx = content.find('[')
@@ -25,4 +26,4 @@ for des_obj in deserialize('json', json_str):
     except Exception as e:
         pass
 
-print(f"Successfully restored {count} records from backup_data.json into Supabase!")
+print(f"Successfully restored {count} records from fresh_backup.json into Supabase!")
