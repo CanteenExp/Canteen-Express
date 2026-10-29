@@ -690,6 +690,10 @@
                         <span><i class="fa-solid fa-cart-shopping text-brand-orange mr-1.5"></i>Items Subtotal</span>
                         <span id="drawer-subtotal" class="font-bold text-white">₱0.00</span>
                     </div>
+                    <div class="flex justify-between gap-4 text-brand-slate pt-2 border-t border-white/5">
+                        <span><i class="fa-solid fa-ticket text-brand-orange mr-1.5"></i>Convenient Fee</span>
+                        <span id="drawer-convenience-fee" class="font-bold text-white">₱15.00</span>
+                    </div>
                 </div>
 
                 <div class="flex justify-between items-center text-white font-black text-base pt-1">
@@ -758,7 +762,9 @@
                         <!-- Quantity Counter [ - qty + ] -->
                         <div class="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-2xl border border-white/10 backdrop-blur-md">
                             <button type="button" onclick="changeItemModalQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-minus text-xs"></i></button>
-                            <span id="modal-item-qty" class="text-sm font-black text-white w-5 text-center">1</span>
+                            <input id="modal-item-qty" type="text" inputmode="numeric" value="1" aria-label="Quantity"
+                                oninput="onModalQtyInput(this)" onchange="onModalQtyCommit(this)" onblur="onModalQtyCommit(this)"
+                                class="cart-item-qty w-10 bg-transparent text-sm font-black text-white text-center focus:outline-none focus:ring-0">
                             <button type="button" onclick="changeItemModalQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-plus text-xs"></i></button>
                         </div>
                         <button onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-5 py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95 cursor-pointer">
@@ -815,7 +821,7 @@
                 <div id="delivery-details-section" class="space-y-2.5">
                     <div class="space-y-1.5">
                         <label class="text-[10px] font-black uppercase tracking-widest text-brand-slate">Deliver To</label>
-                        <input type="text" id="delivery-location-input" value="Faculty Office Bldg, Room 204" placeholder="e.g., Faculty Office Bldg, Room 204"
+                        <input type="text" id="delivery-location-input" placeholder="e.g., Admin Office, 5th Floor Building"
                             class="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:ring-2 focus:ring-brand-orange outline-none backdrop-blur-md">
                     </div>
 
@@ -1385,7 +1391,9 @@
     // A delivery still blocks a new faculty order while it is offered/accepted.
     // Once it is DELIVERED (or REJECTED/TIMEOUT) the faculty can order again.
     function isOngoingDelivery(d) {
-        return d.raw_status === 'SEARCHING' || d.raw_status === 'ACCEPTED';
+        if (!d) return false;
+        const s = String(d.raw_status || '').toUpperCase();
+        return !['DELIVERED', 'COMPLETED', 'REJECTED', 'TIMEOUT', 'CANCELLED'].includes(s);
     }
     // Chat only makes sense once a rider has actually accepted the delivery.
     function hasAssignedRider(d) {
@@ -1764,16 +1772,19 @@
                         </a>
                     </div>
                     ` : ''}
-                    <div class="pt-2 border-t border-white/5 flex justify-between items-center">
-                        <div>
+                    <div class="pt-2 border-t border-white/5 flex flex-wrap justify-between items-center gap-2">
+                        <div class="flex items-center gap-2">
                             ${d.raw_status === 'DELIVERED' ? `
+                            <button onclick="closeOngoingOrdersModal(); openViewOrderModal(${d.id});" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md cursor-pointer">
+                                <i class="fa-solid fa-eye"></i> View & Rate
+                            </button>
                             <button onclick="openFacultyEReceiptById(${d.id})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md cursor-pointer">
                                 <i class="fa-solid fa-receipt"></i> E-Receipt
                             </button>` : ''}
                         </div>
                         <div>
                             ${hasAssignedRider(d) ? `
-                            <button onclick="openRiderChat(${d.id}, '${d.order_number}', '${d.rider_name}')" class="bg-brand-orange hover:bg-orange-600 text-white font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md cursor-pointer">
+                            <button onclick="openRiderChat(${d.id}, '${d.order_number}', '${d.rider_name}')" class="bg-white/10 hover:bg-white/20 text-white font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md cursor-pointer">
                                 <i class="fa-solid fa-comments"></i> Chat
                             </button>` : ''}
                         </div>
@@ -2162,11 +2173,6 @@
     }
 
     function quickAddToCart(itemId) {
-        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
-        if (activeOrder) {
-            showActiveOrderAlert(activeOrder);
-            return;
-        }
         const item = menuData.find(i => i.id === itemId);
         if (!item) return;
         if (item.stock === 0) {
@@ -2194,11 +2200,6 @@
 
     // Item Details Modal
     function openItemModal(itemId) {
-        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
-        if (activeOrder) {
-            showActiveOrderAlert(activeOrder);
-            return;
-        }
         const item = menuData.find(i => i.id === itemId);
         if (!item) return;
         selectedItemForModal = item;
@@ -2255,7 +2256,7 @@
 
         modalItemQty = 1;
         const qtyEl = document.getElementById('modal-item-qty');
-        if (qtyEl) qtyEl.innerText = modalItemQty;
+        if (qtyEl) qtyEl.value = modalItemQty;
 
         updateModalTotal();
         document.getElementById('item-details-modal').classList.remove('hidden');
@@ -2275,11 +2276,40 @@
 
     let modalItemQty = 1;
 
-    function changeItemModalQty(change) {
-        modalItemQty = Math.max(1, modalItemQty + change);
+    function applyModalItemQty(value) {
+        const parsed = parseInt(value, 10);
+        modalItemQty = isNaN(parsed) ? 1 : Math.max(1, Math.min(parsed, 99));
         const qtyEl = document.getElementById('modal-item-qty');
-        if (qtyEl) qtyEl.innerText = modalItemQty;
+        if (qtyEl) qtyEl.value = modalItemQty;
         updateModalTotal();
+    }
+
+    function changeItemModalQty(change) {
+        applyModalItemQty(modalItemQty + change);
+    }
+
+    function onModalQtyInput(input) {
+        const parsed = parseInt(input.value, 10);
+        if (isNaN(parsed)) return;
+        modalItemQty = Math.max(1, Math.min(parsed, 99));
+        updateModalTotal();
+    }
+
+    function onModalQtyCommit(input) {
+        applyModalItemQty(input.value);
+    }
+
+    function setCartItemQty(cartKey, val) {
+        if (!cart[cartKey]) return;
+        let qty = parseInt(val, 10);
+        if (isNaN(qty) || qty <= 0) {
+            delete cart[cartKey];
+            updateCartUI();
+            return;
+        }
+        if (qty > 99) qty = 99;
+        cart[cartKey].qty = qty;
+        updateCartUI();
     }
 
     function updateModalTotal() {
@@ -2303,11 +2333,6 @@
 
     function addCustomizedItemToCart() {
         if (!selectedItemForModal) return;
-        const activeOrder = ongoingDeliveriesData.find(isOngoingDelivery);
-        if (activeOrder) {
-            showActiveOrderAlert(activeOrder);
-            return;
-        }
         let basePrice = selectedItemForModal.price;
         let displayName = selectedItemForModal.name;
         let cartKeyBase = String(selectedItemForModal.id);
@@ -2422,7 +2447,7 @@
                     <div class="flex items-center gap-2">
                         <div class="flex items-center gap-2 bg-white/5 rounded-lg px-1.5 py-1 border border-white/10 backdrop-blur-md">
                             <button type="button" data-cart-action="dec" data-cart-key="${encodeURIComponent(k)}" class="text-brand-slate hover:text-white font-black text-xs w-5 h-5 flex items-center justify-center">−</button>
-                            <span class="text-xs font-black text-white px-0.5 w-4 text-center">${item.qty}</span>
+                            <input type="text" inputmode="numeric" value="${item.qty}" aria-label="Quantity" data-cart-qty="${encodeURIComponent(k)}" class="cart-item-qty w-8 bg-transparent text-xs font-black text-white text-center focus:outline-none focus:ring-0">
                             <button type="button" data-cart-action="inc" data-cart-key="${encodeURIComponent(k)}" class="text-brand-orange hover:text-orange-500 font-black text-xs w-5 h-5 flex items-center justify-center">+</button>
                         </div>
                         <button type="button" data-cart-action="remove" data-cart-key="${encodeURIComponent(k)}" class="w-6 h-6 rounded-lg bg-red-500/10 hover:bg-red-500/25 text-red-400 flex items-center justify-center text-[10px] transition" title="Remove">
@@ -2451,16 +2476,21 @@
         const countBadge = document.getElementById('drawer-item-count');
         const countSub = document.getElementById('drawer-item-subtitle');
         if (countBadge) countBadge.innerText = count;
-        if (countSub) countSub.innerText = keys.length === 0 ? 'Ready to order' : `${count} item${count === 1 ? '' : 's'} • ₱${subtotal.toFixed(2)}`;
+        if (countSub) countSub.innerText = keys.length === 0 ? 'Ready to order' : `${count} item${count === 1 ? '' : 's'}`;
 
         const headerCartWrap = document.getElementById('header-cart-wrap');
         const headerCartBadge = document.getElementById('header-cart-badge');
         if (headerCartWrap) headerCartWrap.style.display = keys.length > 0 ? 'block' : 'none';
         if (headerCartBadge) headerCartBadge.innerText = count;
 
-        document.getElementById('cart-total').innerText = `₱${subtotal.toFixed(2)}`;
+        const convenienceFee = keys.length === 0 ? 0 : getConvenienceFee(subtotal);
+        const grandTotal = subtotal + convenienceFee;
+
+        document.getElementById('cart-total').innerText = `₱${grandTotal.toFixed(2)}`;
         document.getElementById('drawer-subtotal').innerText = `₱${subtotal.toFixed(2)}`;
-        document.getElementById('drawer-total-amount').innerText = `₱${subtotal.toFixed(2)}`;
+        const feeEl = document.getElementById('drawer-convenience-fee');
+        if (feeEl) feeEl.innerText = `₱${convenienceFee.toFixed(2)}`;
+        document.getElementById('drawer-total-amount').innerText = `₱${grandTotal.toFixed(2)}`;
 
         refreshCartButtonState(count);
     }
@@ -2482,6 +2512,14 @@
         }
     });
 
+    // Commit a typed quantity on blur/Enter only (re-rendering on every keystroke
+    // would steal focus mid-typing).
+    document.addEventListener('change', function(e) {
+        const input = e.target.closest('#drawer-cart-list input[data-cart-qty]');
+        if (!input) return;
+        setCartItemQty(decodeURIComponent(input.getAttribute('data-cart-qty')), input.value);
+    });
+
     function refreshCartButtonState(count) {
         const nextBtn = document.getElementById('next-btn');
         const nextText = document.getElementById('next-btn-text');
@@ -2493,18 +2531,16 @@
             count = keys.reduce((s, k) => s + (cart[k].qty || 0), 0);
         }
 
-        if (keys.length > 0) {
-            // Always keep the cart reachable: pre-order pickup stays available
-            // even while a delivery is ongoing.
+        if (activeD) {
+            if (chatD && floatingMsg) floatingMsg.style.display = 'block';
+            nextBtn.disabled = false;
+            nextBtn.onclick = () => openViewOrderModal(activeD.id);
+            nextText.innerHTML = `<i class="fa-solid fa-box-open mr-1.5"></i> View Order (${activeD.order_number})`;
+        } else if (keys.length > 0) {
             if (chatD && floatingMsg) floatingMsg.style.display = 'block';
             nextBtn.disabled = false;
             nextBtn.onclick = openCartDrawer;
             nextText.innerText = `View Cart (${count})`;
-        } else if (activeD) {
-            if (chatD && floatingMsg) floatingMsg.style.display = 'block';
-            nextBtn.disabled = false;
-            nextBtn.onclick = openViewOrderModal; // View Order opens Order Details & Live Tracking Modal
-            nextText.innerHTML = `<i class="fa-solid fa-box-open mr-1"></i> View Order (${activeD.order_number})`;
         } else {
             if (floatingMsg) floatingMsg.style.display = 'none';
             nextBtn.disabled = true;
@@ -2817,11 +2853,12 @@
         document.getElementById('pickup-placed-modal').classList.add('hidden');
     }
 
-    function openViewOrderModal() {
-        // Prefer the active ongoing delivery; fall back to the most recent
-        // delivered one so the faculty can still view it and rate the order.
-        const activeD = ongoingDeliveriesData.find(isOngoingDelivery)
-            || [...ongoingDeliveriesData].reverse().find(d => d.raw_status === 'DELIVERED');
+    function openViewOrderModal(deliveryId) {
+        const targetId = (typeof deliveryId === 'number') ? deliveryId : null;
+        const activeD = targetId 
+            ? ongoingDeliveriesData.find(d => d.id === targetId)
+            : (ongoingDeliveriesData.find(isOngoingDelivery)
+               || [...ongoingDeliveriesData].reverse().find(d => d.raw_status === 'DELIVERED'));
         if (!activeD) {
             showToast('Wala kang active order sa ngayon.');
             return;

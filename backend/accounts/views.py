@@ -274,6 +274,7 @@ def faculty_auth_view(request):
                         role='FACULTY',
                         is_email_verified=True,
                         college_department=college_department,
+                        department=User.DEFAULT_COLLEGE_DEPARTMENT,
                     )
                     # Defensive second pass for deployments whose DB predates
                     # the model default (e.g. a NOT NULL column with no
@@ -512,6 +513,7 @@ def send_signup_otp(request):
             request.session['otp_verified'] = False
             request.session['signup_otp_created_at'] = int(time.time())
             request.session['signup_otp_attempts'] = 0
+            request.session.save()
 
             email_sent = _send_otp_email(
                 to_email=email,
@@ -565,8 +567,10 @@ def verify_signup_otp(request):
             if _otp_verify(entered_otp, session_otp):
                 request.session['otp_verified'] = True
                 request.session['signup_otp'] = None
+                request.session.save()
                 return JsonResponse({'success': True})
             request.session['signup_otp_attempts'] = attempts + 1
+            request.session.save()
             return JsonResponse({'success': False, 'error': 'Invalid or expired OTP code.'}, status=400)
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=400)

@@ -90,11 +90,8 @@ ADMIN_PIN = os.getenv('ADMIN_PIN', 'CE-1234')
 # Supabase Storage credentials for menu image uploads. The anon key is public
 # by nature (client-side bucket access) but is centralized here so it can be
 # rotated/overridden per environment without code changes.
-SUPABASE_PROJECT_REF = os.getenv('SUPABASE_PROJECT_REF', 'hchqdkuijbpihraagetz')
-SUPABASE_ANON_KEY = os.getenv(
-    'SUPABASE_ANON_KEY',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjaHFka3VpamJwaWhyYWFnZXR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4MzU1MDMsImV4cCI6MjEwNDQxMTUwM30.FevR0wpG7Kk7YgNO30Hi8Jvz-Z8rXiWNPBVoM4LbqUA',
-)
+SUPABASE_PROJECT_REF = os.getenv('SUPABASE_PROJECT_REF', '')
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', '')
 
 # Application definition
 

@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; height: 100dvh; overflow: hidden; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; min-height: 100vh; min-height: 100dvh; overflow-y: auto; }
         .font-poppins { font-family: 'Poppins', sans-serif; }
 
         @keyframes scroll-left {
@@ -168,6 +168,10 @@
                         this.triggerToast('Passwords do not match.', 'error');
                         return false;
                     }
+                    if (!this.isPasswordStrong) {
+                        this.triggerToast('Please ensure your password meets all strength requirements (8+ chars, letters, numbers, special character).', 'error');
+                        return false;
+                    }
                     if (!this.otpVerified) {
                         this.triggerToast('Please verify your email with the OTP code first.', 'error');
                         this.showOtpModal = true;
@@ -177,14 +181,26 @@
                     showLogoLoading();
                     return true;
                 },
+                get passwordCriteria() {
+                    const p = this.password || '';
+                    return {
+                        length: p.length >= 8,
+                        hasLetter: /[a-zA-Z]/.test(p),
+                        hasNumber: /[0-9]/.test(p),
+                        hasSpecial: /[^a-zA-Z0-9]/.test(p)
+                    };
+                },
                 get passwordStrength() {
                     if (!this.password) return '';
-                    if (this.password.length >= 8) return 'Strong';
-                    if (this.password.length >= 6) return 'Medium';
+                    const c = this.passwordCriteria;
+                    const met = [c.length, c.hasLetter, c.hasNumber, c.hasSpecial].filter(Boolean).length;
+                    if (met === 4) return 'Strong';
+                    if (met >= 2) return 'Medium';
                     return 'Weak';
                 },
                 get isPasswordStrong() {
-                    return this.password.length >= 6;
+                    const c = this.passwordCriteria;
+                    return c.length && c.hasLetter && c.hasNumber && c.hasSpecial;
                 },
                 get forgotPasswordStrength() {
                     if (!this.forgotNewPassword) return '';
@@ -605,16 +621,36 @@
                             <i :class="showSignupPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
                         </button>
                     </div>
-                    <!-- Password Strength Indicator -->
-                    <div class="flex items-center justify-between mt-1.5 px-1" x-show="password">
-                        <span class="text-[10px] text-white/60 font-bold">Password Strength:</span>
-                        <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider"
-                              :class="{
-                                  'bg-red-500/20 text-red-400 border border-red-500/30': passwordStrength === 'Weak',
-                                  'bg-amber-500/20 text-amber-400 border border-amber-500/30': passwordStrength === 'Medium',
-                                  'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30': passwordStrength === 'Strong'
-                              }"
-                              x-text="passwordStrength"></span>
+                    <!-- Password Strength & Requirements Checklist -->
+                    <div class="mt-2 px-1 space-y-1.5" x-show="password">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-white/60 font-bold">Password Strength:</span>
+                            <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider"
+                                  :class="{
+                                      'bg-red-500/20 text-red-400 border border-red-500/30': passwordStrength === 'Weak',
+                                      'bg-amber-500/20 text-amber-400 border border-amber-500/30': passwordStrength === 'Medium',
+                                      'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30': passwordStrength === 'Strong'
+                                  }"
+                                  x-text="passwordStrength"></span>
+                        </div>
+                        <ul class="text-[10px] space-y-1 bg-white/5 p-2 rounded-xl border border-white/10 font-medium">
+                            <li :class="passwordCriteria.length ? 'text-emerald-400' : 'text-white/50'" class="flex items-center gap-1.5">
+                                <i :class="passwordCriteria.length ? 'fa-solid fa-check text-emerald-400' : 'fa-solid fa-circle text-[4px]'"></i>
+                                At least 8 characters
+                            </li>
+                            <li :class="passwordCriteria.hasLetter ? 'text-emerald-400' : 'text-white/50'" class="flex items-center gap-1.5">
+                                <i :class="passwordCriteria.hasLetter ? 'fa-solid fa-check text-emerald-400' : 'fa-solid fa-circle text-[4px]'"></i>
+                                Contains letters (A-Z)
+                            </li>
+                            <li :class="passwordCriteria.hasNumber ? 'text-emerald-400' : 'text-white/50'" class="flex items-center gap-1.5">
+                                <i :class="passwordCriteria.hasNumber ? 'fa-solid fa-check text-emerald-400' : 'fa-solid fa-circle text-[4px]'"></i>
+                                Contains numbers (0-9)
+                            </li>
+                            <li :class="passwordCriteria.hasSpecial ? 'text-emerald-400' : 'text-white/50'" class="flex items-center gap-1.5">
+                                <i :class="passwordCriteria.hasSpecial ? 'fa-solid fa-check text-emerald-400' : 'fa-solid fa-circle text-[4px]'"></i>
+                                Contains unique/special character (!@#$...)
+                            </li>
+                        </ul>
                     </div>
                 </div>
 
@@ -633,12 +669,12 @@
                         <input type="checkbox" id="terms_check" x-model="agreedTerms" :disabled="!termsOpened" required
                                @click="if (!termsOpened) { $event.preventDefault(); showTermsModal = true; termsOpened = true; }"
                                class="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/5 text-brand-orange focus:ring-brand-orange cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                        <label for="terms_check" @click.prevent="showTermsModal = true; termsOpened = true;" class="text-xs text-white/80 font-medium select-none leading-snug cursor-pointer">
+                        <label for="terms_check" @click.prevent="showTermsModal = true; termsOpened = true;" class="text-[10px] text-white/80 font-medium select-none leading-snug cursor-pointer">
                             I have read and agree to the 
-                            <span class="text-brand-orange font-bold underline hover:text-orange-400">
+                            <span class="text-brand-orange font-bold underline hover:text-orange-400 text-center">
                                 Terms and Conditions
                             </span>
-                            <span class="block text-[10px] text-center text-brand-orange font-bold" x-show="!termsOpened">*(Click to open & read Terms and Conditions)*</span>
+                            <span class="block text-[10px] text-brand-orange font-bold text-center" x-show="!termsOpened">*(Click to open & read Terms and Conditions)*</span>
                         </label>
                     </div>
                 </div>
@@ -690,11 +726,11 @@
             </div>
             <div class="overflow-y-auto text-xs text-white/80 space-y-2.5 leading-relaxed pr-2">
                 <p><strong>1. Acceptance of Terms:</strong> By registering and using Canteen Express, you agree to comply with and be bound by these Terms and Conditions.</p>
-                <p><strong>2. Institutional Account Use:</strong> Faculty and staff accounts require a valid Palawan State University institutional email ending in @psu.palawan.edu.ph. You are responsible for maintaining the confidentiality of your account credentials.</p>
-                <p><strong>3. Ordering & Campus Deliveries:</strong> Delivery requests are processed within campus buildings and rooms. A ₱15 delivery fee (rider earning) per ₱300 order block applies as stated at checkout.</p>
-                <p><strong>4. Strict No-Cancellation Policy (No Cancel Order):</strong> Once an order is placed and confirmed, <strong>cancellation is strictly prohibited</strong>. Kitchen preparation begins immediately upon order placement to ensure fast campus delivery times.</p>
-                <p><strong>5. Privacy Policy:</strong> Your personal data, contact number, and location information are collected solely for order processing, queuing, and delivery tracking purposes.</p>
-                <p><strong>6. User Conduct:</strong> Any misuse of the platform, fraudulent ordering, or harassment of delivery riders and canteen staff will result in account restriction or ban.</p>
+                <p><strong>2. Institutional Account Use:</strong> Faculty and staff accounts require a valid Palawan State University institutional email ending in <strong>@psu.palawan.edu.ph</strong>. You are responsible for maintaining the confidentiality of your account credentials.</p>
+                <p><strong>3. Ordering & Campus Deliveries:</strong> Delivery requests are restricted strictly within the PSU Tiniguiban Heights campus geofenced area. A ₱15 delivery fee per ₱300 order block applies as stated at checkout.</p>
+                <p><strong>4. Cancellation Policy & Smart Timeout:</strong> Once an order is confirmed and under kitchen preparation, cancellation is restricted. However, if no rider accepts your order within 2 minutes (120 seconds) while searching, a smart timeout modal will prompt you with options to <strong>Convert to Pick-up</strong> or <strong>Cancel Order</strong> (which automatically restores menu stock and refunds redeemed loyalty points).</p>
+                <p><strong>5. Loyalty Rewards:</strong> Earn 1 loyalty point per ₱100 spent on campus delivery orders. Points are credited upon order completion and can be redeemed at checkout (1 Point = ₱1.00 discount).</p>
+                <p><strong>6. Privacy & User Conduct:</strong> Personal data and location info are used solely for order processing and campus delivery tracking. Any misuse, fraudulent ordering, or harassment will result in immediate account restriction or ban.</p>
             </div>
             <div class="pt-2 border-t border-white/10 flex justify-end">
                 <button type="button" @click="showTermsModal = false; termsOpened = true; agreedTerms = true;" class="px-4 py-2 bg-brand-orange hover:bg-orange-600 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-brand-orange/30 font-poppins">

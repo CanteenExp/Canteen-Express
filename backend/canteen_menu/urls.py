@@ -19,6 +19,7 @@ urlpatterns = [
     path('counter-live-stream/', views.counter_live_stream, name='counter_live_stream'),
     path('dashboard/', views.staff_dashboard, name='staff_dashboard'),
     path('api/process-barcode/', views.process_barcode_api, name='process_barcode_api'),
+    path('api/dashboard-stats/', views.staff_dashboard_stats_api, name='dashboard_stats_api'),
     path('counter/pos/', views.counter_pos_view, name='counter_pos'),
     path('staff/dashboard/', views.staff_dashboard, name='staff_dashboard_plain'),
     path('<str:token>/dashboard/', views.staff_dashboard, name='staff_dashboard_hashed'),

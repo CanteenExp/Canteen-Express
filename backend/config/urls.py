@@ -7,6 +7,10 @@ from django.shortcuts import redirect
 from django.urls import include, path
 
 
+# Restrict Django Admin strictly to superusers (developers)
+admin.site.has_permission = lambda request: request.user.is_active and request.user.is_superuser
+
+
 urlpatterns = [
     # Health Check for UptimeRobot / Keep-Alive
     path('healthz/', lambda request: HttpResponse('OK')),

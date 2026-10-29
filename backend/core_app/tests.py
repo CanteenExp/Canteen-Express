@@ -713,3 +713,23 @@ class ClosureReasonPresetTests(SimpleTestCase):
 
     def test_an_empty_choice_still_yields_a_message(self):
         self.assertTrue(resolve_message('', '').strip())
+
+
+from django.contrib.auth import get_user_model
+
+class DjangoAdminRestrictionTests(TestCase):
+    def test_admin_restriction_for_staff_vs_superuser(self):
+        User = get_user_model()
+        staff_user = User.objects.create_user(username='staff_test', password='password', is_staff=True, is_superuser=False)
+        super_user = User.objects.create_user(username='super_test', password='password', is_staff=True, is_superuser=True)
+
+        self.client.force_login(staff_user)
+        res = self.client.get('/admin/')
+        # Non-superuser staff should be denied/redirected from admin
+        self.assertIn(res.status_code, [302, 403])
+
+        self.client.force_login(super_user)
+        res = self.client.get('/admin/')
+        # Superuser should have access
+        self.assertIn(res.status_code, [200, 302])
+
