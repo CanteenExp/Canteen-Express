@@ -104,6 +104,33 @@
         .animate-logo-glow {
             animation: logoPulseGlow 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
+
+        /* Slim dark scrollbar for the terms body: the default light gutter is
+           glaring against the near-black modal. Standalone because Tailwind has
+           no scrollbar utilities and the partial must stay style-agnostic. */
+        #terms-modal-body {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+            scrollbar-gutter: stable;
+        }
+
+        #terms-modal-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #terms-modal-body::-webkit-scrollbar-track {
+            background: transparent;
+            margin: 12px 0;
+        }
+
+        #terms-modal-body::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.16);
+            border-radius: 999px;
+        }
+
+        #terms-modal-body::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 97, 23, 0.55);
+        }
     </style>
 </head>
 <body class="bg-brand-dark text-white flex flex-col justify-between p-4 max-w-md mx-auto w-full relative select-none">
