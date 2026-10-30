@@ -7,6 +7,7 @@ module.exports = {
     glob('accounts/templates/accounts/landing.html'),
     glob('accounts/templates/accounts/staff_login.html'),
     glob('customer_portal/templates/customer_portal/kiosk_welcome.html'),
+    glob('templates/partials/terms_kiosk.html'),
   ],
   theme: {
     extend: {

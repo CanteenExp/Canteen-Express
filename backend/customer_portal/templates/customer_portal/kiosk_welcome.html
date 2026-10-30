@@ -228,7 +228,19 @@
 
         <!-- Action Buttons Footer -->
         <footer class="pb-2 space-y-2 text-center shrink-0">
-            <a href="{% url 'customer_portal:kiosk_menu' %}?role=student" onclick="showLogoLoading(event, this.href)" class="w-full bg-brand-orange hover:bg-orange-600 active:scale-95 text-white font-poppins font-extrabold text-xs sm:text-sm py-3.5 rounded-2xl shadow-xl shadow-brand-orange/30 flex items-center justify-center gap-2 transition uppercase tracking-wider cursor-pointer">
+
+            <!-- Terms agreement (same pattern as the faculty sign-up form) -->
+            <div class="flex items-start gap-2 text-left px-1">
+                <input type="checkbox" id="terms_check" onchange="syncTermsAgreeState()" disabled
+                       class="mt-0.5 w-4 h-4 shrink-0 rounded border-white/20 bg-white/5 text-brand-orange focus:ring-brand-orange cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                <label for="terms_check" onclick="handleTermsLabelClick(event)" class="text-[10px] text-white/80 font-medium select-none leading-snug cursor-pointer">
+                    I have read and agree to the
+                    <span class="text-brand-orange font-bold underline hover:text-orange-400">Terms and Conditions</span>
+                    <span id="terms-hint" class="block text-[10px] text-brand-orange font-bold">*(Tap to open &amp; read the Terms and Conditions)*</span>
+                </label>
+            </div>
+
+            <a id="get-started-btn" href="{% url 'customer_portal:kiosk_menu' %}?role=student" onclick="startKioskOrdering(event)" aria-disabled="true" class="w-full bg-brand-orange hover:bg-orange-600 active:scale-95 text-white font-poppins font-extrabold text-xs sm:text-sm py-3.5 rounded-2xl shadow-xl shadow-brand-orange/30 flex items-center justify-center gap-2 transition uppercase tracking-wider cursor-pointer opacity-50">
                 Get Started <i class="fa-solid fa-arrow-right"></i>
             </a>
             <a href="{% url 'accounts:landing' %}" onclick="showLogoLoading(event, this.href)" class="w-full bg-brand-card hover:bg-white/10 border border-white/10 active:scale-95 text-white/90 font-poppins font-semibold text-xs py-3 rounded-2xl flex items-center justify-center gap-2 transition uppercase tracking-wider">
@@ -276,7 +288,7 @@
             <div class="grid grid-cols-2 gap-3 relative z-10 pt-1">
                 
                 <!-- Student / Walk-In -->
-                <a href="{% url 'customer_portal:kiosk_menu' %}?role=student" onclick="showLogoLoading(event, this.href)" class="aspect-square flex flex-col items-center justify-between p-4 rounded-[24px] bg-gradient-to-b from-white/[0.12] to-white/[0.04] hover:from-brand-orange/35 hover:to-brand-orange/10 border border-white/15 hover:border-brand-orange shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-95 group relative overflow-hidden backdrop-blur-md">
+                <a href="{% url 'customer_portal:kiosk_menu' %}?role=student" onclick="startKioskOrdering(event)" class="aspect-square flex flex-col items-center justify-between p-4 rounded-[24px] bg-gradient-to-b from-white/[0.12] to-white/[0.04] hover:from-brand-orange/35 hover:to-brand-orange/10 border border-white/15 hover:border-brand-orange shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-95 group relative overflow-hidden backdrop-blur-md">
                     <div class="w-12 h-12 rounded-xl bg-brand-orange/20 border border-brand-orange/40 text-brand-orange flex items-center justify-center text-xl group-hover:bg-brand-orange group-hover:text-white transition-all duration-300 mt-1">
                         <i class="fa-solid fa-user-graduate"></i>
                     </div>
@@ -321,6 +333,46 @@
     </div>
 
 
+    <!-- ================= 4. TERMS & CONDITIONS MODAL ================= -->
+    <div id="terms-modal" class="fixed inset-0 z-[110] glass-backdrop hidden flex items-center justify-center p-4 transition-all duration-300" role="dialog" aria-modal="true" aria-labelledby="terms-modal-title">
+        <div id="terms-modal-card" tabindex="-1" class="bg-[#121215]/95 border border-white/20 rounded-[32px] w-full max-w-lg max-h-[85vh] flex flex-col shadow-[0_30px_70px_rgba(0,0,0,0.95)] ring-1 ring-white/10 overflow-hidden focus:outline-none">
+
+            <!-- Header -->
+            <div class="flex items-start justify-between gap-3 border-b border-white/10 px-5 py-4 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-brand-orange/20 border border-brand-orange/40 text-brand-orange flex items-center justify-center text-sm shrink-0">
+                        <i class="fa-solid fa-file-contract"></i>
+                    </div>
+                    <div class="text-left">
+                        <h3 id="terms-modal-title" class="font-poppins text-sm font-black text-white leading-tight">Terms &amp; Conditions</h3>
+                        <p class="text-[10px] text-white/50 font-semibold uppercase tracking-wider">Canteen Express Kiosk Ordering System</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeTermsModal()" aria-label="Close Terms and Conditions" class="w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 border border-white/10 flex items-center justify-center transition active:scale-95 shrink-0">
+                    <i class="fa-solid fa-xmark text-xs font-black"></i>
+                </button>
+            </div>
+
+            <!-- Terms body -->
+            <div id="terms-modal-body" onscroll="updateTermsAgreeGate()" class="overflow-y-auto px-5 py-4 space-y-2.5 text-[11px] leading-relaxed text-white/75 flex-1">
+                {% include "partials/terms_kiosk.html" %}
+            </div>
+
+            <!-- Agreement -->
+            <div class="border-t border-white/10 px-5 py-4 shrink-0">
+                <button type="button" id="terms-agree-btn" onclick="agreeToTerms()" disabled
+                        class="w-full py-2.5 rounded-xl bg-brand-orange hover:bg-orange-600 text-white font-black text-[11px] uppercase tracking-wider shadow-lg shadow-brand-orange/30 transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                    I Understand &amp; Agree
+                </button>
+                <p id="terms-agree-hint" class="mt-1 text-center text-[10px] font-semibold text-white/50">
+                    Scroll to the end to continue
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+
     <!-- ================= CONTROLLER SCRIPT ================= -->
     <script>
         window.addEventListener('DOMContentLoaded', () => {
@@ -338,6 +390,130 @@
         function closeRoleModal() {
             document.getElementById('role-modal').classList.add('hidden');
         }
+
+        // ================= TERMS & CONDITIONS GATE =================
+        // Mirrors the faculty sign-up flow: the checkbox starts disabled, tapping
+        // the label opens the terms, and "I Understand & Agree" ticks it.
+        // Session-scoped on purpose: this is a shared kiosk, so the next person
+        // in line must see the terms again. Nothing is persisted across loads.
+        let termsOpened = false;
+        let termsAgreed = false;
+        let termsReadComplete = false;
+
+        function startKioskOrdering(event) {
+            event.preventDefault();
+            if (!termsAgreed) {
+                openTermsModal();
+                return;
+            }
+            navigateWithLogoLoading(event.currentTarget.getAttribute('href'));
+        }
+
+        function handleTermsLabelClick(event) {
+            // While the terms are unopened the checkbox is still disabled, so the
+            // label opens the modal. Once opened it behaves as a normal label so
+            // the customer can tick/untick without reopening the modal.
+            if (termsOpened) return;
+            event.preventDefault();
+            openTermsModal();
+        }
+
+        function openTermsModal() {
+            const modal = document.getElementById('terms-modal');
+            if (!modal) return;
+
+            termsOpened = true;
+
+            const check = document.getElementById('terms_check');
+            if (check) check.disabled = false;
+
+            const hint = document.getElementById('terms-hint');
+            if (hint) hint.classList.add('hidden');
+
+            const body = document.getElementById('terms-modal-body');
+            if (body) body.scrollTop = 0;
+
+            modal.classList.remove('hidden');
+            clearInterval(slideInterval);
+
+            // Measure after the node is visible: scrollHeight of a display:none
+            // element is 0, which would leave the agree button stuck disabled.
+            requestAnimationFrame(() => {
+                updateTermsAgreeGate();
+                const card = document.getElementById('terms-modal-card');
+                if (card) card.focus();
+            });
+        }
+
+        function closeTermsModal() {
+            const modal = document.getElementById('terms-modal');
+            if (modal) modal.classList.add('hidden');
+            resetAutoSlide();
+
+            // Hand focus back to the primary action (a11y: the modal had it).
+            const getStarted = document.getElementById('get-started-btn');
+            if (getStarted) getStarted.focus();
+        }
+
+        function updateTermsAgreeGate() {
+            const body = document.getElementById('terms-modal-body');
+            const btn = document.getElementById('terms-agree-btn');
+            const hint = document.getElementById('terms-agree-hint');
+            if (!body || !btn) return;
+
+            // Treat "content fits without scrolling" as fully read as well.
+            if (!termsReadComplete) {
+                termsReadComplete =
+                    body.scrollHeight <= body.clientHeight + 8 ||
+                    body.scrollTop + body.clientHeight >= body.scrollHeight - 8;
+            }
+
+            btn.disabled = !termsReadComplete;
+            if (hint) hint.classList.toggle('hidden', termsReadComplete);
+        }
+
+        function agreeToTerms() {
+            termsOpened = true;
+            termsAgreed = true;
+
+            const check = document.getElementById('terms_check');
+            if (check) {
+                check.disabled = false;
+                check.checked = true;
+            }
+
+            const hint = document.getElementById('terms-hint');
+            if (hint) hint.classList.add('hidden');
+
+            syncTermsAgreeState();
+            closeTermsModal();
+        }
+
+        function syncTermsAgreeState() {
+            const check = document.getElementById('terms_check');
+            termsAgreed = !!(check && check.checked);
+
+            const btn = document.getElementById('get-started-btn');
+            if (!btn) return;
+            btn.classList.toggle('opacity-50', !termsAgreed);
+            btn.setAttribute('aria-disabled', termsAgreed ? 'false' : 'true');
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            const terms = document.getElementById('terms-modal');
+            if (terms && !terms.classList.contains('hidden')) {
+                closeTermsModal();
+                return;
+            }
+            const role = document.getElementById('role-modal');
+            if (role && !role.classList.contains('hidden')) closeRoleModal();
+        });
+
+        document.addEventListener('click', (event) => {
+            const terms = document.getElementById('terms-modal');
+            if (terms && event.target === terms) closeTermsModal();
+        });
 
         let currentSlide = 0;
         const totalSlides = 3;
@@ -439,14 +615,18 @@
             });
         }
 
-        function showLogoLoading(event, targetUrl) {
-            event.preventDefault();
+        function navigateWithLogoLoading(targetUrl) {
             const overlay = document.getElementById('logo-loading-overlay');
             overlay.classList.remove('hidden');
             setTimeout(() => { overlay.classList.remove('opacity-0'); }, 10);
             setTimeout(() => {
                 window.location.href = targetUrl;
             }, 200);
+        }
+
+        function showLogoLoading(event, targetUrl) {
+            event.preventDefault();
+            navigateWithLogoLoading(targetUrl);
         }
 
         window.addEventListener('pageshow', (event) => {
