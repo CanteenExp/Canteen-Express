@@ -278,18 +278,12 @@
                             </div>
 
                             {% if d.dest_lat and d.dest_lng %}
-                            <div class="space-y-1.5">
-                                <p class="text-zinc-500 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
-                                    <i class="fa-solid fa-route text-orange-400"></i> Live Route to Customer
-                                    <span id="route-meta-{{ d.id }}" class="ml-auto text-[10px] font-black text-orange-400 normal-case tracking-normal tabular-nums">Locating…</span>
-                                </p>
-                                <div class="live-route-map w-full h-44 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900"
-                                     data-route-id="{{ d.id }}"
-                                     data-route-url="{% url 'deliveries:api_live_route' d.id %}"
-                                     data-dest-lat="{{ d.dest_lat }}"
-                                     data-dest-lng="{{ d.dest_lng }}"
-                                     data-dest-label="{{ d.delivery_location|escapejs }}"></div>
-                            </div>
+                            <div class="live-route-map w-full h-64 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900"
+                                 data-route-id="{{ d.id }}"
+                                 data-route-url="{% url 'deliveries:api_live_route' d.id %}"
+                                 data-dest-lat="{{ d.dest_lat }}"
+                                 data-dest-lng="{{ d.dest_lng }}"
+                                 data-dest-label="{{ d.delivery_location|escapejs }}"></div>
                             {% endif %}
 
                             <div class="text-xs space-y-1.5 text-zinc-300">
@@ -666,7 +660,10 @@
         function pushRiderLocation(lat, lng, accuracy) {
             // Drive the live route maps from the same freshest fix, then fan the
             // position out to every active delivery the server tracks.
-            onRiderFix(lat, lng);
+            // The map update must never be able to block the GPS push itself: if
+            // the map code threw, the customer would never see the rider icon at
+            // all, so it is isolated here.
+            try { onRiderFix(lat, lng); } catch (e) { console.warn('live route update failed', e); }
             document.querySelectorAll('[data-location-id]').forEach(el => {
                 const id = el.getAttribute('data-location-id');
                 fetch(`/deliveries/api/location/${id}/update/`, {
@@ -1216,26 +1213,75 @@
     }
 
     /* ===== Live orange route while delivering =====
-       Each in-transit card carries its own small map. The rider's freshest GPS
-       fix is the origin, the drop-off is the destination, and the line follows
-       the actual campus road (server-side OSRM/Valhalla) with the same orange
-       (#FF6117) plus white casing used on every other map in the app. The line
-       is re-fetched on a throttle and whenever the rider has moved a meaningful
-       distance, so it stays accurate and real-time without hammering the
-       routing provider. If routing is down the line falls back to a dashed
-       straight line rather than disappearing. */
+       Each in-transit card carries its own map showing the DELIVERY ROUTE from
+       the canteen to the customer's drop-off: a green pin on the customer, a
+       motorcycle icon on the rider, and one orange (#FF6117) road-following
+       line with a white casing between them -- the same treatment as the
+       customer's tracking map.
+
+       The route is fetched ONCE from the canteen (it never changes for an
+       order) and the travelled part is trimmed off on every GPS fix, so the
+       line visibly shortens as the rider closes in, the way a navigation app
+       consumes a route. The first vertex is pinned to the freshest fix so the
+       line always touches the rider icon (the server caches routes on a ~11 m
+       grid, which used to leave a small gap). If routing is down the line
+       degrades to a dashed straight line rather than disappearing. */
     const liveRouteMaps = {};
     let riderLiveFix = null;               // { lat, lng } newest GPS fix
-    const LIVE_ROUTE_MIN_INTERVAL_MS = 8000;
-    const LIVE_ROUTE_MOVE_M = 25;          // early refetch after this much travel
+    const LIVE_ROUTE_RETRY_MS = 30000;     // retry only while routing is unavailable
 
-    function _routeDistanceM(a, b) {
-        if (!a || !b) return Infinity;
-        const R = 6371000, toRad = d => d * Math.PI / 180;
-        const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
-        const s = Math.sin(dLat / 2) ** 2
-            + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-        return 2 * R * Math.asin(Math.sqrt(s));
+    // Project a point onto one lat/lng segment using a local flat-earth frame.
+    // Returns the exact point on the road plus how far the fix is from it.
+    function _projectOnSegment(p, a, b) {
+        const latScale = 111320;                                   // m per degree
+        const lngScale = 111320 * Math.cos(p.lat * Math.PI / 180);
+        const ax = (a[1] - p.lng) * lngScale, ay = (a[0] - p.lat) * latScale;
+        const bx = (b[1] - p.lng) * lngScale, by = (b[0] - p.lat) * latScale;
+        const dx = bx - ax, dy = by - ay;
+        const len2 = dx * dx + dy * dy;
+        let t = len2 > 0 ? -(ax * dx + ay * dy) / len2 : 0;
+        t = Math.max(0, Math.min(1, t));
+        return {
+            dist: Math.hypot(ax + dx * t, ay + dy * t),
+            point: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t],
+        };
+    }
+
+    // Keep only the part of the canteen -> drop-off route the rider has NOT
+    // covered yet, anchored on the road point nearest to the rider -- so the
+    // icon rides the line exactly like a car in a navigation app, instead of
+    // sitting beside it.
+    //
+    // `minIdx` is the segment already reached on the previous fix: searching
+    // from there (minus a small tolerance) keeps the line strictly shortening
+    // instead of flickering between two segments when GPS noise puts the rider
+    // almost exactly between them. Returns the drawn points, the segment index
+    // they start at, and the on-road anchor for the rider icon.
+    function trimRouteToRider(fullPath, fix, minIdx) {
+        if (!Array.isArray(fullPath) || fullPath.length < 2 || !fix) {
+            return { pts: fullPath, index: 0, anchor: null };
+        }
+        const start = Math.max(0, Math.min((minIdx || 0) - 3, fullPath.length - 2));
+        let best = null;
+        for (let i = start; i < fullPath.length - 1; i++) {
+            const r = _projectOnSegment(fix, fullPath[i], fullPath[i + 1]);
+            if (!best || r.dist < best.dist) best = { dist: r.dist, i, point: r.point };
+        }
+        if (!best) return { pts: fullPath, index: 0, anchor: null };
+        // A fix far away from the route (rider off on a detour, or a wildly bad
+        // GPS fix) must not make the line jump to a random point: keep the whole
+        // remaining trip instead.
+        if (best.dist > 250) return { pts: fullPath, index: 0, anchor: null };
+        const pts = [best.point];
+        for (let i = best.i + 1; i < fullPath.length; i++) {
+            const p = fullPath[i];
+            const last = pts[pts.length - 1];
+            if (Math.abs(p[0] - last[0]) > 1e-9 || Math.abs(p[1] - last[1]) > 1e-9) {
+                pts.push(p);
+            }
+        }
+        if (pts.length < 2) pts.push(fullPath[fullPath.length - 1]);
+        return { pts, index: best.i, anchor: best.point };
     }
 
     function initLiveRouteMaps() {
@@ -1283,75 +1329,107 @@
             liveRouteMaps[id] = {
                 map, line, casing, riderMarker, dest,
                 url: el.getAttribute('data-route-url') || `/deliveries/api/live-route/${id}/`,
-                lastFetch: 0, fetching: false, lastOrigin: null,
+                fullPath: null,      // canteen -> drop-off road route (fetched once)
+                routed: false,       // true when a real road route was returned
+                fitted: false,       // false until the map had a size to fit
+                progressIdx: 0,      // segment already reached (keeps the trim monotonic)
+                lastAttempt: 0, fetching: false,
             };
             if (riderLiveFix) riderMarker.setLatLng([riderLiveFix.lat, riderLiveFix.lng]);
-            refreshLiveRoute(id, true);
+            loadLiveRoute(id, true);
         });
     }
 
     function resizeLiveRouteMaps() {
-        Object.values(liveRouteMaps).forEach(m => {
+        Object.keys(liveRouteMaps).forEach(id => {
+            const m = liveRouteMaps[id];
             try { m.map.invalidateSize(); } catch (e) {}
+            // The Active tab is display:none until opened, so a map built while
+            // hidden has no size to fit. Fit it the moment it becomes visible.
+            if (!m.fitted) renderLiveRoute(id);
         });
     }
 
-    function refreshLiveRoute(id, force) {
+    // Draw the not-yet-travelled part of the canteen -> drop-off route.
+    function renderLiveRoute(id) {
+        const m = liveRouteMaps[id];
+        if (!m || !Array.isArray(m.fullPath) || m.fullPath.length < 2) return;
+        // Before the first GPS fix lands, show the whole trip and park the rider
+        // icon at the canteen (the route's own origin) instead of a blank map.
+        const fix = riderLiveFix || { lat: m.fullPath[0][0], lng: m.fullPath[0][1] };
+        let pts = m.fullPath.slice();
+        let anchor = fix;
+        if (riderLiveFix) {
+            const trimmed = trimRouteToRider(m.fullPath, fix, m.progressIdx);
+            pts = trimmed.pts;
+            m.progressIdx = trimmed.index;
+            // Ride the road: the icon sits on the route, not beside it.
+            if (trimmed.anchor) anchor = { lat: trimmed.anchor[0], lng: trimmed.anchor[1] };
+        }
+        m.line.setLatLngs(pts);
+        m.casing.setLatLngs(pts);
+        m.riderMarker.setLatLng([anchor.lat, anchor.lng]);
+
+        const size = m.map.getSize();
+        if (!m.fitted) {
+            // Frame the whole trip once, as soon as the map actually has pixels.
+            if (size && size.x > 0 && size.y > 0) {
+                const bounds = L.latLngBounds(pts);
+                bounds.extend([anchor.lat, anchor.lng]);
+                m.map.fitBounds(bounds, { padding: [26, 26], maxZoom: 17 });
+                m.fitted = true;
+            }
+        } else if (!m.map.getBounds().pad(-0.25).contains([anchor.lat, anchor.lng])) {
+            // Follow the rider only when they are about to leave the view, so a
+            // card map still shows the whole remaining route and a manual pan by
+            // the rider is never yanked back.
+            m.map.panTo([anchor.lat, anchor.lng], { animate: true, duration: 0.4 });
+        }
+    }
+
+    // Fetch the full canteen -> drop-off route. It never changes for an order,
+    // so this runs once per card; it only retries while routing is unavailable.
+    function loadLiveRoute(id, force) {
         const m = liveRouteMaps[id];
         if (!m || m.fetching) return;
+        if (m.routed && !force) return;
         const now = Date.now();
-        if (!force && now - m.lastFetch < LIVE_ROUTE_MIN_INTERVAL_MS) return;
+        if (!force && now - m.lastAttempt < LIVE_ROUTE_RETRY_MS) return;
         m.fetching = true;
-        m.lastFetch = now;
-        const q = riderLiveFix
-            ? `?lat=${riderLiveFix.lat}&lng=${riderLiveFix.lng}` : '';
-        fetch(m.url + q, {
+        m.lastAttempt = now;
+        const sep = m.url.indexOf('?') === -1 ? '?' : '&';
+        // origin=canteen: the delivery route starts at the canteen, not at the
+        // rider's current position, so the line covers the whole trip.
+        fetch(m.url + sep + 'origin=canteen', {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
         })
             .then(r => r.json())
             .then(data => {
                 if (!data || !data.success
                     || !Array.isArray(data.path) || data.path.length < 2) return;
-                const pts = data.path.map(p => [p[0], p[1]]);
-                const dash = data.routed ? null : '1 8';
-                m.line.setLatLngs(pts);
-                m.casing.setLatLngs(pts);
+                m.fullPath = data.path.map(p => [p[0], p[1]]);
+                m.routed = !!data.routed;
+                const dash = m.routed ? null : '1 8';
                 m.line.setStyle({ dashArray: dash });
                 m.casing.setStyle({ dashArray: dash });
-                if (riderLiveFix) m.riderMarker.setLatLng([riderLiveFix.lat, riderLiveFix.lng]);
-                const bounds = L.latLngBounds(pts);
-                if (riderLiveFix) bounds.extend([riderLiveFix.lat, riderLiveFix.lng]);
-                m.map.fitBounds(bounds, { padding: [26, 26], maxZoom: 17 });
-                m.lastOrigin = riderLiveFix
-                    ? { lat: riderLiveFix.lat, lng: riderLiveFix.lng } : null;
-                const meta = document.getElementById('route-meta-' + id);
-                if (meta) {
-                    const km = Number(data.distance_km).toFixed(2);
-                    const mins = (data.duration_min != null) ? ` \u2022 ${data.duration_min} min` : '';
-                    meta.textContent = `${km} km${mins}`;
-                }
+                renderLiveRoute(id);
             })
             .catch(() => {})
             .finally(() => { m.fetching = false; });
     }
 
-    // Called from pushRiderLocation on every GPS fix: move the markers, and
-    // refetch the road line once the rider has actually travelled far enough.
+    // Called from pushRiderLocation on every GPS fix: move the rider icon and
+    // re-trim the route locally -- no extra server round-trip per fix.
     function onRiderFix(lat, lng) {
         riderLiveFix = { lat, lng };
-        Object.keys(liveRouteMaps).forEach(id => {
-            const m = liveRouteMaps[id];
-            m.riderMarker.setLatLng([lat, lng]);
-            if (_routeDistanceM(m.lastOrigin, riderLiveFix) >= LIVE_ROUTE_MOVE_M) {
-                refreshLiveRoute(id, false);
-            }
-        });
+        Object.keys(liveRouteMaps).forEach(id => renderLiveRoute(id));
     }
 
-    // Keep distance / ETA fresh even while the rider is standing still.
+    // Re-try only while a card has no routed line (routing outage). A routed
+    // route is static, so nothing here needs polling.
     setInterval(() => {
-        Object.keys(liveRouteMaps).forEach(id => refreshLiveRoute(id, false));
-    }, LIVE_ROUTE_MIN_INTERVAL_MS);
+        Object.keys(liveRouteMaps).forEach(id => loadLiveRoute(id, false));
+    }, LIVE_ROUTE_RETRY_MS);
 
     // Build the maps once the DOM is parsed. Leaflet is loaded in <head>, so it
     // is always defined here; the tab handler also re-measures hidden maps.

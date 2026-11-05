@@ -843,9 +843,40 @@ class RiderRoutePayloadTestCase(TestCase):
         for removed in ('Route legend', 'Already travelled', 'Rider route',
                         'fa-route'):
             self.assertNotIn(removed, html)
-        # Approximate-distance labelling is wired to the server flag.
-        self.assertIn("distance_is_approximate", html)
-        self.assertIn("approx-badge", html)
+        # The floating stat card, the trip progress bar and the top chips are
+        # gone: the customer sees only the map -- orange line, customer pin,
+        # rider icon -- so none of that markup or its JS may come back.
+        for removed in ('progress-bar', 'progress-pct', 'computeProgress',
+                        'approx-badge', 'distance_is_approximate', 'speed-val',
+                        'remain-val', 'moving-chip', 'eta-val', 'updated-at',
+                        'gps-group', 'tripTotalKm', 'MAXIM-STYLE'):
+            self.assertNotIn(removed, html)
+        # The customer's drop-off pin and the rider's motorcycle icon are the
+        # two markers the map keeps.
+        self.assertIn('fa-location-dot', html)
+        self.assertIn('fa-motorcycle', html)
+        # The campus GEOFENCE stays on the map: it is the same 0.8 km zone the
+        # server enforces on checkout and on every rider location push.
+        self.assertIn('CAMPUS_BOUNDS', html)
+        self.assertIn('PSU Main Campus', html)
+        # With a rider assigned but no GPS fix yet, the motorcycle waits at the
+        # canteen pickup point instead of the map showing only the drop-off pin.
+        self.assertIn('const PICKUP = [', html)
+        self.assertIn('ensureRiderMarker', html)
+        # This delivery has an assigned rider and is ACCEPTED, so the fallback
+        # icon is armed for the customer.
+        self.assertIn('const HAS_RIDER = true;', html)
+        # The orange line must exist even before the rider's first GPS fix: the
+        # page falls back to the whole canteen -> drop-off route.
+        self.assertIn('const ROUTE_URL = ', html)
+        self.assertIn('loadCanteenRoute', html)
+        self.assertIn('origin=canteen', html)
+        self.assertIn('drawRoute', html)
+        # Maxim-style navigation: ONE fixed canteen -> drop-off route, trimmed
+        # from the front as the rider advances, with the icon riding the line.
+        self.assertIn('function projectOnRoute', html)
+        self.assertIn('let fullRoute = null', html)
+        self.assertIn('function renderRoute', html)
         # No campus route layer, no calculation panel.
         for removed in ('campus_path', 'Campus route (shortest)',
                         'calc-total-val', 'calc-covered-val', 'calc-basis'):
@@ -959,6 +990,15 @@ class RiderRoutePreviewTestCase(TestCase):
             reverse('deliveries:api_live_route', args=[self.delivery.id]), html)
         # Same orange route treatment as the customer tracking map.
         self.assertIn('#FF6117', html)
+        # The "Live Route to Customer" label and its km/min meta were removed:
+        # the card is just the map now.
+        self.assertNotIn('route-meta-', html)
+        self.assertNotIn('Live Route to Customer', html)
+        # The line is the whole canteen -> drop-off delivery route, fetched once
+        # and trimmed locally as the rider advances, so it visibly shortens and
+        # its first vertex stays pinned to the freshest GPS fix.
+        self.assertIn("origin=canteen", html)
+        self.assertIn('trimRouteToRider', html)
         # And no dead tile subdomain, which would leave grey holes.
         self.assertIn("subdomains: 'abc'", html)
         self.assertNotIn("subdomains: 'abcd'", html)
@@ -1084,6 +1124,28 @@ class LiveRouteEndpointTestCase(TestCase):
         self.assertTrue(data['routed'])
         self.assertAlmostEqual(data['origin_lat'], 9.77700, places=5)
         self.assertAlmostEqual(data['origin_lng'], 118.73300, places=5)
+        self.assertAlmostEqual(data['dest_lat'], 9.77725, places=5)
+        self.assertGreaterEqual(len(data['path']), 2)
+
+    def test_origin_canteen_returns_the_whole_delivery_route(self):
+        """`?origin=canteen` is the fixed canteen -> drop-off trip.
+
+        The rider card fetches this once and trims it as the rider advances, so
+        the orange line is the real delivery route and not just the last leg.
+        """
+        from unittest import mock
+
+        def fake(origin_lat, origin_lng, dest_lat, dest_lng):
+            return {'path': [[origin_lat, origin_lng], [dest_lat, dest_lng]],
+                    'distance_km': 0.6, 'duration_min': 8.0, 'provider': 'stub'}
+
+        self.client.force_login(self.rider)
+        with mock.patch('deliveries.views.get_road_route', side_effect=fake):
+            data = self._get(origin='canteen').json()
+        self.assertTrue(data['success'])
+        self.assertTrue(data['routed'])
+        self.assertAlmostEqual(data['origin_lat'], settings.CANTEEN_LAT, places=4)
+        self.assertAlmostEqual(data['origin_lng'], settings.CANTEEN_LNG, places=4)
         self.assertAlmostEqual(data['dest_lat'], 9.77725, places=5)
         self.assertGreaterEqual(len(data['path']), 2)
 

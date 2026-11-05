@@ -1,6 +1,11 @@
 from django.db import models
 import urllib.parse
 
+# Image hosts that are known to be dead (quota-restricted / deleted projects).
+# A MenuItem whose image_url points at one of these is treated as "no image" so
+# the UI shows a real food fallback instead of a broken-image icon.
+DEAD_IMAGE_HOSTS = ('hchqdkuijbpihraagetz.supabase.co',)
+
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
@@ -29,7 +34,12 @@ class MenuItem(models.Model):
     @property
     def get_image_src(self):
         if self.image_url and self.image_url.strip():
-            return self.image_url
+            try:
+                host = urllib.parse.urlparse(self.image_url).netloc.lower()
+            except ValueError:
+                host = ''
+            if host not in DEAD_IMAGE_HOSTS:
+                return self.image_url
         if self.image:
             try:
                 return self.image.url

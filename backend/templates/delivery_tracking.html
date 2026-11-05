@@ -54,6 +54,16 @@
             background: #fff; border-radius: 3px; opacity: 0.95;
         }
         .motor-icon-wrap { position: relative; width: 46px; height: 46px; }
+        /* No live fix yet: the rider is parked at the canteen. Dimmed and
+           pulsing so it reads as "starting here", not as a live GPS position. */
+        .motor-icon-wrap.is-pending .motor-icon {
+            opacity: 0.65;
+            animation: rider-pending 1.6s ease-in-out infinite;
+        }
+        @keyframes rider-pending {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.9); }
+        }
 
         @keyframes ping-ring { 0% { transform: scale(0.5); opacity: 0.7; } 100% { transform: scale(2.5); opacity: 0; } }
         .ping-ring { animation: ping-ring 1.8s ease-out infinite; }
@@ -148,6 +158,7 @@
                 <div class="min-w-0">
                     <h1 class="text-sm font-black text-white leading-tight truncate">Track Delivery</h1>
                     <p class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">{{ order_number }}</p>
+                    {% if delivery_location %}<p class="text-[11px] text-zinc-400 font-semibold truncate"><i class="fa-solid fa-location-dot text-emerald-400 mr-1"></i>{{ delivery_location }}</p>{% endif %}
                 </div>
             </div>
             <span id="status-badge" class="shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full uppercase border border-emerald-500/30 bg-emerald-500/20 text-emerald-400">
@@ -156,118 +167,20 @@
         </div>
     </header>
 
-    <!-- ===== MAP (fills the middle) ===== -->
+    <!-- ===== MAP (fills the rest of the screen) ===== -->
     <div class="relative flex-1 min-h-0 w-full">
         <div class="map-shell absolute inset-0">
             <div id="map"></div>
-        </div>
-
-        <!-- Floating "moving" indicator (top-left over map) -->
-        <div id="moving-chip" class="hidden absolute top-3 left-3 z-[500] glass-card rounded-xl px-3 py-2 flex items-center gap-2 shadow-lg">
-            <span class="relative flex h-2.5 w-2.5">
-                <span class="ping-ring absolute inline-flex h-full w-full rounded-full bg-emerald-400"></span>
-                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
-            <span class="text-[11px] font-black text-white">Rider is moving</span>
-        </div>
-
-        <!-- Floating rider name + ETA chip (top-right over map) -->
-        <div class="absolute top-3 right-3 z-[500] glass-card rounded-xl px-3 py-2 text-right shadow-lg max-w-[55%]">
-            <p class="text-xs font-black text-white truncate">{{ rider_name|default:"Rider" }}</p>
-            <p class="text-[10px] text-emerald-400 font-bold">ETA <span id="eta-val">--</span></p>
-        </div>
-    </div>
-
-    <!-- ===== MAXIM-STYLE FLOATING BOTTOM CARD ===== -->
-    <div class="shrink-0 z-20">
-        <div class="max-w-3xl mx-auto px-3 pb-3">
-            <div class="glass-card rounded-3xl p-3.5 slide-up shadow-2xl space-y-3">
-
-                <!-- Drop-off address: the single source of truth for the destination -->
-                <div class="flex items-start gap-2.5">
-                    <div class="w-9 h-9 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-base shrink-0">
-                        <i class="fa-solid fa-location-dot"></i>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold leading-none">Delivering to</p>
-                        <p class="text-[13px] font-black text-white normal-case leading-snug mt-1 break-words">{{ delivery_location }}</p>
-                    </div>
-                </div>
-
-                <!-- Live ride stats: big number + muted unit, label underneath -->
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
-                        <p class="flex items-baseline justify-center gap-1 leading-none">
-                            <span id="speed-val" class="text-xl font-black text-orange-400 tabular-nums">--</span>
-                            <span id="speed-unit" class="text-[10px] font-bold text-zinc-500">km/h</span>
-                        </p>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Speed</p>
-                    </div>
-                    <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
-                        <p class="flex items-baseline justify-center gap-1 leading-none">
-                            <span id="dist-val" class="text-xl font-black text-emerald-400 tabular-nums">--</span>
-                            <span id="dist-unit" class="text-[10px] font-bold text-zinc-500">km</span>
-                        </p>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Distance</p>
-                    </div>
-                    <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
-                        <p class="flex items-baseline justify-center gap-1 leading-none">
-                            <span id="remain-val" class="text-xl font-black text-white tabular-nums">--</span>
-                            <span id="remain-unit" class="text-[10px] font-bold text-zinc-500">km</span>
-                        </p>
-                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">
-                            Remaining<span id="approx-badge" class="hidden text-amber-400 normal-case tracking-normal"> · approx.</span>
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Trip progress: same 3-column tile row as the stats above, so the
-                     columns line up and each endpoint sits under its side of the bar -->
-                <div class="space-y-1.5">
-                    <div class="h-2 w-full bg-zinc-800/80 rounded-full overflow-hidden">
-                        <div id="progress-bar" class="h-full bg-gradient-to-r from-orange-500 to-emerald-500 rounded-full transition-all duration-700" style="width:0%"></div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
-                            <p class="flex items-center justify-center gap-1.5 leading-none min-w-0">
-                                <i class="fa-solid fa-store text-[13px] text-orange-400 shrink-0"></i>
-                                <span class="text-[13px] font-black text-orange-400 truncate">Canteen</span>
-                            </p>
-                            <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">From</p>
-                        </div>
-                        <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
-                            <p class="leading-none">
-                                <span id="progress-pct" class="text-xl font-black text-white tabular-nums">0%</span>
-                            </p>
-                            <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">Progress</p>
-                        </div>
-                        <div class="bg-black/30 border border-white/5 rounded-2xl px-2 py-2.5 text-center">
-                            <p class="flex items-center justify-center gap-1.5 leading-none min-w-0">
-                                <span class="text-[13px] font-black text-emerald-400 truncate">Drop-off</span>
-                                <i class="fa-solid fa-flag-checkered text-[13px] text-emerald-400 shrink-0"></i>
-                            </p>
-                            <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-bold mt-1.5">To</p>
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- Live feed footer: last update + GPS accuracy (only when known) -->
-                <p class="flex items-center justify-center gap-1.5 text-[9px] text-zinc-600 font-bold uppercase tracking-widest leading-tight">
-                    <span id="live-dot" class="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
-                    <span id="updated-at" class="normal-case tracking-normal font-semibold">Waiting for update</span>
-                    <span id="gps-group" class="hidden items-center gap-1.5">
-                        <span class="text-zinc-700 normal-case tracking-normal">&#8226;</span>
-                        <span>GPS</span>
-                        <span id="acc-val" class="text-zinc-500 normal-case tracking-normal tabular-nums">--</span>
-                    </span>
-                </p>
-            </div>
         </div>
     </div>
 
     <script>
         const DELIVERY_ID = {{ delivery.id }};
+        // Canteen -> drop-off road route for this order. Used as the fallback
+        // line whenever the rider has not sent a GPS fix yet (without it the map
+        // had no line at all, because the server only builds a route from the
+        // rider's live position).
+        const ROUTE_URL = "{% url 'deliveries:api_live_route' delivery.id %}";
         // PSU Main Campus (Tiniguiban Heights) - campus-only delivery scope
         const CAMPUS_CENTER = [9.77778, 118.73333];
         const ZOOM = 15;
@@ -338,8 +251,11 @@
         // Following is on from the start, so the button starts in its "on" state.
         document.querySelector('.ce-recenter')?.classList.add('is-following');
 
-        // Campus-only delivery zone as an irregular polygon that hugs the actual
-        // PSU Main Campus footprint (instead of a perfect circle).
+        // Campus-only delivery zone: this is the GEOFENCE, drawn as an irregular
+        // polygon that hugs the actual PSU Main Campus footprint (instead of a
+        // perfect circle). It is the same 0.8 km campus scope enforced
+        // server-side on checkout and on every rider location push, so the
+        // customer can see exactly which area deliveries are allowed in.
         const CAMPUS_BOUNDS = [
             [9.7815, 118.7310],
             [9.7820, 118.7340],
@@ -354,7 +270,6 @@
             color: '#FF6117', fillColor: '#FF6117',
             fillOpacity: 0.06, dashArray: '6 6', weight: 1.6,
         }).addTo(map).bindTooltip('PSU Main Campus', { permanent: false, direction: 'center' });
-
         // ===== Animated, rotating motorcycle marker =====
         function makeMotorIcon(angle) {
             return L.divIcon({
@@ -363,6 +278,33 @@
                 iconAnchor: [23, 23],
                 html: `<div class="motor-icon-wrap"><div class="motor-icon" style="transform:rotate(${angle}deg)"><i class="fa-solid fa-motorcycle"></i></div></div>`
             });
+        }
+
+        // Create the rider icon once. `live` = we have a real GPS fix for it;
+        // otherwise it sits at the canteen, dimmed, while the rider's phone is
+        // still acquiring a position.
+        function ensureRiderMarker(at, live) {
+            if (riderMarker) return riderMarker;
+            riderMarker = L.marker(at, {
+                icon: makeMotorIcon(0), zIndexOffset: 1000,
+                keyboard: false,
+            }).addTo(map);
+            riderIconEl = riderMarker._icon ? riderMarker._icon.querySelector('.motor-icon') : null;
+            setRiderMarkerLive(live);
+            return riderMarker;
+        }
+
+        function setRiderMarkerLive(live) {
+            riderLive = !!live;
+            const wrap = riderMarker && riderMarker._icon
+                ? riderMarker._icon.querySelector('.motor-icon-wrap') : null;
+            if (wrap) wrap.classList.toggle('is-pending', !live);
+            if (riderMarker) {
+                if (live) riderMarker.unbindTooltip();
+                else riderMarker.bindTooltip('Rider is starting from the canteen', {
+                    direction: 'top', offset: [0, -18],
+                });
+            }
         }
 
         let riderMarker = null;
@@ -375,10 +317,18 @@
         let trailLine = null;          // faint breadcrumb of where they've been
         let currentHeading = 0;
         let smoothLatLng = null;       // smoothed position actually drawn
-        let tripTotalKm = null;        // real canteen->drop-off route length (progress denominator)
         let routePts = [];             // current drawn route, used for snapping
         let routeKey = '';             // change-detector for the route polyline
         let followRider = true;        // released when the user pans the map
+        let riderLive = false;         // true once a real GPS fix has arrived
+
+        // Where the rider starts: the canteen pickup point (same origin the
+        // delivery route is measured from). Until the rider's phone sends its
+        // first fix, the motorcycle icon waits here instead of the map showing
+        // only the customer pin.
+        const PICKUP = [{{ pickup_lat }}, {{ pickup_lng }}];
+        // Only an accepted (in-flight) delivery has a rider to show.
+        const HAS_RIDER = {% if has_rider and status == 'ACCEPTED' %}true{% else %}false{% endif %};
 
         // Any manual pan/zoom hands control back to the customer; the recenter
         // button (or a fresh fix) turns following on again.
@@ -409,24 +359,27 @@
         // instead of wobbling across it. This is a DISPLAY smoothing only -- the
         // numbers the server stores stay raw.
         const SMOOTH_ALPHA = 0.4;
-        const SNAP_MAX_M = 45;
+        // How far the rider icon may be pulled onto the route line. Navigation
+        // apps ride the drawn road, so this is generous enough to hide normal
+        // GPS error but never enough to teleport the icon across campus.
+        const SNAP_MAX_M = 40;
         function smoothPosition(raw, snapped) {
-            if (!smoothLatLng) return raw;
+            if (!smoothLatLng) return snapped;
             // A big jump means a long gap (tab was backgrounded); do not lag.
-            if (map.distance(smoothLatLng, raw) > 120) return raw;
+            if (map.distance(smoothLatLng, raw) > 120) return snapped;
             return L.latLng(
                 smoothLatLng.lat + (snapped.lat - smoothLatLng.lat) * SMOOTH_ALPHA,
                 smoothLatLng.lng + (snapped.lng - smoothLatLng.lng) * SMOOTH_ALPHA
             );
         }
+        // Snap onto the drawn route (segment projection, not just the nearest
+        // vertex) so the icon sits exactly on the line.
         function snapToRoute(point) {
-            if (routePts.length < 2) return point;
-            let best = null, bestDist = Infinity;
-            for (const p of routePts) {
-                const d = map.distance(point, p);
-                if (d < bestDist) { bestDist = d; best = p; }
+            const proj = projectOnRoute(point, routePts);
+            if (proj && proj.dist <= SNAP_MAX_M) {
+                return L.latLng(proj.point[0], proj.point[1]);
             }
-            return (best && bestDist <= SNAP_MAX_M) ? best : point;
+            return point;
         }
         function smoothHeading(target) {
             if (target == null) return currentHeading;
@@ -466,6 +419,140 @@
         // dashed straight line when routing is unavailable, so a routing outage
         // never breaks tracking.
 
+        // ===== Route line (Maxim-style navigation) =====
+        // The trip is ONE fixed road route: canteen -> drop-off, fetched once and
+        // then eaten from the front as the rider advances. It is never re-routed
+        // per GPS fix, so the line cannot jump between parallel roads or appear
+        // to "regenerate" while the customer watches. The rider icon is snapped
+        // onto that line, the way a car rides the road in a navigation app.
+        let fullRoute = null;          // [[lat, lng], ...] canteen -> drop-off
+        let fullRouteRouted = false;   // true = real road route (not a straight line)
+        let canteenRouteRequested = false;
+
+        // Draw the single orange route line (white casing underneath).
+        function drawRoute(pts, routed, key) {
+            routePts = pts;
+            routeKey = key;
+            const style = {
+                color: '#FF6117', weight: 5, opacity: 0.95,
+                // Routing outage: a dashed straight line, so nobody mistakes it
+                // for a surveyed road route.
+                dashArray: routed ? null : '1 8',
+            };
+            if (!routeLine) {
+                routeCasing = L.polyline(pts, {
+                    color: '#ffffff', weight: 9, opacity: 0.35, dashArray: style.dashArray,
+                }).addTo(map);
+                routeLine = L.polyline(pts, style).addTo(map);
+            } else {
+                routeLine.setLatLngs(pts);
+                routeLine.setStyle(style);
+                if (routeCasing) {
+                    routeCasing.setLatLngs(pts);
+                    routeCasing.setStyle({ dashArray: style.dashArray });
+                }
+            }
+        }
+
+        // Project a position onto a path and return where it lands: the segment
+        // index, the exact point on the road, and how far off the path the fix is.
+        // Flat-earth frame is plenty over a few hundred metres.
+        function projectOnRoute(p, path) {
+            if (!Array.isArray(path) || path.length < 2) return null;
+            const latScale = 111320;
+            const lngScale = 111320 * Math.cos(p.lat * Math.PI / 180);
+            let best = null;
+            for (let i = 0; i < path.length - 1; i++) {
+                const a = path[i], b = path[i + 1];
+                const ax = (a[1] - p.lng) * lngScale, ay = (a[0] - p.lat) * latScale;
+                const bx = (b[1] - p.lng) * lngScale, by = (b[0] - p.lat) * latScale;
+                const dx = bx - ax, dy = by - ay;
+                const len2 = dx * dx + dy * dy;
+                let t = len2 > 0 ? -(ax * dx + ay * dy) / len2 : 0;
+                t = Math.max(0, Math.min(1, t));
+                const dist = Math.hypot(ax + dx * t, ay + dy * t);
+                if (!best || dist < best.dist) {
+                    best = {
+                        dist, index: i, t,
+                        point: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t],
+                    };
+                }
+            }
+            return best;
+        }
+
+        // Fetch the whole canteen -> drop-off route once. This is the only
+        // routing call the page makes, so the line is stable for the whole trip.
+        function loadCanteenRoute() {
+            if (canteenRouteRequested) return;
+            canteenRouteRequested = true;
+            fetch(ROUTE_URL + '?origin=canteen', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data || !data.success
+                        || !Array.isArray(data.path) || data.path.length < 2) {
+                        // Retry on the next payload instead of giving up for good.
+                        canteenRouteRequested = false;
+                        return;
+                    }
+                    fullRoute = data.path.map(p => [p[0], p[1]]);
+                    fullRouteRouted = !!data.routed;
+                    renderRoute();
+                    fitRoute(true);
+                })
+                .catch(() => { canteenRouteRequested = false; });
+        }
+
+        // Redraw the remaining route + the travelled part for the rider's current
+        // position: the line shortens from the canteen end as they advance, and
+        // the part already covered stays drawn, dimmed, behind them.
+        function renderRoute() {
+            if (!Array.isArray(fullRoute) || fullRoute.length < 2) return null;
+            if (!smoothLatLng) {
+                // No fix yet: show the whole trip.
+                drawRoute(fullRoute, fullRouteRouted, 'F');
+                if (trailLine) trailLine.setLatLngs([]);
+                return null;
+            }
+            const proj = projectOnRoute(smoothLatLng, fullRoute);
+            if (!proj) return null;
+            // A fix far off the route (detour, or a wildly bad GPS fix) must not
+            // make the line jump: keep the whole remaining trip visible.
+            if (proj.dist > 250) {
+                drawRoute(fullRoute, fullRouteRouted, 'F');
+                if (trailLine) trailLine.setLatLngs([]);
+                return null;
+            }
+
+            const remaining = [proj.point];
+            for (let i = proj.index + 1; i < fullRoute.length; i++) {
+                const p = fullRoute[i];
+                const last = remaining[remaining.length - 1];
+                if (Math.abs(p[0] - last[0]) > 1e-9 || Math.abs(p[1] - last[1]) > 1e-9) {
+                    remaining.push(p);
+                }
+            }
+            if (remaining.length < 2) remaining.push(fullRoute[fullRoute.length - 1]);
+            drawRoute(remaining, fullRouteRouted, 'T' + proj.index + ':' + proj.t.toFixed(3));
+
+            // Travelled part: the consumed prefix of the SAME route, so ridden
+            // and remaining read as one continuous line being eaten from the top.
+            const covered = fullRoute.slice(0, proj.index + 1).concat([proj.point]);
+            if (covered.length > 1) {
+                if (!trailLine) {
+                    trailLine = L.polyline(covered, {
+                        className: 'trail-line', color: '#FF6117',
+                        weight: 3, opacity: 0.35,
+                    }).addTo(map);
+                } else {
+                    trailLine.setLatLngs(covered);
+                }
+            }
+            return proj;
+        }
+
         function applyTracking(data) {
             if (!data || !data.success) return;
 
@@ -481,50 +568,76 @@
                         iconSize: [30, 30], iconAnchor: [15, 28]
                     })
                 }).addTo(map);
-            }
-
-            // Route line: follows the real campus roads/paths when the server
-            // could route us, otherwise it degrades to a dashed straight line
-            // (a routing outage must never break tracking).
-            let hasNewPos = false;
-
-            if (data.lat != null && data.lng != null && data.dest_lat != null && data.dest_lng != null) {
-                const routed = Array.isArray(data.path) && data.path.length > 1;
-                const pts = routed
-                    ? data.path.map(p => [p[0], p[1]])
-                    : [[data.lat, data.lng], [data.dest_lat, data.dest_lng]];
-                routePts = pts;
-                const key = (routed ? 'R' : 'S') + pts.length + ':' + pts[0] + ':' + pts[pts.length - 1];
-                if (key !== routeKey) {
-                    routeKey = key;
-                    const style = routed
-                        ? { color: '#FF6117', weight: 5, opacity: 0.95 }
-                        : { color: '#FF6117', weight: 5, opacity: 0.95 };
-                    if (!routeLine) {
-                        // White casing underneath so the route stays legible over
-                        // dark tiles, the way nav apps draw it.
-                        routeCasing = L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.35 }).addTo(map);
-                        routeLine = L.polyline(pts, style).addTo(map);
-                    } else {
-                        routeLine.setLatLngs(pts);
-                        routeLine.setStyle(style);
-                        if (routeCasing) routeCasing.setLatLngs(pts);
-                    }
+                // Frame the customer pin together with the waiting rider icon so
+                // both are visible before the first GPS fix lands.
+                if (HAS_RIDER && !riderLive) {
+                    map.fitBounds(
+                        L.latLngBounds([PICKUP, destMarker.getLatLng()]),
+                        { padding: [56, 56], maxZoom: 17 });
                 }
-                hasNewPos = true;
             }
 
-            // Rider marker: smoothed position, snap onto the road, smoothed
-            // rotation, plus the GPS accuracy halo and a short breadcrumb trail.
+            // No rider fix yet: show the whole canteen -> drop-off route so the
+            // customer always sees where their order is coming from.
+            if (data.dest_lat != null && data.dest_lng != null && (data.lat == null || data.lng == null)) {
+                if (fullRoute) renderRoute();
+                else loadCanteenRoute();
+            }
+
+            // Rider marker: snapped onto the route line, smoothed, rotated, with
+            // the GPS accuracy halo.
             if (data.lat != null && data.lng != null) {
                 const raw = L.latLng(data.lat, data.lng);
-                const target = smoothPosition(raw, snapToRoute(raw));
+
+                // Where the rider actually is on the road. The projected point is
+                // what gets drawn, so the icon rides the line instead of drifting
+                // beside it -- the navigation-app behaviour. A fix genuinely far
+                // off the route (detour, bad GPS) keeps its real position.
+                let snapped = raw;
+                if (Array.isArray(fullRoute) && fullRoute.length > 1) {
+                    const proj = projectOnRoute(raw, fullRoute);
+                    if (proj && proj.dist <= SNAP_MAX_M) {
+                        snapped = L.latLng(proj.point[0], proj.point[1]);
+                    }
+                } else {
+                    snapped = snapToRoute(raw);
+                }
+
+                const blended = smoothPosition(raw, snapped);
+                // Re-project after smoothing so the icon is always exactly on the
+                // drawn line (smoothing between two points can cut a corner).
+                let target = blended;
+                if (Array.isArray(fullRoute) && fullRoute.length > 1) {
+                    const onLine = projectOnRoute(blended, fullRoute);
+                    if (onLine && onLine.dist <= SNAP_MAX_M) {
+                        target = L.latLng(onLine.point[0], onLine.point[1]);
+                    }
+                }
                 smoothLatLng = target;
+                // Trim the line to the rider BEFORE moving the icon, so both are
+                // always drawn from the same position.
+                renderRoute();
+                if (!fullRoute && data.dest_lat != null && data.dest_lng != null) {
+                    // Routing endpoint unavailable: fall back to the server's
+                    // rider -> drop-off path (or a dashed straight line).
+                    const routed = Array.isArray(data.path) && data.path.length > 1;
+                    const pts = routed
+                        ? data.path.map(p => [p[0], p[1]])
+                        : [[data.lat, data.lng], [data.dest_lat, data.dest_lng]];
+                    const key = (routed ? 'R' : 'S') + pts.length + ':' + pts[0] + ':' + pts[pts.length - 1];
+                    if (key !== routeKey) drawRoute(pts, routed, key);
+                }
                 const moving = ((data.speed_kmh || 0) > 0.5);
 
                 if (!riderMarker) {
-                    riderMarker = L.marker(target, { icon: makeMotorIcon(0), zIndexOffset: 1000 }).addTo(map);
-                    riderMarker._icon && (riderIconEl = riderMarker._icon.querySelector('.motor-icon'));
+                    ensureRiderMarker(target, true);
+                    prevLatLng = target;
+                    fitRoute(true);
+                } else if (!riderLive) {
+                    // First real fix: the waiting icon at the canteen becomes the
+                    // rider's actual position.
+                    setRiderMarkerLive(true);
+                    riderMarker.setLatLng(target);
                     prevLatLng = target;
                     fitRoute(true);
                 } else {
@@ -555,78 +668,37 @@
                     accCircle = null;
                 }
 
-                // Travelled track: the ground the rider has ALREADY covered, from
-                // the canteen pickup to their current position. The server sends
-                // the whole history in data.trail (thinned of GPS jitter), so the
-                // track survives a page reload and every viewer sees the same
-                // path -- the previous breadcrumb was built only from fixes that
-                // arrived while the page happened to be open. Same orange hue as
-                // the live route but dimmed, so ridden and remaining read as one
-                // journey. Falls back to accumulating locally if the payload has
-                // no trail.
-                const serverTrail = Array.isArray(data.trail) && data.trail.length > 1
-                    ? data.trail.map(p => [p[0], p[1]])
-                    : null;
-                const trailPts = serverTrail
-                    ? serverTrail.concat([target])
-                    : (trailLine ? trailLine.getLatLngs() : []).concat([target]);
-                const trailStyle = { color: '#FF6117', weight: 3, opacity: 0.35 };
-                if (!trailLine) {
-                    trailLine = L.polyline(trailPts, Object.assign({ className: 'trail-line' }, trailStyle)).addTo(map);
-                } else {
-                    trailLine.setLatLngs(trailPts);
+                // Without a fixed route, fall back to the server's GPS history
+                // for the travelled track (the route branch already draws it).
+                if (!fullRoute) {
+                    const serverTrail = Array.isArray(data.trail) && data.trail.length > 1
+                        ? data.trail.map(p => [p[0], p[1]])
+                        : null;
+                    const trailPts = serverTrail
+                        ? serverTrail.concat([target])
+                        : (trailLine ? trailLine.getLatLngs() : []).concat([target]);
+                    const trailStyle = { color: '#FF6117', weight: 3, opacity: 0.35 };
+                    if (!trailLine) {
+                        trailLine = L.polyline(trailPts, Object.assign({ className: 'trail-line' }, trailStyle)).addTo(map);
+                    } else {
+                        trailLine.setLatLngs(trailPts);
+                    }
                 }
             }
 
-            // "moving" chip visibility
-            const chip = document.getElementById('moving-chip');
-            if (hasNewPos && (data.speed_kmh || 0) > 0.5) {
-                chip.classList.remove('hidden');
-            } else {
-                chip.classList.add('hidden');
-            }
-
-            // Stats: value in the big span, unit in the small muted span.
-            // "Distance" is the whole canteen->drop-off trip, so it and "Remaining"
-            // are two views of the same route and always add up coherently.
-            setSpeed(data.speed_kmh);
-            setDist('dist', data.route_total_km);
-            setDist('remain', data.remaining_km);
-            // When no routing provider answered, the figures above are straight-line
-            // measurements, not road distances. Say so rather than quietly
-            // presenting a shorter-than-real distance as exact.
-            document.getElementById('approx-badge').classList.toggle('hidden', !data.distance_is_approximate);
-            document.getElementById('eta-val').textContent = formatEta(data.eta_minutes);
-            const gpsGroup = document.getElementById('gps-group');
-            if (data.accuracy_m != null) {
-                document.getElementById('acc-val').textContent = '±' + Math.round(data.accuracy_m) + ' m';
-                gpsGroup.classList.remove('hidden');
-                gpsGroup.classList.add('flex');
-            } else {
-                gpsGroup.classList.add('hidden');
-                gpsGroup.classList.remove('flex');
-            }
-
-            // Progress = how much of the real route is behind the rider, measured
-            // as (total - remaining) / total. The previous formula divided the
-            // rider's GPS breadcrumb trail by itself, which drifted with GPS
-            // jitter and read 0% whenever tracking started mid-trip.
-            if (data.route_total_km != null && data.route_total_km > 0) tripTotalKm = data.route_total_km;
-            const pct = computeProgress(data.remaining_km, data.status);
-            document.getElementById('progress-bar').style.width = pct + '%';
-            document.getElementById('progress-pct').textContent = pct + '%';
-
-            // Status
+            // Status badge only: the map is the interface, so there are no
+            // floating stat cards left to update here.
             const badge = document.getElementById('status-badge');
-            const updated = document.getElementById('updated-at');
-            updated.textContent = data.updated_at ? 'Updated ' + data.updated_at : '--';
-
             if (data.status === 'DELIVERED') {
                 badge.textContent = 'Delivered';
                 badge.className = 'shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full uppercase border border-emerald-500/30 bg-emerald-500/20 text-emerald-400';
-            } else if (!hasNewPos) {
-                setSpeed(null);
-                document.getElementById('eta-val').textContent = '--';
+                // The trip is over: drop the "waiting at the canteen" placeholder
+                // so the map never claims a rider is still standing by.
+                if (!riderLive && riderMarker) {
+                    riderMarker.remove();
+                    riderMarker = null;
+                    riderIconEl = null;
+                }
             }
         }
 
@@ -653,10 +725,6 @@
         function stopPolling() {
             if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
         }
-        function setLive(on) {
-            const el = document.getElementById('live-dot');
-            if (el) el.className = 'inline-block w-1.5 h-1.5 rounded-full ' + (on ? 'bg-emerald-400' : 'bg-amber-400');
-        }
         function startTracking() {
             if (typeof EventSource === 'undefined') { startPolling(); return; }
             try {
@@ -668,11 +736,20 @@
             stream.onmessage = (ev) => {
                 try { applyTracking(JSON.parse(ev.data)); } catch (e) {}
             };
-            stream.onopen = () => { setLive(true); stopPolling(); };
+            stream.onopen = () => { stopPolling(); };
             // Browser auto-reconnects; poll in the meantime so the page is never
             // frozen if the stream cannot be established at all.
-            stream.onerror = () => { setLive(false); startPolling(); };
+            stream.onerror = () => { startPolling(); };
         }
+
+        // Show the rider straight away. When the order already has a rider, the
+        // motorcycle icon waits at the canteen until their phone's first GPS fix
+        // replaces it -- a customer should never see an empty map with just a
+        // drop-off pin.
+        if (HAS_RIDER) ensureRiderMarker(PICKUP, false);
+        // And draw the canteen -> drop-off line immediately, so the orange route
+        // is on screen from the first paint instead of after the rider moves.
+        loadCanteenRoute();
 
         updateMap();
         startTracking();
@@ -682,49 +759,6 @@
             stopPolling();
             if (safetyTimer) clearInterval(safetyTimer);
         });
-
-        function setSpeed(v) {
-            document.getElementById('speed-val').textContent = v == null ? '--' : Math.max(0, v).toFixed(0);
-        }
-        // Progress along the canteen->drop-off route. Uses the server's real route
-        // length as the denominator so the bar tracks the distance actually left,
-        // not the rider's jittery breadcrumb trail. Until the first route_total_km
-        // arrives, the first remaining_km we see is taken as the full trip (the
-        // rider is still at the canteen then), so the bar never jumps or sticks.
-        function computeProgress(remainingKm, status) {
-            if (status === 'DELIVERED') return 100;
-            if (tripTotalKm == null) {
-                if (remainingKm != null && remainingKm > 0) tripTotalKm = remainingKm;
-                return 0;
-            }
-            if (remainingKm == null) return 0;
-            const pct = Math.round(((tripTotalKm - remainingKm) / tripTotalKm) * 100);
-            return Math.max(0, Math.min(100, pct));
-        }
-        // Splits a distance into a value and its unit so the card can style them
-        // separately (big number + small muted unit) instead of one pre-joined string.
-        function setDist(prefix, v) {
-            const valEl = document.getElementById(prefix + '-val');
-            const unitEl = document.getElementById(prefix + '-unit');
-            if (v == null) {
-                valEl.textContent = '--';
-                unitEl.textContent = '';
-                return;
-            }
-            if (v < 1) {
-                valEl.textContent = Math.round(v * 1000).toLocaleString();
-                unitEl.textContent = 'm';
-            } else {
-                valEl.textContent = v.toFixed(1);
-                unitEl.textContent = 'km';
-            }
-        }
-        function formatEta(mins) {
-            if (mins == null) return '--';
-            if (mins < 1) return '< 1m';
-            if (mins < 60) return Math.ceil(mins) + 'm';
-            return Math.floor(mins / 60) + 'h ' + Math.round(mins % 60) + 'm';
-        }
 
         // (boot + live channel started above, right after applyTracking)
 

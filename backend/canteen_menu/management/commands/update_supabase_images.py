@@ -9,7 +9,9 @@ class Command(BaseCommand):
     help = 'Updates all MenuItem image_urls to point to Supabase Storage public URLs.'
 
     def handle(self, *args, **options):
-        supabase_project_ref = "hchqdkuijbpihraagetz"
+        # Live project. The old `hchqdkuijbpihraagetz` project is quota-restricted
+        # (HTTP 402), so pointing here would silently break every menu photo.
+        supabase_project_ref = "msnznjncchahndkiaqqu"
         bucket_name = "menu-images"
         base_supabase_url = f"https://{supabase_project_ref}.supabase.co/storage/v1/object/public/{bucket_name}"
 

@@ -273,6 +273,24 @@
         .cart-item-qty::-webkit-outer-spin-button,
         .cart-item-qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         #modal-item-qty, .cart-item-qty { -moz-appearance: textfield; appearance: textfield; }
+
+        /* --- Item details modal: fit inside the viewport on short screens --- */
+        #item-details-modal {
+            padding-top: max(env(safe-area-inset-top), 12px);
+            padding-bottom: max(env(safe-area-inset-bottom), 12px);
+        }
+        #item-details-modal > div {
+            max-height: calc(100vh - 24px);
+            max-height: calc(100dvh - 24px);
+        }
+        @media (min-width: 640px) {
+            #item-details-modal { padding-top: 16px; padding-bottom: 16px; }
+            #item-details-modal > div {
+                max-height: min(85vh, calc(100vh - 32px));
+                max-height: min(85dvh, calc(100dvh - 32px));
+            }
+        }
+        .item-modal-body { -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
     </style>
 </head>
 <body class="bg-brand-dark text-brand-light h-screen h-[100dvh] flex flex-col justify-between overflow-hidden selection:bg-brand-orange selection:text-white relative">
@@ -457,14 +475,14 @@
     <!-- ================= MAIN LAYOUT ================= -->
     <div class="flex-1 max-w-7xl w-full mx-auto flex overflow-hidden min-h-0 p-2 sm:p-3 gap-3">
 
-        <aside class="w-20 sm:w-28 flex-shrink-0 flex flex-col gap-2 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
-            <button onclick="selectCategory('all', this)" class="category-btn active-cat cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
+        <aside class="w-20 flex-shrink-0 flex flex-col gap-2 overflow-y-auto no-scrollbar pr-1" id="category-sidebar">
+            <button onclick="selectCategory('all', this)" class="category-btn active-cat cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer px-1 py-2.5 rounded-2xl">
                 <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl"><i class="fa-solid fa-utensils"></i></span>
                 <span class="pod-label text-[10px] font-black leading-tight mt-1.5">All Items</span>
             </button>
 
             {% for cat in categories %}
-            <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer min-h-[64px] px-1 py-2.5 rounded-2xl">
+            <button onclick="selectCategory('{{ cat.name|escapejs }}', this)" class="category-btn cat-pod flex-1 flex flex-col items-center justify-center text-center cursor-pointer px-1 py-2.5 rounded-2xl">
                 <span class="pod-icon text-xl flex items-center justify-center w-14 h-14 rounded-2xl">
                     {% if 'ulam' in cat.name|lower %}
                         <i class="fa-solid fa-drumstick-bite"></i>
@@ -821,15 +839,16 @@
 
 
     <!-- ================= ITEM EXPAND / DETAILS MODAL ================= -->
-    <div id="item-details-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-4 overflow-y-auto">
-        <div class="glass-panel glass-panel-accent rounded-3xl max-w-md w-full overflow-hidden modal-pop relative my-8">
-            <button onclick="closeItemModal()" class="absolute right-4 top-4 z-10 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition">
+    <!-- Capped to the viewport: the body scrolls, the qty/Add footer stays pinned. -->
+    <div id="item-details-modal" class="fixed inset-0 z-50 glass-backdrop hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="glass-panel glass-panel-accent rounded-3xl w-full max-w-md flex flex-col overflow-hidden modal-pop relative my-auto">
+            <button onclick="closeItemModal()" class="absolute right-3 top-3 z-20 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <div class="relative h-48 sm:h-56 bg-white/5">
+            <div class="relative shrink-0 h-32 sm:h-44 bg-white/5">
                 <img id="modal-item-img" src="" alt="Item Image" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'" class="w-full h-full object-cover">
             </div>
-            <div class="p-6 space-y-4">
+            <div class="item-modal-body min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
                 <div>
                     <span id="modal-item-category" class="bg-brand-orange/20 text-brand-orange px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider">Category</span>
                     <h3 id="modal-item-name" class="text-xl font-black text-white mt-1">Item Name</h3>
@@ -854,25 +873,25 @@
                         </select>
                     </div>
                 </div>
+            </div>
 
-                <div class="flex items-center justify-between pt-3 border-t border-white/10">
-                    <div>
-                        <span class="text-[10px] text-brand-slate uppercase font-bold block">Total Amount</span>
-                        <span id="modal-item-price" class="text-xl sm:text-2xl font-black text-brand-orange">₱0.00</span>
+            <div class="item-modal-footer shrink-0 border-t border-white/10 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-2.5">
+                <div class="min-w-0">
+                    <span class="text-[10px] text-brand-slate uppercase font-bold block">Total Amount</span>
+                    <span id="modal-item-price" class="text-lg sm:text-2xl font-black text-brand-orange">₱0.00</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0 ml-auto">
+                    <!-- Quantity Counter [ - qty + ] -->
+                    <div class="flex items-center gap-1 bg-white/5 p-1.5 rounded-2xl border border-white/10 backdrop-blur-md">
+                        <button type="button" onclick="changeItemModalQty(-1)" class="w-8 h-8 rounded-xl text-brand-slate hover:text-white hover:bg-white/10 flex items-center justify-center transition active:scale-95 cursor-pointer"><i class="fa-solid fa-minus text-xs"></i></button>
+                        <input id="modal-item-qty" type="text" inputmode="numeric" value="1" aria-label="Quantity"
+                            oninput="onModalQtyInput(this)" onchange="onModalQtyCommit(this)" onblur="onModalQtyCommit(this)"
+                            class="w-8 sm:w-10 bg-transparent text-sm font-black text-white text-center focus:outline-none focus:ring-0">
+                        <button type="button" onclick="changeItemModalQty(1)" class="w-8 h-8 rounded-xl text-brand-orange hover:text-white hover:bg-brand-orange flex items-center justify-center transition active:scale-95 cursor-pointer"><i class="fa-solid fa-plus text-xs"></i></button>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <!-- Quantity Counter [ - qty + ] -->
-                        <div class="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-2xl border border-white/10 backdrop-blur-md">
-                            <button type="button" onclick="changeItemModalQty(-1)" class="text-brand-slate hover:text-white font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-minus text-xs"></i></button>
-                            <input id="modal-item-qty" type="text" inputmode="numeric" value="1" aria-label="Quantity"
-                                oninput="onModalQtyInput(this)" onchange="onModalQtyCommit(this)" onblur="onModalQtyCommit(this)"
-                                class="w-10 bg-transparent text-sm font-black text-white text-center focus:outline-none focus:ring-0">
-                            <button type="button" onclick="changeItemModalQty(1)" class="text-brand-orange hover:text-orange-500 font-black px-2 py-1 transition cursor-pointer"><i class="fa-solid fa-plus text-xs"></i></button>
-                        </div>
-                        <button id="modal-add-btn" onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-5 py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95 cursor-pointer">
-                            <i class="fa-solid fa-cart-plus"></i> Add
-                        </button>
-                    </div>
+                    <button id="modal-add-btn" onclick="addCustomizedItemToCart()" class="bg-brand-orange hover:bg-orange-600 text-white font-extrabold px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl uppercase tracking-wider text-xs shadow-lg shadow-brand-orange/25 transition flex items-center gap-2 active:scale-95 cursor-pointer whitespace-nowrap">
+                        <i class="fa-solid fa-cart-plus"></i> Add
+                    </button>
                 </div>
             </div>
         </div>
@@ -1238,7 +1257,7 @@ function updateCartUI() {
             cartRow.className = "flex items-center justify-between bg-white/5 border border-white/10 p-4 rounded-2xl gap-3";
             cartRow.innerHTML = `
                 <div class="flex items-center gap-3 min-w-0">
-                    <img src="${item.img}" class="w-14 h-14 rounded-xl object-cover shrink-0">
+                    <img src="${item.img}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=60'" class="w-14 h-14 rounded-xl object-cover shrink-0">
                     <div class="min-w-0">
                         <h4 class="text-sm font-black text-white truncate">${item.name}</h4>
                         <span class="text-xs font-black text-brand-orange">₱${item.price.toFixed(2)}</span>

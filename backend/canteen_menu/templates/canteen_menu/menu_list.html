@@ -90,9 +90,9 @@
                         <tr class="hover:bg-white/5 transition">
                             <td class="p-4 flex items-center gap-3">
                                 {% if item.image %}
-                                    <img src="{{ item.image.url }}" class="w-12 h-12 rounded-xl object-cover bg-zinc-700 border border-white/10" alt="{{ item.name }}">
+                                    <img src="{{ item.image.url }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=60'" class="w-12 h-12 rounded-xl object-cover bg-zinc-700 border border-white/10" alt="{{ item.name }}">
                                 {% elif item.image_url %}
-                                    <img src="{{ item.image_url }}" class="w-12 h-12 rounded-xl object-cover bg-zinc-700 border border-white/10" alt="{{ item.name }}">
+                                    <img src="{{ item.image_url }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=60'" class="w-12 h-12 rounded-xl object-cover bg-zinc-700 border border-white/10" alt="{{ item.name }}">
                                 {% else %}
                                     <div class="w-12 h-12 rounded-xl bg-zinc-700 border border-white/10 flex items-center justify-center text-zinc-500 text-xs font-bold">
                                         No Pic

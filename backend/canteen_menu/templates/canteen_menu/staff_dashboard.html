@@ -953,6 +953,7 @@
                                     {% if item.get_image_src %}
                                     <img
                                         src="{{ item.get_image_src }}"
+                                        onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=60'"
                                         class="w-9 h-9 rounded-xl object-cover shadow-sm">
                                     {% endif %}
 

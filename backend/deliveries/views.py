@@ -180,13 +180,17 @@ def route_preview(request, delivery_id):
 
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
 def api_live_route(request, delivery_id):
-    """Road route from the rider's CURRENT position to a job's drop-off.
+    """Road route for a rider's job card.
 
-    Powers the live orange route line on the rider's active-delivery card. The
-    rider's browser sends its freshest GPS fix as ``?lat=&lng=`` so the line
-    starts exactly where the rider is, instead of at the last position the
-    server stored. When no fresh fix is supplied we fall back to the stored
-    rider position, then to the canteen, so the map is never empty.
+    Two origins are supported:
+
+    * ``?origin=canteen`` -- the whole delivery route from the canteen to the
+      drop-off. The rider's card fetches this once and consumes (trims) it as
+      the rider moves, so the line is the real delivery route and visibly
+      shortens on the way to the customer.
+    * ``?lat=&lng=`` (default) -- a route from the rider's freshest GPS fix to
+      the drop-off. When no fresh fix is supplied we fall back to the stored
+      rider position, then to the canteen, so the map is never empty.
 
     Degrades exactly like tracking: no provider -> ``routed: False`` plus a
     straight-line path, never an error that blanks the map.
@@ -208,13 +212,17 @@ def api_live_route(request, delivery_id):
         except (TypeError, ValueError):
             return None
 
-    origin_lat, origin_lng = _coord('lat'), _coord('lng')
-    if origin_lat is None or origin_lng is None:
-        if delivery.rider_lat is not None and delivery.rider_lng is not None:
-            origin_lat, origin_lng = delivery.rider_lat, delivery.rider_lng
-        else:
-            origin_lat = float(getattr(dj_settings, 'CANTEEN_LAT', 9.77778))
-            origin_lng = float(getattr(dj_settings, 'CANTEEN_LNG', 118.73333))
+    if request.GET.get('origin') == 'canteen':
+        origin_lat = float(getattr(dj_settings, 'CANTEEN_LAT', 9.77778))
+        origin_lng = float(getattr(dj_settings, 'CANTEEN_LNG', 118.73333))
+    else:
+        origin_lat, origin_lng = _coord('lat'), _coord('lng')
+        if origin_lat is None or origin_lng is None:
+            if delivery.rider_lat is not None and delivery.rider_lng is not None:
+                origin_lat, origin_lng = delivery.rider_lat, delivery.rider_lng
+            else:
+                origin_lat = float(getattr(dj_settings, 'CANTEEN_LAT', 9.77778))
+                origin_lng = float(getattr(dj_settings, 'CANTEEN_LNG', 118.73333))
 
     route = get_road_route(origin_lat, origin_lng,
                            delivery.dest_lat, delivery.dest_lng)
@@ -948,6 +956,7 @@ def tracking_stream(request, delivery_id):
 @role_required(allowed_roles=['RIDER', 'DELIVERY', 'STAFF', 'ADMIN', 'FACULTY', 'STUDENT'])
 def track_order(request, delivery_id):
     """Customer-facing live tracking page (Leaflet map)."""
+    from django.conf import settings
     delivery = get_object_or_404(DeliveryRequest, id=delivery_id)
     order = delivery.order
     # Privacy: page access mirrors get_tracking -- the order's OWNER or
@@ -964,6 +973,12 @@ def track_order(request, delivery_id):
         'delivery_location': delivery.delivery_location,
         'status': delivery.status,
         'rider_name': delivery.rider.get_full_name() or delivery.rider.username if delivery.rider else None,
+        # Pickup origin: the rider starts here, so the map can show their icon
+        # at the canteen until the first live GPS fix arrives (otherwise the
+        # customer sees only the drop-off pin and has no idea where the rider is).
+        'pickup_lat': float(getattr(settings, 'CANTEEN_LAT', 9.77778)),
+        'pickup_lng': float(getattr(settings, 'CANTEEN_LNG', 118.73333)),
+        'has_rider': delivery.rider_id is not None,
     }
     return render(request, 'delivery_tracking.html', context)
 

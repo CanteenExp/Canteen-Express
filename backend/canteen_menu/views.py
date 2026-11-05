@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -11,6 +12,8 @@ from activity_log.models import ActivityLog
 from activity_log.services import log_activity
 from .models import MenuItem, Category
 from customer_portal.models import OrderItem
+
+logger = logging.getLogger(__name__)
 
 try:
     from .forms import MenuItemForm, CategoryForm
@@ -153,24 +156,30 @@ def upload_to_supabase_storage(image_file):
         bucket_name = "menu-images"
         anon_key = getattr(settings, 'SUPABASE_ANON_KEY', '')
         if not project_ref or not anon_key:
+            # Silent here used to mean "photo is uploaded, then vanishes" for
+            # months. Say it out loud in the logs so a missing key is obvious.
+            logger.warning(
+                "Supabase Storage is not configured (SUPABASE_PROJECT_REF / "
+                "SUPABASE_ANON_KEY empty); keeping the uploaded photo on local media."
+            )
             return None
-        
+
         filename = image_file.name.replace(' ', '_')
         url = f"https://{project_ref}.supabase.co/storage/v1/object/{bucket_name}/{filename}"
-        
+
         file_data = image_file.read()
         content_type = getattr(image_file, 'content_type', 'image/jpeg')
-        
+
         req = urllib.request.Request(url, data=file_data, method='POST')
         req.add_header('Authorization', f'Bearer {anon_key}')
         req.add_header('Content-Type', content_type)
         req.add_header('x-upsert', 'true')
-        
+
         with urllib.request.urlopen(req, timeout=0.8) as response:
             if response.status in [200, 201]:
                 return f"https://{project_ref}.supabase.co/storage/v1/object/public/{bucket_name}/{urllib.parse.quote(filename)}"
     except Exception as e:
-        print(f"Supabase upload error: {e}")
+        logger.warning("Supabase upload failed for %s: %s", getattr(image_file, 'name', '?'), e)
     return None
 
 
@@ -214,7 +223,16 @@ def staff_menu_create(request):
                     item.image_url = pub_url
                     item.image = None
                 else:
+                    # Keep the uploaded file on local storage instead of
+                    # discarding it, and tell staff the upload did not reach
+                    # Supabase rather than failing silently.
                     item.image_url = ''
+                    messages.warning(
+                        request,
+                        "Na-save ang litrato sa local media, pero hindi na-upload sa "
+                        "Supabase Storage. I-check ang SUPABASE_PROJECT_REF / "
+                        "SUPABASE_ANON_KEY sa .env.",
+                    )
             elif item.image_url:
                 item.image = None
             
@@ -267,7 +285,14 @@ def staff_menu_update(request, pk):
                     menu_item.image_url = pub_url
                     menu_item.image = None
                 else:
+                    # Same as create: never drop the file, never fail silently.
                     menu_item.image_url = ''
+                    messages.warning(
+                        request,
+                        "Na-save ang litrato sa local media, pero hindi na-upload sa "
+                        "Supabase Storage. I-check ang SUPABASE_PROJECT_REF / "
+                        "SUPABASE_ANON_KEY sa .env.",
+                    )
             elif menu_item.image_url:
                 menu_item.image = None
             if not menu_item.image and not menu_item.image_url:
