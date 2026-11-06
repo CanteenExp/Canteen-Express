@@ -9,7 +9,8 @@ Expects an Alpine scope on that root with:
 
 Tab pages (sidebar_alpine=True) additionally need:
   activeTab                current tab name ('overview' | 'menu' | 'users' |
-                           'deliveries' | 'feedback' | 'reports' | 'logs')
+                           'deliveries' | 'feedback' | 'reports' | 'logs' |
+                           'transactions')
   setTab(name)             switches the tab and closes the drawer
   activityUnread           unread activity-log count (badge, optional)
 
@@ -86,6 +87,10 @@ then render as plain links to the matching dashboard tab.
             {% if sidebar_alpine %}
             <span class="ds-nav-item__badge" x-show="activityUnread > 0" x-cloak x-text="activityUnread > 99 ? '99+' : activityUnread"></span>
             {% endif %}
+        </a>
+        <a href="{% url 'canteen_menu:staff_dashboard' %}?tab=transactions" class="ds-nav-item{% if not sidebar_alpine and side_active == 'transactions' %} ds-nav-item--active{% endif %}"{% if sidebar_alpine %} @click.prevent="setTab('transactions')" :class="activeTab === 'transactions' ? 'ds-nav-item--active' : ''"{% endif %}>
+            <i data-lucide="receipt" class="ds-icon"></i>
+            <span class="ds-nav-item__label">Transaction logs</span>
         </a>
 
     </nav>

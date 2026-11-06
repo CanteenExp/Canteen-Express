@@ -14,6 +14,7 @@ from activity_log.services import log_activity
 from customer_portal.models import Order 
 from canteen_menu.models import MenuItem 
 from deliveries.models import DeliveryRequest
+from django.db import models
 
 User = get_user_model()
 
@@ -479,11 +480,36 @@ def admin_governance(request):
         return redirect('kitchen_display:admin_pin_verify')
 
     pending_users = User.objects.filter(is_active=False) if hasattr(User, 'is_active') else []
-    all_orders = Order.objects.all().select_related('customer', 'delivery_info').prefetch_related('feedbacks', 'items').order_by('-created_at')[:20]
+    
+    role_filter = request.GET.get('role_filter', 'all')
+    search_query = request.GET.get('q', '').strip()
+
+    orders_qs = Order.objects.all().select_related('customer', 'delivery_info', 'delivery_info__rider').prefetch_related('feedbacks', 'items').order_by('-created_at')
+
+    if role_filter == 'faculty':
+        orders_qs = orders_qs.filter(customer__isnull=False, customer__role__in=['FACULTY', 'STAFF'])
+    elif role_filter == 'student':
+        orders_qs = orders_qs.filter(models.Q(customer__isnull=True) | models.Q(customer__role='STUDENT'))
+    elif role_filter == 'delivery':
+        orders_qs = orders_qs.filter(delivery_info__isnull=False)
+
+    if search_query:
+        orders_qs = orders_qs.filter(
+            models.Q(id__icontains=search_query) |
+            models.Q(student_name__icontains=search_query) |
+            models.Q(customer__username__icontains=search_query) |
+            models.Q(customer__first_name__icontains=search_query) |
+            models.Q(customer__last_name__icontains=search_query) |
+            models.Q(delivery_info__rider__username__icontains=search_query)
+        )
+
+    all_orders = orders_qs[:100]
 
     context = {
         'pending_users': pending_users,
         'all_orders': all_orders,
+        'role_filter': role_filter,
+        'search_query': search_query,
     }
     return render(request, 'admin_dashboard.html', context)
 

@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.contrib import messages
 from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.cache import never_cache
 from accounts.decorators import role_required
 from activity_log.models import ActivityLog
 from activity_log.services import log_activity
@@ -609,6 +610,12 @@ def staff_dashboard(request, token=None):
     from customer_portal.feedback_context import build_feedback_context
     feedback_ctx = build_feedback_context()
 
+    all_staff_orders = Order.objects.all().select_related('customer', 'delivery_info', 'delivery_info__rider').prefetch_related('feedbacks', 'items').order_by('-created_at')[:100]
+
+    # Transaction Logs tab: paid/collected sales for all three customer groups.
+    from .transaction_log import build_transaction_log
+    transaction_ctx = build_transaction_log(request)
+
     context = {
         'total_orders_today': total_orders_today,
         'pending_count': pending_count,
@@ -621,6 +628,7 @@ def staff_dashboard(request, token=None):
         'delivery_staff_list': delivery_staff_list,
         'delivery_requests': delivery_requests,
         'staff_name': staff_name,
+        'all_staff_orders': all_staff_orders,
         'daily_sales': daily_sales,
         'weekly_sales': weekly_sales,
         'monthly_sales': monthly_sales,
@@ -648,7 +656,31 @@ def staff_dashboard(request, token=None):
         'rider_rankings': rider_rankings,
         'top_selling_items': top_selling_items,
     }
+    context.update(transaction_ctx)
     return render(request, 'canteen_menu/staff_dashboard.html', context)
+
+
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
+def transaction_log_export(request):
+    """CSV download of the staff Transaction Logs tab, honouring its filters."""
+    from .transaction_log import csv_response, filtered_transactions, parse_transaction_filters
+
+    group, days, search = parse_transaction_filters(request)
+    return csv_response(filtered_transactions(group, days, search))
+
+
+@never_cache
+@role_required(allowed_roles=['STAFF', 'ADMIN'])
+def transaction_log_ledger(request):
+    """HTML fragment of the Transaction Logs tab for in-place filtering.
+
+    The tab swaps this fragment in instead of reloading the whole dashboard,
+    so group tabs (Delivery personnel, Faculty & staff, ...) feel instant and
+    the page never flashes back to the Overview tab.
+    """
+    from .transaction_log import build_transaction_log
+
+    return render(request, 'canteen_menu/_transaction_ledger.html', build_transaction_log(request))
 
 
 @role_required(allowed_roles=['STAFF', 'ADMIN'])

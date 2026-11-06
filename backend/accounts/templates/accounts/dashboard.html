@@ -505,9 +505,14 @@
                             <h3 class="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
                                 <i class="fa-solid fa-bell text-brand-orange"></i> Notifications
                             </h3>
-                            <button onclick="closeNotificationsDropdown()" class="text-brand-slate hover:text-white p-1">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button onclick="clearNotifications()" title="Clear notifications" class="text-[10px] text-brand-slate hover:text-red-400 font-bold uppercase tracking-wider transition flex items-center gap-1">
+                                    <i class="fa-solid fa-trash-can text-[9px]"></i> Clear
+                                </button>
+                                <button onclick="closeNotificationsDropdown()" class="text-brand-slate hover:text-white p-1">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
                         </div>
                         <div id="notifications-dropdown-list" class="max-h-80 overflow-y-auto no-scrollbar p-2 space-y-2">
                             <!-- Populated by populateNotificationsList() -->
@@ -999,7 +1004,13 @@
                 <h3 class="font-black text-white text-sm flex items-center gap-2">
                     <i class="fa-solid fa-bell text-brand-orange"></i> Recent Orders History & Live Tracking
                 </h3>
-                <button onclick="closeOngoingOrdersModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+                <div class="flex items-center gap-2">
+                    <button onclick="clearFacultyFinishedOrders()" title="Clear finished orders" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 text-brand-slate hover:text-red-400 hover:bg-white/10 font-bold text-[10px] transition active:scale-95">
+                        <i class="fa-solid fa-trash-can text-[10px]"></i>
+                        <span>Clear finished</span>
+                    </button>
+                    <button onclick="closeOngoingOrdersModal()" class="text-brand-slate hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
             </div>
             <div id="ongoing-orders-container" class="p-5 overflow-y-auto space-y-4 flex-1 glass-scroll">
                 <!-- Populated dynamically -->
@@ -1797,6 +1808,26 @@
 
     function closeOngoingOrdersModal() {
         document.getElementById('ongoing-orders-modal').classList.add('hidden');
+    }
+
+    function clearFacultyFinishedOrders() {
+        const activeOnly = ongoingDeliveriesData.filter(d => d.raw_status !== 'DELIVERED' && d.raw_status !== 'COMPLETED');
+        ongoingDeliveriesData.length = 0;
+        Array.prototype.push.apply(ongoingDeliveriesData, activeOnly);
+        renderOngoingOrdersList();
+        populateNotificationsList();
+        updateOngoingBadge();
+        showToast('Cleared finished orders from history.');
+    }
+
+    function clearNotifications() {
+        const activeOnly = ongoingDeliveriesData.filter(d => d.raw_status !== 'DELIVERED' && d.raw_status !== 'COMPLETED');
+        ongoingDeliveriesData.length = 0;
+        Array.prototype.push.apply(ongoingDeliveriesData, activeOnly);
+        renderOngoingOrdersList();
+        populateNotificationsList();
+        updateOngoingBadge();
+        showToast('Cleared notifications.');
     }
 
     function openFacultyEReceiptById(deliveryId) {

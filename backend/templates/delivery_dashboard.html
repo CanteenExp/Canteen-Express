@@ -126,8 +126,9 @@
                     <button @click="showChangePasswordModal = true" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 w-10 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center" title="Change Password">
                         <i class="fa-solid fa-key"></i>
                     </button>
-                    <a href="{% url 'accounts:delivery_logout' %}" class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 backdrop-blur-md w-10 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center" title="Logout">
+                    <a href="{% url 'accounts:delivery_logout' %}" class="bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 backdrop-blur-md px-3 h-10 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5" title="Logout">
                         <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Logout</span>
                     </a>
                 </div>
             </div>

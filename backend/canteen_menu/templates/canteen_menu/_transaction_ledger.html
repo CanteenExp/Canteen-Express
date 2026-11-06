@@ -1,0 +1,307 @@
+<div id="tx-ledger" class="space-y-6">
+            <!-- Ledger header, totals & filters -->
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-5">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-black text-dark-900">Transaction Logs</h3>
+                        <p class="text-xs text-gray-400 mt-1">
+                            Every successful transaction across students &amp; walk-ins, faculty &amp; staff, and delivery
+                            personnel — paid counter slips and handed-off deliveries, with items, fees, rider and proof.
+                        </p>
+                    </div>
+                    <a href="{% url 'canteen_menu:transaction_log_export' %}?{{ tx_export_query }}"
+                       class="inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-dark-900 text-white text-xs font-bold rounded-xl hover:bg-brand-500 transition whitespace-nowrap">
+                        <i class="fa-solid fa-file-csv"></i> Export CSV
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="rounded-2xl bg-gray-50 border border-gray-100 p-4">
+                        <p class="text-[10px] font-black uppercase tracking-wider text-gray-400">Transactions</p>
+                        <p class="text-xl font-black text-dark-900 mt-1">{{ tx_summary.count }}</p>
+                    </div>
+                    <div class="rounded-2xl bg-gray-50 border border-gray-100 p-4">
+                        <p class="text-[10px] font-black uppercase tracking-wider text-gray-400">Items subtotal</p>
+                        <p class="text-xl font-black text-dark-900 mt-1">₱{{ tx_summary.subtotal|floatformat:2 }}</p>
+                    </div>
+                    <div class="rounded-2xl bg-gray-50 border border-gray-100 p-4">
+                        <p class="text-[10px] font-black uppercase tracking-wider text-gray-400">Delivery fees</p>
+                        <p class="text-xl font-black text-dark-900 mt-1">₱{{ tx_summary.fees|floatformat:2 }}</p>
+                    </div>
+                    <div class="rounded-2xl bg-brand-50 border border-brand-100 p-4">
+                        <p class="text-[10px] font-black uppercase tracking-wider text-brand-600">Total collected</p>
+                        <p class="text-xl font-black text-brand-700 mt-1">₱{{ tx_summary.collected|floatformat:2 }}</p>
+                    </div>
+                </div>
+
+                <!-- Customer group tabs -->
+                <div class="flex flex-wrap gap-2">
+                    {% for link in tx_group_links %}
+                    <a href="{{ link.url }}" data-tx-nav data-tx-prefetch
+                       class="px-3.5 py-2 rounded-xl text-xs font-bold border transition
+                              {% if link.active %}bg-brand-500 border-brand-500 text-white shadow-md shadow-brand-500/20{% else %}bg-white border-gray-200 text-gray-600 hover:border-brand-300 hover:text-brand-600{% endif %}">
+                        {{ link.label }}
+                    </a>
+                    {% endfor %}
+                </div>
+
+                <!-- Date range + search -->
+                <form method="get" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                    <input type="hidden" name="tab" value="transactions">
+                    <input type="hidden" name="tx_group" value="{{ tx_group }}">
+                    <label class="block">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">Date range</span>
+                        <select name="tx_days"
+                                class="mt-1 w-full text-xs bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 font-semibold text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            {% for link in tx_date_links %}
+                            <option value="{{ link.key }}"{% if link.active %} selected{% endif %}>{{ link.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label class="block lg:col-span-2">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">Search</span>
+                        <div class="relative mt-1">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                            <input type="search" name="tx_q" value="{{ tx_q }}" maxlength="80"
+                                   placeholder="Transaction #, customer, ID, room, rider…"
+                                   class="w-full text-xs bg-gray-50 rounded-xl pl-8 pr-3 py-2 border border-gray-200 font-semibold text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <button type="submit"
+                                class="inline-flex items-center gap-2 px-3.5 py-2 bg-brand-500 text-white text-xs font-bold rounded-xl hover:bg-brand-600 transition">
+                            <i class="fa-solid fa-filter"></i> Apply
+                        </button>
+                        {% if tx_has_filters %}
+                        <a href="{{ tx_reset_url }}" data-tx-nav class="text-[11px] font-bold text-brand-600 hover:text-brand-700 underline">
+                            Clear
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+
+            <!-- Ledger table -->
+            <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                    <p class="text-xs font-bold text-gray-500">
+                        {{ tx_total }} successful transaction{{ tx_total|pluralize }}
+                        {% if tx_has_filters %}<span class="text-gray-400">· filtered</span>{% endif %}
+                    </p>
+                    <p class="text-[11px] text-gray-400 font-semibold">
+                        Page {{ tx_page_obj.number }} of {{ tx_page_obj.paginator.num_pages }}
+                    </p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 font-extrabold uppercase">
+                                <th class="py-3 pr-4">Transaction</th>
+                                <th class="py-3 pr-4">Customer</th>
+                                <th class="py-3 pr-4">Channel</th>
+                                <th class="py-3 pr-4 text-right">Collected</th>
+                                <th class="py-3">Status</th>
+                            </tr>
+                        </thead>
+                        {% for order in tx_page_obj %}
+                        <tbody x-data="{ open: false }" class="font-medium text-gray-700">
+                            <tr class="hover:bg-gray-50 transition align-top border-b border-gray-100">
+                                <td class="py-3.5 pr-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" @click="open = !open"
+                                                class="w-6 h-6 rounded-lg bg-gray-100 text-gray-500 hover:bg-brand-500 hover:text-white transition flex items-center justify-center"
+                                                :aria-expanded="String(open)" aria-label="Toggle transaction detail">
+                                            <i class="fa-solid fa-chevron-down text-[9px] transition" :class="open && 'rotate-180'"></i>
+                                        </button>
+                                        <div>
+                                            <div class="font-black text-dark-900">{{ order.order_number }}</div>
+                                            <div class="text-[10px] text-gray-400 font-semibold">
+                                                {{ order.created_at|date:"M d, Y" }} · {{ order.created_at|time:"g:i A" }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3.5 pr-4">
+                                    <div class="font-bold text-dark-900">
+                                        {% if order.customer %}
+                                            {% firstof order.customer.get_full_name order.customer.username %}
+                                        {% else %}
+                                            {% firstof order.guest_name "Walk-in guest" %}
+                                        {% endif %}
+                                    </div>
+                                    <span class="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-extrabold
+                                        {% if order.customer.role == 'FACULTY' or order.customer.role == 'STAFF' %}bg-purple-100 text-purple-700
+                                        {% elif order.customer.role == 'DELIVERY' %}bg-blue-100 text-blue-700
+                                        {% elif order.customer %}bg-emerald-100 text-emerald-700
+                                        {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                        {% if not order.customer %}Walk-in guest
+                                        {% elif order.customer.role == 'FACULTY' or order.customer.role == 'STAFF' %}Faculty / Staff
+                                        {% elif order.customer.role == 'DELIVERY' %}Delivery personnel
+                                        {% else %}Student{% endif %}
+                                    </span>
+                                </td>
+                                <td class="py-3.5 pr-4">
+                                    {% if order.delivery_info %}
+                                    <div class="font-bold text-dark-900"><i class="fa-solid fa-motorcycle text-brand-500 mr-1"></i>Delivery</div>
+                                    <div class="text-[10px] text-gray-500 truncate max-w-[160px]" title="{{ order.delivery_info.delivery_location }}">{{ order.delivery_info.delivery_location }}</div>
+                                    <div class="text-[10px] text-gray-500">
+                                        {% if order.delivery_info.rider %}
+                                            Rider: {% firstof order.delivery_info.rider.get_full_name order.delivery_info.rider.username %}
+                                        {% else %}
+                                            Rider: not assigned
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <div class="font-bold text-dark-900"><i class="fa-solid fa-bag-shopping text-brand-500 mr-1"></i>Counter pickup</div>
+                                    <div class="text-[10px] text-gray-500">Paid at the counter</div>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3.5 pr-4 text-right whitespace-nowrap">
+                                    <div class="font-black text-dark-900">₱{{ order.total_amount|floatformat:2 }}</div>
+                                    {% if order.delivery_fee %}
+                                    <div class="text-[10px] text-gray-400 font-semibold">+ ₱{{ order.delivery_fee|floatformat:2 }} fee</div>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3.5 whitespace-nowrap">
+                                    <span class="px-2.5 py-1 rounded-lg text-[10px] font-black
+                                        {% if order.status == 'completed' %}bg-emerald-100 text-emerald-700
+                                        {% elif order.status == 'ready' %}bg-blue-100 text-blue-700
+                                        {% elif order.status == 'preparing' %}bg-amber-100 text-amber-700
+                                        {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                        {{ order.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr x-show="open" x-cloak class="bg-gray-50/70">
+                                <td colspan="5" class="p-4">
+                                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+                                        <!-- Items -->
+                                        <div class="bg-white rounded-2xl border border-gray-200 p-4">
+                                            <p class="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-2">Items purchased</p>
+                                            <table class="w-full text-[11px]">
+                                                <tbody class="divide-y divide-gray-50">
+                                                    {% for item in order.items.all %}
+                                                    <tr>
+                                                        <td class="py-1.5 pr-2 text-gray-700">
+                                                            <span class="font-bold text-dark-900">{{ item.quantity }}×</span> {{ item.item_name }}
+                                                        </td>
+                                                        <td class="py-1.5 pr-2 text-gray-400 text-right whitespace-nowrap">₱{{ item.price|floatformat:2 }}</td>
+                                                        <td class="py-1.5 text-right font-bold text-dark-900 whitespace-nowrap">₱{{ item.total_price|floatformat:2 }}</td>
+                                                    </tr>
+                                                    {% empty %}
+                                                    <tr><td class="py-2 text-gray-400">No line items recorded.</td></tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <!-- Payment -->
+                                        <div class="bg-white rounded-2xl border border-gray-200 p-4 space-y-1.5 text-[11px]">
+                                            <p class="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-2">Payment breakdown</p>
+                                            <div class="flex justify-between"><span class="text-gray-500">Items subtotal</span><span class="font-bold text-dark-900">₱{{ order.total_amount|floatformat:2 }}</span></div>
+                                            <div class="flex justify-between"><span class="text-gray-500">Delivery fee</span><span class="font-bold text-dark-900">₱{{ order.delivery_fee|floatformat:2 }}</span></div>
+                                            <div class="flex justify-between border-t border-gray-100 pt-1.5">
+                                                <span class="font-black text-dark-900">Total collected</span>
+                                                <span class="font-black text-brand-600">₱{{ order.total_payment|floatformat:2 }}</span>
+                                            </div>
+                                            {% if order.points_redeemed %}
+                                            <div class="flex justify-between"><span class="text-gray-500">Points redeemed</span><span class="font-bold text-red-500">−{{ order.points_redeemed|floatformat:2 }}</span></div>
+                                            {% endif %}
+                                            {% if order.points_earned %}
+                                            <div class="flex justify-between"><span class="text-gray-500">Points earned</span><span class="font-bold text-emerald-600">+{{ order.points_earned|floatformat:2 }}</span></div>
+                                            {% endif %}
+                                            <div class="flex justify-between pt-1"><span class="text-gray-500">Transaction ID</span><span class="font-mono text-[10px] text-gray-600">#{{ order.id }}</span></div>
+                                        </div>
+
+                                        <!-- Customer / fulfilment -->
+                                        <div class="bg-white rounded-2xl border border-gray-200 p-4 space-y-1.5 text-[11px]">
+                                            <p class="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-2">Customer &amp; fulfilment</p>
+                                            {% if order.customer %}
+                                            <div class="flex justify-between gap-2"><span class="text-gray-500">Account</span><span class="font-bold text-dark-900 text-right">{{ order.customer.username }}</span></div>
+                                            <div class="flex justify-between gap-2"><span class="text-gray-500">Email</span><span class="font-bold text-dark-900 text-right break-all">{{ order.customer.email|default:"—" }}</span></div>
+                                            <div class="flex justify-between gap-2"><span class="text-gray-500">Phone</span><span class="font-bold text-dark-900 text-right">{{ order.customer.phone|default:"—" }}</span></div>
+                                            {% else %}
+                                            <div class="flex justify-between gap-2"><span class="text-gray-500">Guest name</span><span class="font-bold text-dark-900 text-right">{{ order.guest_name|default:"Walk-in guest" }}</span></div>
+                                            <div class="flex justify-between gap-2"><span class="text-gray-500">Guest phone</span><span class="font-bold text-dark-900 text-right">{{ order.guest_phone|default:"—" }}</span></div>
+                                            {% endif %}
+                                            {% if order.delivery_info %}
+                                            <div class="flex justify-between gap-2"><span class="text-gray-500">Drop-off</span><span class="font-bold text-dark-900 text-right">{{ order.delivery_info.delivery_location }}</span></div>
+                                            <div class="flex justify-between gap-2"><span class="text-gray-500">Rider</span><span class="font-bold text-dark-900 text-right">
+                                                {% if order.delivery_info.rider %}{% firstof order.delivery_info.rider.get_full_name order.delivery_info.rider.username %}{% else %}Not assigned{% endif %}
+                                            </span></div>
+                                            <div class="flex justify-between gap-2"><span class="text-gray-500">Handed off</span><span class="font-bold text-dark-900 text-right">{{ order.delivery_info.delivered_at|date:"M d, Y g:i A"|default:"—" }}</span></div>
+                                            {% if order.delivery_info.proof_photo %}
+                                            <a href="{{ order.delivery_info.proof_photo.url }}" target="_blank" rel="noopener"
+                                               class="inline-flex items-center gap-1.5 text-brand-600 font-bold hover:text-brand-700 pt-1">
+                                                <i class="fa-solid fa-image"></i> View proof of delivery
+                                            </a>
+                                            {% endif %}
+                                            {% endif %}
+                                            {% for fb in order.feedbacks.all|slice:":1" %}
+                                            <div class="border-t border-gray-100 mt-1 pt-1.5 flex items-center justify-between">
+                                                <span class="text-gray-500">Rating</span>
+                                                <span class="font-bold text-amber-500">{{ fb.rating }}★</span>
+                                            </div>
+                                            {% if fb.comment %}<p class="text-gray-500 italic">“{{ fb.comment }}”</p>{% endif %}
+                                            {% endfor %}
+                                        </div>
+
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                        {% empty %}
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="py-12 text-center">
+                                    <div class="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-300 text-xl mx-auto mb-3">
+                                        <i class="fa-solid fa-receipt"></i>
+                                    </div>
+                                    <p class="text-sm font-bold text-dark-900">No successful transactions yet</p>
+                                    <p class="text-xs text-gray-400 mt-1">
+                                        A transaction appears here once the counter confirms payment or a rider hands the order off.
+                                    </p>
+                                    {% if tx_has_filters %}
+                                    <a href="{{ tx_reset_url }}" data-tx-nav class="inline-block mt-3 text-[11px] font-bold text-brand-600 hover:text-brand-700 underline">
+                                        Clear filters
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                        {% endfor %}
+                    </table>
+                </div>
+
+                {% if tx_page_obj.paginator.num_pages > 1 %}
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-5 mt-4 border-t border-gray-100">
+                    <p class="text-[11px] text-gray-400 font-semibold">
+                        Showing {{ tx_page_obj.start_index }}–{{ tx_page_obj.end_index }} of {{ tx_total }}
+                    </p>
+                    <div class="flex items-center gap-2">
+                        {% if tx_prev_url %}
+                        <a href="{{ tx_prev_url }}" data-tx-nav class="px-3.5 py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 transition inline-flex items-center gap-2">
+                            <i class="fa-solid fa-chevron-left text-[10px]"></i> Previous
+                        </a>
+                        {% else %}
+                        <span class="px-3.5 py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-400 opacity-50 inline-flex items-center gap-2">
+                            <i class="fa-solid fa-chevron-left text-[10px]"></i> Previous
+                        </span>
+                        {% endif %}
+                        <span class="text-[11px] font-bold text-gray-500 px-1">{{ tx_page_obj.number }} / {{ tx_page_obj.paginator.num_pages }}</span>
+                        {% if tx_next_url %}
+                        <a href="{{ tx_next_url }}" data-tx-nav class="px-3.5 py-2 rounded-xl text-xs font-bold bg-dark-900 text-white hover:bg-brand-500 transition inline-flex items-center gap-2">
+                            Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                        </a>
+                        {% else %}
+                        <span class="px-3.5 py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-400 opacity-50 inline-flex items-center gap-2">
+                            Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+</div>

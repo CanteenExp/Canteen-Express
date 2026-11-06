@@ -334,6 +334,18 @@
                         class="bg-brand-500 text-white text-[10px] font-black rounded-full px-1.5 py-0.5 min-w-[20px] text-center"
                         x-text="activityUnread > 99 ? '99+' : activityUnread"></span>
                 </button>
+                
+                <button
+                    @click="activeTab = 'transactions'; history.replaceState(null, '', '?tab=transactions')"
+                    :class="activeTab === 'transactions'
+                        ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/25'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'"
+                    class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition text-left">
+
+                    <i class="fa-solid fa-receipt w-5 text-center text-base"></i>
+                    <span class="flex-1">Transaction Log</span>
+                </button>
+
 
             </nav>
         </div>
@@ -344,8 +356,8 @@
             <a
                 href="{% url 'canteen_menu:counter_pos' %}"
                 target="_blank"
-                class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-brand-500/25">
-
+                class="w-full bg-brand-500/10 border border-brand-500/30 shadow-lg shadow-brand-500/20 hover:bg-brand-600/50 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-brand-500/25">
+                
                 <i class="fa-solid fa-cash-register"></i>
                 POS & Kitchen Board
             </a>
@@ -362,7 +374,7 @@
                 class="w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-2 border border-red-500/30">
 
                 <i class="fa-solid fa-right-from-bracket"></i>
-                Staff Logout
+                Logout
             </a>
 
         </div>
@@ -470,6 +482,15 @@
                     x-text="activityUnread > 99 ? '99+' : activityUnread"></span>
             </button>
 
+            <button
+                @click="activeTab = 'transactions'; history.replaceState(null, '', '?tab=transactions')"
+                :class="activeTab === 'transactions'
+                    ? 'bg-brand-500 text-white font-bold'
+                    : 'bg-white/10 text-gray-300'"
+                class="px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition">
+                Transactions
+            </button>
+
         </div>
     </div>
 
@@ -504,7 +525,7 @@
         <!-- ========================================= -->
         <!-- 1. DASHBOARD OVERVIEW -->
         <!-- ========================================= -->
-        <div x-show="activeTab === 'overview'" class="space-y-6">
+        <div x-show="activeTab === 'overview'" class="space-y-6"{% if request.GET.tab and request.GET.tab != 'overview' %} style="display: none;"{% endif %}>
 
             <div class="bg-dark-900 text-white rounded-3xl p-6 md:p-8 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
 
@@ -2014,6 +2035,22 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- ========================================= -->
+        <!-- TAB: TRANSACTION LOGS                     -->
+        <!-- ========================================= -->
+        <div id="tx-panel"
+             x-show="activeTab === 'transactions'"
+             class="space-y-6"{% if request.GET.tab != 'transactions' %} style="display: none;"{% endif %}
+             data-tx-ledger-url="{% url 'canteen_menu:transaction_log_ledger' %}"
+             x-effect="if (activeTab === 'transactions') window.dispatchEvent(new CustomEvent('tx-warm'))">
+
+            <style>#tx-ledger[aria-busy="true"]{opacity:.55;transition:opacity .12s ease;}</style>
+
+            {% include "canteen_menu/_transaction_ledger.html" %}
+
+            <script src="{% static 'js/tx-ledger.js' %}" defer></script>
         </div>
 
         <!-- Include Chart.js & Multi-Chart Init Script -->

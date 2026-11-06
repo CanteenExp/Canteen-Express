@@ -18,6 +18,9 @@
         </div>
 
         <div class="z-10 flex flex-wrap gap-3">
+            <a href="{% url 'canteen_menu:staff_dashboard' %}?tab=transactions" class="bg-white text-dark-900 hover:bg-brand-50 font-bold px-4 py-2.5 rounded-2xl text-xs transition flex items-center gap-2 shadow-lg">
+                <i class="fa-solid fa-receipt"></i> Transaction Logs
+            </a>
             <a href="{% url 'kitchen_display:admin_logout' %}" class="bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-2.5 rounded-2xl text-xs transition flex items-center gap-2 border border-white/10">
                 <i class="fa-solid fa-arrow-left"></i> Exit to Staff Portal
             </a>
@@ -212,29 +215,50 @@
 
     <!-- System-Wide Audit Logs & Transaction Oversight -->
     <div class="bg-white rounded-3xl border border-gray-200/80 shadow-sm p-6 space-y-4">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100 pb-4">
             <div>
-                <h2 class="text-lg font-black text-dark-900">Platform Transaction Audit Logs</h2>
-                <p class="text-xs text-gray-500">System-wide monitoring of recent order states and audit trails.</p>
+                <h2 class="text-lg font-black text-dark-900">Detailed Platform Transaction Logs</h2>
+                <p class="text-xs text-gray-500">Comprehensive audit history for Faculty/Staff, Students/Walk-ins, and Delivery Personnel.</p>
             </div>
-            <div class="flex items-center gap-2">
-                <a href="#" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-csv text-emerald-600"></i> Export CSV
+            
+            <!-- Role Filter Tabs & Search -->
+            <form method="get" class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center bg-gray-100 p-1 rounded-xl text-xs font-bold">
+                    <button type="submit" name="role_filter" value="all" class="px-3 py-1.5 rounded-lg transition {% if role_filter == 'all' or not role_filter %}bg-white text-dark-900 shadow-sm{% else %}text-gray-500 hover:text-dark-900{% endif %}">
+                        All
+                    </button>
+                    <button type="submit" name="role_filter" value="faculty" class="px-3 py-1.5 rounded-lg transition {% if role_filter == 'faculty' %}bg-white text-dark-900 shadow-sm{% else %}text-gray-500 hover:text-dark-900{% endif %}">
+                        Faculty / Staff
+                    </button>
+                    <button type="submit" name="role_filter" value="student" class="px-3 py-1.5 rounded-lg transition {% if role_filter == 'student' %}bg-white text-dark-900 shadow-sm{% else %}text-gray-500 hover:text-dark-900{% endif %}">
+                        Student / Walk-in
+                    </button>
+                    <button type="submit" name="role_filter" value="delivery" class="px-3 py-1.5 rounded-lg transition {% if role_filter == 'delivery' %}bg-white text-dark-900 shadow-sm{% else %}text-gray-500 hover:text-dark-900{% endif %}">
+                        Delivery Personnel
+                    </button>
+                </div>
+                <div class="relative">
+                    <input type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search ID, user, rider…"
+                           class="pl-8 pr-3 py-2 text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-brand-300">
+                    <i class="fa-solid fa-search absolute left-2.5 top-2.5 text-gray-400 text-xs"></i>
+                </div>
+                {% if role_filter or search_query %}
+                <a href="{% url 'kitchen_display:admin_governance' %}" class="text-xs font-bold text-gray-500 hover:text-dark-900 underline px-1">
+                    Reset
                 </a>
-                <a href="#" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-pdf text-red-500"></i> Export PDF
-                </a>
-            </div>
+                {% endif %}
+            </form>
         </div>
 
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider border-b border-gray-100">
-                        <th class="py-3 px-4">Order ID</th>
-                        <th class="py-3 px-4">Customer</th>
-                        <th class="py-3 px-4">Status Log</th>
-                        <th class="py-3 px-4">Rating & Feedback</th>
+                        <th class="py-3 px-4">ID & Queue</th>
+                        <th class="py-3 px-4">User / Actor & Role</th>
+                        <th class="py-3 px-4">Items & Amount</th>
+                        <th class="py-3 px-4">Status</th>
+                        <th class="py-3 px-4">Fulfillment / Rider</th>
                         <th class="py-3 px-4">Proof Photo</th>
                         <th class="py-3 px-4">Timestamp</th>
                     </tr>
@@ -242,36 +266,70 @@
                 <tbody class="divide-y divide-gray-100 text-sm font-medium">
                     {% for order in all_orders %}
                     <tr class="hover:bg-gray-50/80 transition">
-                        <td class="py-3.5 px-4 font-black text-dark-900">#{{ order.id }}</td>
-                        <td class="py-3.5 px-4 text-gray-800">{% if order.customer %}{{ order.customer.username }}{% else %}Walk-in Guest{% endif %}</td>
-                        <td class="py-3.5 px-4 text-xs font-bold text-blue-600">{{ order.status }}</td>
-                        <td class="py-3.5 px-4 text-xs">
-                            {% with fb=order.feedbacks.first %}
-                                {% if fb %}
-                                    <div class="flex items-center gap-1 text-amber-500 font-bold">
-                                        <span>★ {{ fb.rating }}/5</span>
-                                    </div>
-                                    {% if fb.comment %}<p class="text-[11px] text-gray-500 italic mt-0.5">"{{ fb.comment }}"</p>{% endif %}
-                                {% else %}
-                                    <span class="text-gray-400">No rating</span>
-                                {% endif %}
-                            {% endwith %}
+                        <td class="py-3.5 px-4">
+                            <span class="font-black text-dark-900">#{{ order.id }}</span>
+                            {% if order.queue_number %}<span class="block text-[11px] text-gray-500 font-bold">Queue Q-{{ order.queue_number }}</span>{% endif %}
                         </td>
-                        <td class="py-3.5 px-4 text-xs">
-                            {% if order.delivery_request and order.delivery_request.proof_photo %}
-                                <a href="{{ order.delivery_request.proof_photo.url }}" target="_blank" rel="noopener" class="inline-block">
-                                    <img src="{{ order.delivery_request.proof_photo.url }}" alt="Proof" class="w-10 h-10 object-cover rounded-lg border border-gray-200 hover:scale-110 transition">
-                                </a>
+                        <td class="py-3.5 px-4">
+                            {% if order.customer %}
+                                <div class="font-bold text-dark-900 text-xs">{{ order.customer.get_full_name|default:order.customer.username }}</div>
+                                <span class="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-extrabold {% if order.customer.role == 'FACULTY' or order.customer.role == 'STAFF' %}bg-purple-100 text-purple-700{% elif order.customer.role == 'DELIVERY' %}bg-blue-100 text-blue-700{% else %}bg-emerald-100 text-emerald-700{% endif %}">
+                                    {{ order.customer.role|default:"Customer" }}
+                                </span>
                             {% else %}
-                                <span class="text-gray-400">None</span>
+                                <div class="font-bold text-dark-900 text-xs">{{ order.student_name|default:"Walk-in Guest" }}</div>
+                                <span class="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-extrabold bg-gray-100 text-gray-700">
+                                    STUDENT / GUEST
+                                </span>
+                                {% if order.student_id_number %}<span class="block text-[10px] text-gray-400">ID: {{ order.student_id_number }}</span>{% endif %}
                             {% endif %}
                         </td>
-                        <td class="py-3.5 px-4 text-gray-400 text-xs">{{ order.created_at }}</td>
+                        <td class="py-3.5 px-4">
+                            <div class="text-xs font-black text-dark-950">₱{{ order.total_amount }}</div>
+                            <div class="text-[11px] text-gray-500 max-w-xs truncate">
+                                {% for item in order.items.all %}
+                                    {{ item.quantity }}x {{ item.menu_item.name }}{% if not forloop.last %}, {% endif %}
+                                {% empty %}
+                                    No items listed
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-black {% if order.status == 'COMPLETED' %}bg-emerald-100 text-emerald-700{% elif order.status == 'CANCELLED' %}bg-red-100 text-red-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                                {{ order.get_status_display|default:order.status }}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 text-xs">
+                            {% if order.delivery_info %}
+                                <div class="font-bold text-dark-900"><i class="fa-solid fa-motorcycle text-brand-500 mr-1"></i> Delivery</div>
+                                <div class="text-[11px] text-gray-600 truncate max-w-[150px]" title="{{ order.delivery_info.delivery_location }}">{{ order.delivery_info.delivery_location }}</div>
+                                {% if order.delivery_info.rider %}
+                                    <div class="text-[10px] font-bold text-blue-600 mt-0.5">Rider: {{ order.delivery_info.rider.username }}</div>
+                                {% else %}
+                                    <div class="text-[10px] text-amber-600 mt-0.5">Searching rider…</div>
+                                {% endif %}
+                            {% else %}
+                                <span class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold">Counter Pickup</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-xs">
+                            {% if order.delivery_info and order.delivery_info.proof_photo %}
+                                <a href="{{ order.delivery_info.proof_photo.url }}" target="_blank" rel="noopener" class="inline-block">
+                                    <img src="{{ order.delivery_info.proof_photo.url }}" alt="Proof" class="w-10 h-10 object-cover rounded-lg border border-gray-200 hover:scale-110 transition shadow-sm">
+                                </a>
+                            {% else %}
+                                <span class="text-gray-400">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 px-4 text-gray-500 text-xs whitespace-nowrap">
+                            {{ order.created_at|date:"M d, Y" }}<br>
+                            <span class="text-[10px] text-gray-400">{{ order.created_at|time:"H:i" }}</span>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="py-6 text-center text-gray-400 text-sm">
-                            No recent transaction audit logs found.
+                        <td colspan="7" class="py-10 text-center text-gray-400 text-sm">
+                            No transaction audit logs found matching the filter criteria.
                         </td>
                     </tr>
                     {% endfor %}

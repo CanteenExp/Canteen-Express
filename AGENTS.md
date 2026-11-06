@@ -1,54 +1,66 @@
 # AGENTS.md
 
-## Repository Overview & Working Directory
-- **Backend framework:** Django 5.1.5 (Python 3.10+, recommended 3.12)
-- **Active working directory:** Django app root is inside `backend/` (`backend/manage.py`). Always run Django commands relative to `backend/` or set `workdir="backend"`.
-- **Virtual environment:** Located at `backend/venv/` or root `venv/`. Activate using `.\venv\Scripts\Activate.ps1` (Windows PowerShell) or `source venv/bin/activate` (POSIX).
+## Layout
+- Django 5.1.5 / Python 3.12. The project root is `backend/` (`backend/manage.py`, `backend/config/`). Run every Django command from `backend/`; a template path like `templates/x.html` means `backend/templates/x.html`.
+- Repo root is tooling + assets only: `package.json` / `build-css.js` (Tailwind), `render.yaml`, `runserver.bat`, and menu photos (`Ulams/`, `Meryenda/`, `Biscuits & Beverages/`).
+- Install from `backend/requirements.txt`. The root `requirements.txt` is a stale duplicate (Django 6.0.7, no gunicorn/whitenoise) — ignore it.
+- No pyproject/linter/formatter/CI and no JS bundler. Verification = `manage.py test` + `makemigrations --check`.
+- Apps that are basically empty stubs (do not build features there): `admin_dashboard`, `analytics_reports`, `user_notifications`, `queuing` (models only), `order_management`.
 
-## Essential Commands (Run inside `backend/`)
-- **Run dev server:** `python manage.py runserver`
-- **Run production server (Gunicorn):** `gunicorn --chdir backend config.wsgi:application`
-- **Collect static files:** `python manage.py collectstatic --noinput`
-- **Apply database migrations:** `python manage.py migrate`
-- **Make new migrations:** `python manage.py makemigrations`
-- **Run tests:** `python manage.py test --keepdb` (ALWAYS use `--keepdb` to avoid slow/flaky Supabase PostgreSQL test DB recreation prompts).
-- **Run specific app test:** `python manage.py test deliveries customer_portal`
-- **Interactive shell:** `python manage.py shell`
-- **Reset orders & feedback (testing):** `python manage.py reset_orders`
-- **Tailwind CSS build:** `npm run build:css` (root directory)
-- **Deployment Build Command (Render):** `pip install -r backend/requirements.txt && python backend/manage.py collectstatic --noinput && python backend/manage.py migrate`
+## Commands (run in `backend/`)
+```bash
+python manage.py runserver                 # dev server
+python manage.py test --keepdb             # full suite; --keepdb is the habit here
+python manage.py test deliveries customer_portal --keepdb
+python manage.py test activity_log.tests.ActivityLogAPITestCase --keepdb   # one class
+python manage.py reset_orders              # wipes orders/feedback/deliveries/ActivityLog + zeroes loyalty_points
+python manage.py makemigrations --check --dry-run
+python manage.py update_supabase_images    # also: sync_menu_images, reset_faculty_data
+```
+- Tailwind CSS: `npm install` (once) then `npm run build:css` at the repo root. Output goes to `backend/static/css/`.
+- Windows shortcut: `runserver.bat` starts `runserver` plus a localtunnel on port 8000.
+- Prod: `gunicorn --chdir backend config.wsgi:application`; `render.yaml` build = pip install + `collectstatic` + `migrate`. `collectstatic` is optional locally (`WHITENOISE_USE_FINDERS=True`).
 
-## Operational Gotchas & Environment Setup
-- **Environment variables:** `.env` file must be located directly inside `backend/` alongside `manage.py`. Key keys: `SECRET_KEY`, `DEBUG`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `ENFORCE_GEOFENCE`, `ENFORCE_OPERATING_HOURS`, `USE_SQLITE`.
-- **Database Behavior & Tests:**
-  - Test suite automatically runs against in-memory SQLite (`:memory:`) for speed and reliability (set `TEST_USE_REMOTE_DB=True` to force remote Supabase).
-  - Production/Dev uses Supabase PostgreSQL with custom retry wrapper (`config.db_backends.postgresql`). Falls back to local SQLite (`backend/db.sqlite3`) if `USE_SQLITE=True` or `DB_HOST` is empty.
-- **Operating Hours:** `core_app` enforces Mon–Fri 8:00 AM – 5:00 PM for customers and riders when `ENFORCE_OPERATING_HOURS=True` (set to `False` to bypass during night/weekend testing; staff/admin portals operate 24/7).
-- **Media files:** `MEDIA_ROOT` points to `backend/media`. Media URL routes served conditionally when `DEBUG=True` via `config/urls.py`.
-- **Campus Geofence:** Official center `9.77778, 118.73333` (PSU Tiniguiban Heights), radius `0.8` km (`deliveries/utils.py`). Out-of-campus orders or missing destination coordinates reject checkout with HTTP `422`.
-- **Dark Maps:** Leaflet maps use free OSM tiles with CSS invert filter on `.leaflet-tile-pane` for dark mode (no API keys required).
-- **Windows CP1252 encoding error:** Avoid complex Unicode emojis in backend print statements/management commands. Use FontAwesome icons in HTML templates instead.
+## Tests / settings quirks
+- When `sys.argv[1] == 'test'` (or `'test' in sys.argv`) settings force in-memory SQLite, MD5 password hashing, `ENFORCE_OPERATING_HOURS=False`, and `deliveries/routing.py` refuses network calls. Tests never touch Supabase; opt in with `TEST_USE_REMOTE_DB=True`.
+- Tests live in each app's `tests.py` (Django `TestCase`), no pytest. A suite-wide run logs a deliberate `ERROR activity_log.services` traceback from a "log must never raise" test — that is not a failure.
 
-## App Boundaries & Key Modules
-- `customer_portal`: Kiosk UI, guest/student ordering, queue slip & QR generation.
-- `canteen_menu`: Menu item management, Counter POS screen (`counter_pos.html`), barcode processing API (`/canteen/api/process-barcode/`).
-- `kitchen_display`: Kanban board for order status workflow (`update_order_status`).
-- `accounts`: User roles (`STUDENT`, `FACULTY`, `STAFF`, `DELIVERY`), faculty auth (@psu.palawan.edu.ph), staff & rider login portals.
-- `deliveries`: Delivery requests, rider assignment, real-time live GPS tracking (`watchPosition`), and live chat (`DeliveryMessage`).
-- `queuing`: Digital queue slip tracking models.
-- `core_app`: Operating hours schedule enforcement (`ENFORCE_OPERATING_HOURS`).
-- `admin_dashboard` & `analytics_reports`: Staff oversight, sales reporting, and analytics.
+## Environment / DB
+- `.env` must be at `backend/.env` (loaded with `override=True`; a missing file is normal in production). Settings print a diagnostics banner on every command — that noise is expected.
+- Database: SQLite when `USE_SQLITE=True` **or `DB_HOST` is empty**, otherwise Supabase Postgres via the retrying backend `config.db_backends.postgresql`. A `sqlite_backup` alias also exists.
+- `SystemGateMiddleware` gates only `/kiosk`, `/kiosk/`, `/kiosk/api/checkout/` while the canteen is closed (JSON 423 or redirect to the closed page). Staff/admin always pass, so closed-canteen testing still reaches dashboards.
+- Operating hours default Mon–Fri 08:00–17:00 `Asia/Manila`; set `ENFORCE_OPERATING_HOURS=False` for night/weekend work.
+- Windows CP1252: avoid emoji/Unicode symbols in Python `print` and management-command output (UnicodeEncodeError); use FontAwesome in templates.
 
-## Order Flow (canonical)
-- **Kiosk (pickup):** Customer builds cart -> checkout -> Order created `unpaid` -> queue slip w/ barcode shown and saved to kiosk order history (`localStorage`). Abandoned `unpaid` slips are cancelled at the counter.
-- **Counter POS (`/canteen/api/process-barcode/` `confirm_payment`):** Staff scans slip -> confirms payment -> Order flips `unpaid -> pending` and is sent to the Kitchen Board. The kiosk receipt auto-pops when polling sees a non-`unpaid` status.
-- **Kitchen Board (`kitchen_display`):** `pending -> preparing -> ready -> completed` for both pickup and delivery orders. Loyalty points credit at completion (`credit_points_for_order` in `update_order_status`); cancelling refunds points and restores stock.
-- **Rider (`deliveries`):** Delivery order -> kitchen marks `ready` -> rider dispatch -> `completed` on handoff (live GPS + chat).
-- **Rating gate (`submit_feedback_api`):** Orders are rateable only once `status == 'completed'` (pickup after the kitchen finishes, delivery after the rider hands off).
+## Two of everything — the main source of wrong-file edits
+- **Staff dashboard**: the live one is `canteen_menu.views.staff_dashboard` → `canteen_menu/templates/canteen_menu/staff_dashboard.html` (Alpine tabs + `components/staff_sidebar.html` + `design-system.css`). It demands a per-session token, so `/canteen/dashboard/` always 302s to `/canteen/<session-token>/dashboard/`. `kitchen_display.views.staff_dashboard` → `templates/staff_dashboard.html` is the older dark dashboard served at `/kitchen/dashboard/`.
+- **Admin page**: `templates/admin_dashboard.html` (System Administration + the transaction-log table) is rendered by `kitchen_display.admin_governance`, *not* by the `admin_dashboard` app. It requires the PIN gate at `/kitchen/admin-control/verify/` (`ADMIN_PIN`, dev default `CE-1234`, session unlock lasts 2h) and has no nav link.
+- **Order**: `customer_portal.models.Order` / `OrderItem` / `OrderFeedback` are canonical (lowercase statuses). `order_management.models.Order` is a dead duplicate with uppercase statuses — never query it.
+- **Menu**: `canteen_menu.models.MenuItem` (+ `Category`, has `stock`) is canonical. `customer_portal.models.MenuItem` is legacy and unused by views.
 
-## Delivery Routing (road-following maps)
-- `deliveries/routing.py`: `get_road_route(origin, dest)` returns `{'path': [[lat, lng]...], 'distance_km', 'duration_min', 'provider'}` or `None`. Providers are tried in order — OSRM driving (`OSRM_BASE_URL`), then Valhalla pedestrian (`VALHALLA_BASE_URL`) for campus footpaths a car graph cannot reach.
-- `get_tracking` (`deliveries/views.py`) embeds `path` + `routing_provider` in its JSON; `remaining_km` uses the **road** distance when available, else haversine. `delivery_tracking.html` and `accounts/dashboard.html` draw `data.path` (solid orange + white casing) and fall back to the dashed straight line when `path` is `null` — so a routing outage degrades instead of breaking tracking.
-- **Never fatal:** all provider errors are swallowed, results cached in `cache` (coordinates rounded to 4 decimals ≈ 11 m, `ROUTING_CACHE_SECONDS`), and failures cached for 60s. Set `ROUTING_ENABLED=False` to disable entirely. Routing is force-disabled while the test suite runs (`sys.argv`), so unit tests never touch the network.
-- **Progress bar:** `route_total_km` in the tracking payload is the length of the whole pickup→drop-off trip, measured from the rider's **first** recorded `RiderLocationPoint` (the canteen pickup) to the destination. The card computes `progress = (route_total_km - remaining_km) / route_total_km`, clamped to 0–100%, with `DELIVERED` forcing 100%. Do **not** derive progress from `total_distance_km` — that is the length of the rider's GPS breadcrumb trail, so GPS jitter inflates it and it reads 0% whenever tracking starts mid-trip. `route_total_km` is `null` until the rider's first fix lands; the card then seeds its denominator from the first `remaining_km` it sees.
-- **Pickup origin is derived, never hard-coded:** do not use `CAMPUS_CENTER_*` as the canteen coordinate for distance math — several real drop-offs sit exactly on the campus centre, which would collapse `route_total_km` to 0.
+## Order lifecycle
+- Kiosk checkout ( `/kiosk/api/checkout/` ) creates `unpaid` + a slip; unpaid slips are auto-cancelled after 1 hour by the lazy sweep `customer_portal.views.expire_stale_unpaid_orders()` (there is no worker/cron — it piggybacks on status polls, barcode scans, history).
+- Counter scan (`/canteen/api/process-barcode/` with `action=confirm_payment`) moves `unpaid → ready` directly (not `pending`) and writes an ActivityLog row. Already-paid slips re-issue the receipt instead of erroring.
+- Kitchen board (`kitchen_display.views.update_order_status`) enforces `ALLOWED_MOVES`; loyalty points credit on `completed`, and `cancelled` refunds points and restores stock. Log status changes *after* the atomic block commits.
+- Revenue/sales aggregates count only `status in ('ready', 'completed')`; keep that convention when adding reports.
+- Guest vs account: `order.customer` is null for walk-ins (`student_name`/`guest_*` instead); role filters treat `customer__isnull=True` as Student/Walk-in.
+
+## Roles / auth
+- Stored roles: `STUDENT | FACULTY | STAFF | DELIVERY` on `accounts.CustomUser.role`. `RIDER` and `ADMIN` appear in `@role_required` calls but are never stored; admin-level access comes from `is_staff` / `is_superuser`.
+- Faculty login is **not** Django auth: it sets `session['faculty_email']` (plus a URL session token for the dashboard), and `accounts/decorators.role_required` special-cases it.
+- Faculty OTP signup/reset needs SMTP; Render/Railway free tiers block ports 25/465/587, and the on-screen OTP fallback is DEBUG-only.
+
+## Logs
+- `activity_log.ActivityLog` is append-only (no soft delete by design). Write via `activity_log.services.log_activity(...)` / `log_menu_change(...)`; the helper swallows all exceptions on purpose — an audit write must never break a payment. Log after the transaction commits.
+- Staff feed: `GET /api/logs/` (STAFF/ADMIN, paginated, filters `category`/`level`/`days`/`q`), polled by the Activity Log tab in the staff dashboard.
+- The cross-role "transaction logs" table for students/walk-ins, faculty/staff and delivery personnel is the order table in `templates/admin_dashboard.html`, fed by `kitchen_display.admin_governance` (`role_filter=all|faculty|student|delivery`, `q` search, newest 100).
+
+## Frontend
+- Tailwind is precompiled, not CDN-JIT: each `backend/tailwindcss/<group>.config.js` has its own `content` globs and writes `backend/static/css/<group>.css`. New utilities in a template only ship if that template is listed in a config's `content`; then run `npm run build:css`. Otherwise the page renders unstyled classes.
+- Page JS is inline `x-data` Alpine + vanilla `fetch`; no build step. Reusable staff UI lives in `backend/templates/components/`.
+
+## Delivery maps and geofence
+- `deliveries/routing.py::get_road_route(origin, dest)` returns `{'path', 'distance_km', 'duration_min', 'provider'}` or `None`; providers OSRM (driving) then Valhalla (pedestrian), both key-less, cached ~11 m precision, failures cached 60 s. Every error is swallowed and callers fall back to a dashed straight line — keep it non-fatal, and never let routing break tracking.
+- Geofence: center `9.77778, 118.73333`, radius `0.8` km (`deliveries/utils.py`); out-of-campus or missing `dest_lat/dest_lng` is rejected with HTTP 422 when `ENFORCE_GEOFENCE=True`.
+- Tracking progress uses `route_total_km` (rider's **first** recorded `RiderLocationPoint` → destination), not `total_distance_km` (jittery breadcrumb length). Do not derive the pickup origin from `CAMPUS_CENTER_*`: real drop-offs sit on that point and would collapse the total to 0.
+- `DeliveryRequest.status` is uppercase (`SEARCHING/ACCEPTED/DELIVERED/REJECTED/TIMEOUT`); rider dispatch is a first-to-accept pool (`accept_delivery` guards it atomically), not pre-assignment.
